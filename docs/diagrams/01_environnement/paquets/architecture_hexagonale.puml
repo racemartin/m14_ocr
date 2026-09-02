@@ -1,0 +1,103 @@
+@startuml architecture_hexagonale
+!include ../../_common/estilo.iuml
+
+title Agent IA de Triage Médical — CHSA\nDiagramme de paquets : architecture hexagonale (état réel du code)
+
+package "interfaces\n(adaptateurs primaires)" as INTERFACES {
+  package "cli" {
+    class profiler_corpus
+    class construire_dataset_pivot
+    class anonymiser_dataset
+    class decouper_splits
+    class mappers_corpus
+  }
+  package "api\n(squelette — Étape 4)" as API_PKG {
+    class "main.py (à écrire)" as ApiMain
+  }
+  package "web\n(squelette — Étape 4)" as WEB_PKG {
+    class "app.py (à écrire)" as WebApp
+  }
+}
+
+package "application" as APPLICATION {
+  package "use_cases" {
+    class ProfilerCorpusUseCase
+    class ConstruireDatasetPivotUseCase
+    class AnonymiserDatasetUseCase
+    class DecouperSplitsUseCase
+  }
+}
+
+package "domain\n(zéro dépendance externe)" as DOMAIN {
+  package "model" {
+    class ExemplePivot
+    class CorpusSource
+    class Message
+    class ConstantesVitales
+    enum Langue
+    enum TypeExemple
+    enum NiveauConfiance
+    enum TypeSplit
+  }
+  package "ports" {
+    interface RepositoryLectureEcriture
+    interface LecteurCorpus
+    interface Anonymiseur
+    interface Profileur
+    interface MoteurInference
+  }
+}
+
+package "infrastructure" as INFRASTRUCTURE {
+  package "adapters" {
+    class JsonlDatasetRepository
+    class LecteurCorpusFichierLocal
+    class LecteurCorpusHuggingFace
+    class PresidioAnonymiseur
+    class YdataProfileur
+    class LlamaCppInferenceAdapter #line.dashed
+    class VllmEndpointInferenceAdapter #line.dashed
+  }
+}
+
+' ----------------------------------------------------------------------
+' Dependances (regle : tout pointe vers domain)
+' ----------------------------------------------------------------------
+INTERFACES ..> APPLICATION : appelle
+APPLICATION ..> DOMAIN : utilise (model + ports)
+INFRASTRUCTURE ..> DOMAIN : implémente (ports)
+
+JsonlDatasetRepository ..|> RepositoryLectureEcriture
+LecteurCorpusFichierLocal ..|> LecteurCorpus
+LecteurCorpusHuggingFace ..|> LecteurCorpus
+PresidioAnonymiseur ..|> Anonymiseur
+YdataProfileur ..|> Profileur
+LlamaCppInferenceAdapter ..|> MoteurInference
+VllmEndpointInferenceAdapter ..|> MoteurInference
+
+ConstruireDatasetPivotUseCase --> LecteurCorpus
+ConstruireDatasetPivotUseCase --> RepositoryLectureEcriture
+ProfilerCorpusUseCase --> LecteurCorpus
+ProfilerCorpusUseCase --> Profileur
+AnonymiserDatasetUseCase --> RepositoryLectureEcriture
+AnonymiserDatasetUseCase --> Anonymiseur
+DecouperSplitsUseCase --> RepositoryLectureEcriture
+
+construire_dataset_pivot ..> ConstruireDatasetPivotUseCase : injecte les adaptateurs
+profiler_corpus ..> ProfilerCorpusUseCase
+anonymiser_dataset ..> AnonymiserDatasetUseCase
+decouper_splits ..> DecouperSplitsUseCase
+
+note bottom of INFRASTRUCTURE
+  Classes en pointillé : squelettes non
+  implémentés (branchés à l'Étape 4)
+end note
+
+note right of DOMAIN
+  Aucune classe de ce paquet n'importe
+  pandas / presidio / datasets / etc.
+  Les noms de méthode des ports restent
+  génériques (sauvegarder, lister, ...)
+end note
+
+@enduml

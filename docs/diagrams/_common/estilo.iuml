@@ -1,0 +1,118 @@
+' ============================================================================
+' Style partage — a inclure via !include ../../_common/estilo.iuml
+' (adapter le nombre de ".." selon la profondeur du fichier appelant)
+'
+' Palette reprise de la premiere session de diagrammes du projet CHSA,
+' pour une identite visuelle coherente dans toute la documentation.
+' ============================================================================
+
+skinparam backgroundColor #F6F4EF
+skinparam defaultFontName Helvetica
+skinparam roundcorner 6
+skinparam shadowing false
+skinparam ArrowThickness 1.2
+
+skinparam arrow {
+  Color #0B3D3A
+  FontColor #10241F
+  FontSize 11
+}
+
+skinparam package {
+  BackgroundColor #FFFFFF
+  BorderColor #0B3D3A
+  FontColor #0B3D3A
+  FontStyle bold
+  FontSize 14
+}
+
+skinparam node {
+  BackgroundColor #EFEAE0
+  BorderColor #0B3D3A
+  FontColor #10241F
+  FontSize 12
+}
+
+skinparam database {
+  BackgroundColor #FDF6EC
+  BorderColor #C98A1E
+  FontColor #4A3400
+  FontSize 11
+}
+
+skinparam cloud {
+  BackgroundColor #E7EFEC
+  BorderColor #2F7A4F
+  FontColor #123C3A
+  FontSize 12
+}
+
+skinparam artifact {
+  BackgroundColor #FCEBE6
+  BorderColor #C4432B
+  FontColor #7A2A17
+}
+
+skinparam component {
+  BackgroundColor #FFFFFF
+  BorderColor #0B3D3A
+  FontColor #10241F
+  FontSize 12
+}
+
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #0B3D3A
+  FontColor #10241F
+  HeaderBackgroundColor #EFEAE0
+  FontSize 11
+  AttributeFontSize 10
+}
+
+skinparam interface {
+  BackgroundColor #E7EFEC
+  BorderColor #2F7A4F
+  FontColor #123C3A
+}
+
+skinparam activity {
+  BackgroundColor #FFFFFF
+  BorderColor #0B3D3A
+  FontColor #10241F
+  DiamondBackgroundColor #FDF6EC
+  DiamondBorderColor #C98A1E
+  StartColor #0B3D3A
+  EndColor #C4432B
+  BarColor #0B3D3A
+}
+
+skinparam partition {
+  BackgroundColor #F0EEE7
+  BorderColor #0B3D3A
+  FontColor #0B3D3A
+  FontStyle bold
+}
+
+skinparam sequence {
+  ArrowColor #0B3D3A
+  ActorBorderColor #0B3D3A
+  LifeLineBorderColor #0B3D3A
+  LifeLineBackgroundColor #EFEAE0
+  ParticipantBorderColor #0B3D3A
+  ParticipantBackgroundColor #FFFFFF
+  ParticipantFontColor #10241F
+  ParticipantFontStyle bold
+  ActorBackgroundColor #FFFFFF
+  BoxBackgroundColor #F0EEE7
+  BoxBorderColor #0B3D3A
+}
+
+skinparam note {
+  BackgroundColor #FDF6EC
+  BorderColor #C98A1E
+  FontColor #4A3400
+}
+
+skinparam sequenceMessageAlign center
+skinparam maxMessageSize 160
+skinparam responseMessageBelowArrow true

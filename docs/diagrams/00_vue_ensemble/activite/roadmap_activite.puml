@@ -1,0 +1,188 @@
+@startuml roadmap_activite
+title Roadmap POC Agent IA de Triage Medical (CHSA)\nDonnees -> SFT -> DPO -> Deploiement
+
+skinparam backgroundColor white
+skinparam activity {
+  BackgroundColor #F5F7FA
+  BorderColor #333366
+  ArrowColor #333366
+  FontSize 12
+}
+skinparam partitionBorderColor #800000
+skinparam partitionFontStyle bold
+skinparam swimlaneWidth 260
+skinparam noteBackgroundColor #FFF6D9
+skinparam noteBorderColor #999966
+
+start
+
+partition "ETAPE 0 — Cadrage & Environnement" #E8E8F5 {
+  :Definir cahier des charges\n(classes: ExigenceFonctionnelle,\nExigenceNonFonctionnelle);
+  note right
+    Entree : mail de mission (Dr. Dubois)
+    Sortie : 01_cahier_des_charges.md
+  end note
+  :Provisionner Environnement A (local WSL2)\net Environnement B (cloud GPU);
+  note right
+    Decision : pas d'entrainement local (5 Go RAM)
+    Outils : MLflow / TensorBoard retenus
+    BentoML / Airflow / MCP ecartes (Phase 3)
+  end note
+  :Executer check_env_local.py / check_env_gpu.py;
+}
+
+partition "ETAPE 1 — Semaine 1 : Donnees" #E8F5EA {
+  :Collecter les 4 corpus bruts\n(classe: CorpusSource);
+  note right
+    Entrees : MediQAl, FrenchMedMCQA,
+    MedQuAD, UltraMedical-Preference (HF Hub)
+    Sortie : data/raw/*.jsonl
+  end note
+
+  :Profiler chaque corpus\n(methode: ydata_profiling.ProfileReport);
+  note right
+    Sortie : rapport HTML par corpus
+    Decide : nettoyage necessaire ou non
+  end note
+
+  if (Corpus propre selon profilage ?) then (non)
+    :Nettoyer (doublons, valeurs manquantes,\nlongueurs aberrantes);
+  else (oui)
+  endif
+
+  :Convertir vers le schema pivot\n(classe: ExemplePivot);
+  note right
+    Champs : symptomes, antecedents,
+    constantes_vitales, prompt, completion,
+    chosen/rejected, langue, source, confiance
+  end note
+
+  fork
+    :Construire dataset SFT\n(methode: build_pivot_dataset.py);
+    note right: Sortie ~= 5000 paires instruction-reponse
+  fork again
+    :Construire dataset DPO\n(methode: build_dpo_pairs.py);
+    note right
+      Sequence : prompt_ids -> chosen_ids /
+      rejected_ids -> ajout EOS -> masques
+    end note
+  end fork
+
+  :Anonymiser (Presidio)\n(classes: AnalyzerEngine, AnonymizerEngine);
+  note right
+    Entree : donnees pivot brutes
+    Sortie : donnees anonymisees (RGPD)
+    Strategies testees : replace / mask / redact
+  end note
+
+  :Decouper train / val / test\n(test clinique isole);
+  note right
+    Point de vigilance : ne jamais melanger
+    train et eval (trace d'audit conservee)
+  end note
+
+  :Verser le dataset versionne sur HF Hub\n(Livrable 1);
+}
+
+partition "ETAPE 1bis — Baseline (Phase 1 mission)" #FFF0E0 {
+  :Evaluer Qwen3-1.7B-Base en zero/few-shot\nsur le jeu de test clinique;
+  note right
+    Sortie : metriques de reference
+    (accuracy ESI baseline, avant tout SFT)
+  end note
+}
+
+partition "ETAPE 2 — Semaine 2 : SFT + LoRA" #E8F0F5 {
+  :Charger Qwen3-1.7B-Base en 4-bit NF4\n(classe: BitsAndBytesConfig);
+  note right
+    Entree : poids Qwen3-1.7B-Base (HF Hub)
+    Optimisations : Unsloth / Liger Kernel /
+    FlashAttention-2 / Chunked Cross-Entropy
+  end note
+
+  :Formater en ChatML + assistant_only_loss\n(methode: apply_chat_template);
+  note right
+    add_generation_prompt=False (entrainement)
+    Prefilling JSON / bloc <think> prepares
+  end note
+
+  :Configurer LoraConfig (r, alpha, dropout,\ntarget_modules);
+
+  :Lancer SFTTrainer (packing=True,\nloss_type=chunked_nll);
+  note right
+    Entree : dataset SFT train/val
+    Sortie : checkpoint SFT-LoRA intermediaire
+    Suivi : MLflow / TensorBoard (loss, grad norm)
+  end note
+
+  :Evaluer sur jeu de validation intermediaire;
+
+  if (Convergence saine ?) then (non — overfit/underfit)
+    :Ajuster hyperparametres\n(grid restreint : lr, r, alpha);
+    note right: Optuna ecarte du POC (Phase 3)
+    -> Relancer SFTTrainer;
+    :Lancer SFTTrainer (packing=True,\nloss_type=chunked_nll);
+  else (oui)
+  endif
+
+  :Sauvegarder checkpoint SFT-LoRA;
+}
+
+partition "ETAPE 3 — Semaine 3 : Alignement DPO" #F5E8F0 {
+  :Charger checkpoint SFT-LoRA\ncomme politique de reference;
+  note right
+    Entree : checkpoint SFT + dataset DPO
+    (UltraMedical-Preference adapte)
+  end note
+
+  :Configurer DPOConfig / DPOTrainer\n(classe: DPOTrainer de TRL);
+  note right
+    Decision : DPO retenu (pas PPO/GRPO/REINFORCE)
+    -> pas de reward model separe
+    -> off-policy, stable, peu couteux
+  end note
+
+  :Entrainer DPO sur paires\nchosen / rejected;
+
+  :Controler securite clinique\n(hallucinations, recommandations dangereuses);
+  note right
+    Rubric de securite : safety < 4/7
+    -> overall force a 0 (garde-fou)
+  end note
+
+  :Sauvegarder checkpoint SFT+DPO final\n(Livrable 2);
+}
+
+partition "ETAPE 4 — Semaine 4 : Deploiement & Evaluation" #FDEBEB {
+  fork
+    :Fusionner adaptateurs LoRA\n(merge_and_unload);
+    :Construire image Docker + FastAPI;
+    :Deployer endpoint vLLM sur le cloud;
+    note right
+      Sortie : endpoint pilote (Livrable 4)
+      Mesures : latence, throughput
+    end note
+    :Configurer pipeline CI/CD\n(GitHub Actions);
+  fork again
+    :Evaluation ground-truth\n(accuracy classification ESI);
+    :Evaluation LLM-judge (rubric factualite,\nhelpfulness, securite, clarte);
+    :Evaluation humaine limitee\n(point-wise, echantillon restreint);
+    note right
+      Sortie : metriques finales vs baseline
+      (Etape 1bis)
+    end note
+  end fork
+
+  :Rediger rapport technique\n(methodologie, metriques, analyse, roadmap)\n(Livrable 3);
+  note right
+    Roadmap Phase 3 : modeles 32B+, RAG,
+    RLVR, monitoring de drift (Evidently AI),
+    MLOps complet (BentoML/Airflow), MCP/SIH
+  end note
+
+  :Preparer la soutenance (30 min)\ndevant Dr. Marie Dubois;
+}
+
+stop
+
+@enduml
