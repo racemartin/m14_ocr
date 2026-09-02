@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Environnements virtuels / uv
+.venv/
+venv/
+
+# Secrets locaux
+.env
+
+# Tests / couverture
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Suivi d'experiences ML
+mlruns/
+.mlflow/
+
+# Editeurs / OS
+.DS_Store
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Corpus et donnees : jamais commites sur Git, verses sur Hugging Face Hub
+data/raw/*
+data/processed/*
+data/splits/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/splits/.gitkeep
+!data/README.md
