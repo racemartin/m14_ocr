@@ -2,9 +2,10 @@
 name = "chsa-triage"
 version = "0.1.0"
 description = "POC d'agent IA de triage medical pour le CHSA — architecture hexagonale"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.12"
 dependencies = [
     "pydantic>=2.7",
+    "torch",
 ]
 
 [project.optional-dependencies]
@@ -75,6 +76,17 @@ dev = [
 
 [tool.uv]
 package = true
+
+# Configurar PyPI como origen primario y PyTorch como secundario
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+default = true
+
+[[tool.uv.index]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 [tool.ruff]
 line-length = 80

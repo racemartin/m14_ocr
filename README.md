@@ -28,6 +28,9 @@ uv sync --extra local --extra dev
 uv run python -m spacy download fr_core_news_md
 uv run python -m spacy download en_core_web_sm
 
+# installer PyTorch compatible avec CPU/CUDA
+uv add torch --index-url https://download.pytorch.org/whl/cpu
+
 # Vérification de l'environnement
 uv run python scripts/check_env_local.py
 
