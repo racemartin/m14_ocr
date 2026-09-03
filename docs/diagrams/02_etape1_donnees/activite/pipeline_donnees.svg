@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" contentScriptType="application/ecmascript" contentStyleType="text/css" height="847px" preserveAspectRatio="none" style="width:641px;height:847px;background:#F6F4EF;" version="1.1" viewBox="0 0 641 847" width="641px" zoomAndPan="magnify"><defs/><g><text fill="#000000" font-family="Helvetica" font-size="18" lengthAdjust="spacingAndGlyphs" textLength="459" x="90" y="26.708">Étape 1 — Préparation et structuration des données</text><text fill="#000000" font-family="Helvetica" font-size="18" lengthAdjust="spacingAndGlyphs" textLength="189" x="225" y="47.6611">Diagramme d'activité</text><ellipse cx="217.5" cy="61.9063" fill="#0B3D3A" rx="10" ry="10" style="stroke: none; stroke-width: 1.0;"/><rect fill="#F0EEE7" height="385.9414" rx="3" ry="3" style="stroke: #0B3D3A; stroke-width: 2.0;" width="620" x="10" y="82.708"/><path d="M620,83.708 L620,92.0049 L610,102.0049 L10,102.0049 " fill="none" style="stroke: #0B3D3A; stroke-width: 2.0;"/><text fill="#0B3D3A" font-family="Helvetica" font-size="14" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="600" x="13" y="96.7031">Par corpus (MediQAl, FrenchMedMCQA, MedQuAD, UltraMedical-Preference)</text><rect fill="#FFFFFF" height="33.9688" rx="12.5" ry="12.5" style="stroke: #0B3D3A; stroke-width: 1.5;" width="249" x="93" y="119.0049"/><text fill="#10241F" font-family="Helvetica" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="229" x="103" y="140.1436">Placer le corpus brut dans data/raw/</text><path d="M345,169.2432 L345,192.9424 L325,196.9424 L345,200.9424 L345,224.6416 A0,0 0 0 0 345,224.6416 L533,224.6416 A0,0 0 0 0 533,224.6416 L533,179.2432 L523,169.2432 L345,169.2432 A0,0 0 0 0 345,169.2432 " fill="#FDF6EC" style="stroke: #C98A1E; stroke-width: 1.0;"/><path d="M523,169.2432 L523,179.2432 L533,179.2432 L523,169.2432 " fill="#FDF6EC" style="stroke: #C98A1E; stroke-width: 1.0;"/><text fill="#4A3400" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="140" x="351" y="186.3101">Adaptateurs injectés :</text><text fill="#4A3400" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="167" x="351" y="201.4429">LecteurCorpusFichierLocal</text><text fill="#4A3400" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="88" x="351" y="216.5757">YdataProfileur</text><rect fill="#FFFFFF" height="47.9375" rx="12.5" ry="12.5" style="stroke: #0B3D3A; stroke-width: 1.5;" width="215" x="110" y="172.9736"/><text fill="#10241F" font-family="Helvetica" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="195" x="120" y="194.1123">interfaces/cli/profiler_corpus.py</text><text fill="#10241F" font-family="Helvetica" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="153" x="120" y="208.0811">(ProfilerCorpusUseCase)</text><rect fill="#FFFFFF" height="47.9375" rx="12.5" ry="12.5" style="stroke: #0B3D3A; stroke-width: 1.5;" width="295" x="70" y="293.0439"/><text fill="#10241F" font-family="Helvetica" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="146" x="80" y="314.1826">Nettoyer le corpus brut</text><text fill="#10241F" font-family="Helvetica" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="275" x="80" y="328.1514">(doublons, valeurs manquantes, longueurs)</text><polygon fill="#FDF6EC" points="87,244.6416,348,244.6416,360,256.6416,348,268.6416,87,268.6416,75,256.6416,87,244.6416" style="stroke: #C98A1E; stroke-width: 1.5;"/><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="17" x="221.5" y="278.8521">oui</text><text fill="#000000" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="261" x="87" y="260.4497">Rapport de profilage : nettoyage nécessaire ?</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="21" x="360" y="254.0474">non</text><polygon fill="#FDF6EC" points="217.5,360.9814,229.5,372.9814,217.5,384.9814,205.5,372.9814,217.5,360.9814" style="stroke: #C98A1E; stroke-width: 1.5;"/><path d="M376,401.251 L376,424.9502 L356,428.9502 L376,432.9502 L376,456.6494 A0,0 0 0 0 376,456.6494 L580,456.6494 A0,0 0 0 0 580,456.6494 L580,411.251 L570,401.251 L376,401.251 A0,0 0 0 0 376,401.251 " fill="#FDF6EC" style="stroke: #C98A1E; stroke-width: 1.0;"/><path d="M570,401.251 L570,411.251 L580,411.251 L570,401.251 " fill="#FDF6EC" style="stroke: #C98A1E; stroke-width: 1.0;"/><text fill="#4A3400" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="183" x="382" y="418.3179">Mapper spécifique au corpus</text><text fill="#4A3400" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="182" x="382" y="433.4507">(mappers_corpus.py) injecté</text><text fill="#4A3400" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="137" x="382" y="448.5835">ici — pas dans le port</text><rect fill="#FFFFFF" height="47.9375" rx="12.5" ry="12.5" style="stroke: #0B3D3A; stroke-width: 1.5;" width="277" x="79" y="404.9814"/><text fill="#10241F" font-family="Helvetica" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="257" x="89" y="426.1201">interfaces/cli/construire_dataset_pivot.py</text><text fill="#10241F" font-family="Helvetica" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="210" x="89" y="440.0889">(ConstruireDatasetPivotUseCase)</text><rect fill="#FFFFFF" height="47.9375" rx="12.5" ry="12.5" style="stroke: #0B3D3A; stroke-width: 1.5;" width="251" x="92" y="488.6494"/><text fill="#10241F" font-family="Helvetica" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="148" x="102" y="509.7881">Dataset pivot consolidé</text><text fill="#10241F" font-family="Helvetica" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="231" x="102" y="523.7568">(data/processed/dataset_pivot.jsonl)</text><path d="M362,560.4229 L362,576.5557 L342,580.5557 L362,584.5557 L362,600.6885 A0,0 0 0 0 362,600.6885 L601,600.6885 A0,0 0 0 0 601,600.6885 L601,570.4229 L591,560.4229 L362,560.4229 A0,0 0 0 0 362,560.4229 " fill="#FDF6EC" style="stroke: #C98A1E; stroke-width: 1.0;"/><path d="M591,560.4229 L591,570.4229 L601,570.4229 L591,560.4229 " fill="#FDF6EC" style="stroke: #C98A1E; stroke-width: 1.0;"/><text fill="#4A3400" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="218" x="368" y="577.4897">Adaptateur : PresidioAnonymiseur</text><text fill="#4A3400" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="218" x="368" y="592.6226">Stratégie : replace / mask / redact</text><rect fill="#FFFFFF" height="47.9375" rx="12.5" ry="12.5" style="stroke: #0B3D3A; stroke-width: 1.5;" width="249" x="93" y="556.5869"/><text fill="#10241F" font-family="Helvetica" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="229" x="103" y="577.7256">interfaces/cli/anonymiser_dataset.py</text><text fill="#10241F" font-family="Helvetica" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="187" x="103" y="591.6943">(AnonymiserDatasetUseCase)</text><path d="M348,628.3604 L348,644.4932 L328,648.4932 L348,652.4932 L348,668.626 A0,0 0 0 0 348,668.626 L544,668.626 A0,0 0 0 0 544,668.626 L544,638.3604 L534,628.3604 L348,628.3604 A0,0 0 0 0 348,628.3604 " fill="#FDF6EC" style="stroke: #C98A1E; stroke-width: 1.0;"/><path d="M534,628.3604 L534,638.3604 L544,638.3604 L534,628.3604 " fill="#FDF6EC" style="stroke: #C98A1E; stroke-width: 1.0;"/><text fill="#4A3400" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="175" x="354" y="645.4272">Test clinique isolé — jamais</text><text fill="#4A3400" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="161" x="354" y="660.5601">réutilisé en entraînement</text><rect fill="#FFFFFF" height="47.9375" rx="12.5" ry="12.5" style="stroke: #0B3D3A; stroke-width: 1.5;" width="221" x="107" y="624.5244"/><text fill="#10241F" font-family="Helvetica" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="201" x="117" y="645.6631">interfaces/cli/decouper_splits.py</text><text fill="#10241F" font-family="Helvetica" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="160" x="117" y="659.6318">(DecouperSplitsUseCase)</text><rect fill="#FFFFFF" height="33.9688" rx="12.5" ry="12.5" style="stroke: #0B3D3A; stroke-width: 1.5;" width="199" x="118" y="692.4619"/><text fill="#10241F" font-family="Helvetica" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="179" x="128" y="713.6006">Dataset final train / val / test</text><rect fill="#FFFFFF" height="47.9375" rx="12.5" ry="12.5" style="stroke: #0B3D3A; stroke-width: 1.5;" width="231" x="102" y="746.4307"/><text fill="#10241F" font-family="Helvetica" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="211" x="112" y="767.5693">Versionner sur Hugging Face Hub</text><text fill="#10241F" font-family="Helvetica" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="69" x="112" y="781.5381">(Livrable 1)</text><ellipse cx="217.5" cy="825.3682" fill="#FFFFFF" rx="11" ry="11" style="stroke: #C4432B; stroke-width: 1.0;"/><ellipse cx="217.5" cy="825.3682" fill="#C4432B" rx="6" ry="6" style="stroke: #E1A195; stroke-width: 1.0;"/><line style="stroke: #0B3D3A; stroke-width: 1.5;" x1="217.5" x2="217.5" y1="152.9736" y2="172.9736"/><polygon fill="#0B3D3A" points="213.5,162.9736,217.5,172.9736,221.5,162.9736,217.5,166.9736" style="stroke: #0B3D3A; stroke-width: 1.0;"/><line style="stroke: #0B3D3A; stroke-width: 1.5;" x1="217.5" x2="217.5" y1="268.6416" y2="293.0439"/><polygon fill="#0B3D3A" points="213.5,283.0439,217.5,293.0439,221.5,283.0439,217.5,287.0439" style="stroke: #0B3D3A; stroke-width: 1.0;"/><line style="stroke: #0B3D3A; stroke-width: 1.5;" x1="360" x2="375" y1="256.6416" y2="256.6416"/><polygon fill="#0B3D3A" points="371,307.0127,375,317.0127,379,307.0127,375,311.0127" style="stroke: #0B3D3A; stroke-width: 1.5;"/><line style="stroke: #0B3D3A; stroke-width: 1.5;" x1="375" x2="375" y1="256.6416" y2="372.9814"/><line style="stroke: #0B3D3A; stroke-width: 1.5;" x1="375" x2="229.5" y1="372.9814" y2="372.9814"/><polygon fill="#0B3D3A" points="239.5,368.9814,229.5,372.9814,239.5,376.9814,235.5,372.9814" style="stroke: #0B3D3A; stroke-width: 1.0;"/><line style="stroke: #0B3D3A; stroke-width: 1.5;" x1="217.5" x2="217.5" y1="340.9814" y2="360.9814"/><polygon fill="#0B3D3A" points="213.5,350.9814,217.5,360.9814,221.5,350.9814,217.5,354.9814" style="stroke: #0B3D3A; stroke-width: 1.0;"/><line style="stroke: #0B3D3A; stroke-width: 1.5;" x1="217.5" x2="217.5" y1="220.9111" y2="244.6416"/><polygon fill="#0B3D3A" points="213.5,234.6416,217.5,244.6416,221.5,234.6416,217.5,238.6416" style="stroke: #0B3D3A; stroke-width: 1.0;"/><line style="stroke: #0B3D3A; stroke-width: 1.5;" x1="217.5" x2="217.5" y1="384.9814" y2="404.9814"/><polygon fill="#0B3D3A" points="213.5,394.9814,217.5,404.9814,221.5,394.9814,217.5,398.9814" style="stroke: #0B3D3A; stroke-width: 1.0;"/><line style="stroke: #0B3D3A; stroke-width: 1.5;" x1="217.5" x2="217.5" y1="71.9063" y2="119.0049"/><polygon fill="#0B3D3A" points="213.5,109.0049,217.5,119.0049,221.5,109.0049,217.5,113.0049" style="stroke: #0B3D3A; stroke-width: 1.0;"/><line style="stroke: #0B3D3A; stroke-width: 1.5;" x1="217.5" x2="217.5" y1="452.9189" y2="488.6494"/><polygon fill="#0B3D3A" points="213.5,478.6494,217.5,488.6494,221.5,478.6494,217.5,482.6494" style="stroke: #0B3D3A; stroke-width: 1.0;"/><line style="stroke: #0B3D3A; stroke-width: 1.5;" x1="217.5" x2="217.5" y1="536.5869" y2="556.5869"/><polygon fill="#0B3D3A" points="213.5,546.5869,217.5,556.5869,221.5,546.5869,217.5,550.5869" style="stroke: #0B3D3A; stroke-width: 1.0;"/><line style="stroke: #0B3D3A; stroke-width: 1.5;" x1="217.5" x2="217.5" y1="604.5244" y2="624.5244"/><polygon fill="#0B3D3A" points="213.5,614.5244,217.5,624.5244,221.5,614.5244,217.5,618.5244" style="stroke: #0B3D3A; stroke-width: 1.0;"/><line style="stroke: #0B3D3A; stroke-width: 1.5;" x1="217.5" x2="217.5" y1="672.4619" y2="692.4619"/><polygon fill="#0B3D3A" points="213.5,682.4619,217.5,692.4619,221.5,682.4619,217.5,686.4619" style="stroke: #0B3D3A; stroke-width: 1.0;"/><line style="stroke: #0B3D3A; stroke-width: 1.5;" x1="217.5" x2="217.5" y1="726.4307" y2="746.4307"/><polygon fill="#0B3D3A" points="213.5,736.4307,217.5,746.4307,221.5,736.4307,217.5,740.4307" style="stroke: #0B3D3A; stroke-width: 1.0;"/><line style="stroke: #0B3D3A; stroke-width: 1.5;" x1="217.5" x2="217.5" y1="794.3682" y2="814.3682"/><polygon fill="#0B3D3A" points="213.5,804.3682,217.5,814.3682,221.5,804.3682,217.5,808.3682" style="stroke: #0B3D3A; stroke-width: 1.0;"/><!--MD5=[d8ebadd34825d61ddc0210b48c8797ca]
+@startuml pipeline_donnees
+
+skinparam backgroundColor #F6F4EF
+skinparam defaultFontName Helvetica
+skinparam roundcorner 6
+skinparam shadowing false
+skinparam ArrowThickness 1.2
+
+skinparam arrow {
+  Color #0B3D3A
+  FontColor #10241F
+  FontSize 11
+}
+
+skinparam package {
+  BackgroundColor #FFFFFF
+  BorderColor #0B3D3A
+  FontColor #0B3D3A
+  FontStyle bold
+  FontSize 14
+}
+
+skinparam node {
+  BackgroundColor #EFEAE0
+  BorderColor #0B3D3A
+  FontColor #10241F
+  FontSize 12
+}
+
+skinparam database {
+  BackgroundColor #FDF6EC
+  BorderColor #C98A1E
+  FontColor #4A3400
+  FontSize 11
+}
+
+skinparam cloud {
+  BackgroundColor #E7EFEC
+  BorderColor #2F7A4F
+  FontColor #123C3A
+  FontSize 12
+}
+
+skinparam artifact {
+  BackgroundColor #FCEBE6
+  BorderColor #C4432B
+  FontColor #7A2A17
+}
+
+skinparam component {
+  BackgroundColor #FFFFFF
+  BorderColor #0B3D3A
+  FontColor #10241F
+  FontSize 12
+}
+
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #0B3D3A
+  FontColor #10241F
+  HeaderBackgroundColor #EFEAE0
+  FontSize 11
+  AttributeFontSize 10
+}
+
+skinparam interface {
+  BackgroundColor #E7EFEC
+  BorderColor #2F7A4F
+  FontColor #123C3A
+}
+
+skinparam activity {
+  BackgroundColor #FFFFFF
+  BorderColor #0B3D3A
+  FontColor #10241F
+  DiamondBackgroundColor #FDF6EC
+  DiamondBorderColor #C98A1E
+  StartColor #0B3D3A
+  EndColor #C4432B
+  BarColor #0B3D3A
+}
+
+skinparam partition {
+  BackgroundColor #F0EEE7
+  BorderColor #0B3D3A
+  FontColor #0B3D3A
+  FontStyle bold
+}
+
+skinparam sequence {
+  ArrowColor #0B3D3A
+  ActorBorderColor #0B3D3A
+  LifeLineBorderColor #0B3D3A
+  LifeLineBackgroundColor #EFEAE0
+  ParticipantBorderColor #0B3D3A
+  ParticipantBackgroundColor #FFFFFF
+  ParticipantFontColor #10241F
+  ParticipantFontStyle bold
+  ActorBackgroundColor #FFFFFF
+  BoxBackgroundColor #F0EEE7
+  BoxBorderColor #0B3D3A
+}
+
+skinparam note {
+  BackgroundColor #FDF6EC
+  BorderColor #C98A1E
+  FontColor #4A3400
+}
+
+skinparam sequenceMessageAlign center
+skinparam maxMessageSize 160
+skinparam responseMessageBelowArrow true
+
+title Étape 1 — Préparation et structuration des données\nDiagramme d'activité
+
+start
+
+partition "Par corpus (MediQAl, FrenchMedMCQA, MedQuAD, UltraMedical-Preference)" {
+  :Placer le corpus brut dans data/raw/;
+  :interfaces/cli/profiler_corpus.py\n(ProfilerCorpusUseCase);
+  note right
+    Adaptateurs injectés :
+    LecteurCorpusFichierLocal
+    YdataProfileur
+  end note
+
+  if (Rapport de profilage : nettoyage nécessaire ?) then (oui)
+    :Nettoyer le corpus brut\n(doublons, valeurs manquantes, longueurs);
+  else (non)
+  endif
+
+  :interfaces/cli/construire_dataset_pivot.py\n(ConstruireDatasetPivotUseCase);
+  note right
+    Mapper spécifique au corpus
+    (mappers_corpus.py) injecté
+    ici — pas dans le port
+  end note
+}
+
+:Dataset pivot consolidé\n(data/processed/dataset_pivot.jsonl);
+
+:interfaces/cli/anonymiser_dataset.py\n(AnonymiserDatasetUseCase);
+note right
+  Adaptateur : PresidioAnonymiseur
+  Stratégie : replace / mask / redact
+end note
+
+:interfaces/cli/decouper_splits.py\n(DecouperSplitsUseCase);
+note right
+  Test clinique isolé — jamais
+  réutilisé en entraînement
+end note
+
+:Dataset final train / val / test;
+
+:Versionner sur Hugging Face Hub\n(Livrable 1);
+
+stop
+
+@enduml
+
+PlantUML version 1.2020.02(Sun Mar 01 10:22:07 UTC 2020)
+(GPL source distribution)
+Java Runtime: OpenJDK Runtime Environment
+JVM: OpenJDK 64-Bit Server VM
+Java Version: 21.0.12+8-1-24.04-Ubuntu
+Operating System: Linux
+Default Encoding: UTF-8
+Language: en
+Country: US
+--></g></svg>

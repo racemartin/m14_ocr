@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" contentScriptType="application/ecmascript" contentStyleType="text/css" height="947px" preserveAspectRatio="none" style="width:1535px;height:947px;background:#F6F4EF;" version="1.1" viewBox="0 0 1535 947" width="1535px" zoomAndPan="magnify"><defs/><g><text fill="#000000" font-family="Helvetica" font-size="18" lengthAdjust="spacingAndGlyphs" textLength="345" x="603" y="16.708">Étape 1 — Diagramme de déploiement</text><text fill="#000000" font-family="Helvetica" font-size="18" lengthAdjust="spacingAndGlyphs" textLength="526" x="512.5" y="37.6611">Environnement A (local, WSL2) — préparation des données</text><!--MD5=[516cc6666900098affdeea80c1a36454]
+cluster HFHUB--><path d="M1142.7078,697.1178 C1149.3276,685.486 1158.3057,685.3173 1165.9212,696.0859 C1172.6698,684.9634 1181.5463,683.13 1189.9749,694.2709 C1197.8523,682.753 1208.9396,685.0046 1215.2419,696.0358 C1221.6733,682.9481 1230.8575,681.6601 1241.7621,690.6664 C1249.6757,676.3225 1261.1958,676.0987 1269.1345,690.6426 C1275.1179,678.3425 1283.057,677.6094 1292.0478,687.5434 C1300.9565,673.1924 1312.2115,675.4902 1320.0109,688.6701 C1327.2669,677.8896 1337.2137,680.4159 1343.0671,690.2396 C1349.7662,679.3937 1360.2423,678.3046 1368.0448,688.9577 C1379.3787,677.3311 1388.1958,678.852 1394.5805,693.884 C1404.2402,681.699 1413.6568,682.919 1421.0228,696.2601 C1425.6104,683.1033 1437.5649,683.937 1444.5616,693.7963 C1454.1585,681.685 1468.0465,682.3878 1472.8888,698.5585 C1483.8622,686.2424 1493.9756,689.6888 1501,702.9063 C1502.8266,703.8143 1502.8754,704.7728 1501.3533,706.0564 C1511.801,711.3879 1513.6835,721.1174 1504.1449,728.8922 C1518.138,734.9677 1516.4737,746.8183 1505.1719,753.9312 C1518.2697,761.7653 1518.452,771.158 1505.8844,779.7016 C1519.9697,783.4 1523.1604,795.4571 1511.1481,804.6596 C1522.0776,814.7177 1518.5737,822.6709 1506.8164,828.629 C1516.8673,836.7918 1518.203,844.2047 1507.0112,852.5405 C1519.9435,859.2027 1520.074,871.9234 1506.859,878.4319 C1519.7216,893.9097 1511.8891,906.4045 1494,908.9063 C1494.9262,908.8586 1495.2078,909.2653 1494.8185,910.1112 C1489.2204,923.7862 1478.37,923.412 1470.7502,912.055 C1466.6594,926.993 1453.723,928.214 1444.8619,916.7287 C1435.7824,929.8846 1426.5587,927.18 1419.0257,915.1428 C1411.9363,927.2436 1403.7337,930.8013 1393.1002,918.9844 C1384.1068,930.6838 1376.9326,927.7652 1369.1987,917.607 C1362.9798,931.4704 1353.5048,930.3189 1344.1004,921.0657 C1339.1351,934.0647 1326.8704,933.8305 1319.5524,923.5461 C1312.0409,934.1764 1301.3555,935.8793 1294.0778,923.2896 C1283.282,933.0738 1271.9908,934.5022 1266.0901,918.0649 C1257.5361,927.4573 1249.9325,926.6088 1243.0821,916.0957 C1234.3445,928.9585 1225.2873,929.3908 1215.8419,916.8548 C1206.7278,927.6201 1199.158,926.8483 1190.9424,915.828 C1182.5177,928.8786 1173.2766,927.668 1166.1293,914.6138 C1149.2034,925.655 1136.4348,924.4129 1132,901.9063 C1134.4952,901.912 1134.9669,903.1754 1134.2496,905.3065 C1123.6214,897.4693 1123.1463,887.0817 1135.8237,880.7375 C1122.2789,874.9091 1122.7863,866.4799 1131.6245,856.7355 C1117.0536,848.4153 1119.0955,835.3198 1133.5338,828.9963 C1120.195,822.2764 1120.128,812.2705 1132.0395,804.0388 C1121.8642,798.1877 1118.6127,789.0426 1129.7409,781.0605 C1119.0862,771.8865 1118.9422,761.1666 1132.9435,755.0256 C1121.2003,746.8843 1124.309,737.7484 1134.5665,731.0994 C1116.6872,717.1406 1120.3124,705.2585 1139,695.9063 C1140.7283,694.4247 1142.1584,694.9915 1142.7078,697.1178 " fill="#E7EFEC" style="stroke: #2F7A4F; stroke-width: 1.5;"/><text fill="#123C3A" font-family="Helvetica" font-size="12" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="128" x="1252.5" y="712.0449">Hugging Face Hub</text><!--MD5=[7c73e9381c82b3f5fbece1ffe3b2901f]
+cluster LOCAL--><polygon fill="#EFEAE0" points="30,83.9063,40,73.9063,1084,73.9063,1084,788.9063,1074,798.9063,30,798.9063,30,83.9063" style="stroke: #0B3D3A; stroke-width: 1.5;"/><line style="stroke: #0B3D3A; stroke-width: 1.5;" x1="1074" x2="1083" y1="83.9063" y2="74.9063"/><line style="stroke: #0B3D3A; stroke-width: 1.5;" x1="30" x2="1074" y1="83.9063" y2="83.9063"/><line style="stroke: #0B3D3A; stroke-width: 1.5;" x1="1074" x2="1074" y1="83.9063" y2="798.9063"/><text fill="#10241F" font-family="Helvetica" font-size="12" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="205" x="450.5" y="98.0449">Poste local (WSL2, 5 Go RAM)</text><!--MD5=[33e71af335d1b5c605821ffc6bde4278]
+cluster VENV--><polygon fill="#EFEAE0" points="62,136.9063,72,126.9063,768,126.9063,768,583.4063,758,593.4063,62,593.4063,62,136.9063" style="stroke: #0B3D3A; stroke-width: 1.5;"/><line style="stroke: #0B3D3A; stroke-width: 1.5;" x1="758" x2="767" y1="136.9063" y2="127.9063"/><line style="stroke: #0B3D3A; stroke-width: 1.5;" x1="62" x2="758" y1="136.9063" y2="136.9063"/><line style="stroke: #0B3D3A; stroke-width: 1.5;" x1="758" x2="758" y1="136.9063" y2="593.4063"/><text fill="#10241F" font-family="Helvetica" font-size="12" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="177" x="322.5" y="151.0449">Environnement uv (.venv)</text><!--MD5=[55b6f7fe569c88e778889e4a7d46dc6f]
+entity C1--><rect fill="#FCEBE6" height="39.2969" rx="3" ry="3" style="stroke: #C4432B; stroke-width: 1.5;" width="86" x="1167" y="727.9063"/><polygon fill="#FCEBE6" points="1236,732.9063,1236,746.9063,1248,746.9063,1248,738.9063,1242,732.9063,1236,732.9063" style="stroke: #C4432B; stroke-width: 1.5;"/><line style="stroke: #C4432B; stroke-width: 1.5;" x1="1242" x2="1242" y1="732.9063" y2="738.9063"/><line style="stroke: #C4432B; stroke-width: 1.5;" x1="1248" x2="1242" y1="738.9063" y2="738.9063"/><text fill="#7A2A17" font-family="Helvetica" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="56" x="1177" y="753.9014">MediQAl</text><!--MD5=[2324993324a80522a7091d42b9118e29]
+entity C2--><rect fill="#FCEBE6" height="39.2969" rx="3" ry="3" style="stroke: #C4432B; stroke-width: 1.5;" width="150" x="1288" y="727.9063"/><polygon fill="#FCEBE6" points="1421,732.9063,1421,746.9063,1433,746.9063,1433,738.9063,1427,732.9063,1421,732.9063" style="stroke: #C4432B; stroke-width: 1.5;"/><line style="stroke: #C4432B; stroke-width: 1.5;" x1="1427" x2="1427" y1="732.9063" y2="738.9063"/><line style="stroke: #C4432B; stroke-width: 1.5;" x1="1433" x2="1427" y1="738.9063" y2="738.9063"/><text fill="#7A2A17" font-family="Helvetica" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="120" x="1298" y="753.9014">FrenchMedMCQA</text><!--MD5=[05d3c132bed6e058ad55d82af5f30f96]
+entity C3--><rect fill="#FCEBE6" height="39.2969" rx="3" ry="3" style="stroke: #C4432B; stroke-width: 1.5;" width="100" x="1156" y="853.9063"/><polygon fill="#FCEBE6" points="1239,858.9063,1239,872.9063,1251,872.9063,1251,864.9063,1245,858.9063,1239,858.9063" style="stroke: #C4432B; stroke-width: 1.5;"/><line style="stroke: #C4432B; stroke-width: 1.5;" x1="1245" x2="1245" y1="858.9063" y2="864.9063"/><line style="stroke: #C4432B; stroke-width: 1.5;" x1="1251" x2="1245" y1="864.9063" y2="864.9063"/><text fill="#7A2A17" font-family="Helvetica" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="70" x="1166" y="879.9014">MedQuAD</text><!--MD5=[92ed0b7d55449354be29483e00621f1b]
+entity C4--><rect fill="#FCEBE6" height="39.2969" rx="3" ry="3" style="stroke: #C4432B; stroke-width: 1.5;" width="194" x="1291" y="853.9063"/><polygon fill="#FCEBE6" points="1468,858.9063,1468,872.9063,1480,872.9063,1480,864.9063,1474,858.9063,1468,858.9063" style="stroke: #C4432B; stroke-width: 1.5;"/><line style="stroke: #C4432B; stroke-width: 1.5;" x1="1474" x2="1474" y1="858.9063" y2="864.9063"/><line style="stroke: #C4432B; stroke-width: 1.5;" x1="1480" x2="1474" y1="864.9063" y2="864.9063"/><text fill="#7A2A17" font-family="Helvetica" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="164" x="1301" y="879.9014">UltraMedical-Preference</text><!--MD5=[26aac14b09b035a8af344418b3f8345a]
+entity RAW--><path d="M787,535.9063 C787,525.9063 838,525.9063 838,525.9063 C838,525.9063 889,525.9063 889,535.9063 L889,570.5156 C889,580.5156 838,580.5156 838,580.5156 C838,580.5156 787,580.5156 787,570.5156 L787,535.9063 " fill="#FDF6EC" style="stroke: #C98A1E; stroke-width: 1.5;"/><path d="M787,535.9063 C787,545.9063 838,545.9063 838,545.9063 C838,545.9063 889,545.9063 889,535.9063 " fill="none" style="stroke: #C98A1E; stroke-width: 1.5;"/><text fill="#4A3400" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="54" x="797" y="560.1167">data/raw/</text><text fill="#4A3400" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="82" x="797" y="572.9214">(*.jsonl, *.csv)</text><!--MD5=[094fc34455e8feb526fdf137e7dfd2f7]
+entity PROCESSED--><path d="M924.5,535.9063 C924.5,525.9063 988,525.9063 988,525.9063 C988,525.9063 1051.5,525.9063 1051.5,535.9063 L1051.5,570.5156 C1051.5,580.5156 988,580.5156 988,580.5156 C988,580.5156 924.5,580.5156 924.5,570.5156 L924.5,535.9063 " fill="#FDF6EC" style="stroke: #C98A1E; stroke-width: 1.5;"/><path d="M924.5,535.9063 C924.5,545.9063 988,545.9063 988,545.9063 C988,545.9063 1051.5,545.9063 1051.5,535.9063 " fill="none" style="stroke: #C98A1E; stroke-width: 1.5;"/><text fill="#4A3400" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="93" x="934.5" y="560.1167">data/processed/</text><text fill="#4A3400" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="107" x="934.5" y="572.9214">dataset_pivot.jsonl</text><!--MD5=[ed8c11d9a2841d89d66834310649aeb2]
+entity RAPPORTS--><path d="M615,729.9063 C615,719.9063 697,719.9063 697,719.9063 C697,719.9063 779,719.9063 779,729.9063 L779,764.5156 C779,774.5156 697,774.5156 697,774.5156 C697,774.5156 615,774.5156 615,764.5156 L615,729.9063 " fill="#FDF6EC" style="stroke: #C98A1E; stroke-width: 1.5;"/><path d="M615,729.9063 C615,739.9063 697,739.9063 697,739.9063 C697,739.9063 779,739.9063 779,729.9063 " fill="none" style="stroke: #C98A1E; stroke-width: 1.5;"/><text fill="#4A3400" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="93" x="625" y="754.1167">data/processed/</text><text fill="#4A3400" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="144" x="625" y="766.9214">rapports_profilage/*.html</text><!--MD5=[df6a39b053164d23cc3ecae9c3484a54]
+entity CLI--><rect fill="#FFFFFF" height="47.9375" rx="3" ry="3" style="stroke: #0B3D3A; stroke-width: 1.5;" width="128" x="451" y="163.9063"/><rect fill="#FFFFFF" height="5" style="stroke: #0B3D3A; stroke-width: 1.5;" width="10" x="446" y="168.9063"/><rect fill="#FFFFFF" height="5" style="stroke: #0B3D3A; stroke-width: 1.5;" width="10" x="446" y="201.8438"/><text fill="#10241F" font-family="Helvetica" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="108" x="461" y="185.0449">interfaces/cli/*.py</text><text fill="#10241F" font-family="Helvetica" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="106" x="461" y="199.0137">(points d'entrée)</text><!--MD5=[cd187d11655e4367e900de538d2f1d0c]
+entity APP--><rect fill="#FFFFFF" height="33.9688" rx="3" ry="3" style="stroke: #0B3D3A; stroke-width: 1.5;" width="166" x="432" y="291.4063"/><rect fill="#FFFFFF" height="5" style="stroke: #0B3D3A; stroke-width: 1.5;" width="10" x="427" y="296.4063"/><rect fill="#FFFFFF" height="5" style="stroke: #0B3D3A; stroke-width: 1.5;" width="10" x="427" y="315.375"/><text fill="#10241F" font-family="Helvetica" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="146" x="442" y="312.5449">chsa_triage.application</text><!--MD5=[711fc6413308d66a33499ee50e557b5d]
+entity DOM--><rect fill="#FFFFFF" height="33.9688" rx="3" ry="3" style="stroke: #0B3D3A; stroke-width: 1.5;" width="143" x="329.5" y="404.9063"/><rect fill="#FFFFFF" height="5" style="stroke: #0B3D3A; stroke-width: 1.5;" width="10" x="324.5" y="409.9063"/><rect fill="#FFFFFF" height="5" style="stroke: #0B3D3A; stroke-width: 1.5;" width="10" x="324.5" y="428.875"/><text fill="#10241F" font-family="Helvetica" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="123" x="339.5" y="426.0449">chsa_triage.domain</text><!--MD5=[e2ad8862eddeb69e523ead2960e19a93]
+entity INFRA--><rect fill="#FFFFFF" height="33.9688" rx="3" ry="3" style="stroke: #0B3D3A; stroke-width: 1.5;" width="244" x="508" y="404.9063"/><rect fill="#FFFFFF" height="5" style="stroke: #0B3D3A; stroke-width: 1.5;" width="10" x="503" y="409.9063"/><rect fill="#FFFFFF" height="5" style="stroke: #0B3D3A; stroke-width: 1.5;" width="10" x="503" y="428.875"/><text fill="#10241F" font-family="Helvetica" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="224" x="518" y="426.0449">chsa_triage.infrastructure.adapters</text><!--MD5=[9c331c2d580cee82ce9ca45892a8e8ba]
+entity SPACY--><rect fill="#FFFFFF" height="47.9375" rx="3" ry="3" style="stroke: #0B3D3A; stroke-width: 1.5;" width="249" x="78.5" y="529.4063"/><rect fill="#FFFFFF" height="5" style="stroke: #0B3D3A; stroke-width: 1.5;" width="10" x="73.5" y="534.4063"/><rect fill="#FFFFFF" height="5" style="stroke: #0B3D3A; stroke-width: 1.5;" width="10" x="73.5" y="567.3438"/><text fill="#10241F" font-family="Helvetica" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="37" x="88.5" y="550.5449">spaCy</text><text fill="#10241F" font-family="Helvetica" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="229" x="88.5" y="564.5137">(fr_core_news_md, en_core_web_sm)</text><!--MD5=[e85c3d6964944d7d2cbaca79b79a4768]
+entity PRESIDIO--><rect fill="#FFFFFF" height="47.9375" rx="3" ry="3" style="stroke: #0B3D3A; stroke-width: 1.5;" width="245" x="362.5" y="529.4063"/><rect fill="#FFFFFF" height="5" style="stroke: #0B3D3A; stroke-width: 1.5;" width="10" x="357.5" y="534.4063"/><rect fill="#FFFFFF" height="5" style="stroke: #0B3D3A; stroke-width: 1.5;" width="10" x="357.5" y="567.3438"/><text fill="#10241F" font-family="Helvetica" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="50" x="372.5" y="550.5449">Presidio</text><text fill="#10241F" font-family="Helvetica" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="225" x="372.5" y="564.5137">(AnalyzerEngine, AnonymizerEngine)</text><!--MD5=[a352497837e8718fa21a9e0e7a21a9dd]
+entity YDATA--><rect fill="#FFFFFF" height="33.9688" rx="3" ry="3" style="stroke: #0B3D3A; stroke-width: 1.5;" width="109" x="642.5" y="536.4063"/><rect fill="#FFFFFF" height="5" style="stroke: #0B3D3A; stroke-width: 1.5;" width="10" x="637.5" y="541.4063"/><rect fill="#FFFFFF" height="5" style="stroke: #0B3D3A; stroke-width: 1.5;" width="10" x="637.5" y="560.375"/><text fill="#10241F" font-family="Helvetica" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="89" x="652.5" y="557.5449">ydata-profiling</text><!--MD5=[41401d95f340abca78b6bb0e28314a0a]
+entity MLFLOW--><polygon fill="#EFEAE0" points="1108,541.4063,1118,531.4063,1308,531.4063,1308,565.375,1298,575.375,1108,575.375,1108,541.4063" style="stroke: #0B3D3A; stroke-width: 1.5;"/><line style="stroke: #0B3D3A; stroke-width: 1.5;" x1="1298" x2="1307" y1="541.4063" y2="532.4063"/><line style="stroke: #0B3D3A; stroke-width: 1.5;" x1="1108" x2="1298" y1="541.4063" y2="541.4063"/><line style="stroke: #0B3D3A; stroke-width: 1.5;" x1="1298" x2="1298" y1="541.4063" y2="575.375"/><text fill="#10241F" font-family="Helvetica" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="160" x="1123" y="562.5449">MLflow (local ou hébergé)</text><path d="M1107.5,275.9063 L1107.5,340.4375 A3,3 0 0 0 1110.5,343.4375 L1413.5,343.4375 A3,3 0 0 0 1416.5,340.4375 L1416.5,282.9063 L1406.5,272.9063 L1110.5,272.9063 A3,3 0 0 0 1107.5,275.9063 " fill="#FDF6EC" style="stroke: #C98A1E; stroke-width: 1.0;"/><path d="M1406.5,272.9063 L1406.5,281.4063 A1.5,1.5 0 0 0 1408,282.9063 L1416.5,282.9063 L1406.5,272.9063 " fill="#FDF6EC" style="stroke: #C98A1E; stroke-width: 1.0;"/><text fill="#4A3400" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="222" x="1113.5" y="289.9731">Aucune dépendance GPU dans cet</text><text fill="#4A3400" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="288" x="1113.5" y="305.106">environnement (cf. docs/01_environnement).</text><text fill="#4A3400" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="212" x="1113.5" y="320.2388">torch / unsloth / vllm ne sont PAS</text><text fill="#4A3400" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="73" x="1113.5" y="335.3716">installés ici.</text><!--MD5=[ff2d126aff94f4663be512f2eb10842e]
+link HFHUB to RAW--><path d="M1123.9326,730.96 C1123.8738,730.8579 1123.8147,730.7554 1123.7553,730.6526 C1123.6365,730.4469 1123.5165,730.2399 1123.3952,730.0315 C1123.1527,729.6147 1122.9054,729.1926 1122.6532,728.7654 C1122.1489,727.911 1121.6253,727.0365 1121.0827,726.1444 C1118.9124,722.576 1116.4384,718.7259 1113.6788,714.7575 C1102.64,698.8838 1087.03,681.1163 1068,671.9063 C1048.18,662.3163 887.35,677.4663 870,663.9063 C846.84,645.8063 839.78,611.8763 837.93,586.5663 " fill="none" id="HFHUB-&gt;RAW" style="stroke: #0B3D3A; stroke-width: 1.2;"/><polygon fill="#0B3D3A" points="837.61,581.3063,834.1578,590.5303,837.9103,586.2972,842.1433,590.0497,837.61,581.3063" style="stroke: #0B3D3A; stroke-width: 1.2;"/><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="135" x="879" y="635.1167">téléchargement manuel</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="151" x="871" y="647.9214">(huggingface-cli download)</text><!--MD5=[e45409ea698b465741f0ac4e5f0825cc]
+link CLI to APP--><path d="M515,212.0363 C515,233.5163 515,265.2463 515,286.1163 " fill="none" id="CLI-&gt;APP" style="stroke: #0B3D3A; stroke-width: 1.2;"/><polygon fill="#0B3D3A" points="515,291.1763,519,282.1763,515,286.1763,511,282.1763,515,291.1763" style="stroke: #0B3D3A; stroke-width: 1.2;"/><!--MD5=[22c73cb3d9f1e23179c35e3e739d1b24]
+link APP to DOM--><path d="M498.18,325.8563 C477.69,345.8963 443.1,379.7263 421.19,401.1563 " fill="none" id="APP-&gt;DOM" style="stroke: #0B3D3A; stroke-width: 1.2;"/><polygon fill="#0B3D3A" points="417.52,404.7463,426.7476,401.3037,421.0911,401.2466,421.1482,395.59,417.52,404.7463" style="stroke: #0B3D3A; stroke-width: 1.2;"/><!--MD5=[f69eacfd5e4e94d922626ab0955cabf3]
+link APP to INFRA--><path d="M531.97,325.8563 C552.64,345.8963 587.53,379.7263 609.63,401.1563 " fill="none" id="APP-&gt;INFRA" style="stroke: #0B3D3A; stroke-width: 1.2;"/><polygon fill="#0B3D3A" points="613.34,404.7463,609.6561,395.6123,609.7477,401.2684,604.0916,401.36,613.34,404.7463" style="stroke: #0B3D3A; stroke-width: 1.2;"/><!--MD5=[d6c796cfbc72e8c3c8cc6b585ad6db3f]
+link INFRA to SPACY--><path d="M577.21,438.9163 C503.74,461.1963 370,501.7563 283.89,527.8763 " fill="none" id="INFRA-&gt;SPACY" style="stroke: #0B3D3A; stroke-width: 1.2;"/><polygon fill="#0B3D3A" points="279.06,529.3363,288.8315,530.5681,283.8472,527.893,286.5223,522.9086,279.06,529.3363" style="stroke: #0B3D3A; stroke-width: 1.2;"/><!--MD5=[c1cf107eedd0b99e1f3c134bea8a263c]
+link INFRA to PRESIDIO--><path d="M611.93,439.0463 C587.59,460.7863 543.96,499.7463 514.75,525.8363 " fill="none" id="INFRA-&gt;PRESIDIO" style="stroke: #0B3D3A; stroke-width: 1.2;"/><polygon fill="#0B3D3A" points="510.9,529.2763,520.2777,526.2666,514.6299,525.9465,514.9501,520.2987,510.9,529.2763" style="stroke: #0B3D3A; stroke-width: 1.2;"/><!--MD5=[b8f2e3ae7611710de5ae9e42b4661454]
+link INFRA to YDATA--><path d="M638.35,439.0463 C650.44,462.4063 672.82,505.6663 686.16,531.4563 " fill="none" id="INFRA-&gt;YDATA" style="stroke: #0B3D3A; stroke-width: 1.2;"/><polygon fill="#0B3D3A" points="688.54,536.0663,687.9546,526.2348,686.2413,531.626,680.8502,529.9127,688.54,536.0663" style="stroke: #0B3D3A; stroke-width: 1.2;"/><!--MD5=[355905a3f001c8ae7e40b3900c794924]
+link INFRA to RAW--><path d="M655.92,439.0463 C689.55,459.9763 748.83,496.8863 790.6,522.8963 " fill="none" id="INFRA-&gt;RAW" style="stroke: #0B3D3A; stroke-width: 1.2;"/><polygon fill="#0B3D3A" points="795.09,525.6963,789.5657,517.5426,790.846,523.0527,785.3359,524.333,795.09,525.6963" style="stroke: #0B3D3A; stroke-width: 1.2;"/><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="39" x="748" y="486.6167">lecture</text><!--MD5=[97aa378ab7b0cc792c662bac706bab20]
+link INFRA to PROCESSED--><path d="M696.1,438.9563 C726.79,446.9763 763.58,457.4263 796,468.9063 C840.93,484.8163 890.2,506.3263 927.58,523.5363 " fill="none" id="INFRA-&gt;PROCESSED" style="stroke: #0B3D3A; stroke-width: 1.2;"/><polygon fill="#0B3D3A" points="932.54,525.8263,926.0298,518.4359,927.996,523.74,922.6919,525.7062,932.54,525.8263" style="stroke: #0B3D3A; stroke-width: 1.2;"/><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="87" x="862" y="486.6167">lecture/écriture</text><!--MD5=[1759e6c2401f8fc5e3b5b6c580962e03]
+link YDATA to RAPPORTS--><path d="M697,570.4463 C697,602.0763 697,673.0363 697,714.5363 " fill="none" id="YDATA-&gt;RAPPORTS" style="stroke: #0B3D3A; stroke-width: 1.2;"/><polygon fill="#0B3D3A" points="697,719.6863,701,710.6863,697,714.6863,693,710.6863,697,719.6863" style="stroke: #0B3D3A; stroke-width: 1.2;"/><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="40" x="698" y="641.6167">génère</text><!--MD5=[94b9c53fe67400c5a71934bd33945a30]
+link INFRA to MLFLOW--><path d="M752.12,429.8463 C860.9,437.0963 1011.37,450.0663 1068,468.9063 C1108.27,482.3063 1149.41,508.6663 1176.57,528.1963 " fill="none" id="INFRA-&gt;MLFLOW" style="stroke: #0B3D3A; stroke-width: 1.2; stroke-dasharray: 7.0,7.0;"/><polygon fill="#0B3D3A" points="1180.81,531.2763,1175.8537,522.7654,1176.7559,528.3498,1171.1714,529.252,1180.81,531.2763" style="stroke: #0B3D3A; stroke-width: 1.2;"/><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="99" x="1125" y="480.1167">(optionnel) log de</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="67" x="1143" y="492.9214">statistiques</text><!--MD5=[d17e9ca7659a2210e96bf4941409202a]
+link PROCESSED to HFHUB--><path d="M1008.02,581.1063 C1027.495,607.0713 1057.8325,647.5213 1083.6225,681.9075 C1096.5175,699.1006 1108.2756,714.7778 1116.9706,726.3705 C1119.1444,729.2686 1121.1267,731.9115 1122.8874,734.259 C1123.1075,734.5524 1123.3242,734.8412 1123.5373,735.1253 C1123.6438,735.2674 1123.7495,735.4083 1123.8543,735.548 " fill="none" id="PROCESSED-&gt;HFHUB" style="stroke: #0B3D3A; stroke-width: 1.2;"/><polygon fill="#0B3D3A" points="1123.8543,735.548,1121.6538,725.9481,1120.8541,731.5482,1115.2541,730.7484,1123.8543,735.548" style="stroke: #0B3D3A; stroke-width: 1.2;"/><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="80" x="1107.5" y="622.1167">push_to_hub()</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="153" x="1071" y="634.9214">(Livrable 1, hors périmètre</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="151" x="1070" y="647.7261">de ce diagramme — Étape</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="11" x="1142" y="660.5308">4)</text><!--MD5=[a6b42aba72bbfc76002cd6bf58937c06]
+link LOCAL to GMN33--><path d="M1084.0868,194.0623 C1084.187,194.1261 1084.288,194.1904 1084.3898,194.2553 C1084.5935,194.385 1084.8005,194.5168 1085.0107,194.6508 C1086.6927,195.7221 1088.5842,196.9268 1090.6627,198.2508 C1098.9766,203.5466 1110.2831,210.7494 1123.1513,218.9475 C1148.8875,235.3438 1180.87,255.7213 1207.65,272.7863 " fill="none" id="LOCAL-GMN33" style="stroke: #0B3D3A; stroke-width: 1.2; stroke-dasharray: 7.0,7.0;"/><!--MD5=[d43813fc1b63bce67197202a4f0eb2ed]
+link C1 to C2--><!--MD5=[f830a41869690d733ce0ffcc5dd64c4c]
+link C1 to C3--><!--MD5=[a198857c7a3cf9810eae959f1952c380]
+link C3 to C4--><!--MD5=[db0407a175499fa6eb7e92587237a5ce]
+@startuml deploiement_etape1
+
+skinparam backgroundColor #F6F4EF
+skinparam defaultFontName Helvetica
+skinparam roundcorner 6
+skinparam shadowing false
+skinparam ArrowThickness 1.2
+
+skinparam arrow {
+  Color #0B3D3A
+  FontColor #10241F
+  FontSize 11
+}
+
+skinparam package {
+  BackgroundColor #FFFFFF
+  BorderColor #0B3D3A
+  FontColor #0B3D3A
+  FontStyle bold
+  FontSize 14
+}
+
+skinparam node {
+  BackgroundColor #EFEAE0
+  BorderColor #0B3D3A
+  FontColor #10241F
+  FontSize 12
+}
+
+skinparam database {
+  BackgroundColor #FDF6EC
+  BorderColor #C98A1E
+  FontColor #4A3400
+  FontSize 11
+}
+
+skinparam cloud {
+  BackgroundColor #E7EFEC
+  BorderColor #2F7A4F
+  FontColor #123C3A
+  FontSize 12
+}
+
+skinparam artifact {
+  BackgroundColor #FCEBE6
+  BorderColor #C4432B
+  FontColor #7A2A17
+}
+
+skinparam component {
+  BackgroundColor #FFFFFF
+  BorderColor #0B3D3A
+  FontColor #10241F
+  FontSize 12
+}
+
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #0B3D3A
+  FontColor #10241F
+  HeaderBackgroundColor #EFEAE0
+  FontSize 11
+  AttributeFontSize 10
+}
+
+skinparam interface {
+  BackgroundColor #E7EFEC
+  BorderColor #2F7A4F
+  FontColor #123C3A
+}
+
+skinparam activity {
+  BackgroundColor #FFFFFF
+  BorderColor #0B3D3A
+  FontColor #10241F
+  DiamondBackgroundColor #FDF6EC
+  DiamondBorderColor #C98A1E
+  StartColor #0B3D3A
+  EndColor #C4432B
+  BarColor #0B3D3A
+}
+
+skinparam partition {
+  BackgroundColor #F0EEE7
+  BorderColor #0B3D3A
+  FontColor #0B3D3A
+  FontStyle bold
+}
+
+skinparam sequence {
+  ArrowColor #0B3D3A
+  ActorBorderColor #0B3D3A
+  LifeLineBorderColor #0B3D3A
+  LifeLineBackgroundColor #EFEAE0
+  ParticipantBorderColor #0B3D3A
+  ParticipantBackgroundColor #FFFFFF
+  ParticipantFontColor #10241F
+  ParticipantFontStyle bold
+  ActorBackgroundColor #FFFFFF
+  BoxBackgroundColor #F0EEE7
+  BoxBorderColor #0B3D3A
+}
+
+skinparam note {
+  BackgroundColor #FDF6EC
+  BorderColor #C98A1E
+  FontColor #4A3400
+}
+
+skinparam sequenceMessageAlign center
+skinparam maxMessageSize 160
+skinparam responseMessageBelowArrow true
+
+title Étape 1 — Diagramme de déploiement\nEnvironnement A (local, WSL2) — préparation des données
+
+cloud "Hugging Face Hub" as HFHUB {
+  artifact "MediQAl" as C1
+  artifact "FrenchMedMCQA" as C2
+  artifact "MedQuAD" as C3
+  artifact "UltraMedical-Preference" as C4
+}
+
+node "Poste local (WSL2, 5 Go RAM)" as LOCAL {
+
+  node "Environnement uv (.venv)" as VENV {
+    component "interfaces/cli/*.py\n(points d'entrée)" as CLI
+    component "chsa_triage.application" as APP
+    component "chsa_triage.domain" as DOM
+    component "chsa_triage.infrastructure.adapters" as INFRA
+    component "spaCy\n(fr_core_news_md, en_core_web_sm)" as SPACY
+    component "Presidio\n(AnalyzerEngine, AnonymizerEngine)" as PRESIDIO
+    component "ydata-profiling" as YDATA
+  }
+
+  database "data/raw/\n(*.jsonl, *.csv)" as RAW
+  database "data/processed/\ndataset_pivot.jsonl" as PROCESSED
+  database "data/processed/\nrapports_profilage/*.html" as RAPPORTS
+}
+
+node "MLflow (local ou hébergé)" as MLFLOW
+
+HFHUB - -> RAW : téléchargement manuel\n(huggingface-cli download)
+CLI - -> APP
+APP - -> DOM
+APP - -> INFRA
+INFRA - -> SPACY
+INFRA - -> PRESIDIO
+INFRA - -> YDATA
+INFRA - -> RAW : lecture
+INFRA - -> PROCESSED : lecture/écriture
+YDATA - -> RAPPORTS : génère
+INFRA ..> MLFLOW : (optionnel) log de statistiques
+PROCESSED - -> HFHUB : push_to_hub()\n(Livrable 1, hors périmètre\nde ce diagramme — Étape 4)
+
+note bottom of LOCAL
+  Aucune dépendance GPU dans cet
+  environnement (cf. docs/01_environnement).
+  torch / unsloth / vllm ne sont PAS
+  installés ici.
+end note
+
+@enduml
+
+PlantUML version 1.2020.02(Sun Mar 01 10:22:07 UTC 2020)
+(GPL source distribution)
+Java Runtime: OpenJDK Runtime Environment
+JVM: OpenJDK 64-Bit Server VM
+Java Version: 21.0.12+8-1-24.04-Ubuntu
+Operating System: Linux
+Default Encoding: UTF-8
+Language: en
+Country: US
+--></g></svg>

@@ -1,0 +1,52 @@
+@startuml deploiement_etape1
+!include ../../_common/estilo.iuml
+
+title Étape 1 — Diagramme de déploiement\nEnvironnement A (local, WSL2) — préparation des données
+
+cloud "Hugging Face Hub" as HFHUB {
+  artifact "MediQAl" as C1
+  artifact "FrenchMedMCQA" as C2
+  artifact "MedQuAD" as C3
+  artifact "UltraMedical-Preference" as C4
+}
+
+node "Poste local (WSL2, 5 Go RAM)" as LOCAL {
+
+  node "Environnement uv (.venv)" as VENV {
+    component "interfaces/cli/*.py\n(points d'entrée)" as CLI
+    component "chsa_triage.application" as APP
+    component "chsa_triage.domain" as DOM
+    component "chsa_triage.infrastructure.adapters" as INFRA
+    component "spaCy\n(fr_core_news_md, en_core_web_sm)" as SPACY
+    component "Presidio\n(AnalyzerEngine, AnonymizerEngine)" as PRESIDIO
+    component "ydata-profiling" as YDATA
+  }
+
+  database "data/raw/\n(*.jsonl, *.csv)" as RAW
+  database "data/processed/\ndataset_pivot.jsonl" as PROCESSED
+  database "data/processed/\nrapports_profilage/*.html" as RAPPORTS
+}
+
+node "MLflow (local ou hébergé)" as MLFLOW
+
+HFHUB --> RAW : téléchargement manuel\n(huggingface-cli download)
+CLI --> APP
+APP --> DOM
+APP --> INFRA
+INFRA --> SPACY
+INFRA --> PRESIDIO
+INFRA --> YDATA
+INFRA --> RAW : lecture
+INFRA --> PROCESSED : lecture/écriture
+YDATA --> RAPPORTS : génère
+INFRA ..> MLFLOW : (optionnel) log de statistiques
+PROCESSED --> HFHUB : push_to_hub()\n(Livrable 1, hors périmètre\nde ce diagramme — Étape 4)
+
+note bottom of LOCAL
+  Aucune dépendance GPU dans cet
+  environnement (cf. docs/01_environnement).
+  torch / unsloth / vllm ne sont PAS
+  installés ici.
+end note
+
+@enduml

@@ -1,0 +1,65 @@
+@startuml construction_dataset_pivot
+!include ../../_common/estilo.iuml
+
+title Étape 1 — Diagramme de séquence\nConstruction du dataset pivot (cas d'usage réel, classes du code)
+
+actor "Développeur\n(ligne de commande)" as Dev
+
+box "interfaces/cli" #F0EEE7
+  participant "construire_dataset_pivot.py" as CLI
+end box
+
+box "application" #F0EEE7
+  participant "ConstruireDatasetPivotUseCase" as UC
+end box
+
+box "infrastructure/adapters" #F0EEE7
+  participant "LecteurCorpusFichierLocal" as Lecteur
+  participant "JsonlDatasetRepository" as Repo
+end box
+
+autonumber "<b>0."
+
+Dev -> CLI : uv run python construire_dataset_pivot.py\n--source ... --corpus mediqal --sortie ...
+activate CLI
+
+CLI -> Lecteur : new(chemin_source)
+CLI -> Repo : new(chemin_sortie)
+CLI -> UC : new(lecteur, repository)
+
+CLI -> UC : executer(mapper_mediqal)
+activate UC
+
+UC -> Lecteur : lire_enregistrements()
+activate Lecteur
+Lecteur --> UC : Iterator[dict] (enregistrements bruts)
+deactivate Lecteur
+
+loop pour chaque enregistrement brut
+  UC -> UC : mapper_mediqal(enregistrement)
+  note right of UC
+    Le use case ne connaît pas la
+    structure de MediQAl : le mapper
+    est injecté par interfaces/cli
+  end note
+
+  alt enregistrement valide
+    UC -> UC : ajoute ExemplePivot à la liste
+  else enregistrement incomplet
+    UC -> UC : ignore (mapper retourne None)
+  end
+end
+
+UC -> Repo : sauvegarder_plusieurs(exemples_valides)
+activate Repo
+Repo -> Repo : sérialise chaque ExemplePivot en JSON
+Repo --> UC : (écriture terminée)
+deactivate Repo
+
+UC --> CLI : nombre_exemples
+deactivate UC
+
+CLI --> Dev : "N exemples pivot écrits dans ..."
+deactivate CLI
+
+@enduml

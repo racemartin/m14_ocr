@@ -1,0 +1,128 @@
+@startuml classes_etape1
+!include ../../_common/estilo.iuml
+
+title Étape 1 — Diagramme de paquets\nClasses impliquées dans la préparation des données
+
+package "domain.model" as MODEL {
+  class ExemplePivot {
+    +identifiant: str
+    +source: str
+    +type_exemple: TypeExemple
+    +langue: Langue
+    +symptomes: str
+    +antecedents: str | None
+    +constantes_vitales: ConstantesVitales | None
+    +prompt: tuple[Message, ...]
+    +completion: tuple[Message, ...]
+    +chosen: tuple[Message, ...]
+    +rejected: tuple[Message, ...]
+    +niveau_confiance: NiveauConfiance
+    +anonymise: bool
+    +split: TypeSplit | None
+    --
+    +nouvel_identifiant(source) : str
+    +est_complet_pour_sft() : bool
+    +est_complet_pour_dpo() : bool
+  }
+  class Message {
+    +role: str
+    +contenu: str
+  }
+  class ConstantesVitales {
+    +pression_arterielle
+    +frequence_cardiaque
+    +saturation_o2
+    +frequence_respiratoire
+  }
+  enum TypeExemple
+  enum Langue
+  enum NiveauConfiance
+  enum TypeSplit
+
+  ExemplePivot *-- Message
+  ExemplePivot *-- ConstantesVitales
+  ExemplePivot --> TypeExemple
+  ExemplePivot --> Langue
+  ExemplePivot --> NiveauConfiance
+  ExemplePivot --> TypeSplit
+}
+
+package "domain.ports" as PORTS {
+  interface LecteurCorpus {
+    +lire_enregistrements() : Iterator[dict]
+    +compter_enregistrements() : int
+  }
+  interface "RepositoryLectureEcriture[T]" as Repo {
+    +sauvegarder(item)
+    +sauvegarder_plusieurs(items)
+    +trouver_par_id(id) : T | None
+    +lister(filtre) : Iterator[T]
+    +compter(filtre) : int
+  }
+  interface Anonymiseur {
+    +anonymiser(texte, langue) : ResultatAnonymisation
+  }
+  interface Profileur {
+    +profiler(enregistrements, nom) : RapportProfilage
+  }
+}
+
+package "application.use_cases" as USECASES {
+  class ProfilerCorpusUseCase {
+    +lecteur: LecteurCorpus
+    +profileur: Profileur
+    +executer(nom_corpus) : RapportProfilage
+  }
+  class ConstruireDatasetPivotUseCase {
+    +lecteur: LecteurCorpus
+    +repository: RepositoryLectureEcriture
+    +executer(mapper) : int
+  }
+  class AnonymiserDatasetUseCase {
+    +repository: RepositoryLectureEcriture
+    +anonymiseur: Anonymiseur
+    +executer() : int
+  }
+  class DecouperSplitsUseCase {
+    +repository: RepositoryLectureEcriture
+    +proportion_val: float
+    +proportion_test: float
+    +executer() : dict
+  }
+
+  USECASES ..> MODEL
+  USECASES ..> PORTS
+}
+
+package "infrastructure.adapters" as ADAPTERS {
+  class LecteurCorpusFichierLocal
+  class LecteurCorpusHuggingFace
+  class JsonlDatasetRepository
+  class PresidioAnonymiseur
+  class YdataProfileur
+
+  LecteurCorpusFichierLocal ..|> LecteurCorpus
+  LecteurCorpusHuggingFace ..|> LecteurCorpus
+  JsonlDatasetRepository ..|> Repo
+  PresidioAnonymiseur ..|> Anonymiseur
+  YdataProfileur ..|> Profileur
+}
+
+package "interfaces.cli" as CLI_PKG {
+  class profiler_corpus_main <<script>>
+  class construire_dataset_pivot_main <<script>>
+  class anonymiser_dataset_main <<script>>
+  class decouper_splits_main <<script>>
+  class mappers_corpus <<module>> {
+    +mapper_mediqal(dict) : ExemplePivot | None
+    +mapper_frenchmedmcqa(dict) : ExemplePivot | None
+    +mapper_medquad(dict) : ExemplePivot | None
+    +mapper_ultramedical_preference(dict) : ExemplePivot | None
+  }
+
+  CLI_PKG ..> USECASES : injecte les adaptateurs
+  CLI_PKG ..> ADAPTERS : instancie
+  mappers_corpus ..> MODEL : construit
+}
+
+@enduml

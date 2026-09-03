@@ -1,0 +1,50 @@
+@startuml pipeline_donnees
+!include ../../_common/estilo.iuml
+
+title Étape 1 — Préparation et structuration des données\nDiagramme d'activité
+
+start
+
+partition "Par corpus (MediQAl, FrenchMedMCQA, MedQuAD, UltraMedical-Preference)" {
+  :Placer le corpus brut dans data/raw/;
+  :interfaces/cli/profiler_corpus.py\n(ProfilerCorpusUseCase);
+  note right
+    Adaptateurs injectés :
+    LecteurCorpusFichierLocal
+    YdataProfileur
+  end note
+
+  if (Rapport de profilage : nettoyage nécessaire ?) then (oui)
+    :Nettoyer le corpus brut\n(doublons, valeurs manquantes, longueurs);
+  else (non)
+  endif
+
+  :interfaces/cli/construire_dataset_pivot.py\n(ConstruireDatasetPivotUseCase);
+  note right
+    Mapper spécifique au corpus
+    (mappers_corpus.py) injecté
+    ici — pas dans le port
+  end note
+}
+
+:Dataset pivot consolidé\n(data/processed/dataset_pivot.jsonl);
+
+:interfaces/cli/anonymiser_dataset.py\n(AnonymiserDatasetUseCase);
+note right
+  Adaptateur : PresidioAnonymiseur
+  Stratégie : replace / mask / redact
+end note
+
+:interfaces/cli/decouper_splits.py\n(DecouperSplitsUseCase);
+note right
+  Test clinique isolé — jamais
+  réutilisé en entraînement
+end note
+
+:Dataset final train / val / test;
+
+:Versionner sur Hugging Face Hub\n(Livrable 1);
+
+stop
+
+@enduml
