@@ -20,6 +20,9 @@ import json
 from pathlib import Path
 
 from chsa_triage.infrastructure.adapters import LecteurCorpusHuggingFace
+from tools.rafael.log_tool import LogTool
+
+log = LogTool(origin="telecharger_corpus")
 
 
 def main() -> None:
@@ -38,6 +41,13 @@ def main() -> None:
     parser.add_argument("--sortie", required=True, help="Chemin JSONL de sortie (ex. data/raw/mediqal.jsonl)")
     arguments = parser.parse_args()
 
+    log.START_ACTION("telecharger_corpus", "main", "telechargement d'un corpus depuis le Hub")
+    log.PARAMETER_VALUE("identifiant-hub", arguments.identifiant_hub)
+    log.PARAMETER_VALUE("configuration", arguments.configuration or "(aucune)")
+    log.PARAMETER_VALUE("split", arguments.split)
+    log.PARAMETER_VALUE("sortie", arguments.sortie)
+
+    log.STEP(1, "Connexion au Hugging Face Hub", "chargement paresseux, premiere iteration a suivre")
     lecteur = LecteurCorpusHuggingFace(
         identifiant_hub=arguments.identifiant_hub,
         configuration=arguments.configuration,
@@ -47,11 +57,28 @@ def main() -> None:
     chemin_sortie = Path(arguments.sortie)
     chemin_sortie.parent.mkdir(parents=True, exist_ok=True)
 
+    log.STEP(2, "Ecriture JSONL", f"vers {chemin_sortie}")
     nombre_enregistrements = 0
-    with chemin_sortie.open("w", encoding="utf-8") as fichier_sortie:
-        for enregistrement in lecteur.lire_enregistrements():
-            fichier_sortie.write(json.dumps(enregistrement, ensure_ascii=False) + "\n")
-            nombre_enregistrements += 1
+    try:
+        with chemin_sortie.open("w", encoding="utf-8") as fichier_sortie:
+            for enregistrement in lecteur.lire_enregistrements():
+                fichier_sortie.write(json.dumps(enregistrement, ensure_ascii=False) + "\n")
+                nombre_enregistrements += 1
+                if nombre_enregistrements % 500 == 0:
+                    log.LEVEL_7_INFO(
+                        "telecharger_corpus",
+                        f"{nombre_enregistrements} enregistrements ecrits jusqu'ici...",
+                    )
+    except ValueError as erreur:
+        log.LEVEL_4_ERROR(
+            "telecharger_corpus",
+            f"echec du telechargement -- split '{arguments.split}' invalide pour "
+            f"'{arguments.identifiant_hub}' (configuration={arguments.configuration!r}) : {erreur}",
+        )
+        raise
+
+    log.PARAMETER_VALUE("enregistrements ecrits", nombre_enregistrements)
+    log.FINISH_ACTION("telecharger_corpus", "main", f"{nombre_enregistrements} enregistrements ecrits dans {chemin_sortie}")
 
     print(f"{nombre_enregistrements} enregistrements ecrits dans {chemin_sortie}")
 
