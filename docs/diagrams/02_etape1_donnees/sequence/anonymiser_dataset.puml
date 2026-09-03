@@ -1,0 +1,65 @@
+@startuml anonymiser_dataset
+!include ../../_common/estilo.iuml
+
+title Étape 1 — Diagramme de séquence\nAnonymisation RGPD du dataset pivot (cas d'usage réel, classes du code)
+
+actor "Développeur\n(ligne de commande)" as Dev
+
+box "interfaces/cli" #F0EEE7
+  participant "anonymiser_dataset.py" as CLI
+end box
+
+box "application" #F0EEE7
+  participant "AnonymiserDatasetUseCase" as UC
+end box
+
+box "infrastructure/adapters" #F0EEE7
+  participant "JsonlDatasetRepository" as Repo
+  participant "PresidioAnonymiseur" as Anonymiseur
+end box
+
+autonumber "<b>0."
+
+Dev -> CLI : uv run python anonymiser_dataset.py\n--dataset ... --strategie replace|mask|redact
+activate CLI
+
+CLI -> Repo : new(chemin_dataset)
+CLI -> Anonymiseur : new(strategie)
+CLI -> UC : new(repository, anonymiseur)
+
+CLI -> UC : executer()
+activate UC
+
+UC -> Repo : lister(filtre={anonymise: False})
+activate Repo
+Repo --> UC : Iterator[ExemplePivot] (non anonymises)
+deactivate Repo
+
+loop pour chaque ExemplePivot non anonymise
+  UC -> UC : _anonymiser_exemple(exemple)
+  activate UC
+  UC -> Anonymiseur : anonymiser(symptomes, langue)
+  activate Anonymiseur
+  Anonymiseur --> UC : ResultatAnonymisation
+  deactivate Anonymiseur
+  UC -> Anonymiseur : anonymiser(antecedents, langue)\n(si present)
+  UC -> Anonymiseur : anonymiser(...) pour chaque\nmessage prompt/completion/chosen/rejected
+  note right of UC
+    dataclasses.replace(...) : nouvel
+    ExemplePivot immuable, anonymise=True
+  end note
+  deactivate UC
+
+  UC -> Repo : sauvegarder(exemple_anonymise)
+  activate Repo
+  Repo -> Repo : reecrit le fichier JSONL\n(fusion par identifiant)
+  deactivate Repo
+end
+
+UC --> CLI : nombre_traites
+deactivate UC
+
+CLI --> Dev : "N exemples anonymises (strategie=...)"
+deactivate CLI
+
+@enduml

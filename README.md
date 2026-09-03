@@ -45,16 +45,17 @@ uv run python interfaces/cli/telecharger_corpus.py --identifiant-hub ANR-MALADES
 uv run python interfaces/cli/telecharger_corpus.py --identifiant-hub ANR-MALADES/MediQAl --configuration mcqu --sortie data/raw/mediqal_mcqu.jsonl
 uv run python interfaces/cli/telecharger_corpus.py --identifiant-hub ANR-MALADES/MediQAl --configuration mcqm --sortie data/raw/mediqal_mcqm.jsonl
 
-uv run python interfaces/cli/telecharger_corpus.py --identifiant-hub nthngdy/frenchmedmcqa --sortie data/raw/frenchmedmcqa.jsonl
-uv run python interfaces/cli/telecharger_corpus.py --identifiant-hub keivalya/MedQuad-MedicalQnADataset --sortie data/raw/medquad.jsonl
+uv run python interfaces/cli/telecharger_corpus.py --identifiant-hub nthngdy/frenchmedmcqa      --sortie data/raw/frenchmedmcqa.jsonl
+uv run python interfaces/cli/telecharger_corpus.py --identifiant-hub keivalya/MedQuad-MedicalQnADataset  --sortie data/raw/medquad.jsonl
 uv run python interfaces/cli/telecharger_corpus.py --identifiant-hub TsinghuaC3I/UltraMedical-Preference --sortie data/raw/ultramedical_preference.jsonl
 
 # 2. Profilage individuel (un rapport ydata-profiling par corpus)
-uv run python interfaces/cli/profiler_corpus.py --source data/raw/mediqal_oeq.jsonl --nom MediQAl-oeq
-uv run python interfaces/cli/profiler_corpus.py --source data/raw/mediqal_mcqu.jsonl --nom MediQAl-mcqu
-uv run python interfaces/cli/profiler_corpus.py --source data/raw/mediqal_mcqm.jsonl --nom MediQAl-mcqm
-uv run python interfaces/cli/profiler_corpus.py --source data/raw/frenchmedmcqa.jsonl --nom FrenchMedMCQA
-uv run python interfaces/cli/profiler_corpus.py --source data/raw/medquad.jsonl --nom MedQuAD
+uv run python interfaces/cli/profiler_corpus.py --source data/raw/mediqal_oeq.jsonl   --nom MediQAl-oeq
+uv run python interfaces/cli/profiler_corpus.py --source data/raw/mediqal_mcqu.jsonl  --nom MediQAl-mcqu
+uv run python interfaces/cli/profiler_corpus.py --source data/raw/mediqal_mcqm.jsonl  --nom MediQAl-mcqm
+
+uv run python interfaces/cli/profiler_corpus.py --source data/raw/frenchmedmcqa.jsonl           --nom FrenchMedMCQA
+uv run python interfaces/cli/profiler_corpus.py --source data/raw/medquad.jsonl                 --nom MedQuAD
 uv run python interfaces/cli/profiler_corpus.py --source data/raw/ultramedical_preference.jsonl --nom UltraMedicalPreference
 
 # 3. Construction du dataset pivot (meme --sortie : fusionne les corpus par identifiant)
@@ -76,11 +77,11 @@ uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset
 ```
 src/chsa_triage/
 ├── domain/            # entités + ports — zéro dépendance externe
-├── application/        # cas d'usage — orchestrent les ports
-└── infrastructure/     # adaptateurs concrets (JSONL, HF, Presidio, ydata-profiling, ...)
-interfaces/              # adaptateurs primaires : cli/ (Étape 1), api/ et web/ (Étape 4)
-training/                 # scripts exécutés via HF Jobs (SFT, DPO) — Étapes 2-3
-docker/                   # Dockerfiles + docker-compose (frontend/backend) — Étape 4
+├── application/       # cas d'usage — orchestrent les ports
+└── infrastructure/    # adaptateurs concrets (JSONL, HF, Presidio, ydata-profiling, ...)
+interfaces/            # adaptateurs primaires : cli/ (Étape 1), api/ et web/ (Étape 4)
+training/              # scripts exécutés via HF Jobs (SFT, DPO) — Étapes 2-3
+docker/                # Dockerfiles + docker-compose (frontend/backend) — Étape 4
 ```
 
 Détail complet : `docs/01_environnement/01_architecture_hexagonale.md`.

@@ -14,7 +14,7 @@ docs/diagrams/
 │   └── paquets/                  architecture hexagonale (classes réelles)
 ├── 02_etape1_donnees/
 │   ├── activite/                  pipeline de données bout-en-bout
-│   ├── sequence/                   construction du dataset pivot
+│   ├── sequence/                   les 5 scripts CLI (telecharger, profiler, construire le pivot, anonymiser, decouper)
 │   ├── paquets/                     classes réelles de l'Étape 1
 │   └── deploiement/                 environnement local (WSL2, uv)
 ├── 03_etape2_sft/

@@ -1,0 +1,63 @@
+@startuml telecharger_corpus
+!include ../../_common/estilo.iuml
+
+title Étape 1 — Diagramme de séquence\nTéléchargement d'un corpus depuis Hugging Face Hub (cas d'usage réel, classes du code)
+
+actor "Développeur\n(ligne de commande)" as Dev
+
+box "interfaces/cli" #F0EEE7
+  participant "telecharger_corpus.py" as CLI
+end box
+
+box "infrastructure/adapters" #F0EEE7
+  participant "LecteurCorpusHuggingFace" as Lecteur
+end box
+
+box "Hugging Face Hub" #E7EFEC
+  participant "datasets.load_dataset" as HF
+end box
+
+autonumber "<b>0."
+
+Dev -> CLI : uv run python telecharger_corpus.py\n--identifiant-hub ... --configuration ... --split ... --sortie ...
+activate CLI
+
+note right of CLI
+  Pas de couche application ici :
+  seul script CLI de l'Étape 1 qui
+  appelle directement un adaptateur
+  d'infrastructure (aucun cas d'usage
+  à orchestrer pour un simple export).
+end note
+
+CLI -> Lecteur : new(identifiant_hub, configuration, split)
+
+CLI -> Lecteur : lire_enregistrements()
+activate Lecteur
+
+Lecteur -> HF : load_dataset(identifiant_hub, configuration, split=split)
+activate HF
+alt split inconnu pour cette configuration
+  HF --> Lecteur : ValueError("Unknown split ...")
+  Lecteur --> CLI : (exception propagée)
+  CLI -> CLI : log.LEVEL_4_ERROR(...)\npuis relance l'exception
+  CLI --> Dev : traceback + message d'erreur explicite
+else split valide
+  HF --> Lecteur : Dataset (chargement paresseux)
+  deactivate HF
+
+  loop pour chaque enregistrement du dataset
+    Lecteur --> CLI : dict (enregistrement brut)
+    CLI -> CLI : json.dumps(enregistrement) -> ligne JSONL
+    note right of CLI
+      log.LEVEL_7_INFO tous les
+      500 enregistrements
+    end note
+  end
+  deactivate Lecteur
+
+  CLI --> Dev : "N enregistrements ecrits dans <sortie>"
+end
+deactivate CLI
+
+@enduml

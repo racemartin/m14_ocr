@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" contentScriptType="application/ecmascript" contentStyleType="text/css" height="1046px" preserveAspectRatio="none" style="width:920px;height:1046px;background:#F6F4EF;" version="1.1" viewBox="0 0 920 1046" width="920px" zoomAndPan="magnify"><defs/><g><text fill="#000000" font-family="Helvetica" font-size="18" lengthAdjust="spacingAndGlyphs" textLength="317" x="302.5" y="26.708">Étape 1 — Diagramme de séquence</text><text fill="#000000" font-family="Helvetica" font-size="18" lengthAdjust="spacingAndGlyphs" textLength="598" x="162" y="47.6611">Découpage train/val/test clinique (cas d'usage réel, classes du code)</text><rect fill="#F0EEE7" height="975.7969" rx="3" ry="3" style="stroke: #0B3D3A; stroke-width: 1.0;" width="171" x="223" y="59.9063"/><text fill="#000000" font-family="Helvetica" font-size="13" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="95" x="261" y="71.9731">interfaces/cli</text><rect fill="#F0EEE7" height="975.7969" rx="3" ry="3" style="stroke: #0B3D3A; stroke-width: 1.0;" width="211" x="418" y="59.9063"/><text fill="#000000" font-family="Helvetica" font-size="13" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="82" x="482.5" y="71.9731">application</text><rect fill="#F0EEE7" height="975.7969" rx="3" ry="3" style="stroke: #0B3D3A; stroke-width: 1.0;" width="204" x="631" y="59.9063"/><text fill="#000000" font-family="Helvetica" font-size="13" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="173" x="646.5" y="71.9731">infrastructure/adapters</text><rect fill="#EFEAE0" height="669.7813" style="stroke: #0B3D3A; stroke-width: 1.0;" width="10" x="303.5" y="234.5234"/><rect fill="#EFEAE0" height="511.3438" style="stroke: #0B3D3A; stroke-width: 1.0;" width="10" x="518.5" y="340.5469"/><rect fill="#EFEAE0" height="12" style="stroke: #0B3D3A; stroke-width: 1.0;" width="10" x="728" y="380.1563"/><rect fill="#EFEAE0" height="45.6094" style="stroke: #0B3D3A; stroke-width: 1.0;" width="10" x="728" y="730.0156"/><rect fill="#F6F4EF" height="174.7656" rx="3" ry="3" style="stroke: #000000; stroke-width: 2.0;" width="497" x="412" y="615.8594"/><line style="stroke: #0B3D3A; stroke-width: 1.0; stroke-dasharray: 5.0,5.0;" x1="84" x2="84" y1="154.5" y2="937.1094"/><line style="stroke: #0B3D3A; stroke-width: 1.0; stroke-dasharray: 5.0,5.0;" x1="308" x2="308" y1="154.5" y2="937.1094"/><line style="stroke: #0B3D3A; stroke-width: 1.0; stroke-dasharray: 5.0,5.0;" x1="523" x2="523" y1="154.5" y2="937.1094"/><line style="stroke: #0B3D3A; stroke-width: 1.0; stroke-dasharray: 5.0,5.0;" x1="733" x2="733" y1="154.5" y2="937.1094"/><text fill="#000000" font-family="Helvetica" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="89" x="37" y="134.9014">Développeur</text><text fill="#000000" font-family="Helvetica" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="147" x="8" y="151.1982">(ligne de commande)</text><ellipse cx="84.5" cy="68.9063" fill="#FFFFFF" rx="8" ry="8" style="stroke: #0B3D3A; stroke-width: 2.0;"/><path d="M84.5,76.9063 L84.5,103.9063 M71.5,84.9063 L97.5,84.9063 M84.5,103.9063 L71.5,118.9063 M84.5,103.9063 L97.5,118.9063 " fill="none" style="stroke: #0B3D3A; stroke-width: 2.0;"/><text fill="#000000" font-family="Helvetica" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="89" x="37" y="949.1045">Développeur</text><text fill="#000000" font-family="Helvetica" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="147" x="8" y="965.4014">(ligne de commande)</text><ellipse cx="84.5" cy="978.7031" fill="#FFFFFF" rx="8" ry="8" style="stroke: #0B3D3A; stroke-width: 2.0;"/><path d="M84.5,986.7031 L84.5,1013.7031 M71.5,994.7031 L97.5,994.7031 M84.5,1013.7031 L71.5,1028.7031 M84.5,1013.7031 L97.5,1028.7031 " fill="none" style="stroke: #0B3D3A; stroke-width: 2.0;"/><rect fill="#FFFFFF" height="30.2969" rx="3" ry="3" style="stroke: #0B3D3A; stroke-width: 1.5;" width="163" x="227" y="123.2031"/><text fill="#10241F" font-family="Helvetica" font-size="14" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="149" x="234" y="143.1982">decouper_splits.py</text><rect fill="#FFFFFF" height="30.2969" rx="3" ry="3" style="stroke: #0B3D3A; stroke-width: 1.5;" width="163" x="227" y="936.1094"/><text fill="#10241F" font-family="Helvetica" font-size="14" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="149" x="234" y="956.1045">decouper_splits.py</text><rect fill="#FFFFFF" height="30.2969" rx="3" ry="3" style="stroke: #0B3D3A; stroke-width: 1.5;" width="203" x="422" y="123.2031"/><text fill="#10241F" font-family="Helvetica" font-size="14" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="189" x="429" y="143.1982">DecouperSplitsUseCase</text><rect fill="#FFFFFF" height="30.2969" rx="3" ry="3" style="stroke: #0B3D3A; stroke-width: 1.5;" width="203" x="422" y="936.1094"/><text fill="#10241F" font-family="Helvetica" font-size="14" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="189" x="429" y="956.1045">DecouperSplitsUseCase</text><rect fill="#FFFFFF" height="30.2969" rx="3" ry="3" style="stroke: #0B3D3A; stroke-width: 1.5;" width="196" x="635" y="123.2031"/><text fill="#10241F" font-family="Helvetica" font-size="14" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="182" x="642" y="143.1982">JsonlDatasetRepository</text><rect fill="#FFFFFF" height="30.2969" rx="3" ry="3" style="stroke: #0B3D3A; stroke-width: 1.5;" width="196" x="635" y="936.1094"/><text fill="#10241F" font-family="Helvetica" font-size="14" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="182" x="642" y="956.1045">JsonlDatasetRepository</text><rect fill="#EFEAE0" height="669.7813" style="stroke: #0B3D3A; stroke-width: 1.0;" width="10" x="303.5" y="234.5234"/><rect fill="#EFEAE0" height="511.3438" style="stroke: #0B3D3A; stroke-width: 1.0;" width="10" x="518.5" y="340.5469"/><rect fill="#EFEAE0" height="12" style="stroke: #0B3D3A; stroke-width: 1.0;" width="10" x="728" y="380.1563"/><rect fill="#EFEAE0" height="45.6094" style="stroke: #0B3D3A; stroke-width: 1.0;" width="10" x="728" y="730.0156"/><polygon fill="#0B3D3A" points="291.5,230.5234,301.5,234.5234,291.5,238.5234,295.5,234.5234" style="stroke: #0B3D3A; stroke-width: 1.0;"/><line style="stroke: #0B3D3A; stroke-width: 1.2;" x1="84.5" x2="297.5" y1="234.5234" y2="234.5234"/><text fill="#10241F" font-family="Helvetica" font-size="11" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="12" x="94" y="204.3198">1.</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="141" x="131.5" y="178.7104">uv run python decouper_</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="48" x="178" y="191.5151">splits.py</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" text-decoration="line-through" textLength="67" x="110" y="204.3198">dataset ... [</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="54" x="177" y="204.3198">graine 42</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" text-decoration="line-through" textLength="59" x="235" y="204.3198">proportion</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" text-decoration="line-through" textLength="49" x="122" y="217.1245">-val 0.10</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="107" x="175" y="217.1245">proportion-test 0.1</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="11" x="196.5" y="229.9292">0]</text><polygon fill="#0B3D3A" points="721,257.3281,731,261.3281,721,265.3281,725,261.3281" style="stroke: #0B3D3A; stroke-width: 1.0;"/><line style="stroke: #0B3D3A; stroke-width: 1.2;" x1="313.5" x2="727" y1="261.3281" y2="261.3281"/><text fill="#10241F" font-family="Helvetica" font-size="11" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="12" x="454.75" y="256.7339">2.</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="121" x="470.75" y="256.7339">new(chemin_dataset)</text><polygon fill="#0B3D3A" points="511.5,309.7422,521.5,313.7422,511.5,317.7422,515.5,313.7422" style="stroke: #0B3D3A; stroke-width: 1.0;"/><line style="stroke: #0B3D3A; stroke-width: 1.2;" x1="313.5" x2="517.5" y1="313.7422" y2="313.7422"/><text fill="#10241F" font-family="Helvetica" font-size="11" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="12" x="333.5" y="296.3433">3.</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="133" x="358" y="283.5386">new(repository, graine,</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="154" x="349.5" y="296.3433">proportion_val, proportion_</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="26" x="413.5" y="309.1479">test)</text><polygon fill="#0B3D3A" points="506.5,336.5469,516.5,340.5469,506.5,344.5469,510.5,340.5469" style="stroke: #0B3D3A; stroke-width: 1.0;"/><line style="stroke: #0B3D3A; stroke-width: 1.2;" x1="313.5" x2="512.5" y1="340.5469" y2="340.5469"/><text fill="#10241F" font-family="Helvetica" font-size="11" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="12" x="379.5" y="335.9526">4.</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="57" x="395.5" y="335.9526">executer()</text><polygon fill="#0B3D3A" points="716,376.1563,726,380.1563,716,384.1563,720,380.1563" style="stroke: #0B3D3A; stroke-width: 1.0;"/><line style="stroke: #0B3D3A; stroke-width: 1.2;" x1="528.5" x2="722" y1="380.1563" y2="380.1563"/><text fill="#10241F" font-family="Helvetica" font-size="11" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="12" x="547.75" y="369.1597">5.</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="141" x="563.75" y="362.7573">lister(filtre={anonymise:</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="37" x="617.75" y="375.562">True})</text><polygon fill="#0B3D3A" points="539.5,388.1563,529.5,392.1563,539.5,396.1563,535.5,392.1563" style="stroke: #0B3D3A; stroke-width: 1.0;"/><line style="stroke: #0B3D3A; stroke-width: 1.2; stroke-dasharray: 2.0,2.0;" x1="533.5" x2="732" y1="392.1563" y2="392.1563"/><text fill="#10241F" font-family="Helvetica" font-size="11" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="12" x="556.25" y="409.769">6.</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="133" x="572.25" y="403.3667">Iterator[ExemplePivot] (</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="73" x="602.25" y="416.1714">anonymises)</text><line style="stroke: #0B3D3A; stroke-width: 1.2;" x1="528.5" x2="570.5" y1="459.375" y2="459.375"/><line style="stroke: #0B3D3A; stroke-width: 1.2;" x1="570.5" x2="570.5" y1="459.375" y2="472.375"/><line style="stroke: #0B3D3A; stroke-width: 1.2;" x1="529.5" x2="570.5" y1="472.375" y2="472.375"/><polygon fill="#0B3D3A" points="539.5,468.375,529.5,472.375,539.5,476.375,535.5,472.375" style="stroke: #0B3D3A; stroke-width: 1.0;"/><text fill="#10241F" font-family="Helvetica" font-size="11" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="12" x="535.5" y="448.3784">7.</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="142" x="551.5" y="441.9761">random.Random(graine).</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="102" x="551.5" y="454.7808">shuffle(exemples)</text><path d="M533,488.375 L533,522.375 A3,3 0 0 0 536,525.375 L796,525.375 A3,3 0 0 0 799,522.375 L799,495.375 L789,485.375 L536,485.375 A3,3 0 0 0 533,488.375 " fill="#FDF6EC" style="stroke: #C98A1E; stroke-width: 1.0;"/><path d="M789,485.375 L789,493.875 A1.5,1.5 0 0 0 790.5,495.375 L799,495.375 L789,485.375 " fill="#FDF6EC" style="stroke: #C98A1E; stroke-width: 1.0;"/><text fill="#4A3400" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="227" x="539" y="502.4419">Melange deterministe (graine fixe) :</text><text fill="#4A3400" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="245" x="539" y="517.5747">reproductible d'une execution a l'autre</text><line style="stroke: #0B3D3A; stroke-width: 1.2;" x1="528.5" x2="570.5" y1="587.8594" y2="587.8594"/><line style="stroke: #0B3D3A; stroke-width: 1.2;" x1="570.5" x2="570.5" y1="587.8594" y2="600.8594"/><line style="stroke: #0B3D3A; stroke-width: 1.2;" x1="529.5" x2="570.5" y1="600.8594" y2="600.8594"/><polygon fill="#0B3D3A" points="539.5,596.8594,529.5,600.8594,539.5,604.8594,535.5,600.8594" style="stroke: #0B3D3A; stroke-width: 1.0;"/><text fill="#10241F" font-family="Helvetica" font-size="11" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="12" x="535.5" y="564.0581">8.</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="143" x="551.5" y="544.8511">calcule n_test = n_total *</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="87" x="551.5" y="557.6558">proportion_test</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="137" x="551.5" y="570.4604">calcule n_val = n_total *</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="81" x="551.5" y="583.2651">proportion_val</text><path d="M415,615.8594 L489,615.8594 L489,622.8594 L479,632.8594 L412,632.8594 L412,618.8594 " fill="#EEEEEE" style="stroke: #000000; stroke-width: 1.0;"/><rect fill="none" height="174.7656" rx="3" ry="3" style="stroke: #000000; stroke-width: 2.0;" width="497" x="412" y="615.8594"/><text fill="#000000" font-family="Helvetica" font-size="13" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="32" x="427" y="628.9263">loop</text><text fill="#000000" font-family="Helvetica" font-size="11" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="255" x="504" y="628.0698">[pour chaque exemple (ordre melange)]</text><line style="stroke: #0B3D3A; stroke-width: 1.2;" x1="528.5" x2="570.5" y1="677.4063" y2="677.4063"/><line style="stroke: #0B3D3A; stroke-width: 1.2;" x1="570.5" x2="570.5" y1="677.4063" y2="690.4063"/><line style="stroke: #0B3D3A; stroke-width: 1.2;" x1="529.5" x2="570.5" y1="690.4063" y2="690.4063"/><polygon fill="#0B3D3A" points="539.5,686.4063,529.5,690.4063,539.5,694.4063,535.5,690.4063" style="stroke: #0B3D3A; stroke-width: 1.0;"/><text fill="#10241F" font-family="Helvetica" font-size="11" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="12" x="535.5" y="660.0073">9.</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="140" x="551.5" y="647.2026">assigne TEST_CLINIQUE,</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="65" x="551.5" y="660.0073">VALIDATION</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="148" x="551.5" y="672.812">ou TRAIN selon la position</text><polygon fill="#0B3D3A" points="716,726.0156,726,730.0156,716,734.0156,720,730.0156" style="stroke: #0B3D3A; stroke-width: 1.0;"/><line style="stroke: #0B3D3A; stroke-width: 1.2;" x1="528.5" x2="722" y1="730.0156" y2="730.0156"/><text fill="#10241F" font-family="Helvetica" font-size="11" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="20" x="538.25" y="719.019">10.</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="156" x="562.25" y="712.6167">sauvegarder(exemple_avec</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="34" x="623.25" y="725.4214">_split)</text><line style="stroke: #0B3D3A; stroke-width: 1.2;" x1="738" x2="780" y1="774.625" y2="774.625"/><line style="stroke: #0B3D3A; stroke-width: 1.2;" x1="780" x2="780" y1="774.625" y2="787.625"/><line style="stroke: #0B3D3A; stroke-width: 1.2;" x1="733" x2="780" y1="787.625" y2="787.625"/><polygon fill="#0B3D3A" points="743,783.625,733,787.625,743,791.625,739,787.625" style="stroke: #0B3D3A; stroke-width: 1.0;"/><text fill="#10241F" font-family="Helvetica" font-size="11" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="20" x="745" y="763.6284">11.</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="128" x="769" y="757.2261">reecrit le fichier JSONL</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="126" x="769" y="770.0308">(fusion par identifiant)</text><path d="M341,805.625 L341,839.625 A3,3 0 0 0 344,842.625 L703,842.625 A3,3 0 0 0 706,839.625 L706,812.625 L696,802.625 L344,802.625 A3,3 0 0 0 341,805.625 " fill="#FDF6EC" style="stroke: #C98A1E; stroke-width: 1.0;"/><path d="M696,802.625 L696,811.125 A1.5,1.5 0 0 0 697.5,812.625 L706,812.625 L696,802.625 " fill="#FDF6EC" style="stroke: #C98A1E; stroke-width: 1.0;"/><text fill="#4A3400" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="307" x="347" y="819.6919">Point de vigilance mission (cahier des charges) :</text><text fill="#4A3400" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="344" x="347" y="834.8247">TEST_CLINIQUE n'est jamais reutilise en entrainement</text><polygon fill="#0B3D3A" points="324.5,847.8906,314.5,851.8906,324.5,855.8906,320.5,851.8906" style="stroke: #0B3D3A; stroke-width: 1.0;"/><line style="stroke: #0B3D3A; stroke-width: 1.2; stroke-dasharray: 2.0,2.0;" x1="318.5" x2="522.5" y1="851.8906" y2="851.8906"/><text fill="#10241F" font-family="Helvetica" font-size="11" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="20" x="328" y="875.9058">12.</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="113" x="372" y="863.1011">decompte {train: N,</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="153" x="352" y="875.9058">validation: N, test_clinique:</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="15" x="423" y="888.7104">N}</text><polygon fill="#0B3D3A" points="95.5,900.3047,85.5,904.3047,95.5,908.3047,91.5,904.3047" style="stroke: #0B3D3A; stroke-width: 1.0;"/><line style="stroke: #0B3D3A; stroke-width: 1.2; stroke-dasharray: 2.0,2.0;" x1="89.5" x2="307.5" y1="904.3047" y2="904.3047"/><text fill="#10241F" font-family="Helvetica" font-size="11" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="20" x="107" y="915.5151">13.</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="155" x="131" y="915.5151">"Repartition des splits : ..."</text><!--MD5=[fe78b139a18d4051672b1fd887610dce]
+@startuml decouper_splits
+
+skinparam backgroundColor #F6F4EF
+skinparam defaultFontName Helvetica
+skinparam roundcorner 6
+skinparam shadowing false
+skinparam ArrowThickness 1.2
+
+skinparam arrow {
+  Color #0B3D3A
+  FontColor #10241F
+  FontSize 11
+}
+
+skinparam package {
+  BackgroundColor #FFFFFF
+  BorderColor #0B3D3A
+  FontColor #0B3D3A
+  FontStyle bold
+  FontSize 14
+}
+
+skinparam node {
+  BackgroundColor #EFEAE0
+  BorderColor #0B3D3A
+  FontColor #10241F
+  FontSize 12
+}
+
+skinparam database {
+  BackgroundColor #FDF6EC
+  BorderColor #C98A1E
+  FontColor #4A3400
+  FontSize 11
+}
+
+skinparam cloud {
+  BackgroundColor #E7EFEC
+  BorderColor #2F7A4F
+  FontColor #123C3A
+  FontSize 12
+}
+
+skinparam artifact {
+  BackgroundColor #FCEBE6
+  BorderColor #C4432B
+  FontColor #7A2A17
+}
+
+skinparam component {
+  BackgroundColor #FFFFFF
+  BorderColor #0B3D3A
+  FontColor #10241F
+  FontSize 12
+}
+
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #0B3D3A
+  FontColor #10241F
+  HeaderBackgroundColor #EFEAE0
+  FontSize 11
+  AttributeFontSize 10
+}
+
+skinparam interface {
+  BackgroundColor #E7EFEC
+  BorderColor #2F7A4F
+  FontColor #123C3A
+}
+
+skinparam activity {
+  BackgroundColor #FFFFFF
+  BorderColor #0B3D3A
+  FontColor #10241F
+  DiamondBackgroundColor #FDF6EC
+  DiamondBorderColor #C98A1E
+  StartColor #0B3D3A
+  EndColor #C4432B
+  BarColor #0B3D3A
+}
+
+skinparam partition {
+  BackgroundColor #F0EEE7
+  BorderColor #0B3D3A
+  FontColor #0B3D3A
+  FontStyle bold
+}
+
+skinparam sequence {
+  ArrowColor #0B3D3A
+  ActorBorderColor #0B3D3A
+  LifeLineBorderColor #0B3D3A
+  LifeLineBackgroundColor #EFEAE0
+  ParticipantBorderColor #0B3D3A
+  ParticipantBackgroundColor #FFFFFF
+  ParticipantFontColor #10241F
+  ParticipantFontStyle bold
+  ActorBackgroundColor #FFFFFF
+  BoxBackgroundColor #F0EEE7
+  BoxBorderColor #0B3D3A
+}
+
+skinparam note {
+  BackgroundColor #FDF6EC
+  BorderColor #C98A1E
+  FontColor #4A3400
+}
+
+skinparam sequenceMessageAlign center
+skinparam maxMessageSize 160
+skinparam responseMessageBelowArrow true
+
+title Étape 1 — Diagramme de séquence\nDécoupage train/val/test clinique (cas d'usage réel, classes du code)
+
+actor "Développeur\n(ligne de commande)" as Dev
+
+box "interfaces/cli" #F0EEE7
+  participant "decouper_splits.py" as CLI
+end box
+
+box "application" #F0EEE7
+  participant "DecouperSplitsUseCase" as UC
+end box
+
+box "infrastructure/adapters" #F0EEE7
+  participant "JsonlDatasetRepository" as Repo
+end box
+
+autonumber "<b>0."
+
+Dev -> CLI : uv run python decouper_splits.py\n- -dataset ... [- -graine 42 - -proportion-val 0.10 - -proportion-test 0.10]
+activate CLI
+
+CLI -> Repo : new(chemin_dataset)
+CLI -> UC : new(repository, graine, proportion_val, proportion_test)
+
+CLI -> UC : executer()
+activate UC
+
+UC -> Repo : lister(filtre={anonymise: True})
+activate Repo
+Repo - -> UC : Iterator[ExemplePivot] (anonymises)
+deactivate Repo
+
+UC -> UC : random.Random(graine).shuffle(exemples)
+note right of UC
+  Melange deterministe (graine fixe) :
+  reproductible d'une execution a l'autre
+end note
+
+UC -> UC : calcule n_test = n_total * proportion_test\ncalcule n_val = n_total * proportion_val
+
+loop pour chaque exemple (ordre melange)
+  UC -> UC : assigne TEST_CLINIQUE, VALIDATION\nou TRAIN selon la position
+  UC -> Repo : sauvegarder(exemple_avec_split)
+  activate Repo
+  Repo -> Repo : reecrit le fichier JSONL\n(fusion par identifiant)
+  deactivate Repo
+end
+
+note over UC
+  Point de vigilance mission (cahier des charges) :
+  TEST_CLINIQUE n'est jamais reutilise en entrainement
+end note
+
+UC - -> CLI : decompte {train: N, validation: N, test_clinique: N}
+deactivate UC
+
+CLI - -> Dev : "Repartition des splits : ..."
+deactivate CLI
+
+@enduml
+
+PlantUML version 1.2020.02(Sun Mar 01 11:22:07 CET 2020)
+(GPL source distribution)
+Java Runtime: OpenJDK Runtime Environment
+JVM: OpenJDK 64-Bit Server VM
+Java Version: 17.0.20+8-1-24.04-Ubuntu
+Operating System: Linux
+Default Encoding: UTF-8
+Language: en
+Country: null
+--></g></svg>

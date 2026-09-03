@@ -1,0 +1,57 @@
+@startuml profiler_corpus
+!include ../../_common/estilo.iuml
+
+title Étape 1 — Diagramme de séquence\nProfilage d'un corpus (cas d'usage réel, classes du code)
+
+actor "Développeur\n(ligne de commande)" as Dev
+
+box "interfaces/cli" #F0EEE7
+  participant "profiler_corpus.py" as CLI
+end box
+
+box "application" #F0EEE7
+  participant "ProfilerCorpusUseCase" as UC
+end box
+
+box "infrastructure/adapters" #F0EEE7
+  participant "LecteurCorpusFichierLocal" as Lecteur
+  participant "YdataProfileur" as Profileur
+end box
+
+autonumber "<b>0."
+
+Dev -> CLI : uv run python profiler_corpus.py\n--source ... --nom ...
+activate CLI
+
+CLI -> Lecteur : new(chemin_source)
+CLI -> Profileur : new()
+CLI -> UC : new(lecteur, profileur)
+
+CLI -> UC : executer(nom_corpus)
+activate UC
+
+UC -> Lecteur : lire_enregistrements()
+activate Lecteur
+Lecteur --> UC : Iterator[dict] (enregistrements bruts)
+deactivate Lecteur
+
+UC -> Profileur : profiler(enregistrements, nom_corpus)
+activate Profileur
+Profileur -> Profileur : ydata_profiling.ProfileReport(...)
+note right of Profileur
+  Rapport HTML detaille ecrit sur
+  disque (data/processed/rapports_profilage/)
+  en plus de la synthese structuree
+  retournee ci-dessous
+end note
+Profileur --> UC : RapportProfilage
+deactivate Profileur
+
+UC --> CLI : RapportProfilage
+deactivate UC
+
+CLI -> CLI : log.PARAMETER_VALUE(enregistrements, doublons, rapport...)
+CLI --> Dev : affichage console du rapport de profilage
+deactivate CLI
+
+@enduml

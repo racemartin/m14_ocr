@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" contentScriptType="application/ecmascript" contentStyleType="text/css" height="995px" preserveAspectRatio="none" style="width:872px;height:995px;background:#F6F4EF;" version="1.1" viewBox="0 0 872 995" width="872px" zoomAndPan="magnify"><defs/><g><text fill="#000000" font-family="Helvetica" font-size="18" lengthAdjust="spacingAndGlyphs" textLength="317" x="278.25" y="26.708">Étape 1 — Diagramme de séquence</text><text fill="#000000" font-family="Helvetica" font-size="18" lengthAdjust="spacingAndGlyphs" textLength="790" x="41.75" y="47.6611">Téléchargement d'un corpus depuis Hugging Face Hub (cas d'usage réel, classes du code)</text><rect fill="#F0EEE7" height="924.6953" rx="3" ry="3" style="stroke: #0B3D3A; stroke-width: 1.0;" width="200" x="214.5" y="59.9063"/><text fill="#000000" font-family="Helvetica" font-size="13" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="95" x="267" y="71.9731">interfaces/cli</text><rect fill="#F0EEE7" height="924.6953" rx="3" ry="3" style="stroke: #0B3D3A; stroke-width: 1.0;" width="242" x="416.5" y="59.9063"/><text fill="#000000" font-family="Helvetica" font-size="13" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="173" x="451" y="71.9731">infrastructure/adapters</text><rect fill="#E7EFEC" height="924.6953" rx="3" ry="3" style="stroke: #0B3D3A; stroke-width: 1.0;" width="194" x="660.5" y="59.9063"/><text fill="#000000" font-family="Helvetica" font-size="13" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="138" x="688.5" y="71.9731">Hugging Face Hub</text><rect fill="#EFEAE0" height="654.2891" style="stroke: #0B3D3A; stroke-width: 1.0;" width="10" x="309.5" y="221.7188"/><rect fill="#EFEAE0" height="445.6016" style="stroke: #0B3D3A; stroke-width: 1.0;" width="10" x="532.5" y="383.7969"/><rect fill="#EFEAE0" height="209.5703" style="stroke: #0B3D3A; stroke-width: 1.0;" width="10" x="752.5" y="423.4063"/><rect fill="#F6F4EF" height="430.6016" rx="3" ry="3" style="stroke: #000000; stroke-width: 2.0;" width="847.5" x="13" y="438.4063"/><rect fill="#F6F4EF" height="254.8359" style="stroke: none; stroke-width: 1.0;" width="847.5" x="13" y="614.1719"/><rect fill="#F6F4EF" height="146.8125" rx="3" ry="3" style="stroke: #000000; stroke-width: 2.0;" width="456" x="208.5" y="675.5859"/><line style="stroke: #0B3D3A; stroke-width: 1.0; stroke-dasharray: 5.0,5.0;" x1="99" x2="99" y1="154.5" y2="886.0078"/><line style="stroke: #0B3D3A; stroke-width: 1.0; stroke-dasharray: 5.0,5.0;" x1="314.5" x2="314.5" y1="154.5" y2="886.0078"/><line style="stroke: #0B3D3A; stroke-width: 1.0; stroke-dasharray: 5.0,5.0;" x1="537.5" x2="537.5" y1="154.5" y2="886.0078"/><line style="stroke: #0B3D3A; stroke-width: 1.0; stroke-dasharray: 5.0,5.0;" x1="757.5" x2="757.5" y1="154.5" y2="886.0078"/><text fill="#000000" font-family="Helvetica" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="89" x="52" y="134.9014">Développeur</text><text fill="#000000" font-family="Helvetica" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="147" x="23" y="151.1982">(ligne de commande)</text><ellipse cx="99.5" cy="68.9063" fill="#FFFFFF" rx="8" ry="8" style="stroke: #0B3D3A; stroke-width: 2.0;"/><path d="M99.5,76.9063 L99.5,103.9063 M86.5,84.9063 L112.5,84.9063 M99.5,103.9063 L86.5,118.9063 M99.5,103.9063 L112.5,118.9063 " fill="none" style="stroke: #0B3D3A; stroke-width: 2.0;"/><text fill="#000000" font-family="Helvetica" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="89" x="52" y="898.0029">Développeur</text><text fill="#000000" font-family="Helvetica" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="147" x="23" y="914.2998">(ligne de commande)</text><ellipse cx="99.5" cy="927.6016" fill="#FFFFFF" rx="8" ry="8" style="stroke: #0B3D3A; stroke-width: 2.0;"/><path d="M99.5,935.6016 L99.5,962.6016 M86.5,943.6016 L112.5,943.6016 M99.5,962.6016 L86.5,977.6016 M99.5,962.6016 L112.5,977.6016 " fill="none" style="stroke: #0B3D3A; stroke-width: 2.0;"/><rect fill="#FFFFFF" height="30.2969" rx="3" ry="3" style="stroke: #0B3D3A; stroke-width: 1.5;" width="192" x="218.5" y="123.2031"/><text fill="#10241F" font-family="Helvetica" font-size="14" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="178" x="225.5" y="143.1982">telecharger_corpus.py</text><rect fill="#FFFFFF" height="30.2969" rx="3" ry="3" style="stroke: #0B3D3A; stroke-width: 1.5;" width="192" x="218.5" y="885.0078"/><text fill="#10241F" font-family="Helvetica" font-size="14" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="178" x="225.5" y="905.0029">telecharger_corpus.py</text><rect fill="#FFFFFF" height="30.2969" rx="3" ry="3" style="stroke: #0B3D3A; stroke-width: 1.5;" width="234" x="420.5" y="123.2031"/><text fill="#10241F" font-family="Helvetica" font-size="14" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="220" x="427.5" y="143.1982">LecteurCorpusHuggingFace</text><rect fill="#FFFFFF" height="30.2969" rx="3" ry="3" style="stroke: #0B3D3A; stroke-width: 1.5;" width="234" x="420.5" y="885.0078"/><text fill="#10241F" font-family="Helvetica" font-size="14" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="220" x="427.5" y="905.0029">LecteurCorpusHuggingFace</text><rect fill="#FFFFFF" height="30.2969" rx="3" ry="3" style="stroke: #0B3D3A; stroke-width: 1.5;" width="186" x="664.5" y="123.2031"/><text fill="#10241F" font-family="Helvetica" font-size="14" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="172" x="671.5" y="143.1982">datasets.load_dataset</text><rect fill="#FFFFFF" height="30.2969" rx="3" ry="3" style="stroke: #0B3D3A; stroke-width: 1.5;" width="186" x="664.5" y="885.0078"/><text fill="#10241F" font-family="Helvetica" font-size="14" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="172" x="671.5" y="905.0029">datasets.load_dataset</text><rect fill="#EFEAE0" height="654.2891" style="stroke: #0B3D3A; stroke-width: 1.0;" width="10" x="309.5" y="221.7188"/><rect fill="#EFEAE0" height="445.6016" style="stroke: #0B3D3A; stroke-width: 1.0;" width="10" x="532.5" y="383.7969"/><rect fill="#EFEAE0" height="209.5703" style="stroke: #0B3D3A; stroke-width: 1.0;" width="10" x="752.5" y="423.4063"/><polygon fill="#0B3D3A" points="297.5,217.7188,307.5,221.7188,297.5,225.7188,301.5,221.7188" style="stroke: #0B3D3A; stroke-width: 1.0;"/><line style="stroke: #0B3D3A; stroke-width: 1.2;" x1="99.5" x2="303.5" y1="221.7188" y2="221.7188"/><text fill="#10241F" font-family="Helvetica" font-size="11" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="12" x="109" y="197.9175">1.</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="153" x="136" y="178.7104">uv run python telecharger_</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="56" x="184.5" y="191.5151">corpus.py</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" text-decoration="line-through" textLength="97" x="125" y="204.3198">identifiant-hub ...</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="74" x="226" y="204.3198">configuration</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="12" x="158" y="217.1245">...</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" text-decoration="line-through" textLength="40" x="174" y="217.1245">split ...</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="49" x="218" y="217.1245">sortie ...</text><path d="M324,237.7188 L324,316.7188 A3,3 0 0 0 327,319.7188 L573,319.7188 A3,3 0 0 0 576,316.7188 L576,244.7188 L566,234.7188 L327,234.7188 A3,3 0 0 0 324,237.7188 " fill="#FDF6EC" style="stroke: #C98A1E; stroke-width: 1.0;"/><path d="M566,234.7188 L566,243.2188 A1.5,1.5 0 0 0 567.5,244.7188 L576,244.7188 L566,234.7188 " fill="#FDF6EC" style="stroke: #C98A1E; stroke-width: 1.0;"/><text fill="#4A3400" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="191" x="330" y="251.7856">Pas de couche application ici :</text><text fill="#4A3400" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="190" x="330" y="266.9185">seul script CLI de l'Étape 1 qui</text><text fill="#4A3400" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="223" x="330" y="282.0513">appelle directement un adaptateur</text><text fill="#4A3400" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="225" x="330" y="297.1841">d'infrastructure (aucun cas d'usage</text><text fill="#4A3400" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="231" x="330" y="312.3169">à orchestrer pour un simple export).</text><polygon fill="#0B3D3A" points="525.5,352.9922,535.5,356.9922,525.5,360.9922,529.5,356.9922" style="stroke: #0B3D3A; stroke-width: 1.0;"/><line style="stroke: #0B3D3A; stroke-width: 1.2;" x1="319.5" x2="531.5" y1="356.9922" y2="356.9922"/><text fill="#10241F" font-family="Helvetica" font-size="11" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="12" x="361.5" y="345.9956">2.</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="114" x="377.5" y="339.5933">new(identifiant_hub,</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="110" x="381.5" y="352.3979">configuration, split)</text><polygon fill="#0B3D3A" points="520.5,379.7969,530.5,383.7969,520.5,387.7969,524.5,383.7969" style="stroke: #0B3D3A; stroke-width: 1.0;"/><line style="stroke: #0B3D3A; stroke-width: 1.2;" x1="319.5" x2="526.5" y1="383.7969" y2="383.7969"/><text fill="#10241F" font-family="Helvetica" font-size="11" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="12" x="354.5" y="379.2026">3.</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="127" x="370.5" y="379.2026">lire_enregistrements()</text><polygon fill="#0B3D3A" points="740.5,419.4063,750.5,423.4063,740.5,427.4063,744.5,423.4063" style="stroke: #0B3D3A; stroke-width: 1.0;"/><line style="stroke: #0B3D3A; stroke-width: 1.2;" x1="542.5" x2="746.5" y1="423.4063" y2="423.4063"/><text fill="#10241F" font-family="Helvetica" font-size="11" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="12" x="559.5" y="412.4097">4.</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="160" x="575.5" y="406.0073">load_dataset(identifiant_hub</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="151" x="580" y="418.812">, configuration, split=split)</text><path d="M16,438.4063 L77,438.4063 L77,445.4063 L67,455.4063 L13,455.4063 L13,441.4063 " fill="#EEEEEE" style="stroke: #000000; stroke-width: 1.0;"/><rect fill="none" height="430.6016" rx="3" ry="3" style="stroke: #000000; stroke-width: 2.0;" width="847.5" x="13" y="438.4063"/><text fill="#000000" font-family="Helvetica" font-size="13" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="19" x="28" y="451.4731">alt</text><text fill="#000000" font-family="Helvetica" font-size="11" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="253" x="92" y="450.6167">[split inconnu pour cette configuration]</text><polygon fill="#0B3D3A" points="553.5,455.5391,543.5,459.5391,553.5,463.5391,549.5,459.5391" style="stroke: #0B3D3A; stroke-width: 1.0;"/><line style="stroke: #0B3D3A; stroke-width: 1.2; stroke-dasharray: 2.0,2.0;" x1="547.5" x2="751.5" y1="459.5391" y2="459.5391"/><text fill="#10241F" font-family="Helvetica" font-size="11" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="12" x="559.5" y="477.1519">5.</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="160" x="575.5" y="470.7495">ValueError("Unknown split ..</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="13" x="649" y="483.5542">.")</text><polygon fill="#0B3D3A" points="330.5,495.1484,320.5,499.1484,330.5,503.1484,326.5,499.1484" style="stroke: #0B3D3A; stroke-width: 1.0;"/><line style="stroke: #0B3D3A; stroke-width: 1.2; stroke-dasharray: 2.0,2.0;" x1="324.5" x2="531.5" y1="499.1484" y2="499.1484"/><text fill="#10241F" font-family="Helvetica" font-size="11" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="12" x="358" y="510.3589">6.</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="120" x="374" y="510.3589">(exception propagée)</text><line style="stroke: #0B3D3A; stroke-width: 1.2;" x1="319.5" x2="361.5" y1="553.5625" y2="553.5625"/><line style="stroke: #0B3D3A; stroke-width: 1.2;" x1="361.5" x2="361.5" y1="553.5625" y2="566.5625"/><line style="stroke: #0B3D3A; stroke-width: 1.2;" x1="320.5" x2="361.5" y1="566.5625" y2="566.5625"/><polygon fill="#0B3D3A" points="330.5,562.5625,320.5,566.5625,330.5,570.5625,326.5,566.5625" style="stroke: #0B3D3A; stroke-width: 1.0;"/><text fill="#10241F" font-family="Helvetica" font-size="11" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="12" x="326.5" y="542.5659">7.</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="130" x="342.5" y="536.1636">log.LEVEL_4_ERROR(...)</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="134" x="342.5" y="548.9683">puis relance l'exception</text><polygon fill="#0B3D3A" points="110.5,574.5625,100.5,578.5625,110.5,582.5625,106.5,578.5625" style="stroke: #0B3D3A; stroke-width: 1.0;"/><line style="stroke: #0B3D3A; stroke-width: 1.2; stroke-dasharray: 2.0,2.0;" x1="104.5" x2="308.5" y1="578.5625" y2="578.5625"/><text fill="#10241F" font-family="Helvetica" font-size="11" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="12" x="127" y="596.1753">8.</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="139" x="143" y="589.7729">traceback + message d'</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="86" x="169.5" y="602.5776">erreur explicite</text><line style="stroke: #000000; stroke-width: 1.0; stroke-dasharray: 2.0,2.0;" x1="13" x2="860.5" y1="615.1719" y2="615.1719"/><text fill="#000000" font-family="Helvetica" font-size="11" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="81" x="18" y="625.3823">[split valide]</text><polygon fill="#0B3D3A" points="553.5,628.9766,543.5,632.9766,553.5,636.9766,549.5,632.9766" style="stroke: #0B3D3A; stroke-width: 1.0;"/><line style="stroke: #0B3D3A; stroke-width: 1.2; stroke-dasharray: 2.0,2.0;" x1="547.5" x2="756.5" y1="632.9766" y2="632.9766"/><text fill="#10241F" font-family="Helvetica" font-size="11" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="12" x="580" y="650.5894">9.</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="120" x="596" y="644.187">Dataset (chargement</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="64" x="626" y="656.9917">paresseux)</text><path d="M211.5,675.5859 L285.5,675.5859 L285.5,682.5859 L275.5,692.5859 L208.5,692.5859 L208.5,678.5859 " fill="#EEEEEE" style="stroke: #000000; stroke-width: 1.0;"/><rect fill="none" height="146.8125" rx="3" ry="3" style="stroke: #000000; stroke-width: 2.0;" width="456" x="208.5" y="675.5859"/><text fill="#000000" font-family="Helvetica" font-size="13" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="32" x="223.5" y="688.6528">loop</text><text fill="#000000" font-family="Helvetica" font-size="11" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="265" x="300.5" y="687.7964">[pour chaque enregistrement du dataset]</text><polygon fill="#0B3D3A" points="330.5,692.7188,320.5,696.7188,330.5,700.7188,326.5,696.7188" style="stroke: #0B3D3A; stroke-width: 1.0;"/><line style="stroke: #0B3D3A; stroke-width: 1.2; stroke-dasharray: 2.0,2.0;" x1="324.5" x2="531.5" y1="696.7188" y2="696.7188"/><text fill="#10241F" font-family="Helvetica" font-size="11" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="20" x="340.5" y="707.9292">10.</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="147" x="364.5" y="707.9292">dict (enregistrement brut)</text><line style="stroke: #0B3D3A; stroke-width: 1.2;" x1="319.5" x2="361.5" y1="751.1328" y2="751.1328"/><line style="stroke: #0B3D3A; stroke-width: 1.2;" x1="361.5" x2="361.5" y1="751.1328" y2="764.1328"/><line style="stroke: #0B3D3A; stroke-width: 1.2;" x1="320.5" x2="361.5" y1="764.1328" y2="764.1328"/><polygon fill="#0B3D3A" points="330.5,760.1328,320.5,764.1328,330.5,768.1328,326.5,764.1328" style="stroke: #0B3D3A; stroke-width: 1.0;"/><text fill="#10241F" font-family="Helvetica" font-size="11" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="20" x="326.5" y="740.1362">11.</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="159" x="350.5" y="733.7339">json.dumps(enregistrement</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="90" x="350.5" y="746.5386">) -&gt; ligne JSONL</text><path d="M324,780.1328 L324,814.1328 A3,3 0 0 0 327,817.1328 L510,817.1328 A3,3 0 0 0 513,814.1328 L513,787.1328 L503,777.1328 L327,777.1328 A3,3 0 0 0 324,780.1328 " fill="#FDF6EC" style="stroke: #C98A1E; stroke-width: 1.0;"/><path d="M503,777.1328 L503,785.6328 A1.5,1.5 0 0 0 504.5,787.1328 L513,787.1328 L503,777.1328 " fill="#FDF6EC" style="stroke: #C98A1E; stroke-width: 1.0;"/><text fill="#4A3400" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="168" x="330" y="794.1997">log.LEVEL_7_INFO tous les</text><text fill="#4A3400" font-family="Helvetica" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="134" x="330" y="809.3325">500 enregistrements</text><polygon fill="#0B3D3A" points="110.5,829.3984,100.5,833.3984,110.5,837.3984,106.5,833.3984" style="stroke: #0B3D3A; stroke-width: 1.0;"/><line style="stroke: #0B3D3A; stroke-width: 1.2; stroke-dasharray: 2.0,2.0;" x1="104.5" x2="308.5" y1="833.3984" y2="833.3984"/><text fill="#10241F" font-family="Helvetica" font-size="11" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="20" x="116.5" y="851.0112">12.</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="148" x="140.5" y="844.6089">"N enregistrements ecrits</text><text fill="#10241F" font-family="Helvetica" font-size="11" lengthAdjust="spacingAndGlyphs" textLength="88" x="172.5" y="857.4136">dans &lt;sortie&gt;"</text><!--MD5=[c0f9e0a4b9e75c4d05edbd86e7609401]
+@startuml telecharger_corpus
+
+skinparam backgroundColor #F6F4EF
+skinparam defaultFontName Helvetica
+skinparam roundcorner 6
+skinparam shadowing false
+skinparam ArrowThickness 1.2
+
+skinparam arrow {
+  Color #0B3D3A
+  FontColor #10241F
+  FontSize 11
+}
+
+skinparam package {
+  BackgroundColor #FFFFFF
+  BorderColor #0B3D3A
+  FontColor #0B3D3A
+  FontStyle bold
+  FontSize 14
+}
+
+skinparam node {
+  BackgroundColor #EFEAE0
+  BorderColor #0B3D3A
+  FontColor #10241F
+  FontSize 12
+}
+
+skinparam database {
+  BackgroundColor #FDF6EC
+  BorderColor #C98A1E
+  FontColor #4A3400
+  FontSize 11
+}
+
+skinparam cloud {
+  BackgroundColor #E7EFEC
+  BorderColor #2F7A4F
+  FontColor #123C3A
+  FontSize 12
+}
+
+skinparam artifact {
+  BackgroundColor #FCEBE6
+  BorderColor #C4432B
+  FontColor #7A2A17
+}
+
+skinparam component {
+  BackgroundColor #FFFFFF
+  BorderColor #0B3D3A
+  FontColor #10241F
+  FontSize 12
+}
+
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #0B3D3A
+  FontColor #10241F
+  HeaderBackgroundColor #EFEAE0
+  FontSize 11
+  AttributeFontSize 10
+}
+
+skinparam interface {
+  BackgroundColor #E7EFEC
+  BorderColor #2F7A4F
+  FontColor #123C3A
+}
+
+skinparam activity {
+  BackgroundColor #FFFFFF
+  BorderColor #0B3D3A
+  FontColor #10241F
+  DiamondBackgroundColor #FDF6EC
+  DiamondBorderColor #C98A1E
+  StartColor #0B3D3A
+  EndColor #C4432B
+  BarColor #0B3D3A
+}
+
+skinparam partition {
+  BackgroundColor #F0EEE7
+  BorderColor #0B3D3A
+  FontColor #0B3D3A
+  FontStyle bold
+}
+
+skinparam sequence {
+  ArrowColor #0B3D3A
+  ActorBorderColor #0B3D3A
+  LifeLineBorderColor #0B3D3A
+  LifeLineBackgroundColor #EFEAE0
+  ParticipantBorderColor #0B3D3A
+  ParticipantBackgroundColor #FFFFFF
+  ParticipantFontColor #10241F
+  ParticipantFontStyle bold
+  ActorBackgroundColor #FFFFFF
+  BoxBackgroundColor #F0EEE7
+  BoxBorderColor #0B3D3A
+}
+
+skinparam note {
+  BackgroundColor #FDF6EC
+  BorderColor #C98A1E
+  FontColor #4A3400
+}
+
+skinparam sequenceMessageAlign center
+skinparam maxMessageSize 160
+skinparam responseMessageBelowArrow true
+
+title Étape 1 — Diagramme de séquence\nTéléchargement d'un corpus depuis Hugging Face Hub (cas d'usage réel, classes du code)
+
+actor "Développeur\n(ligne de commande)" as Dev
+
+box "interfaces/cli" #F0EEE7
+  participant "telecharger_corpus.py" as CLI
+end box
+
+box "infrastructure/adapters" #F0EEE7
+  participant "LecteurCorpusHuggingFace" as Lecteur
+end box
+
+box "Hugging Face Hub" #E7EFEC
+  participant "datasets.load_dataset" as HF
+end box
+
+autonumber "<b>0."
+
+Dev -> CLI : uv run python telecharger_corpus.py\n- -identifiant-hub ... - -configuration ... - -split ... - -sortie ...
+activate CLI
+
+note right of CLI
+  Pas de couche application ici :
+  seul script CLI de l'Étape 1 qui
+  appelle directement un adaptateur
+  d'infrastructure (aucun cas d'usage
+  à orchestrer pour un simple export).
+end note
+
+CLI -> Lecteur : new(identifiant_hub, configuration, split)
+
+CLI -> Lecteur : lire_enregistrements()
+activate Lecteur
+
+Lecteur -> HF : load_dataset(identifiant_hub, configuration, split=split)
+activate HF
+alt split inconnu pour cette configuration
+  HF - -> Lecteur : ValueError("Unknown split ...")
+  Lecteur - -> CLI : (exception propagée)
+  CLI -> CLI : log.LEVEL_4_ERROR(...)\npuis relance l'exception
+  CLI - -> Dev : traceback + message d'erreur explicite
+else split valide
+  HF - -> Lecteur : Dataset (chargement paresseux)
+  deactivate HF
+
+  loop pour chaque enregistrement du dataset
+    Lecteur - -> CLI : dict (enregistrement brut)
+    CLI -> CLI : json.dumps(enregistrement) -> ligne JSONL
+    note right of CLI
+      log.LEVEL_7_INFO tous les
+      500 enregistrements
+    end note
+  end
+  deactivate Lecteur
+
+  CLI - -> Dev : "N enregistrements ecrits dans <sortie>"
+end
+deactivate CLI
+
+@enduml
+
+PlantUML version 1.2020.02(Sun Mar 01 11:22:07 CET 2020)
+(GPL source distribution)
+Java Runtime: OpenJDK Runtime Environment
+JVM: OpenJDK 64-Bit Server VM
+Java Version: 17.0.20+8-1-24.04-Ubuntu
+Operating System: Linux
+Default Encoding: UTF-8
+Language: en
+Country: null
+--></g></svg>

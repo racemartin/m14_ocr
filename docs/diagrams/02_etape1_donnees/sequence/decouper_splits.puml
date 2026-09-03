@@ -1,0 +1,63 @@
+@startuml decouper_splits
+!include ../../_common/estilo.iuml
+
+title Étape 1 — Diagramme de séquence\nDécoupage train/val/test clinique (cas d'usage réel, classes du code)
+
+actor "Développeur\n(ligne de commande)" as Dev
+
+box "interfaces/cli" #F0EEE7
+  participant "decouper_splits.py" as CLI
+end box
+
+box "application" #F0EEE7
+  participant "DecouperSplitsUseCase" as UC
+end box
+
+box "infrastructure/adapters" #F0EEE7
+  participant "JsonlDatasetRepository" as Repo
+end box
+
+autonumber "<b>0."
+
+Dev -> CLI : uv run python decouper_splits.py\n--dataset ... [--graine 42 --proportion-val 0.10 --proportion-test 0.10]
+activate CLI
+
+CLI -> Repo : new(chemin_dataset)
+CLI -> UC : new(repository, graine, proportion_val, proportion_test)
+
+CLI -> UC : executer()
+activate UC
+
+UC -> Repo : lister(filtre={anonymise: True})
+activate Repo
+Repo --> UC : Iterator[ExemplePivot] (anonymises)
+deactivate Repo
+
+UC -> UC : random.Random(graine).shuffle(exemples)
+note right of UC
+  Melange deterministe (graine fixe) :
+  reproductible d'une execution a l'autre
+end note
+
+UC -> UC : calcule n_test = n_total * proportion_test\ncalcule n_val = n_total * proportion_val
+
+loop pour chaque exemple (ordre melange)
+  UC -> UC : assigne TEST_CLINIQUE, VALIDATION\nou TRAIN selon la position
+  UC -> Repo : sauvegarder(exemple_avec_split)
+  activate Repo
+  Repo -> Repo : reecrit le fichier JSONL\n(fusion par identifiant)
+  deactivate Repo
+end
+
+note over UC
+  Point de vigilance mission (cahier des charges) :
+  TEST_CLINIQUE n'est jamais reutilise en entrainement
+end note
+
+UC --> CLI : decompte {train: N, validation: N, test_clinique: N}
+deactivate UC
+
+CLI --> Dev : "Repartition des splits : ..."
+deactivate CLI
+
+@enduml
