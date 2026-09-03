@@ -20,38 +20,73 @@ end box
 
 autonumber "<b>0."
 
-Dev -> CLI : uv run python profiler_corpus.py\n--source ... --nom ...
+Dev -> CLI : uv run python profiler_corpus.py\n~-~-source ... ~-~-nom ... [~-~-bloque N]
 activate CLI
 
-CLI -> Lecteur : new(chemin_source)
-CLI -> Profileur : new()
-CLI -> UC : new(lecteur, profileur)
+alt ~-~-bloque N fourni (evite l'OOM sur un gros corpus, cf. ultramedical_preference.jsonl 966 Mo)
+  CLI -> Lecteur : new(chemin_source, taille_bloc=N)
+  note right of CLI
+    Pas de ConstruireDatasetPivotUseCase ici :
+    la boucle par bloc est geree directement
+    par le CLI (_profiler_par_blocs)
+  end note
+  CLI -> Lecteur : lire_enregistrements()
+  activate Lecteur
+  note right of Lecteur
+    pandas(chunksize=N) : un DataFrame
+    par bloc, libere avant le suivant —
+    memoire de pointe bornee par N
+  end note
 
-CLI -> UC : executer(nom_corpus)
-activate UC
+  loop pour chaque bloc de N enregistrements (itertools.islice)
+    Lecteur --> CLI : N enregistrements (dict)
+    CLI -> Profileur : profiler(bloc, "<nom>_blocNNN")
+    activate Profileur
+    Profileur --> CLI : RapportProfilage (du bloc)
+    deactivate Profileur
+    CLI -> CLI : log.PARAMETER_VALUE("bloc NNN", ...)\naffichage console
+  end
+  deactivate Lecteur
 
-UC -> Lecteur : lire_enregistrements()
-activate Lecteur
-Lecteur --> UC : Iterator[dict] (enregistrements bruts)
-deactivate Lecteur
+  note over CLI
+    Limite assumee : correlations et taux
+    de doublons calcules PAR BLOC, jamais
+    sur la totalite du corpus
+  end note
+  CLI -> CLI : log.FINISH_ACTION(total, nombre_de_blocs)
 
-UC -> Profileur : profiler(enregistrements, nom_corpus)
-activate Profileur
-Profileur -> Profileur : ydata_profiling.ProfileReport(...)
-note right of Profileur
-  Rapport HTML detaille ecrit sur
-  disque (data/processed/rapports_profilage/)
-  en plus de la synthese structuree
-  retournee ci-dessous
-end note
-Profileur --> UC : RapportProfilage
-deactivate Profileur
+else chemin par defaut (sans ~-~-bloque, corpus charge entierement)
+  CLI -> Lecteur : new(chemin_source)
+  CLI -> Profileur : new()
+  CLI -> UC : new(lecteur, profileur)
 
-UC --> CLI : RapportProfilage
-deactivate UC
+  CLI -> UC : executer(nom_corpus)
+  activate UC
 
-CLI -> CLI : log.PARAMETER_VALUE(enregistrements, doublons, rapport...)
-CLI --> Dev : affichage console du rapport de profilage
+  UC -> Lecteur : lire_enregistrements()
+  activate Lecteur
+  Lecteur --> UC : Iterator[dict] (enregistrements bruts)
+  deactivate Lecteur
+
+  UC -> Profileur : profiler(enregistrements, nom_corpus)
+  activate Profileur
+  Profileur -> Profileur : ydata_profiling.ProfileReport(...)
+  note right of Profileur
+    Rapport HTML detaille ecrit sur
+    disque (data/processed/rapports_profilage/)
+    en plus de la synthese structuree
+    retournee ci-dessous
+  end note
+  Profileur --> UC : RapportProfilage
+  deactivate Profileur
+
+  UC --> CLI : RapportProfilage
+  deactivate UC
+
+  CLI -> CLI : log.PARAMETER_VALUE(enregistrements, doublons, rapport...)
+end
+
+CLI --> Dev : affichage console du/des rapport(s) de profilage
 deactivate CLI
 
 @enduml

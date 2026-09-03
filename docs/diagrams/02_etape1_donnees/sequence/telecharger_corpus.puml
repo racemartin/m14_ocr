@@ -19,7 +19,7 @@ end box
 
 autonumber "<b>0."
 
-Dev -> CLI : uv run python telecharger_corpus.py\n--identifiant-hub ... --configuration ... --split ... --sortie ...
+Dev -> CLI : uv run python telecharger_corpus.py\n~-~-identifiant-hub ... ~-~-configuration ... ~-~-split ... ~-~-sortie ...
 activate CLI
 
 note right of CLI

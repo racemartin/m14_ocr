@@ -44,9 +44,9 @@ sur données réelles restant à faire · [A FAIRE] pas encore commencé.
 | Exigence officielle | Statut | Où le trouver |
 |---|---|---|
 | Collecter le corpus bilingue | [FAIT] Les 4 corpus réels sont téléchargés dans `data/raw/` (`telecharger_corpus.py`), MediQAl en 3 fichiers (voir section dédiée ci-dessous) | `LecteurCorpusFichierLocal`, `LecteurCorpusHuggingFace`, `telecharger_corpus.py` ; cahier des charges §5.1 |
-| Nettoyer et structurer | [OUTILLAGE PRET] `ProfilerCorpusUseCase` + adaptateur `ydata-profiling` **validés par smoke test réel** (voir section dédiée ci-dessous) ; profilage des 4 corpus réels pas encore exécuté | `profiler_corpus.py` ; diagramme d'activité Étape 1 |
-| ≈5 000 paires SFT | [A FAIRE] Mappers écrits pour FrenchMedMCQA, MedQuAD et MediQAl-oeq (`mappers_corpus.py`) ; **mapper manquant pour MediQAl-mcqu/mcqm** (schéma QCM différent, voir section dédiée) ; à exécuter une fois les corpus profilés | `construire_dataset_pivot.py` |
-| Paires DPO validées cliniquement | [A FAIRE] Mapper technique prêt (`mapper_ultramedical_preference`) ; la validation clinique par un expert est hors du périmètre purement technique et reste à planifier avec le CHSA | même fichier ; objectifs §3.2-3.3 |
+| Nettoyer et structurer | [FAIT] `ProfilerCorpusUseCase` + adaptateur `ydata-profiling` **validés par smoke test réel** (voir section dédiée ci-dessous) ; les 6 fichiers réels sont profilés (`data/processed/rapports_profilage/`), y compris `ultramedical_preference.jsonl` (966 Mo) via l'option `--bloque` | `profiler_corpus.py` ; diagramme d'activité Étape 1 |
+| ≈5 000 paires SFT | [OUTILLAGE PRET] Mappers écrits et corrigés pour FrenchMedMCQA, MedQuAD et MediQAl-oeq (`mappers_corpus.py`) ; **mapper manquant pour MediQAl-mcqu/mcqm** (schéma QCM différent, voir section dédiée) ; execution de `construire_dataset_pivot.py` restant a faire | `construire_dataset_pivot.py` |
+| Paires DPO validées cliniquement | [OUTILLAGE PRET] Mapper technique prêt **et corrigé** (`mapper_ultramedical_preference` extrayait mal chosen/rejected, voir section dédiée) ; la validation clinique par un expert est hors du périmètre purement technique et reste à planifier avec le CHSA | même fichier ; objectifs §3.2-3.3 |
 | Anonymisation + documentation RGPD | [OUTILLAGE PRET] Adaptateur `PresidioAnonymiseur` **validé par smoke test réel** (bug de configuration multi-langue découvert et corrigé, cf. section dédiée) ; exécution sur données réelles + rapport de contrôle qualité RGPD restant à produire | `AnonymiserDatasetUseCase` ; cahier des charges NF2 |
 | Schéma de métadonnées | [FAIT] Défini **et implémenté** comme entité de domaine (`ExemplePivot`, `ConstantesVitales`) | `domain/model/exemple_pivot.py` ; cahier des charges §5.2 ; diagramme de paquets Étape 1 |
 | Splits train / val / test + éval clinique isolée | [FAIT] Implémenté et testé (`DecouperSplitsUseCase`), test clinique jamais réutilisé en entraînement | `decouper_splits.py` ; `tests/application/` |
@@ -126,10 +126,53 @@ comment traiter le cas `mcqm` à réponses multiples dans le mapper à
 écrire — même traitement que `mcqu` (concaténer les réponses
 correctes) ou traitement distinct ? Non tranché à ce jour.
 
-### Nouveaux tests ajoutés suite à ce smoke test
+## Validation réelle sur les 6 fichiers téléchargés (03/09/2026)
 
-- `tests/interfaces/test_mappers_corpus.py` — 8 tests, un mapper par
-  corpus n'avait aucun test avant cette validation.
+Contrairement à la section précédente (données synthétiques), cette
+section documente le profilage **réel** des 6 fichiers de
+`data/raw/` (les 4 corpus, MediQAl en 3 configurations).
+
+### Bug réel : OOM sur ultramedical_preference.jsonl (966 Mo)
+
+`profiler_corpus.py` sans option chargeait tout le fichier en memoire
+(pandas DataFrame -> liste de dicts -> nouveau DataFrame pour
+`ydata-profiling`) : sur cette WSL2 a 5.8 Go de RAM, le processus
+etait tue par l'OOM killer Linux (confirme via `dmesg`, aucune trace
+Python puisque le kill est externe au processus). Corrige par l'ajout
+de `LecteurCorpusFichierLocal(taille_bloc=N)` (lecture pandas
+`chunksize`) et de l'option `--bloque N` de `profiler_corpus.py`, qui
+produit un rapport `ydata-profiling` complet par bloc plutot qu'un
+seul rapport sur la totalite. **Limite assumee et documentee** :
+correlations et taux de doublons calcules par bloc, jamais sur la
+totalite du corpus. Valide en reel : 109353 enregistrements profiles
+en 11 blocs sans erreur ni OOM (45 min).
+
+### Bug réel : taux de doublons plantait sur colonnes liste/dict
+
+Repere en cours de route sur le meme fichier : `YdataProfileur`
+plantait (`TypeError: unhashable type: 'list'`) au calcul du taux de
+doublons, car `chosen`/`rejected` (listes de messages, format chat)
+et `metadata` (dict) ne sont pas hachables par pandas. Corrige en
+stringifiant une copie du DataFrame juste pour cette detection ; le
+DataFrame original transmis a `ProfileReport` n'est pas modifie.
+
+### Bug réel : mapper_ultramedical_preference serialisait la liste entiere
+
+`mapper_ultramedical_preference` faisait `str(chosen)`/`str(rejected)`
+sur la liste de messages entiere (format chat confirme sur les 109353
+enregistrements : toujours 2 messages, le dernier toujours
+`role=assistant`), au lieu d'extraire le texte de la reponse. Consequence
+reelle : le prompt duplique (message `role=user`) et la syntaxe de
+dict Python se seraient retrouves dans le contenu du `Message` pivot,
+au lieu du texte de reponse — aurait corrompu silencieusement les
+paires DPO. Corrige par `_extraire_reponse_assistant()`, qui prend le
+dernier message de la liste.
+
+### Nouveaux tests ajoutés
+
+- `tests/interfaces/test_mappers_corpus.py` — 8 tests suite au smoke
+  test synthetique du 02/09, +1 test (`..._format_chat_reel`) suite a
+  la validation reelle du 03/09 ci-dessus.
 - `tests/infrastructure/test_presidio_anonymiseur.py` — test
   d'intégration **réel** (pas mocké) qui aurait détecté immédiatement
   le bug de langue ci-dessus ; s'auto-ignore proprement si
@@ -140,12 +183,18 @@ correctes) ou traitement distinct ? Non tranché à ce jour.
 1. ~~Télécharger les 4 corpus réels dans `data/raw/`.~~ Fait le
    03/09/2026 (`telecharger_corpus.py`) — MediQAl en 3 fichiers
    (`oeq`/`mcqu`/`mcqm`, voir section dédiée ci-dessus).
-2. Exécuter `profiler_corpus.py` sur chacun (rapport ydata-profiling).
+2. ~~Exécuter `profiler_corpus.py` sur chacun (rapport ydata-profiling).~~
+   Fait le 03/09/2026 pour les 6 fichiers (`ultramedical_preference.jsonl`
+   via `--bloque`, voir section dédiée ci-dessus).
 3. Ajuster `mappers_corpus.py` aux noms de colonnes réels observés --
-   **decision produit requise** : écrire le mapper QCM manquant pour
+   **fait pour ultramedical_preference** (voir section dédiée
+   ci-dessus) ; **decision produit encore requise** pour MediQAl :
+   écrire le mapper QCM manquant pour
    `mediqal_mcqu.jsonl`/`mediqal_mcqm.jsonl` (voir section dédiée
    ci-dessus pour le traitement de `mcqm` à réponses multiples).
 4. Enchaîner `construire_dataset_pivot.py` → `anonymiser_dataset.py` →
-   `decouper_splits.py` pour chaque corpus.
+   `decouper_splits.py` pour chaque corpus (mediqal-oeq, frenchmedmcqa,
+   medquad, ultramedical_preference des a present ; mediqal-mcqu/mcqm
+   une fois le mapper QCM ecrit).
 5. Rédiger le rapport de justification RGPD à partir des résultats
    réels d'anonymisation.

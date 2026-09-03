@@ -89,8 +89,10 @@ Détail complet : `docs/01_environnement/01_architecture_hexagonale.md`.
 ## État d'avancement
 
 - [x] Étape 0 — Cadrage, environnement, architecture
-- [ ] Étape 1 — Préparation des données (squelette hexagonal prêt,
-      mappers par corpus à affiner après profilage réel)
+- [ ] Étape 1 — Préparation des données (6 corpus téléchargés et
+      profilés ; construction du dataset pivot restant à faire ;
+      mapper QCM manquant pour MediQAl-mcqu/mcqm, voir
+      `docs/02_etape1_donnees/00_couverture_exigences_officielles.md`)
 - [ ] Étape 2 — SFT + LoRA
 - [ ] Étape 3 — DPO
 - [ ] Étape 4 — Déploiement (FastAPI + Streamlit + vLLM + CI/CD)

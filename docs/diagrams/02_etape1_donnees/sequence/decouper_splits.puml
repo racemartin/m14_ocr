@@ -19,7 +19,7 @@ end box
 
 autonumber "<b>0."
 
-Dev -> CLI : uv run python decouper_splits.py\n--dataset ... [--graine 42 --proportion-val 0.10 --proportion-test 0.10]
+Dev -> CLI : uv run python decouper_splits.py\n~-~-dataset ... [~-~-graine 42 ~-~-proportion-val 0.10 ~-~-proportion-test 0.10]
 activate CLI
 
 CLI -> Repo : new(chemin_dataset)

@@ -109,6 +109,7 @@ package "infrastructure.adapters" as ADAPTERS {
 }
 
 package "interfaces.cli" as CLI_PKG {
+  class telecharger_corpus_main <<script>>
   class profiler_corpus_main <<script>>
   class construire_dataset_pivot_main <<script>>
   class anonymiser_dataset_main <<script>>
@@ -118,11 +119,33 @@ package "interfaces.cli" as CLI_PKG {
     +mapper_frenchmedmcqa(dict) : ExemplePivot | None
     +mapper_medquad(dict) : ExemplePivot | None
     +mapper_ultramedical_preference(dict) : ExemplePivot | None
+    -_extraire_reponse_assistant(messages) : str | None
   }
 
   CLI_PKG ..> USECASES : injecte les adaptateurs
   CLI_PKG ..> ADAPTERS : instancie
   mappers_corpus ..> MODEL : construit
+
+  telecharger_corpus_main ..> LecteurCorpusHuggingFace : appelle directement\n(seul script sans cas d'usage)
+  note right of telecharger_corpus_main
+    Seul script CLI sans couche
+    application : simple export,
+    rien a orchestrer.
+  end note
 }
+
+package "tools.rafael" as TOOLS #F0EEE7 {
+  class LogTool {
+    +START_ACTION(classe, fonction, info)
+    +FINISH_ACTION(classe, fonction, info)
+    +STEP(niveau, nom, info)
+    +PARAMETER_VALUE(cle, valeur)
+    +LEVEL_4_ERROR(ou, message)
+    +LEVEL_5_WARNING(ou, message)
+    +LEVEL_7_INFO(ou, message)
+  }
+}
+
+CLI_PKG ..> TOOLS : trace chaque etape\n(les 5 scripts)
 
 @enduml
