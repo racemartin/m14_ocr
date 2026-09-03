@@ -39,10 +39,26 @@ class YdataProfileur:
         return RapportProfilage(
             nombre_enregistrements=len(dataframe),
             taux_valeurs_manquantes=dataframe.isna().mean().to_dict(),
-            taux_doublons=dataframe.duplicated().mean(),
+            taux_doublons=self._taux_doublons(dataframe),
             longueur_texte_moyenne=self._longueurs_moyennes(dataframe),
             chemin_rapport_detaille=str(chemin_rapport),
         )
+
+    @staticmethod
+    def _taux_doublons(dataframe: pd.DataFrame) -> float:
+        """
+        dataframe.duplicated() leve TypeError("unhashable type: 'list'")
+        des qu'une colonne contient des valeurs non hachables -- ex.
+        `chosen`/`rejected` d'UltraMedical-Preference, qui sont des
+        listes de messages (format chat), et `metadata`, un dict
+        (decouvert le 03/09/2026 sur le corpus reel). On stringifie
+        une copie juste pour cette detection ; le DataFrame original
+        transmis a ProfileReport n'est jamais modifie.
+        """
+        dataframe_hachable = dataframe.map(
+            lambda valeur: str(valeur) if isinstance(valeur, (list, dict)) else valeur
+        )
+        return dataframe_hachable.duplicated().mean()
 
     @staticmethod
     def _longueurs_moyennes(dataframe: pd.DataFrame) -> dict[str, float]:
