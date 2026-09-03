@@ -50,13 +50,18 @@ uv run python interfaces/cli/telecharger_corpus.py --identifiant-hub keivalya/Me
 uv run python interfaces/cli/telecharger_corpus.py --identifiant-hub TsinghuaC3I/UltraMedical-Preference --sortie data/raw/ultramedical_preference.jsonl
 
 # 2. Profilage individuel (un rapport ydata-profiling par corpus)
-uv run python interfaces/cli/profiler_corpus.py --source data/raw/mediqal.jsonl --nom MediQAl
+uv run python interfaces/cli/profiler_corpus.py --source data/raw/mediqal_oeq.jsonl --nom MediQAl-oeq
+uv run python interfaces/cli/profiler_corpus.py --source data/raw/mediqal_mcqu.jsonl --nom MediQAl-mcqu
+uv run python interfaces/cli/profiler_corpus.py --source data/raw/mediqal_mcqm.jsonl --nom MediQAl-mcqm
 uv run python interfaces/cli/profiler_corpus.py --source data/raw/frenchmedmcqa.jsonl --nom FrenchMedMCQA
 uv run python interfaces/cli/profiler_corpus.py --source data/raw/medquad.jsonl --nom MedQuAD
 uv run python interfaces/cli/profiler_corpus.py --source data/raw/ultramedical_preference.jsonl --nom UltraMedicalPreference
 
-# 3. Construction du dataset pivot (meme --sortie : fusionne les 4 corpus par identifiant)
-uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/mediqal.jsonl --corpus mediqal --sortie data/processed/dataset_pivot.jsonl
+# 3. Construction du dataset pivot (meme --sortie : fusionne les corpus par identifiant)
+# NB : seul MediQAl-oeq a un mapper aujourd'hui (schema question/answer).
+# mediqal_mcqu.jsonl et mediqal_mcqm.jsonl (schema QCM) n'ont PAS encore
+# de mapper -- cf. docs/02_etape1_donnees/00_couverture_exigences_officielles.md
+uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/mediqal_oeq.jsonl --corpus mediqal --sortie data/processed/dataset_pivot.jsonl
 uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/frenchmedmcqa.jsonl --corpus frenchmedmcqa --sortie data/processed/dataset_pivot.jsonl
 uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/medquad.jsonl --corpus medquad --sortie data/processed/dataset_pivot.jsonl
 uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/ultramedical_preference.jsonl --corpus ultramedical_preference --sortie data/processed/dataset_pivot.jsonl

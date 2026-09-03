@@ -13,6 +13,20 @@ le profilage (Etape 1, ydata-profiling) execute sur chaque corpus
 reel -- les noms de colonnes ci-dessous sont ceux documentes par les
 fiches Hugging Face des datasets et pourront necessiter un ajustement
 mineur.
+
+NOTE (03/09/2026, confirme sur les fichiers reels telecharges) :
+MediQAl (ANR-MALADES/MediQAl) a 3 configurations sur le Hub, avec
+DEUX schemas differents -- `mapper_mediqal` ci-dessous ne couvre que
+la premiere :
+  - "oeq" (question ouverte)  : champs `question` + `answer`.
+    -> compatible avec `mapper_mediqal`.
+  - "mcqu" (QCM, 1 reponse) et "mcqm" (QCM, reponses multiples,
+    ex. correct_answers="C,D") : champs `question` + `answer_a` a
+    `answer_e` + `correct_answers` + `task` ("QCU"/"QCM") -- PAS de
+    champ `answer`. `mapper_mediqal` retourne None pour chaque
+    enregistrement de ces deux configs (aucune erreur, juste 0 exemple
+    pivot silencieusement perdu). Mapper dedie pour "mcqu"/"mcqm" pas
+    encore ecrit -- cf. docs/02_etape1_donnees/00_couverture_exigences_officielles.md.
 """
 
 from __future__ import annotations
@@ -27,7 +41,15 @@ from chsa_triage.domain.model import (
 
 
 def mapper_mediqal(enregistrement: dict) -> ExemplePivot | None:
-    """Mapping MediQAl (FR) -> ExemplePivot de type SFT."""
+    """
+    Mapping MediQAl (FR) -> ExemplePivot de type SFT.
+
+    Ne couvre que la configuration "oeq" (question ouverte, champs
+    `question`/`answer`). Les configurations "mcqu"/"mcqm" (QCM, champs
+    `answer_a`..`answer_e` + `correct_answers`) n'ont PAS ce champ
+    `answer` -- ce mapper leur renvoie None pour chaque enregistrement,
+    sans erreur. Voir la note de module ci-dessus.
+    """
     question = enregistrement.get("question") or enregistrement.get("query")
     reponse  = enregistrement.get("answer") or enregistrement.get("reponse")
 

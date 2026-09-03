@@ -43,9 +43,9 @@ sur données réelles restant à faire · [A FAIRE] pas encore commencé.
 
 | Exigence officielle | Statut | Où le trouver |
 |---|---|---|
-| Collecter le corpus bilingue | [OUTILLAGE PRET] Pipeline de lecture prêt (fichier local **et** Hugging Face Hub) ; les 4 corpus réels ne sont pas encore téléchargés dans `data/raw/` | `LecteurCorpusFichierLocal`, `LecteurCorpusHuggingFace` ; cahier des charges §5.1 |
+| Collecter le corpus bilingue | [FAIT] Les 4 corpus réels sont téléchargés dans `data/raw/` (`telecharger_corpus.py`), MediQAl en 3 fichiers (voir section dédiée ci-dessous) | `LecteurCorpusFichierLocal`, `LecteurCorpusHuggingFace`, `telecharger_corpus.py` ; cahier des charges §5.1 |
 | Nettoyer et structurer | [OUTILLAGE PRET] `ProfilerCorpusUseCase` + adaptateur `ydata-profiling` **validés par smoke test réel** (voir section dédiée ci-dessous) ; profilage des 4 corpus réels pas encore exécuté | `profiler_corpus.py` ; diagramme d'activité Étape 1 |
-| ≈5 000 paires SFT | [A FAIRE] Mappers écrits pour MediQAl, FrenchMedMCQA, MedQuAD (`mappers_corpus.py`) ; à exécuter une fois les corpus profilés et les noms de colonnes confirmés | `construire_dataset_pivot.py` |
+| ≈5 000 paires SFT | [A FAIRE] Mappers écrits pour FrenchMedMCQA, MedQuAD et MediQAl-oeq (`mappers_corpus.py`) ; **mapper manquant pour MediQAl-mcqu/mcqm** (schéma QCM différent, voir section dédiée) ; à exécuter une fois les corpus profilés | `construire_dataset_pivot.py` |
 | Paires DPO validées cliniquement | [A FAIRE] Mapper technique prêt (`mapper_ultramedical_preference`) ; la validation clinique par un expert est hors du périmètre purement technique et reste à planifier avec le CHSA | même fichier ; objectifs §3.2-3.3 |
 | Anonymisation + documentation RGPD | [OUTILLAGE PRET] Adaptateur `PresidioAnonymiseur` **validé par smoke test réel** (bug de configuration multi-langue découvert et corrigé, cf. section dédiée) ; exécution sur données réelles + rapport de contrôle qualité RGPD restant à produire | `AnonymiserDatasetUseCase` ; cahier des charges NF2 |
 | Schéma de métadonnées | [FAIT] Défini **et implémenté** comme entité de domaine (`ExemplePivot`, `ConstantesVitales`) | `domain/model/exemple_pivot.py` ; cahier des charges §5.2 ; diagramme de paquets Étape 1 |
@@ -99,6 +99,33 @@ cahier des charges : un **contrôle qualité manuel par échantillonnage
 est obligatoire**, l'anonymisation automatique seule ne suffit pas à
 garantir 0 PII résiduelle.
 
+## MediQAl : 3 configurations Hub, 2 schémas différents (03/09/2026)
+
+`ANR-MALADES/MediQAl` expose 3 configurations sur le Hub, téléchargées
+séparément dans `data/raw/` :
+
+| Configuration | Split disponible | Fichier | Schéma réel observé |
+|---|---|---|---|
+| `oeq` (question ouverte) | `test` uniquement (pas de `train`) | `mediqal_oeq.jsonl` | `id`, `clinical_case`, `question`, `answer`, `medical_subject`, `question_type` |
+| `mcqu` (QCM, 1 réponse) | `train`/`validation`/`test` | `mediqal_mcqu.jsonl` | `id`, `clinical_case`, `question`, `answer_a`..`answer_e`, `correct_answers` (1 lettre), `task="QCU"`, `medical_subject`, `question_type` |
+| `mcqm` (QCM, réponses multiples) | `train`/`validation`/`test` | `mediqal_mcqm.jsonl` | identique à `mcqu`, mais `correct_answers` peut contenir plusieurs lettres (ex. `"C,D"`) |
+
+Seul `oeq` a un champ `answer` direct : c'est le seul que
+`mapper_mediqal` (`mappers_corpus.py`) couvre aujourd'hui. `mcqu` et
+`mcqm` ont un schéma QCM (options `answer_a`..`answer_e` +
+`correct_answers`), structurellement proche de FrenchMedMCQA mais pas
+identique (`mapper_frenchmedmcqa` attend un dict `options`, pas des
+champs plats) : il n'existe pas encore de mapper pour ces deux
+configurations. Les exécuter aujourd'hui via `construire_dataset_pivot.py
+--corpus mediqal` ne provoquerait aucune erreur, mais produirait 0
+exemple pivot (le mapper renvoie `None` pour chaque enregistrement,
+faute de champ `answer`).
+
+**Décision restant à prendre** (produit, pas seulement technique) :
+comment traiter le cas `mcqm` à réponses multiples dans le mapper à
+écrire — même traitement que `mcqu` (concaténer les réponses
+correctes) ou traitement distinct ? Non tranché à ce jour.
+
 ### Nouveaux tests ajoutés suite à ce smoke test
 
 - `tests/interfaces/test_mappers_corpus.py` — 8 tests, un mapper par
@@ -110,9 +137,14 @@ garantir 0 PII résiduelle.
 
 
 
-1. Télécharger les 4 corpus réels dans `data/raw/`.
+1. ~~Télécharger les 4 corpus réels dans `data/raw/`.~~ Fait le
+   03/09/2026 (`telecharger_corpus.py`) — MediQAl en 3 fichiers
+   (`oeq`/`mcqu`/`mcqm`, voir section dédiée ci-dessus).
 2. Exécuter `profiler_corpus.py` sur chacun (rapport ydata-profiling).
-3. Ajuster `mappers_corpus.py` aux noms de colonnes réels observés.
+3. Ajuster `mappers_corpus.py` aux noms de colonnes réels observés --
+   **decision produit requise** : écrire le mapper QCM manquant pour
+   `mediqal_mcqu.jsonl`/`mediqal_mcqm.jsonl` (voir section dédiée
+   ci-dessus pour le traitement de `mcqm` à réponses multiples).
 4. Enchaîner `construire_dataset_pivot.py` → `anonymiser_dataset.py` →
    `decouper_splits.py` pour chaque corpus.
 5. Rédiger le rapport de justification RGPD à partir des résultats
