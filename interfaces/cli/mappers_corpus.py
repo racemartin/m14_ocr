@@ -112,11 +112,31 @@ def mapper_medquad(enregistrement: dict) -> ExemplePivot | None:
     )
 
 
+def _extraire_reponse_assistant(messages) -> str | None:
+    """
+    UltraMedical-Preference stocke chosen/rejected au format chat :
+    liste de messages [{"content": ..., "role": "user"|"assistant"},
+    ...], PAS une chaine directe -- confirme sur les 109353
+    enregistrements reels (03/09/2026) : toujours une liste de 2
+    messages, le dernier toujours role="assistant". Ce mapper extrait
+    ce dernier message ; sans cette extraction, `str(messages)`
+    serialise toute la liste (prompt duplique + syntaxe de dict
+    Python) au lieu du texte de la reponse.
+    """
+    if isinstance(messages, str):
+        return messages
+    if isinstance(messages, list) and messages:
+        dernier = messages[-1]
+        if isinstance(dernier, dict):
+            return dernier.get("content")
+    return None
+
+
 def mapper_ultramedical_preference(enregistrement: dict) -> ExemplePivot | None:
     """Mapping UltraMedical-Preference (EN) -> ExemplePivot de type DPO."""
     prompt   = enregistrement.get("prompt") or enregistrement.get("instruction")
-    chosen   = enregistrement.get("chosen")
-    rejected = enregistrement.get("rejected")
+    chosen   = _extraire_reponse_assistant(enregistrement.get("chosen"))
+    rejected = _extraire_reponse_assistant(enregistrement.get("rejected"))
 
     if not prompt or not chosen or not rejected:
         return None

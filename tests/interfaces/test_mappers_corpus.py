@@ -97,3 +97,33 @@ def test_mapper_ultramedical_preference_valide():
 
 def test_mapper_ultramedical_preference_ignore_paire_incomplete():
     assert mapper_ultramedical_preference({"prompt": "Q", "chosen": "R"}) is None
+
+
+def test_mapper_ultramedical_preference_format_chat_reel():
+    """
+    Format REEL du corpus (confirme le 03/09/2026 sur les 109353
+    enregistrements) : chosen/rejected sont des listes de messages
+    [{"content": ..., "role": "user"|"assistant"}], pas des chaines
+    directes. Le mapper doit extraire le dernier message (assistant),
+    pas serialiser toute la liste.
+    """
+    enregistrement = {
+        "prompt": "Explique la fievre a un enfant.",
+        "chosen": [
+            {"content": "Explique la fievre a un enfant.", "role": "user"},
+            {"content": "La fievre est une reaction normale du corps...", "role": "assistant"},
+        ],
+        "rejected": [
+            {"content": "Explique la fievre a un enfant.", "role": "user"},
+            {"content": "Ce n'est pas grave, ignore-la.", "role": "assistant"},
+        ],
+    }
+    exemple = mapper_ultramedical_preference(enregistrement)
+
+    assert exemple is not None
+    assert exemple.chosen[0].contenu == "La fievre est une reaction normale du corps..."
+    assert exemple.rejected[0].contenu == "Ce n'est pas grave, ignore-la."
+    # Le prompt duplique en tete de la liste chosen/rejected ne doit pas
+    # se retrouver dans le contenu du message pivot.
+    assert "role" not in exemple.chosen[0].contenu
+    assert "Explique la fievre a un enfant." not in exemple.chosen[0].contenu
