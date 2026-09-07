@@ -27,8 +27,8 @@ class StatistiquesSource:
     """
 
     registres_traites      : int = 0
-    registres_avec_entite   : int = 0
-    entites_par_type         : dict[str, int] = field(default_factory=dict)
+    registres_avec_entite  : int = 0
+    entites_par_type       : dict[str, int] = field(default_factory=dict)
 
 
 @dataclass(slots=True)
@@ -42,8 +42,8 @@ class AnonymiserDatasetUseCase:
     (`--limite`) sans jamais refaire le travail deja fait.
     """
 
-    repository        : RepositoryLectureEcriture
-    anonymiseur        : Anonymiseur
+    repository          : RepositoryLectureEcriture
+    anonymiseur         : Anonymiseur
     limite              : int | None = None
     graine_aleatoire    : int = 42
     statistiques        : dict[str, StatistiquesSource] = field(default_factory=dict, init=False)
