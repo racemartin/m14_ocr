@@ -50,7 +50,7 @@ def _parser_limite(valeur: str) -> int | None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--dataset", required=True, help="Chemin du fichier pivot JSONL")
+    parser.add_argument("--dataset",   required=True,     help="Chemin du fichier pivot JSONL")
     parser.add_argument("--strategie", default="replace", choices=["replace", "mask", "redact"])
     parser.add_argument(
         "--limite",

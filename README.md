@@ -36,10 +36,13 @@ uv run python scripts/check_env_local.py
 
 # Tests
 uv run pytest tests/ -v
+```
 
-# Pipeline Étape 1 (les 4 corpus, fusionnes dans le meme dataset pivot)
+## Pipeline Étape 1 (les 6 fichiers sources, fusionnes dans le meme dataset pivot)
 
-# 1. Telechargement (Hugging Face Hub -> data/raw/)
+### 1. Telechargement (Hugging Face Hub -> data/raw/)
+
+```bash
 # NB : la configuration "oeq" de MediQAl n'a qu'un split "test" (pas de "train") -- --split explicite requis
 uv run python interfaces/cli/telecharger_corpus.py --identifiant-hub ANR-MALADES/MediQAl --configuration oeq --split test --sortie data/raw/mediqal_oeq.jsonl
 uv run python interfaces/cli/telecharger_corpus.py --identifiant-hub ANR-MALADES/MediQAl --configuration mcqu --sortie data/raw/mediqal_mcqu.jsonl
@@ -48,8 +51,11 @@ uv run python interfaces/cli/telecharger_corpus.py --identifiant-hub ANR-MALADES
 uv run python interfaces/cli/telecharger_corpus.py --identifiant-hub nthngdy/frenchmedmcqa      --sortie data/raw/frenchmedmcqa.jsonl
 uv run python interfaces/cli/telecharger_corpus.py --identifiant-hub keivalya/MedQuad-MedicalQnADataset  --sortie data/raw/medquad.jsonl
 uv run python interfaces/cli/telecharger_corpus.py --identifiant-hub TsinghuaC3I/UltraMedical-Preference --sortie data/raw/ultramedical_preference.jsonl
+```
 
-# 2. Profilage individuel (un rapport ydata-profiling par corpus)
+### 2. Profilage individuel (un rapport ydata-profiling par corpus)
+
+```bash
 uv run python interfaces/cli/profiler_corpus.py --source data/raw/mediqal_oeq.jsonl   --nom MediQAl-oeq
 uv run python interfaces/cli/profiler_corpus.py --source data/raw/mediqal_mcqu.jsonl  --nom MediQAl-mcqu
 uv run python interfaces/cli/profiler_corpus.py --source data/raw/mediqal_mcqm.jsonl  --nom MediQAl-mcqm
@@ -57,8 +63,11 @@ uv run python interfaces/cli/profiler_corpus.py --source data/raw/mediqal_mcqm.j
 uv run python interfaces/cli/profiler_corpus.py --source data/raw/frenchmedmcqa.jsonl           --nom FrenchMedMCQA
 uv run python interfaces/cli/profiler_corpus.py --source data/raw/medquad.jsonl                 --nom MedQuAD
 uv run python interfaces/cli/profiler_corpus.py --source data/raw/ultramedical_preference.jsonl --nom UltraMedicalPreference
+```
 
-# 3. Construction du dataset pivot (meme --sortie : fusionne les corpus par identifiant)
+### 3. Construction du dataset pivot (meme --sortie : fusionne les corpus par identifiant)
+
+```bash
 # NB : MediQAl a 3 configurations, avec 2 schemas differents -- le
 # mapper (donc la valeur --corpus) depend du schema, pas seulement de
 # la source Hub. "oeq" (question/answer) -> mapper_mediqal ;
@@ -74,16 +83,36 @@ uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/mediq
 uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/frenchmedmcqa.jsonl --corpus frenchmedmcqa --sortie data/processed/dataset_pivot.jsonl
 uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/medquad.jsonl --corpus medquad --sortie data/processed/dataset_pivot.jsonl
 uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/ultramedical_preference.jsonl --corpus ultramedical_preference --sortie data/processed/dataset_pivot.jsonl --taille-bloc 5000
+```
 
-# 4. Anonymisation (incrementale/reprenable, cf. --limite) et decoupage en splits
+Resultat reel (07/09/2026, execution complete sur les 6 fichiers) :
+
+| Source | Corpus | Enregistrements Écrits | Exemples Pivot Écrits |
+| --- | --- | --- | --- |
+| `data/raw/mediqal_oeq.jsonl` | `mediqal_oeq` | 4 969 | 4 969 |
+| `data/raw/mediqal_mcqu.jsonl` | `mediqal_mcqu` | 10 113 | 10 113 |
+| `data/raw/mediqal_mcqm.jsonl` | `mediqal_mcqm` | 5 767 | 5 767 |
+| `data/raw/frenchmedmcqa.jsonl` | `frenchmedmcqa` | 595 | 595 |
+| `data/raw/medquad.jsonl` | `medquad` | 16 407 | 16 407 |
+| `data/raw/ultramedical_preference.jsonl` | `ultramedical_preference` | 109 353 | 109 353 |
+| **TOTAL** | — | — | **147 204** |
+
+### 4. Anonymisation (incrementale/reprenable, cf. --limite)
+
+```bash
 # NB : anonymisation complete du dataset (147204 exemples) mesuree a
 # ~19h (cout NLP Presidio/spaCy) -- --limite (defaut 5000, l'objectif
 # chiffre de la mission) anonymise un echantillon stratifie par
 # (type_exemple, source) parmi les exemples encore anonymise=False ;
 # le reste attend un appel ulterieur avec un N plus grand ou "full".
+uv run python interfaces/cli/anonymiser_dataset.py --dataset data/processed/dataset_pivot.jsonl --strategie replace --limite 5000
+```
+
+### 5. Decoupage en splits (train / val / test, stratifie)
+
+```bash
 # decouper_splits.py ne decoupe que les exemples deja anonymises --
 # le relancer apres chaque nouvelle vague d'anonymisation.
-uv run python interfaces/cli/anonymiser_dataset.py --dataset data/processed/dataset_pivot.jsonl --strategie replace --limite 5000
 uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset_pivot.jsonl
 
 # --n (optionnel) : pour obtenir un dataset d'entrainement de taille N
@@ -96,8 +125,11 @@ uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset
 # reparti) -- un avertissement est trace via LogTool si N depasse le
 # disponible, sans erreur.
 uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset_pivot.jsonl --n 5000
+```
 
-# 5. Verification de la repartition des splits par strate
+### 6. Verification de la repartition des splits par strate
+
+```bash
 # decouper_splits.py n'affiche que le total global (train/val/test).
 # verifier_repartition_splits.py relit le dataset pivot deja reparti
 # et affiche, pour chaque strate (type_exemple, source), le decompte

@@ -41,6 +41,15 @@ def mapper_mediqal(enregistrement: dict) -> ExemplePivot | None:
     """
     Mapping MediQAl (FR) -> ExemplePivot de type SFT.
 
+    mediqal_oeq.jsonl
+    • id
+    • clinical_case
+    • cc_question_number
+    • question
+    • answer
+    • medical_subject
+    • question_type
+
     Ne couvre que la configuration "oeq" (question ouverte, champs
     `question`/`answer`). Les configurations "mcqu"/"mcqm" (QCM, champs
     `answer_a`..`answer_e` + `correct_answers`) n'ont PAS ce champ
@@ -48,7 +57,7 @@ def mapper_mediqal(enregistrement: dict) -> ExemplePivot | None:
     note de module ci-dessus.
     """
     question = enregistrement.get("question") or enregistrement.get("query")
-    reponse  = enregistrement.get("answer") or enregistrement.get("reponse")
+    reponse  = enregistrement.get("answer")   or enregistrement.get("reponse")
 
     if not question or not reponse:
         return None
@@ -72,6 +81,34 @@ def mapper_mediqal_qcm(enregistrement: dict) -> ExemplePivot | None:
     """
     Mapping MediQAl "mcqu"/"mcqm" (FR, QCM 1 ou plusieurs reponses)
     -> ExemplePivot de type SFT.
+
+    mediqal_mcqu.jsonl
+    • id
+    • clinical_case
+    • question
+    • answer_a
+    • answer_b
+    • answer_c
+    • answer_d
+    • answer_e
+    • correct_answers
+    • task
+    • medical_subject
+    • question_type
+
+    mediqal_mcqm.jsonl
+    • id
+    • clinical_case
+    • question
+    • answer_a
+    • answer_b
+    • answer_c
+    • answer_d
+    • answer_e
+    • correct_answers
+    • task
+    • medical_subject
+    • question_type
 
     Traitement simple decide par le capitaine (identique a
     `mapper_medquad`) : pas de liste d'options dans le prompt.
@@ -126,6 +163,17 @@ def mapper_frenchmedmcqa(enregistrement: dict) -> ExemplePivot | None:
     """
     Mapping FrenchMedMCQA (FR, QCM) -> ExemplePivot de type SFT.
 
+    frenchmedmcqa.jsonl
+    • id
+    • question
+    • answer_a
+    • answer_b
+    • answer_c
+    • answer_d
+    • answer_e
+    • correct_answers
+    • number_correct_answers
+
     Schema reel (confirme sur nthngdy/frenchmedmcqa, les 3 splits,
     1080 enregistrements, 07/09/2026) : champs plats `answer_a` a
     `answer_e` (PAS de champ `options`), `correct_answers` (entier,
@@ -176,7 +224,12 @@ def mapper_frenchmedmcqa(enregistrement: dict) -> ExemplePivot | None:
 
 
 def mapper_medquad(enregistrement: dict) -> ExemplePivot | None:
-    """Mapping MedQuAD (EN) -> ExemplePivot de type SFT."""
+    """Mapping MedQuAD (EN) -> ExemplePivot de type SFT.
+    * medquad.jsonl
+    • focus
+    • question
+    • answer
+    """
     question = enregistrement.get("Question") or enregistrement.get("question")
     reponse  = enregistrement.get("Answer") or enregistrement.get("answer")
 
@@ -216,7 +269,32 @@ def _extraire_reponse_assistant(messages) -> str | None:
 
 
 def mapper_ultramedical_preference(enregistrement: dict) -> ExemplePivot | None:
-    """Mapping UltraMedical-Preference (EN) -> ExemplePivot de type DPO."""
+    """Mapping UltraMedical-Preference (EN) -> ExemplePivot de type DPO.
+    
+    ultramedical_preference.jsonl
+    • prompt_id
+    • label_type
+    • prompt
+    • chosen
+        • role
+        • content
+    • rejected
+        • role
+        • content
+    • messages
+        • role
+        • content
+    • metadata
+        • golden_answer
+        • chosen_model
+        • score
+        • evaluation
+        • rejected_model
+        • score
+        • evaluation
+        • feedback
+    
+    """
     prompt   = enregistrement.get("prompt") or enregistrement.get("instruction")
     chosen   = _extraire_reponse_assistant(enregistrement.get("chosen"))
     rejected = _extraire_reponse_assistant(enregistrement.get("rejected"))
