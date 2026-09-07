@@ -75,8 +75,15 @@ uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/frenc
 uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/medquad.jsonl --corpus medquad --sortie data/processed/dataset_pivot.jsonl
 uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/ultramedical_preference.jsonl --corpus ultramedical_preference --sortie data/processed/dataset_pivot.jsonl --taille-bloc 5000
 
-# 4. Anonymisation et decoupage en splits (une seule fois, sur le dataset pivot fusionne)
-uv run python interfaces/cli/anonymiser_dataset.py --dataset data/processed/dataset_pivot.jsonl --strategie replace
+# 4. Anonymisation (incrementale/reprenable, cf. --limite) et decoupage en splits
+# NB : anonymisation complete du dataset (147204 exemples) mesuree a
+# ~19h (cout NLP Presidio/spaCy) -- --limite (defaut 5000, l'objectif
+# chiffre de la mission) anonymise un echantillon stratifie par
+# (type_exemple, source) parmi les exemples encore anonymise=False ;
+# le reste attend un appel ulterieur avec un N plus grand ou "full".
+# decouper_splits.py ne decoupe que les exemples deja anonymises --
+# le relancer apres chaque nouvelle vague d'anonymisation.
+uv run python interfaces/cli/anonymiser_dataset.py --dataset data/processed/dataset_pivot.jsonl --strategie replace --limite 5000
 uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset_pivot.jsonl
 ```
 
@@ -98,12 +105,20 @@ Détail complet : `docs/01_environnement/01_architecture_hexagonale.md`.
 
 - [x] Étape 0 — Cadrage, environnement, architecture
 - [ ] Étape 1 — Préparation des données : dataset pivot construit sur
-      les 6 fichiers réels (147 204 exemples, 0 rejet -- voir
-      `docs/02_etape1_donnees/00_couverture_exigences_officielles.md`) ;
-      anonymisation + découpage en splits restant à exécuter sur ce
-      dataset réel (decision produit en attente sur la durée
-      d'exécution, ~19h estimées avec la configuration Presidio
-      actuelle)
+      les 6 fichiers réels (147 204 exemples, 0 rejet) ; anonymisation
+      complète mesurée à ~19h (coût NLP Presidio/spaCy) -- rendue
+      incrémentale/reprenable via `--limite` (échantillonnage
+      stratifié par type_exemple+source, champ `anonymise` déjà
+      présent sur `ExemplePivot`) ; **première vague exécutée
+      (5 000/147 204 exemples anonymisés et découpés en splits,
+      atteignant l'objectif chiffré de la mission)**, 142 204 exemples
+      restants pour des vagues ultérieures — voir
+      `docs/02_etape1_donnees/00_couverture_exigences_officielles.md`.
+      **Vagues ultérieures** : à relancer avec `--limite` plus grand
+      (ou `full`) avant le SFT/DPO ; réévaluer d'abord le risque de
+      saturation/surapprentissage d'un entraînement sur un
+      sous-échantillon trop petit face au dataset complet (à étudier
+      à ce moment-là, pas tranché ici)
 - [ ] Étape 2 — SFT + LoRA
 - [ ] Étape 3 — DPO
 - [ ] Étape 4 — Déploiement (FastAPI + Streamlit + vLLM + CI/CD)

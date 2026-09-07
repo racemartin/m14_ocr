@@ -47,9 +47,9 @@ sur données réelles restant à faire · [A FAIRE] pas encore commencé.
 | Nettoyer et structurer | [FAIT] `ProfilerCorpusUseCase` + adaptateur `ydata-profiling` **validés par smoke test réel** (voir section dédiée ci-dessous) ; les 6 fichiers réels sont profilés (`data/processed/rapports_profilage/`), y compris `ultramedical_preference.jsonl` (966 Mo) via l'option `--bloque` | `profiler_corpus.py` ; diagramme d'activité Étape 1 |
 | ≈5 000 paires SFT | [FAIT] (07/09/2026) Les 5 fichiers SFT (MediQAl-oeq/mcqu/mcqm, FrenchMedMCQA, MedQuAD) sont mappés et fusionnés dans `data/processed/dataset_pivot.jsonl` : **37 851 exemples SFT réels, 0 enregistrement rejeté**, largement au-dessus des ≈5 000 attendus (voir section dédiée ci-dessous pour le détail par source) | `construire_dataset_pivot.py`, `mappers_corpus.py` |
 | Paires DPO validées cliniquement | [OUTILLAGE PRET] Mapper technique prêt **et corrigé** (`mapper_ultramedical_preference` extrayait mal chosen/rejected, voir section dédiée) et exécuté sur données réelles (07/09/2026) : **109 353 paires DPO réelles, 0 rejet** ; la validation clinique par un expert est hors du périmètre purement technique et reste à planifier avec le CHSA | même fichier ; objectifs §3.2-3.3 |
-| Anonymisation + documentation RGPD | [OUTILLAGE PRET] Adaptateur `PresidioAnonymiseur` **validé par smoke test réel** (bug de configuration multi-langue découvert et corrigé, cf. section dédiée) ; bug de performance O(n²) réel découvert et corrigé dans `AnonymiserDatasetUseCase` (voir section dédiée) ; **exécution complète sur les 147 204 exemples réels non lancée à ce jour, decision produit en attente** (durée estimée mesurée ~19h avec la configuration Presidio actuelle, voir section dédiée) ; rapport de contrôle qualité RGPD toujours à produire une fois l'anonymisation exécutée | `AnonymiserDatasetUseCase` ; cahier des charges NF2 |
+| Anonymisation + documentation RGPD | [OUTILLAGE PRET] Adaptateur `PresidioAnonymiseur` **validé par smoke test réel** (bug de configuration multi-langue découvert et corrigé, cf. section dédiée) ; bug de performance O(n²) corrigé dans `AnonymiserDatasetUseCase` ; processus rendu incrémental/reprenable (`--limite`, échantillonnage stratifié) suite à la mesure réelle (~19h pour le dataset complet) ; **première vague exécutée sur données réelles (08/09/2026) : 5 000/147 204 exemples anonymisés**, 142 204 restants prêts pour une vague ultérieure (voir section dédiée) ; rapport de contrôle qualité RGPD toujours à produire | `AnonymiserDatasetUseCase` ; cahier des charges NF2 |
 | Schéma de métadonnées | [FAIT] Défini **et implémenté** comme entité de domaine (`ExemplePivot`, `ConstantesVitales`) | `domain/model/exemple_pivot.py` ; cahier des charges §5.2 ; diagramme de paquets Étape 1 |
-| Splits train / val / test + éval clinique isolée | [OUTILLAGE PRET] `DecouperSplitsUseCase` implémenté et testé ; exécution sur le dataset pivot réel en attente de la décision d'anonymisation ci-dessus (le pipeline documenté anonymise avant de découper) | `decouper_splits.py` ; `tests/application/` |
+| Splits train / val / test + éval clinique isolée | [OUTILLAGE PRET] `DecouperSplitsUseCase` implémenté et testé, découpage désormais stratifié par (type_exemple, source) ; **exécuté sur les 5 000 exemples anonymisés de la première vague (08/09/2026)** : 4 004 train / 498 val / 498 test ; à relancer après chaque vague d'anonymisation supplémentaire | `decouper_splits.py` ; `tests/application/` |
 
 ## Couverture des prérequis
 
@@ -62,9 +62,9 @@ sur données réelles restant à faire · [A FAIRE] pas encore commencé.
 
 | Résultat attendu | Statut |
 |---|---|
-| Dataset bilingue anonymisé et versionné (≈5 000 paires SFT + jeu DPO) | [OUTILLAGE PRET] Dataset pivot réel construit et fusionné (147 204 exemples, 37 851 SFT + 109 353 DPO, 0 rejet) ; **anonymisation et découpage en splits restent à exécuter**, decision produit en attente (voir section dédiée) |
+| Dataset bilingue anonymisé et versionné (≈5 000 paires SFT + jeu DPO) | [OUTILLAGE PRET] Dataset pivot réel construit et fusionné (147 204 exemples, 37 851 SFT + 109 353 DPO, 0 rejet) ; **5 000 exemples anonymisés et découpés en splits (première vague, 08/09/2026)**, atteignant l'objectif chiffré ≈5 000 de la mission ; 142 204 exemples restants prêts pour des vagues ultérieures (voir section dédiée) |
 | Schéma des métadonnées | [FAIT] Livré (voir ci-dessus) |
-| Justification du processus RGPD suivi | [OUTILLAGE PRET] Stratégie et outillage documentés (Presidio, 3 stratégies comparées) ; anonymisation elle-même pas encore exécutée sur le dataset réel (voir section dédiée) ; le rapport de justification final (taux de détection, contrôle qualité manuel) reste hors périmètre de cette session, à rédiger une fois l'anonymisation exécutée |
+| Justification du processus RGPD suivi | [OUTILLAGE PRET] Stratégie et outillage documentés (Presidio, 3 stratégies comparées) ; anonymisation exécutée sur un premier échantillon stratifié réel de 5 000 exemples (voir section dédiée) ; le rapport de justification final (taux de détection, contrôle qualité manuel) reste hors périmètre de cette session |
 
 ## Validation technique effectuée (smoke test d'intégration, 02/09/2026)
 
@@ -191,10 +191,15 @@ dernier message de la liste.
 4. ~~Construire le dataset pivot fusionné sur les 6 fichiers réels.~~
    Fait le 07/09/2026 : 147 204 exemples, 0 rejet (voir section
    dédiée ci-dessous).
-5. **Anonymiser le dataset pivot réel et le découper en splits** —
-   bloqué sur une decision produit (durée d'exécution mesurée ~19h
-   avec la configuration Presidio actuelle sur 147 204 exemples, voir
-   section dédiée ci-dessous). Pas encore exécuté.
+5. ~~Anonymiser le dataset pivot réel et le découper en splits.~~
+   Décision produit appliquée le 08/09/2026 : processus incrémental
+   via `--limite` (échantillonnage stratifié), première vague de
+   5 000 exemples anonymisés et découpés en splits (voir section
+   dédiée ci-dessus). **142 204 exemples restants** — relancer
+   `anonymiser_dataset.py --limite N` (N plus grand, ou `full`) puis
+   `decouper_splits.py` pour les vagues suivantes, en évaluant avant
+   chaque vague le risque de saturation/surapprentissage sur un
+   sous-échantillon donné (cf. README, tableau d'avancement).
 6. Rédiger le rapport de justification RGPD à partir des résultats
    réels d'anonymisation (hors périmètre de cette session).
 
@@ -269,7 +274,7 @@ documenté côté `profiler_corpus.py --bloque`, mais pas encore côté
 taille du bloc). Utilisée avec succès (`--taille-bloc 5000`) pour
 produire les 109 353 exemples DPO ci-dessus sans OOM.
 
-## Anonymisation réelle : bug de performance O(n²) corrigé, exécution complète bloquée sur decision produit (07/09/2026)
+## Anonymisation réelle : bug de performance O(n²) corrigé, decision produit appliquée, premiere vague exécutée (07-08/09/2026)
 
 En préparant l'exécution de `anonymiser_dataset.py` sur le dataset
 pivot réel (147 204 exemples, 624 Mo), un second bug d'infrastructure
@@ -302,12 +307,47 @@ réels du dataset pivot (`AnalyzerEngine.analyze` par champ,
 | UltraMedical-Preference (EN, long, 2 x ~5000 car./enreg.) | ~548 ms | 109 353 | **~16h40** |
 | **Total estimé** | | **147 204** | **~18h50** |
 
-**Décision produit en attente (`needs-decision` ouvert)** : exécuter
-l'anonymisation complète en tâche de fond sur ~19h, anonymiser un
-échantillon représentatif seulement pour ce POC, ou optimiser le
-pipeline Presidio (traitement par lot `nlp.pipe`, modèles plus légers,
-restriction des recognizers) avant l'exécution complète. Tant que
-cette décision n'est pas prise, `anonymiser_dataset.py` et
-`decouper_splits.py` ne sont pas exécutés sur le dataset réel — le
-fichier `data/processed/dataset_pivot.jsonl` produit dans cette
-session contient les 147 204 exemples **non anonymisés**.
+**Décision produit (08/09/2026, capitaine)** : ne pas trancher une
+fois pour toutes entre « échantillon » et « dataset complet ». Le
+champ `ExemplePivot.anonymise` (deja présent dans le schéma pivot)
+rend le processus nativement **incrémental et reprenable** :
+`AnonymiserDatasetUseCase` ne retraite jamais un exemple déjà
+`anonymise=True`. Un nouveau flag `--limite N` sur
+`anonymiser_dataset.py` (défaut **5000**, l'objectif chiffré de la
+mission) anonymise à chaque appel un **échantillon stratifié** par
+`(type_exemple, source)` de taille `N` parmi les exemples encore
+`anonymise=False` (méthode du plus grand reste pour les quotas par
+strate, tirage aléatoire seedé et reproductible) ; le reste du
+dataset n'est pas touché et attend un appel ultérieur avec un `N` plus
+grand ou `--limite full` (aucune limite). `decouper_splits.py` a été
+mis à jour en cohérence : découpage **stratifié** par
+`(type_exemple, source)` plutôt qu'un shuffle global (une petite
+source comme FrenchMedMCQA aurait pu se retrouver totalement absente
+de train ou de test face à UltraMedical-Preference, ~180x plus
+grande), et le même bug O(n²) corrigé (`sauvegarder_plusieurs` au lieu
+de `sauvegarder` par itération).
+
+**Première vague exécutée sur le dataset réel (08/09/2026)** :
+`anonymiser_dataset.py --limite 5000` (durée réelle mesurée :
+**36 min 26 s**, cohérente avec l'estimation), puis
+`decouper_splits.py` sur les 5 000 exemples désormais anonymisés :
+
+| Source | Anonymisés (sur cette vague) | Restants (`anonymise=False`) | Répartition split (train/val/test) |
+|---|---:|---:|---|
+| MediQAl (oeq+mcqu+mcqm confondus, même `source`) | 708 | 20 141 | 568/70/70 |
+| FrenchMedMCQA | 20 | 575 | 16/2/2 |
+| MedQuAD | 557 | 15 850 | 447/55/55 |
+| UltraMedical-Preference | 3 715 | 105 638 | 2 973/371/371 |
+| **Total** | **5 000** | **142 204** | **4 004/498/498** |
+
+Chaque quota est proportionnel au poids réel de la source dans le
+dataset (ex. MediQAl : 20 849/147 204 × 5 000 ≈ 708 ✓), et chaque
+`(type_exemple, source)` est bien représenté dans train **et** val
+**et** test, y compris la plus petite strate (FrenchMedMCQA, 20
+exemples anonymisés). Le reste du dataset (142 204 exemples,
+`anonymise=False`) est prêt à être traité par vagues ultérieures
+(`--limite` plus grand, ou `full`) sans jamais retraiter ce qui est
+déjà fait — décision explicitement laissée ouverte sur *quand* et
+*avec quel N* lancer la vague suivante (à réévaluer avant le SFT/DPO
+en fonction du risque de saturation/surapprentissage sur un
+sous-échantillon trop petit, cf. § dédiée dans le README).

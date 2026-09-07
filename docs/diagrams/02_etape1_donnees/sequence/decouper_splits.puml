@@ -30,24 +30,50 @@ activate UC
 
 UC -> Repo : lister(filtre={anonymise: True})
 activate Repo
-Repo --> UC : Iterator[ExemplePivot] (anonymises)
+Repo --> UC : list[ExemplePivot] (anonymises)
 deactivate Repo
 
-UC -> UC : random.Random(graine).shuffle(exemples)
+UC -> UC : groupe par (type_exemple, source)
 note right of UC
-  Melange deterministe (graine fixe) :
-  reproductible d'une execution a l'autre
+  08/09/2026 : decoupage stratifie, plus
+  un shuffle global. Un shuffle pur
+  sous-representerait les petites sources
+  (ex. FrenchMedMCQA) dans test/val face
+  aux grandes (ex. UltraMedical-Preference,
+  ~180x plus grande) -- chaque strate est
+  decoupee independamment selon les memes
+  proportions, garantissant train/val/test
+  representatifs de toutes les (type_exemple,
+  source).
 end note
 
-UC -> UC : calcule n_test = n_total * proportion_test\ncalcule n_val = n_total * proportion_val
+loop pour chaque strate (type_exemple, source), triee
+  UC -> UC : random.Random(graine).shuffle(strate)
+  note right of UC
+    Melange deterministe (graine fixe) :
+    reproductible d'une execution a l'autre
+  end note
+  UC -> UC : calcule n_test = n_strate * proportion_test\ncalcule n_val = n_strate * proportion_val
 
-loop pour chaque exemple (ordre melange)
-  UC -> UC : assigne TEST_CLINIQUE, VALIDATION\nou TRAIN selon la position
-  UC -> Repo : sauvegarder(exemple_avec_split)
-  activate Repo
-  Repo -> Repo : reecrit le fichier JSONL\n(fusion par identifiant)
-  deactivate Repo
+  loop pour chaque exemple de la strate (ordre melange)
+    UC -> UC : assigne TEST_CLINIQUE, VALIDATION\nou TRAIN selon la position\najoute a exemples_avec_split
+  end
 end
+
+UC -> Repo : sauvegarder_plusieurs(exemples_avec_split)
+activate Repo
+note right of Repo
+  08/09/2026 : meme bug O(n^2) corrige que
+  dans AnonymiserDatasetUseCase --
+  sauvegarder() par iteration relisait/
+  reecrivait tout le fichier JSONL a
+  chaque exemple. sauvegarder_plusieurs
+  fait la fusion par identifiant en une
+  seule lecture/ecriture.
+end note
+Repo -> Repo : lit le fichier JSONL, fusionne\npar identifiant, reecrit une seule fois
+Repo --> UC : (écriture terminée)
+deactivate Repo
 
 note over UC
   Point de vigilance mission (cahier des charges) :

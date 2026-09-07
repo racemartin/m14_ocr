@@ -20,22 +20,55 @@ end box
 
 autonumber "<b>0."
 
-Dev -> CLI : uv run python anonymiser_dataset.py\n~-~-dataset ... ~-~-strategie replace|mask|redact
+Dev -> CLI : uv run python anonymiser_dataset.py\n~-~-dataset ... ~-~-strategie replace|mask|redact\n~-~-limite 5000|full
 activate CLI
+
+note right of CLI
+  ~-~-limite (08/09/2026, decision produit) :
+  mesure reelle sur les 147204 exemples du
+  dataset pivot -> anonymisation complete
+  ~19h (cout NLP Presidio/spaCy, pas I/O).
+  Plutot que choisir entre "echantillon"
+  et "complet", le champ ExemplePivot.anonymise
+  rend le processus incremental/reprenable :
+  chaque appel traite au plus ~-~-limite
+  exemples parmi ceux encore anonymise=False,
+  le reste attend un appel ulterieur.
+end note
 
 CLI -> Repo : new(chemin_dataset)
 CLI -> Anonymiseur : new(strategie)
-CLI -> UC : new(repository, anonymiseur)
+CLI -> UC : new(repository, anonymiseur, limite)
 
 CLI -> UC : executer()
 activate UC
 
 UC -> Repo : lister(filtre={anonymise: False})
 activate Repo
-Repo --> UC : Iterator[ExemplePivot] (non anonymises)
+Repo --> UC : list[ExemplePivot] (candidats non anonymises)
 deactivate Repo
 
-loop pour chaque ExemplePivot non anonymise
+alt limite is None (full) ou limite >= len(candidats)
+  UC -> UC : a_traiter = candidats (tous)
+else limite < len(candidats)
+  UC -> UC : _echantillon_stratifie(candidats, limite)
+  note right of UC
+    Groupe par (type_exemple, source),
+    quota proportionnel par strate
+    (methode du plus grand reste),
+    tirage aleatoire seede par strate
+    (graine_aleatoire). Garantit que
+    chaque (type_exemple, source) est
+    represente dans l'echantillon, meme
+    quand les strates ont des tailles
+    tres differentes (ex. FrenchMedMCQA,
+    595, vs UltraMedical-Preference,
+    109353).
+  end note
+  UC --> UC : a_traiter (sous-echantillon)
+end
+
+loop pour chaque ExemplePivot de a_traiter
   UC -> UC : _anonymiser_exemple(exemple)
   activate UC
   UC -> Anonymiseur : anonymiser(symptomes, langue)
@@ -49,17 +82,31 @@ loop pour chaque ExemplePivot non anonymise
     ExemplePivot immuable, anonymise=True
   end note
   deactivate UC
-
-  UC -> Repo : sauvegarder(exemple_anonymise)
-  activate Repo
-  Repo -> Repo : reecrit le fichier JSONL\n(fusion par identifiant)
-  deactivate Repo
+  UC -> UC : ajoute exemple_anonymise a la liste
 end
+
+UC -> Repo : sauvegarder_plusieurs(exemples_anonymises)
+activate Repo
+note right of Repo
+  07/09/2026 : bug O(n^2) corrige --
+  sauvegarder() par iteration relisait/
+  reecrivait tout le fichier JSONL a
+  CHAQUE exemple (infaisable sur 147204
+  exemples/624 Mo). sauvegarder_plusieurs
+  fait la meme fusion par identifiant en
+  une seule lecture/ecriture. Les exemples
+  non selectionnes par ~-~-limite restent
+  inchanges (anonymise=False) dans le
+  fichier, prets pour un appel ulterieur.
+end note
+Repo -> Repo : lit le fichier JSONL, fusionne\npar identifiant, reecrit une seule fois
+Repo --> UC : (écriture terminée)
+deactivate Repo
 
 UC --> CLI : nombre_traites
 deactivate UC
 
-CLI --> Dev : "N exemples anonymises (strategie=...)"
+CLI --> Dev : "N exemples anonymises (strategie=..., limite=...)"
 deactivate CLI
 
 @enduml

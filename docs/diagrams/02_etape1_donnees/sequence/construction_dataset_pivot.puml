@@ -20,27 +20,49 @@ end box
 
 autonumber "<b>0."
 
-Dev -> CLI : uv run python construire_dataset_pivot.py\n~-~-source ... ~-~-corpus mediqal ~-~-sortie ...
+Dev -> CLI : uv run python construire_dataset_pivot.py\n~-~-source mediqal_mcqu.jsonl ~-~-corpus mediqal_mcqu\n~-~-sortie ... [~-~-taille-bloc 5000]
 activate CLI
 
-CLI -> Lecteur : new(chemin_source)
+note right of CLI
+  ~-~-corpus selectionne le mapper dans
+  MAPPERS_PAR_CORPUS : "mediqal_oeq" ->
+  mapper_mediqal, "mediqal_mcqu"/"mediqal_mcqm"
+  -> mapper_mediqal_qcm (schema QCM,
+  clinical_case + answer_a..e +
+  correct_answers), "frenchmedmcqa" ->
+  mapper_frenchmedmcqa, etc. MediQAl a
+  3 fichiers/schemas -- une seule cle
+  "mediqal" ne suffit plus.
+end note
+CLI -> CLI : mapper = MAPPERS_PAR_CORPUS[corpus]
+
+CLI -> Lecteur : new(chemin_source, taille_bloc)
+note right of Lecteur
+  ~-~-taille-bloc N (07/09/2026) : lecture
+  pandas par blocs de N lignes plutot
+  que tout le fichier source d'un coup.
+  Requis sur ultramedical_preference.jsonl
+  (966 Mo, 109353 enregistrements) --
+  OOM reel confirme sans cette option
+  sur 5.8 Go de RAM disponibles.
+end note
 CLI -> Repo : new(chemin_sortie)
 CLI -> UC : new(lecteur, repository)
 
-CLI -> UC : executer(mapper_mediqal)
+CLI -> UC : executer(mapper)
 activate UC
 
 UC -> Lecteur : lire_enregistrements()
 activate Lecteur
-Lecteur --> UC : Iterator[dict] (enregistrements bruts)
+Lecteur --> UC : Iterator[dict]\n(par blocs de taille_bloc si fourni,\nsinon tout le fichier d'un coup)
 deactivate Lecteur
 
 loop pour chaque enregistrement brut
-  UC -> UC : mapper_mediqal(enregistrement)
+  UC -> UC : mapper(enregistrement)
   note right of UC
     Le use case ne connaît pas la
-    structure de MediQAl : le mapper
-    est injecté par interfaces/cli
+    structure du corpus source : le
+    mapper est injecté par interfaces/cli
   end note
 
   alt enregistrement valide
