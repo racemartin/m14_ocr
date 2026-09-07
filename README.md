@@ -64,12 +64,16 @@ uv run python interfaces/cli/profiler_corpus.py --source data/raw/ultramedical_p
 # la source Hub. "oeq" (question/answer) -> mapper_mediqal ;
 # "mcqu"/"mcqm" (QCM, answer_a..answer_e + correct_answers) ->
 # mapper_mediqal_qcm. Voir interfaces/cli/mappers_corpus.py.
+# NB : --taille-bloc requis sur ultramedical_preference.jsonl (966 Mo,
+# 109353 enregistrements) -- sans lecture par blocs, OOM reel confirme
+# sur 5.8 Go de RAM disponibles. Voir --taille-bloc dans
+# interfaces/cli/construire_dataset_pivot.py.
 uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/mediqal_oeq.jsonl --corpus mediqal_oeq --sortie data/processed/dataset_pivot.jsonl
 uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/mediqal_mcqu.jsonl --corpus mediqal_mcqu --sortie data/processed/dataset_pivot.jsonl
 uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/mediqal_mcqm.jsonl --corpus mediqal_mcqm --sortie data/processed/dataset_pivot.jsonl
 uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/frenchmedmcqa.jsonl --corpus frenchmedmcqa --sortie data/processed/dataset_pivot.jsonl
 uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/medquad.jsonl --corpus medquad --sortie data/processed/dataset_pivot.jsonl
-uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/ultramedical_preference.jsonl --corpus ultramedical_preference --sortie data/processed/dataset_pivot.jsonl
+uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/ultramedical_preference.jsonl --corpus ultramedical_preference --sortie data/processed/dataset_pivot.jsonl --taille-bloc 5000
 
 # 4. Anonymisation et decoupage en splits (une seule fois, sur le dataset pivot fusionne)
 uv run python interfaces/cli/anonymiser_dataset.py --dataset data/processed/dataset_pivot.jsonl --strategie replace
