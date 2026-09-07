@@ -40,8 +40,19 @@ CLI -> Repo : new(chemin_dataset)
 CLI -> Anonymiseur : new(strategie)
 CLI -> UC : new(repository, anonymiseur, limite)
 
-CLI -> UC : executer()
+CLI -> UC : executer(envelopper_iterable=...)
 activate UC
+
+note right of CLI
+  envelopper_iterable est un point d'injection
+  optionnel : la CLI passe un lambda qui enveloppe
+  l'iterable avec tqdm(..., desc="Anonymisation
+  Presidio", total=len(a_traiter)) pour afficher une
+  barre de progression -- sans que le cas d'usage
+  (application/) depende d'une librairie de
+  presentation (tqdm), conformement a l'architecture
+  hexagonale.
+end note
 
 UC -> Repo : lister(filtre={anonymise: False})
 activate Repo
@@ -68,7 +79,17 @@ else limite < len(candidats)
   UC --> UC : a_traiter (sous-echantillon)
 end
 
-loop pour chaque ExemplePivot de a_traiter
+UC -> UC : iterable = envelopper_iterable(a_traiter)
+note right of UC
+  Si un wrapper a ete passe, ceci active
+  la barre de progression tqdm visible dans
+  le terminal sur a_traiter -- que ce soit
+  la liste complete ou le sous-echantillon
+  stratifie. Sans wrapper, c'est une identite
+  (aucun effet).
+end note
+
+loop pour chaque ExemplePivot de iterable
   UC -> UC : _anonymiser_exemple(exemple)
   activate UC
   UC -> Anonymiseur : anonymiser(symptomes, langue)
