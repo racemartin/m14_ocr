@@ -1,0 +1,59 @@
+@startuml verifier_repartition_splits
+!include ../../_common/estilo.iuml
+
+title Étape 1 — Diagramme de séquence\nVérification de la répartition des splits par strate (cas d'usage réel, classes du code)
+
+actor "Développeur\n(ligne de commande)" as Dev
+
+box "interfaces/cli" #F0EEE7
+  participant "verifier_repartition_splits.py" as CLI
+end box
+
+box "application" #F0EEE7
+  participant "VerifierRepartitionSplitsUseCase" as UC
+end box
+
+box "infrastructure/adapters" #F0EEE7
+  participant "JsonlDatasetRepository" as Repo
+end box
+
+autonumber "<b>0."
+
+Dev -> CLI : uv run python verifier_repartition_splits.py\n~-~-dataset ...
+activate CLI
+
+CLI -> Repo : new(chemin_dataset)
+CLI -> UC : new(repository)
+
+CLI -> UC : executer()
+activate UC
+
+UC -> Repo : lister(filtre={anonymise: True})
+activate Repo
+Repo --> UC : Iterator[ExemplePivot] (anonymises)
+deactivate Repo
+
+loop pour chaque exemple
+  alt exemple.split est non nul
+    UC -> UC : cle = (type_exemple, source)\nrepartition[cle][split] += 1
+  else exemple.split est nul (pas encore reparti)
+    UC -> UC : ignore l'exemple
+  end
+end
+
+UC --> CLI : repartition\ndict[(type_exemple, source), dict[split, int]]
+deactivate UC
+
+note right of CLI
+  decouper_splits.py n'affiche que le total
+  global par split. Ce script existe pour
+  verifier la representativite par STRATE :
+  une petite source (ex. FrenchMedMCQA) ne
+  doit pas se retrouver absente de train ou
+  de test, ce qu'un total global ne revele pas.
+end note
+
+CLI -> Dev : imprime le tableau\n(decompte + pourcentage par split, par strate)
+deactivate CLI
+
+@enduml

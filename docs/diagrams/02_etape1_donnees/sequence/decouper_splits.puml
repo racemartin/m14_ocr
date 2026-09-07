@@ -19,11 +19,25 @@ end box
 
 autonumber "<b>0."
 
-Dev -> CLI : uv run python decouper_splits.py\n~-~-dataset ... [~-~-graine 42 ~-~-proportion-val 0.10 ~-~-proportion-test 0.10]
+Dev -> CLI : uv run python decouper_splits.py\n~-~-dataset ... [~-~-graine 42 ~-~-proportion-val 0.10 ~-~-proportion-test 0.10 ~-~-n 5000]
 activate CLI
 
 CLI -> Repo : new(chemin_dataset)
-CLI -> UC : new(repository, graine, proportion_val, proportion_test)
+CLI -> UC : new(repository, graine, proportion_val, proportion_test, n)
+
+opt --n fourni
+  CLI -> Repo : compter(filtre={anonymise: True})
+  activate Repo
+  Repo --> CLI : disponible
+  deactivate Repo
+  note right of CLI
+    Si n >= disponible : aucune erreur,
+    avertissement trace via LogTool --
+    tous les exemples anonymises seront
+    repartis quand meme (n ignore pour
+    cette execution).
+  end note
+end
 
 CLI -> UC : executer()
 activate UC
@@ -32,6 +46,19 @@ UC -> Repo : lister(filtre={anonymise: True})
 activate Repo
 Repo --> UC : list[ExemplePivot] (anonymises)
 deactivate Repo
+
+alt n is not None and n < len(exemples)
+  UC -> UC : echantillon_stratifie(exemples, n, graine)
+  note right of UC
+    Sous-echantillonnage stratifie (type_exemple,
+    source) avant repartition -- meme algorithme
+    (methode du plus grand reste) que dans
+    anonymiser_dataset.puml, factorise dans
+    chsa_triage.application.echantillonnage
+  end note
+else n est None ou >= au nombre disponible
+  UC -> UC : (aucun sous-echantillonnage --\ntous les exemples anonymises sont repartis)
+end
 
 UC -> UC : groupe par (type_exemple, source)
 note right of UC
