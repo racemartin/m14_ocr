@@ -47,9 +47,9 @@ sur données réelles restant à faire · [A FAIRE] pas encore commencé.
 | Nettoyer et structurer | [FAIT] `ProfilerCorpusUseCase` + adaptateur `ydata-profiling` **validés par smoke test réel** (voir section dédiée ci-dessous) ; les 6 fichiers réels sont profilés (`data/processed/rapports_profilage/`), y compris `ultramedical_preference.jsonl` (966 Mo) via l'option `--bloque` | `profiler_corpus.py` ; diagramme d'activité Étape 1 |
 | ≈5 000 paires SFT | [FAIT] (07/09/2026) Les 5 fichiers SFT (MediQAl-oeq/mcqu/mcqm, FrenchMedMCQA, MedQuAD) sont mappés et fusionnés dans `data/processed/dataset_pivot.jsonl` : **37 851 exemples SFT réels, 0 enregistrement rejeté**, largement au-dessus des ≈5 000 attendus (voir section dédiée ci-dessous pour le détail par source) | `construire_dataset_pivot.py`, `mappers_corpus.py` |
 | Paires DPO validées cliniquement | [OUTILLAGE PRET] Mapper technique prêt **et corrigé** (`mapper_ultramedical_preference` extrayait mal chosen/rejected, voir section dédiée) et exécuté sur données réelles (07/09/2026) : **109 353 paires DPO réelles, 0 rejet** ; la validation clinique par un expert est hors du périmètre purement technique et reste à planifier avec le CHSA | même fichier ; objectifs §3.2-3.3 |
-| Anonymisation + documentation RGPD | [OUTILLAGE PRET] Adaptateur `PresidioAnonymiseur` **validé par smoke test réel** (bug de configuration multi-langue découvert et corrigé, cf. section dédiée) ; bug de performance O(n²) corrigé dans `AnonymiserDatasetUseCase` ; processus rendu incrémental/reprenable (`--limite`, échantillonnage stratifié) suite à la mesure réelle (~19h pour le dataset complet) ; **première vague exécutée sur données réelles (08/09/2026) : 5 000/147 204 exemples anonymisés**, 142 204 restants prêts pour une vague ultérieure (voir section dédiée) ; rapport de contrôle qualité RGPD toujours à produire | `AnonymiserDatasetUseCase` ; cahier des charges NF2 |
+| Anonymisation + documentation RGPD | [FAIT] Adaptateur `PresidioAnonymiseur` **validé par smoke test réel** (bug de configuration multi-langue découvert et corrigé, cf. section dédiée) ; bug de performance O(n²) corrigé dans `AnonymiserDatasetUseCase` ; processus rendu incrémental/reprenable (`--limite`, échantillonnage stratifié) suite à la mesure réelle (~19h pour le dataset complet) ; **première vague exécutée sur données réelles (08/09/2026) : 5 000/147 204 exemples anonymisés**, 142 204 restants prêts pour une vague ultérieure (voir section dédiée) ; **rapport de justification RGPD complété avec des chiffres réels (09/09/2026)**, section quantitative par corpus (nouvelle instrumentation `AnonymiserDatasetUseCase.statistiques`) et contrôle qualité manuel assisté sur 170 enregistrements (1 PII résiduelle réelle trouvée, faux positifs documentés) — voir `01_rapport_rgpd.md` | `AnonymiserDatasetUseCase` ; `docs/02_etape1_donnees/01_rapport_rgpd.md` ; cahier des charges NF2 |
 | Schéma de métadonnées | [FAIT] Défini **et implémenté** comme entité de domaine (`ExemplePivot`, `ConstantesVitales`) | `domain/model/exemple_pivot.py` ; cahier des charges §5.2 ; diagramme de paquets Étape 1 |
-| Splits train / val / test + éval clinique isolée | [OUTILLAGE PRET] `DecouperSplitsUseCase` implémenté et testé, découpage désormais stratifié par (type_exemple, source) ; **exécuté sur les 5 000 exemples anonymisés de la première vague (08/09/2026)** : 4 004 train / 498 val / 498 test ; à relancer après chaque vague d'anonymisation supplémentaire | `decouper_splits.py` ; `tests/application/` |
+| Splits train / val / test + éval clinique isolée | [OUTILLAGE PRET] `DecouperSplitsUseCase` implémenté et testé, découpage désormais stratifié par (type_exemple, source), avec sous-échantillonnage optionnel (`--n`, même algorithme que `--limite`) pour repartir seulement N exemples plutôt que tout ce qui est anonymisé ; **exécuté sur les 5 000 exemples anonymisés de la première vague (08/09/2026)** : 4 004 train / 498 val / 498 test, vérifié représentatif par strate (`verifier_repartition_splits.py`, ~80/10/10 sur chaque `(type_exemple, source)`, y compris FrenchMedMCQA à 20 exemples) ; à relancer après chaque vague d'anonymisation supplémentaire | `decouper_splits.py` ; `verifier_repartition_splits.py` ; `tests/application/` |
 
 ## Couverture des prérequis
 
@@ -64,7 +64,7 @@ sur données réelles restant à faire · [A FAIRE] pas encore commencé.
 |---|---|
 | Dataset bilingue anonymisé et versionné (≈5 000 paires SFT + jeu DPO) | [OUTILLAGE PRET] Dataset pivot réel construit et fusionné (147 204 exemples, 37 851 SFT + 109 353 DPO, 0 rejet) ; **5 000 exemples anonymisés et découpés en splits (première vague, 08/09/2026)**, atteignant l'objectif chiffré ≈5 000 de la mission ; 142 204 exemples restants prêts pour des vagues ultérieures (voir section dédiée) |
 | Schéma des métadonnées | [FAIT] Livré (voir ci-dessus) |
-| Justification du processus RGPD suivi | [OUTILLAGE PRET] Stratégie et outillage documentés (Presidio, 3 stratégies comparées) ; anonymisation exécutée sur un premier échantillon stratifié réel de 5 000 exemples (voir section dédiée) ; le rapport de justification final (taux de détection, contrôle qualité manuel) reste hors périmètre de cette session |
+| Justification du processus RGPD suivi | [FAIT] Rapport de justification RGPD complété avec des données réelles (`01_rapport_rgpd.md`, 09/09/2026) : résultats quantitatifs réels par corpus (65 914 entités détectées sur 5 000 exemples, 92,0 % de taux de détection ≥1 entité) et contrôle qualité manuel assisté (170 enregistrements relus, 1 PII résiduelle réelle trouvée, faux positifs documentés par corpus) — revue assistée par IA, pas une revue humaine indépendante ; confirmation d'un réviseur du domaine recommandée avant tout usage clinique réel |
 
 ## Validation technique effectuée (smoke test d'intégration, 02/09/2026)
 
@@ -200,8 +200,11 @@ dernier message de la liste.
    `decouper_splits.py` pour les vagues suivantes, en évaluant avant
    chaque vague le risque de saturation/surapprentissage sur un
    sous-échantillon donné (cf. README, tableau d'avancement).
-6. Rédiger le rapport de justification RGPD à partir des résultats
-   réels d'anonymisation (hors périmètre de cette session).
+6. ~~Rédiger le rapport de justification RGPD à partir des résultats
+   réels d'anonymisation.~~ Fait le 09/09/2026 (voir `01_rapport_rgpd.md`
+   et la section dédiée ci-dessus) : résultats quantitatifs réels par
+   corpus (nouvelle instrumentation `AnonymiserDatasetUseCase.statistiques`)
+   et contrôle qualité manuel assisté sur 170 enregistrements.
 
 ## FrenchMedMCQA : bug de mapper corrigé contre le schéma réel (07/09/2026)
 
@@ -351,3 +354,77 @@ déjà fait — décision explicitement laissée ouverte sur *quand* et
 *avec quel N* lancer la vague suivante (à réévaluer avant le SFT/DPO
 en fonction du risque de saturation/surapprentissage sur un
 sous-échantillon trop petit, cf. § dédiée dans le README).
+
+Vérification ajoutée après coup (`verifier_repartition_splits.py`) :
+chaque strate `(type_exemple, source)` respecte bien les proportions
+80/10/10 demandées, **dans chaque split**, pas seulement au global :
+
+| Strate | Total | train | val | test |
+|---|---:|---|---|---|
+| dpo/UltraMedical-Preference | 3 715 | 2 973 (80,0 %) | 371 (10,0 %) | 371 (10,0 %) |
+| sft/FrenchMedMCQA | 20 | 16 (80,0 %) | 2 (10,0 %) | 2 (10,0 %) |
+| sft/MedQuAD | 557 | 447 (80,3 %) | 55 (9,9 %) | 55 (9,9 %) |
+| sft/MediQAl | 708 | 568 (80,2 %) | 70 (9,9 %) | 70 (9,9 %) |
+
+## Rapport de justification RGPD complété avec des données réelles (09/09/2026)
+
+`docs/02_etape1_donnees/01_rapport_rgpd.md` (auparavant un gabarit
+`01_rapport_rgpd_template.md`) est désormais complété avec des chiffres
+réels, pas des estimations :
+
+- **Instrumentation ajoutée** : `AnonymiserDatasetUseCase` expose
+  maintenant `self.statistiques: dict[str, StatistiquesSource]`
+  (registres traités, registres avec ≥1 entité, détail des entités
+  par type, par source), accumulée pendant l'anonymisation à partir du
+  détail déjà renvoyé par `ResultatAnonymisation.entites_detectees`
+  (auparavant calculé puis jeté à chaque champ anonymisé).
+- **Section 3 (résultats quantitatifs)** : la stratégie `replace`
+  utilisée pour la vague déjà fusionnée remplace toute entité par un
+  jeton générique unique — le détail par type n'est donc pas
+  récupérable a posteriori sur ce texte déjà anonymisé. Un nouvel
+  échantillon stratifié de 5 000 exemples a été prélevé avec le même
+  algorithme/graine/corpus (`echantillon_stratifie`, factorisé dans
+  `chsa_triage.application.echantillonnage`) — répartition par source
+  vérifiée identique à celle de la vague déjà fusionnée (708/20/557/3 715) —
+  puis anonymisé pour de vrai (Presidio réel) avec l'instrumentation
+  ci-dessus. Résultat : 65 914 entités détectées, 92,0 % des 5 000
+  enregistrements avec ≥1 entité (détail par type et par corpus dans
+  le rapport).
+- **Section 4 (contrôle qualité manuel)** : 170 enregistrements relus
+  (50 par source, ou tous les disponibles si moins de 50 — 20 pour
+  FrenchMedMCQA), avec comparaison texte original/texte anonymisé.
+  **1 PII résiduelle réelle trouvée** (un prénom, `chsa-ultramedical-f87736240ce5`)
+  et des faux positifs fréquents documentés (vocabulaire médical/
+  scientifique capitalisé pris pour des entités nommées, sur-masquage
+  systématique des sections bibliographiques d'UltraMedical-Preference).
+  Cette revue est **assistée par IA, pas une revue humaine
+  indépendante** — le rapport recommande explicitement qu'un réviseur
+  du domaine (ou le capitaine) confirme avant tout usage clinique réel ;
+  verdict de l'agent pour l'usage actuel (POC, fine-tuning
+  expérimental) : dataset accepté en l'état, avec réserve sur le
+  sur-masquage bibliographique d'UltraMedical-Preference.
+
+## `--n` sur `decouper_splits.py` et vérification de la représentativité par strate (09/09/2026)
+
+Besoin produit : pouvoir demander un dataset d'entraînement de taille
+N plutôt que de toujours repartir tout ce qui est anonymisé. `--n N`
+(optionnel) sur `decouper_splits.py`/`DecouperSplitsUseCase` prélève
+d'abord un échantillon stratifié de taille N parmi les exemples
+anonymisés (même algorithme du plus grand reste que `--limite`),
+avant de répartir train/val/test dessus. Si N est omis ou ≥ au nombre
+d'exemples anonymisés disponibles, comportement inchangé (tout est
+reparti) — un avertissement est tracé via LogTool, sans erreur, comme
+pour les autres scripts Étape 1.
+
+L'algorithme d'échantillonnage stratifié (méthode du plus grand reste),
+auparavant privé à `AnonymiserDatasetUseCase`, a été extrait dans
+`chsa_triage.application.echantillonnage.echantillon_stratifie` pour
+être réutilisé par les deux cas d'usage sans duplication.
+
+Un nouveau script `verifier_repartition_splits.py` (et son cas d'usage
+`VerifierRepartitionSplitsUseCase`) relit le dataset pivot déjà reparti
+et affiche, par strate `(type_exemple, source)`, le décompte ET le
+pourcentage par split — `decouper_splits.py` n'affichait que le total
+global, ce qui ne permettait pas de vérifier visuellement que la
+stratification restait représentative dans **chaque** split (voir
+tableau ci-dessus).

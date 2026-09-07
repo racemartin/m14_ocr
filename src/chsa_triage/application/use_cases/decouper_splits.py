@@ -10,6 +10,7 @@ from __future__ import annotations
 import random
 from dataclasses import dataclass, replace
 
+from chsa_triage.application.echantillonnage import echantillon_stratifie
 from chsa_triage.domain.model import ExemplePivot, TypeSplit
 from chsa_triage.domain.ports import RepositoryLectureEcriture
 
@@ -22,6 +23,7 @@ class DecouperSplitsUseCase:
     graine_aleatoire    : int = 42
     proportion_val       : float = 0.10
     proportion_test       : float = 0.10
+    n                    : int | None = None
 
     def executer(self) -> dict[str, int]:
         """
@@ -37,8 +39,22 @@ class DecouperSplitsUseCase:
         types d'exemple (SFT/DPO), meme quand certaines sources sont
         beaucoup plus petites que d'autres (ex. FrenchMedMCQA, 595
         exemples, face a UltraMedical-Preference, 109353).
+
+        Option `n` (sous-echantillonnage avant repartition) : quand
+        l'objectif est d'obtenir un dataset d'entrainement de taille N
+        plutot que de repartir TOUT ce qui a ete anonymise, `n`
+        preleve d'abord un sous-ensemble stratifie de taille N parmi
+        les exemples anonymises (meme algorithme -- methode du plus
+        grand reste -- que `AnonymiserDatasetUseCase._echantillon_stratifie`,
+        factorise dans `echantillon_stratifie`), puis repartit
+        train/val/test comme d'habitude sur ce sous-ensemble. Si `n`
+        est `None` ou >= au nombre d'exemples anonymises disponibles,
+        comportement inchange (tout ce qui est anonymise est reparti).
         """
         exemples = list(self.repository.lister(filtre={"anonymise": True}))
+
+        if self.n is not None and self.n < len(exemples):
+            exemples = echantillon_stratifie(exemples, self.n, self.graine_aleatoire)
 
         rng = random.Random(self.graine_aleatoire)
 

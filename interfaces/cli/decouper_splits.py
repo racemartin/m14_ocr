@@ -3,7 +3,21 @@ Point d'entree CLI — Etape 1, action "decouper en splits".
 
 Usage :
     uv run python interfaces/cli/decouper_splits.py \
-        --dataset data/processed/dataset_pivot.jsonl
+        --dataset data/processed/dataset_pivot.jsonl \
+        --n 5000
+
+Option --n (sous-echantillonnage avant repartition, meme logique
+produit que `--limite` sur `anonymiser_dataset.py`) : pour obtenir un
+dataset d'entrainement de taille N plutot que repartir TOUT ce qui a
+deja ete anonymise, `--n N` preleve d'abord un echantillon stratifie
+(type_exemple, source) de taille N parmi les exemples `anonymise=True`
+disponibles (methode du plus grand reste, cf.
+`chsa_triage.application.echantillonnage.echantillon_stratifie`), puis
+repartit train/val/test sur ce sous-ensemble. Si N est omis, ou si N
+est superieur ou egal au nombre d'exemples anonymises disponibles, le
+comportement est inchange : tout ce qui est anonymise est reparti (un
+avertissement est alors trace via LogTool, comme pour les autres
+scripts Etape 1).
 """
 
 from __future__ import annotations
@@ -23,6 +37,14 @@ def main() -> None:
     parser.add_argument("--graine", type=int, default=42)
     parser.add_argument("--proportion-val", type=float, default=0.10)
     parser.add_argument("--proportion-test", type=float, default=0.10)
+    parser.add_argument(
+        "--n",
+        type=int,
+        default=None,
+        help="Taille de l'echantillon stratifie (type_exemple, source) a repartir parmi les exemples "
+             "deja anonymises (defaut : tout repartir) ; si N depasse le nombre disponible, tout est "
+             "reparti et un avertissement est trace",
+    )
     arguments = parser.parse_args()
 
     log.START_ACTION("decouper_splits", "main", "decoupage train/val/test")
@@ -30,8 +52,18 @@ def main() -> None:
     log.PARAMETER_VALUE("graine", arguments.graine)
     log.PARAMETER_VALUE("proportion-val", arguments.proportion_val)
     log.PARAMETER_VALUE("proportion-test", arguments.proportion_test)
+    log.PARAMETER_VALUE("n", arguments.n if arguments.n is not None else "(aucun -- tout repartir)")
 
     repository = JsonlDatasetRepository(arguments.dataset)
+
+    if arguments.n is not None:
+        disponible = repository.compter(filtre={"anonymise": True})
+        if arguments.n >= disponible:
+            log.LEVEL_5_WARNING(
+                "decouper_splits",
+                f"--n {arguments.n} demande mais seulement {disponible} exemples anonymises disponibles -- "
+                "tous les exemples anonymises seront repartis (aucune erreur, --n ignore pour cette execution)",
+            )
 
     log.STEP(1, "Decoupage aleatoire des splits")
     try:
@@ -40,6 +72,7 @@ def main() -> None:
             graine_aleatoire=arguments.graine,
             proportion_val=arguments.proportion_val,
             proportion_test=arguments.proportion_test,
+            n=arguments.n,
         )
         decompte = cas_usage.executer()
     except Exception as erreur:

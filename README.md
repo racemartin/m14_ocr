@@ -85,6 +85,27 @@ uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/ultra
 # le relancer apres chaque nouvelle vague d'anonymisation.
 uv run python interfaces/cli/anonymiser_dataset.py --dataset data/processed/dataset_pivot.jsonl --strategie replace --limite 5000
 uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset_pivot.jsonl
+
+# --n (optionnel) : pour obtenir un dataset d'entrainement de taille N
+# plutot que repartir TOUT ce qui est deja anonymise, --n preleve
+# d'abord un echantillon stratifie (type_exemple, source) de taille N
+# parmi les exemples anonymises disponibles (meme algorithme que
+# --limite ci-dessus), puis repartit train/val/test sur ce
+# sous-ensemble. Si N est omis, ou >= au nombre d'exemples anonymises
+# disponibles, comportement inchange (tout ce qui est anonymise est
+# reparti) -- un avertissement est trace via LogTool si N depasse le
+# disponible, sans erreur.
+uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset_pivot.jsonl --n 5000
+
+# 5. Verification de la repartition des splits par strate
+# decouper_splits.py n'affiche que le total global (train/val/test).
+# verifier_repartition_splits.py relit le dataset pivot deja reparti
+# et affiche, pour chaque strate (type_exemple, source), le decompte
+# ET le pourcentage par split -- pour verifier visuellement que
+# l'echantillonnage stratifie reste representatif DANS CHAQUE split
+# (ex. une petite source comme FrenchMedMCQA doit rester ~80/10/10
+# comme les grosses sources, pas disparaitre de train ou de test).
+uv run python interfaces/cli/verifier_repartition_splits.py --dataset data/processed/dataset_pivot.jsonl
 ```
 
 ## Structure (architecture hexagonale)

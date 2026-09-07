@@ -103,3 +103,46 @@ def test_decouper_splits_est_stratifie_par_type_exemple_et_source():
     grande_source = [e for e in repository.items.values() if e.source == "UltraMedical-Preference"]
     splits_grande_source = {e.split for e in grande_source}
     assert splits_grande_source == {TypeSplit.TRAIN, TypeSplit.VALIDATION, TypeSplit.TEST_CLINIQUE}
+
+
+def test_decouper_splits_n_sous_echantillonne_avant_repartition():
+    """
+    --n doit prelever un sous-ensemble stratifie (type_exemple, source)
+    AVANT le decoupage train/val/test : seuls les exemples selectionnes
+    recoivent un split, le reste demeure `split=None`.
+    """
+    exemples = (
+        [_exemple_anonymise("MediQAl", TypeExemple.SFT) for _ in range(80)]
+        + [_exemple_anonymise("MedQuAD", TypeExemple.SFT) for _ in range(15)]
+        + [_exemple_anonymise("UltraMedical-Preference", TypeExemple.DPO) for _ in range(5)]
+    )
+    repository = FauxRepository(exemples)
+
+    cas_usage = DecouperSplitsUseCase(repository=repository, n=20, graine_aleatoire=42)
+    decompte = cas_usage.executer()
+
+    assert sum(decompte.values()) == 20
+    avec_split = [e for e in repository.items.values() if e.split is not None]
+    assert len(avec_split) == 20
+    sources_reparties = {e.source for e in avec_split}
+    assert sources_reparties == {"MediQAl", "MedQuAD", "UltraMedical-Preference"}
+
+
+def test_decouper_splits_n_superieur_au_disponible_reparti_tout():
+    exemples = [_exemple_anonymise("MediQAl") for _ in range(10)]
+    repository = FauxRepository(exemples)
+
+    cas_usage = DecouperSplitsUseCase(repository=repository, n=5000)
+    decompte = cas_usage.executer()
+
+    assert sum(decompte.values()) == 10
+
+
+def test_decouper_splits_n_none_comportement_inchange():
+    exemples = [_exemple_anonymise("MediQAl") for _ in range(10)]
+    repository = FauxRepository(exemples)
+
+    cas_usage = DecouperSplitsUseCase(repository=repository, n=None)
+    decompte = cas_usage.executer()
+
+    assert sum(decompte.values()) == 10

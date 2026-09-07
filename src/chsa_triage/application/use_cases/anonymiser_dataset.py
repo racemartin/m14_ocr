@@ -6,11 +6,28 @@ et re-sauvegarder les versions anonymisees.
 
 from __future__ import annotations
 
-import random
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 
+from chsa_triage.application.echantillonnage import echantillon_stratifie
 from chsa_triage.domain.model import ExemplePivot, Message
 from chsa_triage.domain.ports import Anonymiseur, RepositoryLectureEcriture
+from chsa_triage.domain.ports.anonymiseur import ResultatAnonymisation
+
+
+@dataclass(slots=True)
+class StatistiquesSource:
+    """
+    Compteurs RGPD accumules pendant une passe d'anonymisation, par
+    source (cf. section 3 -- resultats quantitatifs -- du rapport de
+    justification RGPD). Auparavant, `ResultatAnonymisation` etait
+    calcule puis jete a chaque champ anonymise : ces compteurs sont
+    l'instrumentation minimale necessaire pour produire des chiffres
+    reels (et non estimes) sur les entites detectees.
+    """
+
+    registres_traites      : int = 0
+    registres_avec_entite   : int = 0
+    entites_par_type         : dict[str, int] = field(default_factory=dict)
 
 
 @dataclass(slots=True)
@@ -28,6 +45,7 @@ class AnonymiserDatasetUseCase:
     anonymiseur        : Anonymiseur
     limite              : int | None = None
     graine_aleatoire    : int = 42
+    statistiques        : dict[str, StatistiquesSource] = field(default_factory=dict, init=False)
 
     def executer(self) -> int:
         """
@@ -74,75 +92,62 @@ class AnonymiserDatasetUseCase:
         return len(exemples_anonymises)
 
     def _echantillon_stratifie(self, candidats: list[ExemplePivot], taille: int) -> list[ExemplePivot]:
-        """
-        Selectionne `taille` exemples parmi `candidats`, en respectant
-        au mieux la proportion de chaque strate (type_exemple, source)
-        dans l'echantillon (methode du plus grand reste, tirage
-        aleatoire reproductible via `graine_aleatoire` au sein de
-        chaque strate).
-        """
-        rng = random.Random(self.graine_aleatoire)
-
-        groupes: dict[tuple[str, str], list[ExemplePivot]] = {}
-        for exemple in candidats:
-            cle = (exemple.type_exemple.value, exemple.source)
-            groupes.setdefault(cle, []).append(exemple)
-
-        total = len(candidats)
-        quotas: dict[tuple[str, str], int] = {}
-        restes: list[tuple[float, tuple[str, str]]] = []
-        for cle, groupe in groupes.items():
-            part_exacte = taille * (len(groupe) / total)
-            quotas[cle] = min(int(part_exacte), len(groupe))
-            restes.append((part_exacte - int(part_exacte), cle))
-
-        # Methode du plus grand reste : distribue les unites manquantes
-        # (arrondis vers le bas ci-dessus) aux strates dont le reste
-        # fractionnaire est le plus grand, dans la limite de leur taille.
-        deficit = taille - sum(quotas.values())
-        for _, cle in sorted(restes, key=lambda r: r[0], reverse=True):
-            if deficit <= 0:
-                break
-            if quotas[cle] < len(groupes[cle]):
-                quotas[cle] += 1
-                deficit -= 1
-
-        selection: list[ExemplePivot] = []
-        for cle in sorted(groupes):
-            groupe = list(groupes[cle])
-            rng.shuffle(groupe)
-            selection.extend(groupe[: quotas[cle]])
-
-        return selection
+        return echantillon_stratifie(candidats, taille, self.graine_aleatoire)
 
     def _anonymiser_exemple(self, exemple: ExemplePivot) -> ExemplePivot:
         """Applique l'anonymisation a tous les champs texte libre."""
         langue = exemple.langue.value
+        resultats_champ: list[ResultatAnonymisation] = []
 
-        symptomes_anon = self.anonymiseur.anonymiser(exemple.symptomes, langue).texte_anonymise
+        resultat_symptomes = self.anonymiseur.anonymiser(exemple.symptomes, langue)
+        resultats_champ.append(resultat_symptomes)
+        symptomes_anon = resultat_symptomes.texte_anonymise
 
         antecedents_anon = None
         if exemple.antecedents:
-            antecedents_anon = self.anonymiseur.anonymiser(exemple.antecedents, langue).texte_anonymise
+            resultat_antecedents = self.anonymiseur.anonymiser(exemple.antecedents, langue)
+            resultats_champ.append(resultat_antecedents)
+            antecedents_anon = resultat_antecedents.texte_anonymise
 
-        messages_anonymises = tuple(
-            self._anonymiser_messages(groupe, langue)
-            for groupe in (exemple.prompt, exemple.completion, exemple.chosen, exemple.rejected)
-        )
+        prompt_anon, resultats_prompt = self._anonymiser_messages(exemple.prompt, langue)
+        completion_anon, resultats_completion = self._anonymiser_messages(exemple.completion, langue)
+        chosen_anon, resultats_chosen = self._anonymiser_messages(exemple.chosen, langue)
+        rejected_anon, resultats_rejected = self._anonymiser_messages(exemple.rejected, langue)
+        resultats_champ.extend(resultats_prompt + resultats_completion + resultats_chosen + resultats_rejected)
+
+        self._enregistrer_statistiques(exemple.source, resultats_champ)
 
         return replace(
             exemple,
             symptomes=symptomes_anon,
             antecedents=antecedents_anon,
-            prompt=messages_anonymises[0],
-            completion=messages_anonymises[1],
-            chosen=messages_anonymises[2],
-            rejected=messages_anonymises[3],
+            prompt=prompt_anon,
+            completion=completion_anon,
+            chosen=chosen_anon,
+            rejected=rejected_anon,
             anonymise=True,
         )
 
-    def _anonymiser_messages(self, messages: tuple[Message, ...], langue: str) -> tuple[Message, ...]:
-        return tuple(
-            replace(m, contenu=self.anonymiseur.anonymiser(m.contenu, langue).texte_anonymise)
-            for m in messages
+    def _anonymiser_messages(
+        self, messages: tuple[Message, ...], langue: str
+    ) -> tuple[tuple[Message, ...], list[ResultatAnonymisation]]:
+        resultats = [self.anonymiseur.anonymiser(m.contenu, langue) for m in messages]
+        nouveaux_messages = tuple(
+            replace(m, contenu=resultat.texte_anonymise) for m, resultat in zip(messages, resultats)
         )
+        return nouveaux_messages, resultats
+
+    def _enregistrer_statistiques(self, source: str, resultats: list[ResultatAnonymisation]) -> None:
+        """Accumule, pour `source`, les compteurs RGPD du rapport de justification (section 3)."""
+        stats = self.statistiques.setdefault(source, StatistiquesSource())
+        stats.registres_traites += 1
+
+        au_moins_une_entite = False
+        for resultat in resultats:
+            if resultat.entites_detectees:
+                au_moins_une_entite = True
+            for entite in resultat.entites_detectees:
+                stats.entites_par_type[entite.type_entite] = stats.entites_par_type.get(entite.type_entite, 0) + 1
+
+        if au_moins_une_entite:
+            stats.registres_avec_entite += 1

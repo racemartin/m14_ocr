@@ -126,3 +126,34 @@ def test_anonymiser_dataset_limite_superieure_au_reste_traite_tout():
     nombre = cas_usage.executer()
 
     assert nombre == 3
+
+
+def test_anonymiser_dataset_accumule_les_statistiques_rgpd_par_source():
+    """
+    Instrumentation minimale (section 3 du rapport RGPD) : le cas
+    d'usage doit exposer, par source, le nombre de registres traites,
+    le nombre de registres avec au moins une entite detectee, et le
+    detail des entites par type -- sans quoi ces chiffres devraient
+    etre estimes a la main.
+    """
+    exemples = (
+        [_exemple("MediQAl", TypeExemple.SFT) for _ in range(2)]
+        + [_exemple("MedQuAD", TypeExemple.SFT) for _ in range(1)]
+    )
+    repository = FauxRepository(exemples)
+    anonymiseur = FauxAnonymiseur()
+
+    cas_usage = AnonymiserDatasetUseCase(repository=repository, anonymiseur=anonymiseur, limite=None)
+    cas_usage.executer()
+
+    assert set(cas_usage.statistiques) == {"MediQAl", "MedQuAD"}
+
+    stats_mediqal = cas_usage.statistiques["MediQAl"]
+    assert stats_mediqal.registres_traites == 2
+    assert stats_mediqal.registres_avec_entite == 2
+    # FauxAnonymiseur detecte un PERSON par champ non vide (symptomes + prompt + completion).
+    assert stats_mediqal.entites_par_type == {"PERSON": 6}
+
+    stats_medquad = cas_usage.statistiques["MedQuAD"]
+    assert stats_medquad.registres_traites == 1
+    assert stats_medquad.registres_avec_entite == 1
