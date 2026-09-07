@@ -6,6 +6,7 @@ et re-sauvegarder les versions anonymisees.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field, replace
 
 from chsa_triage.application.echantillonnage import echantillon_stratifie
@@ -47,7 +48,10 @@ class AnonymiserDatasetUseCase:
     graine_aleatoire    : int = 42
     statistiques        : dict[str, StatistiquesSource] = field(default_factory=dict, init=False)
 
-    def executer(self) -> int:
+    def executer(
+        self,
+        envelopper_iterable: Callable[[Iterable[ExemplePivot]], Iterable[ExemplePivot]] | None = None,
+    ) -> int:
         """
         Parcourt les ExemplePivot non encore anonymises (au plus
         `self.limite`, tire en echantillon stratifie par
@@ -57,6 +61,11 @@ class AnonymiserDatasetUseCase:
         operation. Les exemples non selectionnes restent
         `anonymise=False`, prets pour un appel ulterieur avec une
         limite plus grande (ou `limite=None` pour tout traiter).
+
+        `envelopper_iterable` permet a l'appelant (typiquement l'interface
+        CLI) de brancher une barre de progression sans que ce cas d'usage
+        depende d'une librairie de presentation : par defaut, l'iterable
+        n'est pas modifie.
 
         Retourne le nombre d'exemples effectivement traites.
 
@@ -87,7 +96,9 @@ class AnonymiserDatasetUseCase:
         else:
             a_traiter = self._echantillon_stratifie(candidats, self.limite)
 
-        exemples_anonymises = [self._anonymiser_exemple(exemple) for exemple in a_traiter]
+        iterable = envelopper_iterable(a_traiter) if envelopper_iterable else a_traiter
+
+        exemples_anonymises = [self._anonymiser_exemple(exemple) for exemple in iterable]
         self.repository.sauvegarder_plusieurs(exemples_anonymises)
         return len(exemples_anonymises)
 

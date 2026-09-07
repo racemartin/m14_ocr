@@ -140,6 +140,8 @@ uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset
 uv run python interfaces/cli/verifier_repartition_splits.py --dataset data/processed/dataset_pivot.jsonl
 ```
 
+`anonymiser_dataset.py` affiche une barre de progression `tqdm` pendant le traitement (peut durer plusieurs dizaines de minutes sur un gros dataset).
+
 ## Structure (architecture hexagonale)
 
 ```

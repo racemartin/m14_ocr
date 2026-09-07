@@ -157,3 +157,40 @@ def test_anonymiser_dataset_accumule_les_statistiques_rgpd_par_source():
     stats_medquad = cas_usage.statistiques["MedQuAD"]
     assert stats_medquad.registres_traites == 1
     assert stats_medquad.registres_avec_entite == 1
+
+
+def test_anonymiser_dataset_fonctionne_sans_barre_de_progression():
+    """Sans `envelopper_iterable`, le comportement est inchange (mode non interactif/tests)."""
+    exemples = [_exemple("MediQAl") for _ in range(2)]
+    repository = FauxRepository(exemples)
+    anonymiseur = FauxAnonymiseur()
+
+    cas_usage = AnonymiserDatasetUseCase(repository=repository, anonymiseur=anonymiseur, limite=None)
+    nombre = cas_usage.executer(envelopper_iterable=None)
+
+    assert nombre == 2
+
+
+def test_anonymiser_dataset_accepte_un_envelopper_iterable_pour_la_progression():
+    """`envelopper_iterable` (typiquement une barre tqdm) enveloppe l'echantillon deja stratifie/limite."""
+    exemples = (
+        [_exemple("MediQAl", TypeExemple.SFT) for _ in range(80)]
+        + [_exemple("MedQuAD", TypeExemple.SFT) for _ in range(15)]
+        + [_exemple("UltraMedical-Preference", TypeExemple.DPO) for _ in range(5)]
+    )
+    repository = FauxRepository(exemples)
+    anonymiseur = FauxAnonymiseur()
+
+    appels: list[int] = []
+
+    def envelopper(iterable):
+        elements = list(iterable)
+        appels.append(len(elements))
+        return elements
+
+    cas_usage = AnonymiserDatasetUseCase(repository=repository, anonymiseur=anonymiseur, limite=20, graine_aleatoire=42)
+    nombre = cas_usage.executer(envelopper_iterable=envelopper)
+
+    assert nombre == 20
+    # L'iterable enveloppe est bien l'echantillon deja stratifie (20), pas les 100 candidats.
+    assert appels == [20]

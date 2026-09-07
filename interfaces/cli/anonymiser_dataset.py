@@ -28,6 +28,8 @@ from __future__ import annotations
 
 import argparse
 
+from tqdm import tqdm
+
 from chsa_triage.application.use_cases import AnonymiserDatasetUseCase
 from chsa_triage.infrastructure.adapters import (
     JsonlDatasetRepository,
@@ -72,7 +74,9 @@ def main() -> None:
     log.STEP(1, "Anonymisation Presidio", "peut prendre du temps selon le nombre d'exemples")
     try:
         cas_usage = AnonymiserDatasetUseCase(repository=repository, anonymiseur=anonymiseur, limite=arguments.limite)
-        nombre_traites = cas_usage.executer()
+        nombre_traites = cas_usage.executer(
+            envelopper_iterable=lambda a_traiter: tqdm(a_traiter, desc="Anonymisation Presidio", total=len(a_traiter))
+        )
     except Exception as erreur:
         log.LEVEL_4_ERROR("anonymiser_dataset", f"echec de l'anonymisation de {arguments.dataset} : {erreur}")
         raise
