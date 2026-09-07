@@ -6,6 +6,20 @@ Usage :
         --source data/raw/mediqal.jsonl \
         --corpus mediqal \
         --sortie data/processed/dataset_pivot.jsonl
+
+Option --taille-bloc (07/09/2026, ajoutee suite a un OOM reel sur
+ultramedical_preference.jsonl, 966 Mo, 5.8 Go de RAM disponibles) :
+sans lecture par blocs, `LecteurCorpusFichierLocal` charge tout le
+fichier source en DataFrame pandas d'un coup avant de le convertir en
+dicts -- meme probleme deja documente et corrige cote
+`profiler_corpus.py --bloque`. Avec --taille-bloc N, la lecture du
+fichier source se fait par blocs de N lignes (pandas chunksize) :
+chaque bloc est converti puis mappe avant que le suivant soit charge,
+la memoire de pointe reste bornee par la taille du bloc. Les exemples
+pivot mappes restent, eux, accumules en memoire jusqu'a l'ecriture
+finale (comportement inchange de `ConstruireDatasetPivotUseCase`) --
+--taille-bloc borne la lecture du fichier brut, pas la taille du
+dataset pivot en sortie.
 """
 
 from __future__ import annotations
@@ -28,14 +42,21 @@ def main() -> None:
     parser.add_argument("--source", required=True, help="Chemin du fichier corpus brut")
     parser.add_argument("--corpus", required=True, choices=sorted(MAPPERS_PAR_CORPUS.keys()))
     parser.add_argument("--sortie", required=True, help="Chemin du fichier pivot JSONL de sortie")
+    parser.add_argument(
+        "--taille-bloc",
+        type=int,
+        default=None,
+        help="Lire le fichier source par blocs de N lignes (evite l'OOM sur un gros corpus, ex. ultramedical_preference.jsonl)",
+    )
     arguments = parser.parse_args()
 
     log.START_ACTION("construire_dataset_pivot", "main", "mapping vers le schema pivot")
     log.PARAMETER_VALUE("source", arguments.source)
     log.PARAMETER_VALUE("corpus", arguments.corpus)
     log.PARAMETER_VALUE("sortie", arguments.sortie)
+    log.PARAMETER_VALUE("taille-bloc", arguments.taille_bloc or "(desactive -- lecture complete)")
 
-    lecteur    = LecteurCorpusFichierLocal(arguments.source)
+    lecteur    = LecteurCorpusFichierLocal(arguments.source, taille_bloc=arguments.taille_bloc)
     repository = JsonlDatasetRepository(arguments.sortie)
     mapper     = MAPPERS_PAR_CORPUS[arguments.corpus]
 

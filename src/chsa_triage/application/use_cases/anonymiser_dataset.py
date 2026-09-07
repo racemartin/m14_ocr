@@ -23,18 +23,26 @@ class AnonymiserDatasetUseCase:
         """
         Parcourt tous les ExemplePivot non encore anonymises, masque
         les entites sensibles dans les champs texte libre, et
-        persiste la version anonymisee (anonymise=True).
+        persiste les versions anonymisees en une seule operation.
 
         Retourne le nombre d'exemples traites.
+
+        NOTE (07/09/2026, decouvert en executant le pipeline sur le
+        dataset pivot reel, 147204 exemples/624 Mo) : appeler
+        `self.repository.sauvegarder(...)` a chaque iteration relit et
+        reecrit tout le fichier JSONL a CHAQUE exemple (cf.
+        `JsonlDatasetRepository.sauvegarder`) -- sur 147204 exemples
+        c'est un O(n^2) totalement infaisable (des heures, voire des
+        jours). `sauvegarder_plusieurs` fait le meme travail de
+        fusion par identifiant mais en une seule lecture/ecriture du
+        fichier, quel que soit le nombre d'exemples traites.
         """
-        compteur = 0
-
-        for exemple in self.repository.lister(filtre={"anonymise": False}):
-            exemple_anonymise = self._anonymiser_exemple(exemple)
-            self.repository.sauvegarder(exemple_anonymise)
-            compteur += 1
-
-        return compteur
+        exemples_anonymises = [
+            self._anonymiser_exemple(exemple)
+            for exemple in self.repository.lister(filtre={"anonymise": False})
+        ]
+        self.repository.sauvegarder_plusieurs(exemples_anonymises)
+        return len(exemples_anonymises)
 
     def _anonymiser_exemple(self, exemple: ExemplePivot) -> ExemplePivot:
         """Applique l'anonymisation a tous les champs texte libre."""

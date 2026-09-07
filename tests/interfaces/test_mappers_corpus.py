@@ -21,6 +21,7 @@ from chsa_triage.domain.model import Langue, TypeExemple
 from interfaces.cli.mappers_corpus import (
     mapper_frenchmedmcqa,
     mapper_mediqal,
+    mapper_mediqal_qcm,
     mapper_medquad,
     mapper_ultramedical_preference,
 )
@@ -45,22 +46,118 @@ def test_mapper_mediqal_ignore_enregistrement_incomplet():
     assert mapper_mediqal({}) is None
 
 
+def test_mapper_mediqal_qcm_mcqu_valide():
+    """Schema reel MediQAl "mcqu" (07/09/2026) : 1 seule reponse correcte."""
+    enregistrement = {
+        "clinical_case": "Monsieur R. part au Gabon pendant 2 ans.",
+        "question": "Au sujet des vaccinations :",
+        "answer_a": "Le vaccin contre la fievre jaune est obligatoire",
+        "answer_b": "Autre reponse",
+        "answer_c": "Autre reponse",
+        "answer_d": "Autre reponse",
+        "answer_e": "Autre reponse",
+        "correct_answers": "A",
+        "task": "QCU",
+    }
+    exemple = mapper_mediqal_qcm(enregistrement)
+
+    assert exemple is not None
+    assert exemple.source == "MediQAl"
+    assert "Monsieur R. part au Gabon" in exemple.prompt[0].contenu
+    assert "Au sujet des vaccinations" in exemple.prompt[0].contenu
+    assert exemple.completion[0].contenu == "Le vaccin contre la fievre jaune est obligatoire"
+    assert exemple.est_complet_pour_sft()
+
+
+def test_mapper_mediqal_qcm_sans_cas_clinique():
+    """`clinical_case` est `null` pour certains enregistrements -- le prompt doit alors etre juste la question."""
+    enregistrement = {
+        "clinical_case": None,
+        "question": "Quel diagnostic evoquez-vous ?",
+        "answer_a": "Autre",
+        "answer_b": "Autre",
+        "answer_c": "Kyste du tractus thyreoglosse",
+        "answer_d": "Autre",
+        "answer_e": "Autre",
+        "correct_answers": "C",
+        "task": "QCU",
+    }
+    exemple = mapper_mediqal_qcm(enregistrement)
+
+    assert exemple is not None
+    assert exemple.prompt[0].contenu == "Quel diagnostic evoquez-vous ?"
+    assert exemple.completion[0].contenu == "Kyste du tractus thyreoglosse"
+
+
+def test_mapper_mediqal_qcm_mcqm_concatene_les_reponses_multiples():
+    """Schema reel MediQAl "mcqm" (07/09/2026) : plusieurs lettres separees par une virgule."""
+    enregistrement = {
+        "clinical_case": "Une fillette de 6 ans developpe une parotidite.",
+        "question": "Quelle(s) proposition(s) peut (peuvent) s'appliquer a l'epidemiologie de la maladie ?",
+        "answer_a": "Transmission manuportee",
+        "answer_b": "La phase de contagiosite dure 8 jours",
+        "answer_c": "Maladie strictement humaine",
+        "answer_d": "Confere une immunite",
+        "answer_e": "Transmission indirecte possible",
+        "correct_answers": "C,D",
+        "task": "QCM",
+    }
+    exemple = mapper_mediqal_qcm(enregistrement)
+
+    assert exemple is not None
+    assert exemple.completion[0].contenu == "Maladie strictement humaine Confere une immunite"
+
+
+def test_mapper_mediqal_qcm_ignore_enregistrement_incomplet():
+    assert mapper_mediqal_qcm({"question": "Sans reponse correcte", "answer_a": "X"}) is None
+    assert mapper_mediqal_qcm({"clinical_case": None, "correct_answers": "A"}) is None
+    assert mapper_mediqal_qcm({}) is None
+
+
 def test_mapper_frenchmedmcqa_valide():
+    """
+    Schema reel (confirme sur nthngdy/frenchmedmcqa, 07/09/2026) :
+    champs plats `answer_a`..`answer_e`, PAS de champ `options`.
+    `correct_answers` est un entier, index 0-based dans a..e (confirme
+    via `datasets` features + verification manuelle sur des
+    enregistrements reels).
+    """
     enregistrement = {
         "question": "Quel est le traitement de premiere intention ?",
-        "options": {"a": "Paracetamol", "b": "Ibuprofene"},
-        "correct_answers": "a",
+        "answer_a": "Paracetamol",
+        "answer_b": "Ibuprofene",
+        "correct_answers": 0,
+        "number_correct_answers": 0,
     }
     exemple = mapper_frenchmedmcqa(enregistrement)
 
     assert exemple is not None
     assert exemple.source == "FrenchMedMCQA"
-    assert "Paracetamol" in exemple.prompt[0].contenu
-    assert exemple.completion[0].contenu == "a"
+    assert exemple.prompt[0].contenu == "Quel est le traitement de premiere intention ?"
+    assert exemple.completion[0].contenu == "Paracetamol"
+
+
+def test_mapper_frenchmedmcqa_resout_index_non_nul():
+    enregistrement = {
+        "question": "Laquelle est fausse ?",
+        "answer_a": "A",
+        "answer_b": "B",
+        "answer_c": "C",
+        "answer_d": "D",
+        "answer_e": "Peu ionisantes",
+        "correct_answers": 4,
+        "number_correct_answers": 0,
+    }
+    exemple = mapper_frenchmedmcqa(enregistrement)
+
+    assert exemple is not None
+    assert exemple.completion[0].contenu == "Peu ionisantes"
 
 
 def test_mapper_frenchmedmcqa_ignore_sans_reponse_correcte():
-    assert mapper_frenchmedmcqa({"question": "Q", "options": {}}) is None
+    assert mapper_frenchmedmcqa({"question": "Q"}) is None
+    assert mapper_frenchmedmcqa({"question": "Q", "correct_answers": None}) is None
+    assert mapper_frenchmedmcqa({"question": "Q", "correct_answers": 0}) is None  # answer_a absent
 
 
 def test_mapper_medquad_valide():

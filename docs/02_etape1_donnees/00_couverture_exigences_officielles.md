@@ -43,13 +43,13 @@ sur données réelles restant à faire · [A FAIRE] pas encore commencé.
 
 | Exigence officielle | Statut | Où le trouver |
 |---|---|---|
-| Collecter le corpus bilingue | [FAIT] Les 4 corpus réels sont téléchargés dans `data/raw/` (`telecharger_corpus.py`), MediQAl en 3 fichiers (voir section dédiée ci-dessous) | `LecteurCorpusFichierLocal`, `LecteurCorpusHuggingFace`, `telecharger_corpus.py` ; cahier des charges §5.1 |
+| Collecter le corpus bilingue | [FAIT] Les 6 fichiers réels (4 sources, MediQAl en 3 fichiers) sont téléchargés dans `data/raw/` (`telecharger_corpus.py`) | `LecteurCorpusFichierLocal`, `LecteurCorpusHuggingFace`, `telecharger_corpus.py` ; cahier des charges §5.1 |
 | Nettoyer et structurer | [FAIT] `ProfilerCorpusUseCase` + adaptateur `ydata-profiling` **validés par smoke test réel** (voir section dédiée ci-dessous) ; les 6 fichiers réels sont profilés (`data/processed/rapports_profilage/`), y compris `ultramedical_preference.jsonl` (966 Mo) via l'option `--bloque` | `profiler_corpus.py` ; diagramme d'activité Étape 1 |
-| ≈5 000 paires SFT | [OUTILLAGE PRET] Mappers écrits et corrigés pour FrenchMedMCQA, MedQuAD et MediQAl-oeq (`mappers_corpus.py`) ; **mapper manquant pour MediQAl-mcqu/mcqm** (schéma QCM différent, voir section dédiée) ; execution de `construire_dataset_pivot.py` restant a faire | `construire_dataset_pivot.py` |
-| Paires DPO validées cliniquement | [OUTILLAGE PRET] Mapper technique prêt **et corrigé** (`mapper_ultramedical_preference` extrayait mal chosen/rejected, voir section dédiée) ; la validation clinique par un expert est hors du périmètre purement technique et reste à planifier avec le CHSA | même fichier ; objectifs §3.2-3.3 |
-| Anonymisation + documentation RGPD | [OUTILLAGE PRET] Adaptateur `PresidioAnonymiseur` **validé par smoke test réel** (bug de configuration multi-langue découvert et corrigé, cf. section dédiée) ; exécution sur données réelles + rapport de contrôle qualité RGPD restant à produire | `AnonymiserDatasetUseCase` ; cahier des charges NF2 |
+| ≈5 000 paires SFT | [FAIT] (07/09/2026) Les 5 fichiers SFT (MediQAl-oeq/mcqu/mcqm, FrenchMedMCQA, MedQuAD) sont mappés et fusionnés dans `data/processed/dataset_pivot.jsonl` : **37 851 exemples SFT réels, 0 enregistrement rejeté**, largement au-dessus des ≈5 000 attendus (voir section dédiée ci-dessous pour le détail par source) | `construire_dataset_pivot.py`, `mappers_corpus.py` |
+| Paires DPO validées cliniquement | [OUTILLAGE PRET] Mapper technique prêt **et corrigé** (`mapper_ultramedical_preference` extrayait mal chosen/rejected, voir section dédiée) et exécuté sur données réelles (07/09/2026) : **109 353 paires DPO réelles, 0 rejet** ; la validation clinique par un expert est hors du périmètre purement technique et reste à planifier avec le CHSA | même fichier ; objectifs §3.2-3.3 |
+| Anonymisation + documentation RGPD | [OUTILLAGE PRET] Adaptateur `PresidioAnonymiseur` **validé par smoke test réel** (bug de configuration multi-langue découvert et corrigé, cf. section dédiée) ; bug de performance O(n²) réel découvert et corrigé dans `AnonymiserDatasetUseCase` (voir section dédiée) ; **exécution complète sur les 147 204 exemples réels non lancée à ce jour, decision produit en attente** (durée estimée mesurée ~19h avec la configuration Presidio actuelle, voir section dédiée) ; rapport de contrôle qualité RGPD toujours à produire une fois l'anonymisation exécutée | `AnonymiserDatasetUseCase` ; cahier des charges NF2 |
 | Schéma de métadonnées | [FAIT] Défini **et implémenté** comme entité de domaine (`ExemplePivot`, `ConstantesVitales`) | `domain/model/exemple_pivot.py` ; cahier des charges §5.2 ; diagramme de paquets Étape 1 |
-| Splits train / val / test + éval clinique isolée | [FAIT] Implémenté et testé (`DecouperSplitsUseCase`), test clinique jamais réutilisé en entraînement | `decouper_splits.py` ; `tests/application/` |
+| Splits train / val / test + éval clinique isolée | [OUTILLAGE PRET] `DecouperSplitsUseCase` implémenté et testé ; exécution sur le dataset pivot réel en attente de la décision d'anonymisation ci-dessus (le pipeline documenté anonymise avant de découper) | `decouper_splits.py` ; `tests/application/` |
 
 ## Couverture des prérequis
 
@@ -62,9 +62,9 @@ sur données réelles restant à faire · [A FAIRE] pas encore commencé.
 
 | Résultat attendu | Statut |
 |---|---|
-| Dataset bilingue anonymisé et versionné (≈5 000 paires SFT + jeu DPO) | [A FAIRE] Pipeline complet prêt de bout en bout (voir diagramme d'activité), production réelle du dataset final restant à exécuter |
+| Dataset bilingue anonymisé et versionné (≈5 000 paires SFT + jeu DPO) | [OUTILLAGE PRET] Dataset pivot réel construit et fusionné (147 204 exemples, 37 851 SFT + 109 353 DPO, 0 rejet) ; **anonymisation et découpage en splits restent à exécuter**, decision produit en attente (voir section dédiée) |
 | Schéma des métadonnées | [FAIT] Livré (voir ci-dessus) |
-| Justification du processus RGPD suivi | [OUTILLAGE PRET] Stratégie et outillage documentés (Presidio, 3 stratégies comparées) ; le rapport de justification final (taux de détection, contrôle qualité manuel) reste à rédiger une fois l'anonymisation exécutée sur données réelles |
+| Justification du processus RGPD suivi | [OUTILLAGE PRET] Stratégie et outillage documentés (Presidio, 3 stratégies comparées) ; anonymisation elle-même pas encore exécutée sur le dataset réel (voir section dédiée) ; le rapport de justification final (taux de détection, contrôle qualité manuel) reste hors périmètre de cette session, à rédiger une fois l'anonymisation exécutée |
 
 ## Validation technique effectuée (smoke test d'intégration, 02/09/2026)
 
@@ -110,21 +110,21 @@ séparément dans `data/raw/` :
 | `mcqu` (QCM, 1 réponse) | `train`/`validation`/`test` | `mediqal_mcqu.jsonl` | `id`, `clinical_case`, `question`, `answer_a`..`answer_e`, `correct_answers` (1 lettre), `task="QCU"`, `medical_subject`, `question_type` |
 | `mcqm` (QCM, réponses multiples) | `train`/`validation`/`test` | `mediqal_mcqm.jsonl` | identique à `mcqu`, mais `correct_answers` peut contenir plusieurs lettres (ex. `"C,D"`) |
 
-Seul `oeq` a un champ `answer` direct : c'est le seul que
-`mapper_mediqal` (`mappers_corpus.py`) couvre aujourd'hui. `mcqu` et
-`mcqm` ont un schéma QCM (options `answer_a`..`answer_e` +
-`correct_answers`), structurellement proche de FrenchMedMCQA mais pas
-identique (`mapper_frenchmedmcqa` attend un dict `options`, pas des
-champs plats) : il n'existe pas encore de mapper pour ces deux
-configurations. Les exécuter aujourd'hui via `construire_dataset_pivot.py
---corpus mediqal` ne provoquerait aucune erreur, mais produirait 0
-exemple pivot (le mapper renvoie `None` pour chaque enregistrement,
-faute de champ `answer`).
+Seul `oeq` a un champ `answer` direct. `mcqu` et `mcqm` ont un schéma
+QCM (champs plats `answer_a`..`answer_e` + `correct_answers`),
+structurellement proche de FrenchMedMCQA mais pas identique.
 
-**Décision restant à prendre** (produit, pas seulement technique) :
-comment traiter le cas `mcqm` à réponses multiples dans le mapper à
-écrire — même traitement que `mcqu` (concaténer les réponses
-correctes) ou traitement distinct ? Non tranché à ce jour.
+**Résolu le 07/09/2026** : mapper dédié `mapper_mediqal_qcm` écrit
+pour `mcqu`/`mcqm`, routé via deux nouvelles clés `--corpus`
+(`mediqal_mcqu`, `mediqal_mcqm` ; `mediqal_oeq` ajoutée en alias
+explicite de `mediqal`). Décision produit du capitaine appliquée
+telle quelle : traitement simple sans liste d'options dans le prompt
+(comme `mapper_medquad`) — prompt = `clinical_case` (si non nul)
+concaténé avec `question`, completion = texte(s) de la (des)
+réponse(s) correcte(s) résolu(s) via `correct_answers`, concaténés
+avec un espace pour le cas `mcqm` multi-réponses. Exécuté sur les
+fichiers réels : 10 113 exemples pour `mcqu`, 5 767 pour `mcqm`,
+**0 rejet** dans les deux cas.
 
 ## Validation réelle sur les 6 fichiers téléchargés (03/09/2026)
 
@@ -180,21 +180,134 @@ dernier message de la liste.
 
 
 
-1. ~~Télécharger les 4 corpus réels dans `data/raw/`.~~ Fait le
-   03/09/2026 (`telecharger_corpus.py`) — MediQAl en 3 fichiers
-   (`oeq`/`mcqu`/`mcqm`, voir section dédiée ci-dessus).
+1. ~~Télécharger les 6 fichiers réels dans `data/raw/`.~~ Fait le
+   03/09/2026, refait le 07/09/2026 (`telecharger_corpus.py`).
 2. ~~Exécuter `profiler_corpus.py` sur chacun (rapport ydata-profiling).~~
    Fait le 03/09/2026 pour les 6 fichiers (`ultramedical_preference.jsonl`
    via `--bloque`, voir section dédiée ci-dessus).
-3. Ajuster `mappers_corpus.py` aux noms de colonnes réels observés --
-   **fait pour ultramedical_preference** (voir section dédiée
-   ci-dessus) ; **decision produit encore requise** pour MediQAl :
-   écrire le mapper QCM manquant pour
-   `mediqal_mcqu.jsonl`/`mediqal_mcqm.jsonl` (voir section dédiée
-   ci-dessus pour le traitement de `mcqm` à réponses multiples).
-4. Enchaîner `construire_dataset_pivot.py` → `anonymiser_dataset.py` →
-   `decouper_splits.py` pour chaque corpus (mediqal-oeq, frenchmedmcqa,
-   medquad, ultramedical_preference des a present ; mediqal-mcqu/mcqm
-   une fois le mapper QCM ecrit).
-5. Rédiger le rapport de justification RGPD à partir des résultats
-   réels d'anonymisation.
+3. ~~Écrire le mapper QCM manquant pour MediQAl mcqu/mcqm et corriger
+   le bug FrenchMedMCQA.~~ Fait le 07/09/2026 (voir sections dédiées
+   ci-dessus et ci-dessous).
+4. ~~Construire le dataset pivot fusionné sur les 6 fichiers réels.~~
+   Fait le 07/09/2026 : 147 204 exemples, 0 rejet (voir section
+   dédiée ci-dessous).
+5. **Anonymiser le dataset pivot réel et le découper en splits** —
+   bloqué sur une decision produit (durée d'exécution mesurée ~19h
+   avec la configuration Presidio actuelle sur 147 204 exemples, voir
+   section dédiée ci-dessous). Pas encore exécuté.
+6. Rédiger le rapport de justification RGPD à partir des résultats
+   réels d'anonymisation (hors périmètre de cette session).
+
+## FrenchMedMCQA : bug de mapper corrigé contre le schéma réel (07/09/2026)
+
+Le mapper `mapper_frenchmedmcqa` original lisait
+`enregistrement.get("options")` (un dict `{lettre: texte}` supposé
+d'après la fiche Hugging Face) et utilisait `correct_answers`
+directement comme texte de réponse. Sur le fichier réel téléchargé
+(`nthngdy/frenchmedmcqa`, 1080 enregistrements sur les 3 splits), ce
+champ `options` **n'existe pas** (les options sont des champs plats
+`answer_a`..`answer_e`) et `correct_answers` est un **entier**, pas
+une lettre — le mapper produisait donc un prompt sans aucune option et
+une completion litéralement égale au chiffre (ex. `"4"`).
+
+Codification réelle confirmée via `datasets.load_dataset(...).features`
+(pas seulement la fiche Hugging Face) :
+- `correct_answers` : `Value("int64")`, un index **0-based** dans
+  `a`..`e` (confirmé aussi manuellement sur plusieurs enregistrements
+  réels — ex. `correct_answers=4` → "e" pour une question sur les
+  particules alpha, `correct_answers=0` → "a" pour une question sur la
+  progestérone).
+- `number_correct_answers` : `ClassLabel(names=["1","2","3","4","5"])`
+  — l'index `0` signifie "1 réponse correcte".
+- Sur les **1080 enregistrements réels** (train+validation+test),
+  `number_correct_answers` vaut **toujours 0** (= 1 seule réponse
+  correcte) : le cas multi-réponses suggéré par ce champ n'existe pas
+  dans ce miroir Hugging Face du dataset, et `correct_answers` étant
+  un entier unique, il ne pourrait de toute façon pas encoder
+  plusieurs index simultanément. Pas de gestion multi-réponses ajoutée
+  en conséquence — non observable, non representable par ce schéma.
+
+Mapper corrigé pour résoudre l'index vers `answer_a`..`answer_e` et
+appliquer le même traitement simple que les autres sources QCM
+(pas de liste d'options dans le prompt, decision du capitaine).
+Test existant (`test_mapper_frenchmedmcqa_valide`) réécrit contre ce
+schéma réel (il était écrit contre le schéma synthétique erroné), test
+supplémentaire ajouté pour un index non nul. Exécuté sur le fichier
+réel : 595 exemples (split `train`), **0 rejet**.
+
+## Construction du dataset pivot sur les 6 fichiers réels (07/09/2026)
+
+Pipeline `construire_dataset_pivot.py` exécuté pour de vrai sur les 6
+fichiers de `data/raw/` (téléchargés dans cette session, comptes
+identiques à ceux déjà documentés) :
+
+| Fichier source | `--corpus` | Exemples pivot | Rejets |
+|---|---|---:|---:|
+| `mediqal_oeq.jsonl` | `mediqal_oeq` | 4 969 | 0 |
+| `mediqal_mcqu.jsonl` | `mediqal_mcqu` | 10 113 | 0 |
+| `mediqal_mcqm.jsonl` | `mediqal_mcqm` | 5 767 | 0 |
+| `frenchmedmcqa.jsonl` | `frenchmedmcqa` | 595 | 0 |
+| `medquad.jsonl` | `medquad` | 16 407 | 0 |
+| `ultramedical_preference.jsonl` | `ultramedical_preference` | 109 353 | 0 |
+| **Total** | | **147 204** | **0** |
+
+Soit **37 851 exemples SFT** (MediQAl×3 + FrenchMedMCQA + MedQuAD) et
+**109 353 paires DPO** (UltraMedical-Preference) — largement au-dessus
+des ≈5 000 paires SFT attendues par la mission. Aucun enregistrement
+rejeté sur aucune des 6 sources : chaque mapper a reconnu 100% des
+enregistrements de son fichier.
+
+**Bug d'infrastructure réel découvert et corrigé au passage** : sans
+lecture par blocs, `LecteurCorpusFichierLocal` charge tout le fichier
+source en DataFrame pandas d'un coup — sur `ultramedical_preference.jsonl`
+(966 Mo, 109 353 enregistrements), ceci a provoqué un épuisement
+mémoire réel sur l'environnement de 5.8 Go de RAM disponible (déjà
+documenté côté `profiler_corpus.py --bloque`, mais pas encore côté
+`construire_dataset_pivot.py`). Option `--taille-bloc N` ajoutée à
+`construire_dataset_pivot.py`, même principe que `profiler_corpus.py`
+(lecture pandas par blocs de N lignes, mémoire de pointe bornée par la
+taille du bloc). Utilisée avec succès (`--taille-bloc 5000`) pour
+produire les 109 353 exemples DPO ci-dessus sans OOM.
+
+## Anonymisation réelle : bug de performance O(n²) corrigé, exécution complète bloquée sur decision produit (07/09/2026)
+
+En préparant l'exécution de `anonymiser_dataset.py` sur le dataset
+pivot réel (147 204 exemples, 624 Mo), un second bug d'infrastructure
+réel a été découvert : `AnonymiserDatasetUseCase.executer()` appelait
+`self.repository.sauvegarder(exemple)` **à chaque itération** de la
+boucle sur les 147 204 exemples. Or `JsonlDatasetRepository.sauvegarder`
+relit et réécrit **tout le fichier JSONL** à chaque appel — sur 147 204
+exemples cela revient à relire/réécrire un fichier de 624 Mo 147 204
+fois, un O(n²) totalement infaisable (des heures rien que pour l'I/O
+disque). Corrigé : la boucle accumule désormais les exemples
+anonymisés puis appelle `sauvegarder_plusieurs(...)` **une seule fois**
+à la fin (même méthode déjà utilisée par
+`ConstruireDatasetPivotUseCase`), ramenant le coût I/O à une seule
+lecture + une seule écriture du fichier, quel que soit le nombre
+d'exemples traités.
+
+Ce correctif rend l'exécution *faisable* mais ne suffit pas à la
+rendre *rapide* : le coût dominant reste le calcul NLP (spaCy via
+Presidio) sur chaque champ texte. Mesuré directement sur des extraits
+réels du dataset pivot (`AnalyzerEngine.analyze` par champ,
+échantillons de 20 à 30 enregistrements par source) :
+
+| Source (offset dans le pivot) | Temps mesuré / enregistrement | Enregistrements | Temps estimé |
+|---|---:|---:|---:|
+| MediQAl-oeq (FR, court) | ~162 ms | 4 969 | ~13 min |
+| MediQAl-mcqu (FR, moyen) | ~130 ms | 10 113 | ~22 min |
+| MediQAl-mcqm (FR, moyen, non mesuré séparément) | ~130 ms (estimé) | 5 767 | ~12 min |
+| FrenchMedMCQA (FR, court) | ~162 ms (estimé, non mesuré) | 595 | ~2 min |
+| MedQuAD (EN, moyen) | ~300 ms | 16 407 | ~82 min |
+| UltraMedical-Preference (EN, long, 2 x ~5000 car./enreg.) | ~548 ms | 109 353 | **~16h40** |
+| **Total estimé** | | **147 204** | **~18h50** |
+
+**Décision produit en attente (`needs-decision` ouvert)** : exécuter
+l'anonymisation complète en tâche de fond sur ~19h, anonymiser un
+échantillon représentatif seulement pour ce POC, ou optimiser le
+pipeline Presidio (traitement par lot `nlp.pipe`, modèles plus légers,
+restriction des recognizers) avant l'exécution complète. Tant que
+cette décision n'est pas prise, `anonymiser_dataset.py` et
+`decouper_splits.py` ne sont pas exécutés sur le dataset réel — le
+fichier `data/processed/dataset_pivot.jsonl` produit dans cette
+session contient les 147 204 exemples **non anonymisés**.

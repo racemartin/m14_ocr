@@ -59,10 +59,14 @@ uv run python interfaces/cli/profiler_corpus.py --source data/raw/medquad.jsonl 
 uv run python interfaces/cli/profiler_corpus.py --source data/raw/ultramedical_preference.jsonl --nom UltraMedicalPreference
 
 # 3. Construction du dataset pivot (meme --sortie : fusionne les corpus par identifiant)
-# NB : seul MediQAl-oeq a un mapper aujourd'hui (schema question/answer).
-# mediqal_mcqu.jsonl et mediqal_mcqm.jsonl (schema QCM) n'ont PAS encore
-# de mapper -- cf. docs/02_etape1_donnees/00_couverture_exigences_officielles.md
-uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/mediqal_oeq.jsonl --corpus mediqal --sortie data/processed/dataset_pivot.jsonl
+# NB : MediQAl a 3 configurations, avec 2 schemas differents -- le
+# mapper (donc la valeur --corpus) depend du schema, pas seulement de
+# la source Hub. "oeq" (question/answer) -> mapper_mediqal ;
+# "mcqu"/"mcqm" (QCM, answer_a..answer_e + correct_answers) ->
+# mapper_mediqal_qcm. Voir interfaces/cli/mappers_corpus.py.
+uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/mediqal_oeq.jsonl --corpus mediqal_oeq --sortie data/processed/dataset_pivot.jsonl
+uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/mediqal_mcqu.jsonl --corpus mediqal_mcqu --sortie data/processed/dataset_pivot.jsonl
+uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/mediqal_mcqm.jsonl --corpus mediqal_mcqm --sortie data/processed/dataset_pivot.jsonl
 uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/frenchmedmcqa.jsonl --corpus frenchmedmcqa --sortie data/processed/dataset_pivot.jsonl
 uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/medquad.jsonl --corpus medquad --sortie data/processed/dataset_pivot.jsonl
 uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/ultramedical_preference.jsonl --corpus ultramedical_preference --sortie data/processed/dataset_pivot.jsonl
@@ -89,10 +93,13 @@ Détail complet : `docs/01_environnement/01_architecture_hexagonale.md`.
 ## État d'avancement
 
 - [x] Étape 0 — Cadrage, environnement, architecture
-- [ ] Étape 1 — Préparation des données (6 corpus téléchargés et
-      profilés ; construction du dataset pivot restant à faire ;
-      mapper QCM manquant pour MediQAl-mcqu/mcqm, voir
-      `docs/02_etape1_donnees/00_couverture_exigences_officielles.md`)
+- [ ] Étape 1 — Préparation des données : dataset pivot construit sur
+      les 6 fichiers réels (147 204 exemples, 0 rejet -- voir
+      `docs/02_etape1_donnees/00_couverture_exigences_officielles.md`) ;
+      anonymisation + découpage en splits restant à exécuter sur ce
+      dataset réel (decision produit en attente sur la durée
+      d'exécution, ~19h estimées avec la configuration Presidio
+      actuelle)
 - [ ] Étape 2 — SFT + LoRA
 - [ ] Étape 3 — DPO
 - [ ] Étape 4 — Déploiement (FastAPI + Streamlit + vLLM + CI/CD)
