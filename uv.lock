@@ -460,11 +460,6 @@ web = [
     { name = "streamlit" },
 ]
 
-[package.dev-dependencies]
-dev = [
-    { name = "pytest" },
-]
-
 [package.metadata]
 requires-dist = [
     { name = "accelerate", marker = "extra == 'remote'", specifier = ">=0.33" },
@@ -505,9 +500,6 @@ requires-dist = [
     { name = "ydata-profiling", marker = "extra == 'local'", specifier = ">=4.9" },
 ]
 provides-extras = ["local", "remote", "api", "web", "dev"]
-
-[package.metadata.requires-dev]
-dev = [{ name = "pytest" }]
 
 [[package]]
 name = "click"

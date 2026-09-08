@@ -97,10 +97,5 @@ target-version = "py311"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[dependency-groups]
-dev = [
-    "pytest",
-]
-
 [tool.hatch.build.targets.wheel]
 packages = ["src/chsa_triage", "interfaces", "src/tools"]
