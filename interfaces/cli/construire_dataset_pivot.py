@@ -82,7 +82,7 @@ def main() -> None:
     log.PARAMETER_VALUE("taille-bloc", arguments.taille_bloc or "(desactive -- lecture complete)")
 
     # -------------------------------------------------------------------------
-    # PREPARE ADAPTERS
+    # PREPARE ADAPTERS (Dependency Injection)
     # -------------------------------------------------------------------------
     lecteur    = LecteurCorpusFichierLocal(arguments.source, taille_bloc=arguments.taille_bloc)
     repository = JsonlDatasetRepository(arguments.sortie)

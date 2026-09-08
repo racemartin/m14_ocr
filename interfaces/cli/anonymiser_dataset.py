@@ -150,7 +150,7 @@ def main() -> None:
     log.PARAMETER_VALUE("limite", arguments.limite if arguments.limite is not None else "full (aucune limite)")
 
     # -------------------------------------------------------------------------
-    # PREPARE ADAPTERS
+    # PREPARE ADAPTERS (Dependency Injection)
     # -------------------------------------------------------------------------
     repository_source  = JsonlDatasetRepository(arguments.dataset)
     repository_sortie   = JsonlDatasetRepository(arguments.sortie)

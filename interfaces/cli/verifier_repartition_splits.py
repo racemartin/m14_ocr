@@ -46,7 +46,7 @@ def main() -> None:
     log.PARAMETER_VALUE("dataset", arguments.dataset)
 
     # -------------------------------------------------------------------------
-    # PREPARE ADAPTERS
+    # PREPARE ADAPTERS (Dependency Injection)
     # -------------------------------------------------------------------------
     repository = JsonlDatasetRepository(arguments.dataset)
 

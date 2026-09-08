@@ -67,7 +67,7 @@ def main() -> None:
     log.PARAMETER_VALUE("n", arguments.n if arguments.n is not None else "(aucun -- tout repartir)")
 
     # -------------------------------------------------------------------------
-    # PREPARE ADAPTERS
+    # PREPARE ADAPTERS (Dependency Injection)
     # -------------------------------------------------------------------------
     repository = JsonlDatasetRepository(arguments.dataset)
 

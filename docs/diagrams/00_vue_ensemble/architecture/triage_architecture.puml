@@ -1,0 +1,129 @@
+@startuml triage_architecture
+skinparam backgroundColor #F6F4EF
+skinparam defaultFontName Helvetica
+skinparam roundcorner 6
+skinparam shadowing false
+
+skinparam package {
+  BackgroundColor #FFFFFF
+  BorderColor #0B3D3A
+  FontColor #0B3D3A
+  FontStyle bold
+  FontSize 15
+}
+skinparam node {
+  BackgroundColor #EFEAE0
+  BorderColor #0B3D3A
+  FontColor #10241F
+  FontSize 12
+}
+skinparam database {
+  BackgroundColor #FDF6EC
+  BorderColor #C98A1E
+  FontColor #4A3400
+  FontSize 11
+}
+skinparam cloud {
+  BackgroundColor #E7EFEC
+  BorderColor #2F7A4F
+  FontColor #123C3A
+  FontSize 12
+}
+skinparam artifact {
+  BackgroundColor #FCEbe6
+  BorderColor #C4432B
+  FontColor #7A2A17
+}
+skinparam arrow {
+  Color #0B3D3A
+  FontSize 11
+}
+skinparam ArrowThickness 1.2
+
+title Agent IA de Triage Médical — CHSA\nArchitecture complète : services Docker, volumes et services externes par phase
+
+' ===================== SERVICES EXTERNES (transverses) =====================
+cloud "Hugging Face Hub\n(corpus + modèle base\nQwen3-1.7B-Base)" as HFHUB
+cloud "GitHub\n(repo + GitHub Actions)" as GH
+cloud "Container Registry\n(GHCR / Docker Hub)" as REGISTRY
+cloud "MLflow / Weights & Biases\n(tracking expériences)" as TRACK
+cloud "Cloud Provider\n(GPU instances — entraînement\n+ hébergement endpoint)" as CLOUDPROV
+cloud "SIH — Système d'Information\nHospitalier (existant, externe)" as SIH
+
+' ===================== PHASE 1 =====================
+package "PHASE 1 · Semaine 1\nPréparation et structuration des données" as P1 {
+  node "container: data-pipeline\n(Python · pandas · HF datasets\n· Presidio analyzer/anonymizer)" as C1
+  database "vol: data-raw\n(corpus téléchargés :\nMediQA, FrenchMedMCQA,\nMedQuAD, UltraMedical-Pref)" as V1a
+  database "vol: data-processed\n(dataset SFT ~5000 paires\nJSONL anonymisé RGPD)" as V1b
+  database "vol: data-dpo-pairs\n(paires préférence\nvalidées/non validées)" as V1c
+  database "vol: metadata\n(schéma + doc processus RGPD)" as V1d
+
+  C1 --> V1a
+  C1 --> V1b
+  C1 --> V1c
+  C1 --> V1d
+}
+HFHUB <--> C1 : download corpus /\nupload dataset final
+
+' ===================== PHASE 2 =====================
+package "PHASE 2 · Semaine 2\nFine-Tuning Supervisé (SFT)" as P2 {
+  node "container: training-sft\n(PyTorch · Transformers · PEFT/LoRA\n· GPU runtime)" as C2
+  database "vol: checkpoints-sft\n(adaptateurs LoRA +\ncheckpoints reproductibles)" as V2a
+  database "vol: logs-sft\n(logs entraînement,\nmétriques, seeds)" as V2b
+
+  C2 --> V2a
+  C2 --> V2b
+}
+V1b ..> C2 : mount (read-only)\ndataset SFT
+HFHUB <--> C2 : download\nQwen3-1.7B-Base
+C2 --> TRACK : logs métriques
+CLOUDPROV --> C2 : GPU compute
+
+' ===================== PHASE 3 =====================
+package "PHASE 3 · Semaine 3\nAlignement par Préférences (DPO)" as P3 {
+  node "container: training-dpo\n(PyTorch · TRL/DPO trainer\n· GPU runtime)" as C3
+  database "vol: checkpoints-dpo\n(modèle final aligné\nSFT+LoRA+DPO)" as V3a
+  database "vol: logs-dpo\n(logs entraînement,\nseuils sécurité)" as V3b
+
+  C3 --> V3a
+  C3 --> V3b
+}
+V2a ..> C3 : mount (read-only)\ncheckpoint SFT
+V1c ..> C3 : mount (read-only)\npaires DPO
+C3 --> TRACK : logs métriques
+CLOUDPROV --> C3 : GPU compute
+
+' ===================== PHASE 4 =====================
+package "PHASE 4 · Semaine 4\nDéploiement et validation (docker-compose prod)" as P4 {
+  node "container: frontend\n(web / tablette accueil)" as C4a
+  node "container: api-gateway\n(FastAPI)" as C4b
+  node "container: vllm-inference\n(vLLM serving engine)" as C4c
+  database "vol: model-weights\n(modèle final servi,\nread-only)" as V4a
+  database "vol: audit-db\n(PostgreSQL — logs\ntraçabilité / audit RGPD)" as V4b
+  node "container: audit-db\n(PostgreSQL)" as C4d
+  node "container: reverse-proxy\n(nginx / TLS)" as C4e
+
+  C4e --> C4a
+  C4e --> C4b
+  C4b --> C4c
+  C4c --> V4a
+  C4b --> C4d
+  C4d --> V4b
+}
+V3a ==> V4a : déploiement du modèle validé
+GH --> REGISTRY : build & push images\n(GitHub Actions CI/CD)
+REGISTRY --> P4 : pull images (déploiement continu)
+CLOUDPROV --> P4 : hébergement endpoint\n(GPU inference)
+C4b <--> SIH : push dossier patient\n+ niveau priorité (HL7/FHIR)
+
+' ===================== LEGENDE =====================
+legend right
+  |= Élément |= Signification |
+  | <back:#EFEAE0>   </back> | Container Docker |
+  | <back:#FDF6EC>   </back> | Volume Docker (persistant) |
+  | <back:#E7EFEC>   </back> | Service externe / Cloud |
+  | ..> | Volume monté en lecture seule |
+  | ==> | Transfert de modèle entre phases |
+end legend
+
+@enduml

@@ -114,7 +114,7 @@ def main() -> None:
         return
 
     # -------------------------------------------------------------------------
-    # PREPARE ADAPTERS
+    # PREPARE ADAPTERS (Dependency Injection)
     # -------------------------------------------------------------------------
     # Chemin par defaut (sans --bloque) : le corpus entier est charge en memoire d'un coup.
     # Adaptateurs concrets injectes dans le cas d'usage plutot qu'instancies a l'interieur de

@@ -52,7 +52,7 @@ def main() -> None:
     log.PARAMETER_VALUE("sortie", arguments.sortie)
 
     # -------------------------------------------------------------------------
-    # PREPARE ADAPTERS
+    # PREPARE ADAPTERS (Dependency Injection)
     # -------------------------------------------------------------------------
     # Adaptateur concret instancie ici et non dans la logique metier : Injection de
     # Dependances, partie du patron Ports et Adaptateurs (cf. docs/01_environnement/01_architecture_hexagonale.md).

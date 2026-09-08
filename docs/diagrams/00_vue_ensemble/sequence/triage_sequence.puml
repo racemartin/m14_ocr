@@ -1,0 +1,81 @@
+@startuml triage_sequence
+skinparam backgroundColor #F6F4EF
+skinparam sequence {
+  ArrowColor #0B3D3A
+  ActorBorderColor #0B3D3A
+  LifeLineBorderColor #0B3D3A
+  LifeLineBackgroundColor #EFEAE0
+  ParticipantBorderColor #0B3D3A
+  ParticipantBackgroundColor #FFFFFF
+  ParticipantFontColor #10241F
+  ParticipantFontStyle bold
+  ActorBackgroundColor #FFFFFF
+  NoteBackgroundColor #FDF6EC
+  NoteBorderColor #C98A1E
+}
+skinparam sequenceMessageAlign center
+skinparam maxMessageSize 160
+skinparam responseMessageBelowArrow true
+
+title Agent IA de Triage Médical — CHSA\nCas d'usage type en production
+
+actor "Patient" as P
+participant "Frontend\n(tablette / web accueil)" as FE
+participant "API Gateway\n(FastAPI)" as API
+participant "Serveur d'inférence\n(vLLM + Qwen3-1.7B\nSFT+LoRA+DPO)" as LLM
+database "Store de traçabilité\n(logs / audit RGPD)" as LOG
+participant "Système d'Information\nHospitalier (SIH)" as SIH
+actor "Infirmier(ère) de triage" as INF
+
+autonumber "<b>0."
+
+P -> FE: Arrivée aux urgences,\ndémarre le questionnaire
+activate FE
+
+FE -> API: POST /triage/session\n(démarrage session)
+activate API
+API -> LOG: Créer entrée session (horodatage, ID anonymisé)
+API --> FE: session_id
+FE --> P: Affiche 1ère question
+
+loop Questionnaire adaptatif
+  P -> FE: Répond (symptômes,\nconstantes, antécédents)
+  FE -> API: POST /triage/answer
+  API -> LLM: Prompt contextuel\n(historique + protocole triage)
+  activate LLM
+  LLM --> API: Question suivante générée\n(ou fin de collecte)
+  deactivate LLM
+  API -> LOG: Append réponse + question posée
+  API --> FE: Question suivante
+  FE --> P: Affiche question suivante
+end
+
+FE -> API: POST /triage/evaluate\n(fin de collecte)
+API -> LLM: Génère évaluation\n(niveau priorité + justification)
+activate LLM
+LLM --> API: {niveau: rouge/ambre/vert,\nexplication, score confiance}
+deactivate LLM
+
+API -> LOG: Enregistre évaluation complète\n(traçabilité audit)
+API -> SIH: Pousse le dossier patient\n+ niveau de priorité (HL7/FHIR)
+activate SIH
+SIH --> API: ACK intégration dossier
+deactivate SIH
+
+API --> FE: Résultat + explication
+deactivate API
+FE --> P: Affiche verdict et orientation
+deactivate FE
+
+SIH -> INF: Alerte tableau de bord\n(nouveau patient trié)
+activate INF
+INF -> SIH: Consulte dossier + explication IA
+INF -> INF: Valide ou surclasse\nla priorité (décision finale humaine)
+note right of INF
+  L'IA **assiste**, l'infirmier(ère)
+  **décide** : validation humaine
+  obligatoire avant orientation finale
+end note
+deactivate INF
+
+@enduml
