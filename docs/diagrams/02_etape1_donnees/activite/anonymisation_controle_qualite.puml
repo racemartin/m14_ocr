@@ -1,0 +1,65 @@
+@startuml anonymisation_controle_qualite
+!include ../../_common/estilo.iuml
+
+title Anonymisation (Presidio) et contrôle qualité de la PII résiduelle\nDiagramme d'activité
+
+start
+
+partition "Étape 4 — Anonymisation (Presidio)" #FCEBE6 {
+  :interfaces/cli/anonymiser_dataset.py;
+  :AnonymiserDatasetUseCase.executer();
+  :_anonymiser_exemple(exemple);
+  :_anonymiser_messages\n(prompt / completion / chosen / rejected);
+  :PresidioAnonymiseur.anonymiser(texte, langue);
+  :NlpEngineProvider\n(fr_core_news_md / en_core_web_sm);
+  :AnalyzerEngine.analyze()\ndétecte les entités;
+  :AnonymizerEngine.anonymize()\napplique l'opérateur\n(replace / mask / redact);
+  :Écrit dans\ndataset_pivot_anonymise.jsonl;
+  note right
+    Le pivot original
+    n'est JAMAIS modifié
+  end note
+}
+
+partition "Étape 5 — Contrôle qualité (comparaison de 2 fichiers)" #F0EEE7 {
+  :interfaces/cli/controler_qualite_anonymisation.py;
+  :Lit le pivot original +\ndataset_pivot_anonymise.jsonl;
+  :ControlerQualiteAnonymisationUseCase.executer()\néchantillon_stratifie (type_exemple, source);
+
+  :Pour chaque paire (original, anonymisé) :\nControleQualiteAnonymisation.observer();
+  :_paires_champs()\naligne symptomes / antecedents /\nprompt / completion / chosen / rejected;
+
+  fork
+    :_detecter_pii_residuelle(texte_anonymise);
+    :detecter_candidats()\n(detection_pii_residuelle.py, REGEX uniquement);
+    if (Catégorie déterministe ?\n(email / téléphone / url / date)) then (oui)
+      :VERDICT_CONFIRME;
+    else (non\n(bigramme capitalisé))
+      :SpacyVerificateurEntitesNommees.verifier()\nspaCy DIRECT (mêmes modèles que Presidio,\nusage indépendant);
+      if (Verdict spaCy) then (ENTITE_PERTINENTE)
+        :VERDICT_CONFIRME;
+      elseif (AUCUNE_ENTITE) then
+        :VERDICT_FAUX_POSITIF_REGEX;
+      else (ENTITE_NON_PERTINENTE)
+        :VERDICT_REVISION_HUMAINE;
+      endif
+    endif
+  fork again
+    :_detecter_candidats_faux_positifs\n(original, anonymise);
+    :difflib.SequenceMatcher\nextrait les fragments masqués\n(<INFO_MASQUEE>);
+    :SpacyVerificateurEntitesNommees.verifier()\nsur le texte ORIGINAL;
+    if (Verdict spaCy) then (ENTITE_PERTINENTE)
+      :Masquage légitime\n(non enregistré comme faux positif);
+    elseif (AUCUNE_ENTITE) then
+      :VERDICT_FAUX_POSITIF_REGEX\n(sur-masquage);
+    else (ENTITE_NON_PERTINENTE)
+      :VERDICT_REVISION_HUMAINE;
+    endif
+  end fork
+
+  :rapport_controle_qualite_anonymisation.json / .md;
+}
+
+stop
+
+@enduml

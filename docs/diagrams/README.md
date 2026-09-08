@@ -13,7 +13,8 @@ docs/diagrams/
 ├── 01_environnement/
 │   └── paquets/                  architecture hexagonale (classes réelles)
 ├── 02_etape1_donnees/
-│   ├── activite/                  pipeline de données bout-en-bout
+│   ├── activite/                  pipeline de données bout-en-bout ;
+│   │                                anonymisation Presidio + contrôle qualité PII résiduelle
 │   ├── sequence/                   les 6 scripts CLI (telecharger, profiler, construire le pivot, anonymiser, decouper, verifier la repartition)
 │   │                                + vue frontiere generique/specifique du pivot (mappers_corpus.py)
 │   ├── paquets/                     classes réelles de l'Étape 1
