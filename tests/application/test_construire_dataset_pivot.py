@@ -52,7 +52,8 @@ def _mapper_test(enregistrement: dict) -> ExemplePivot | None:
     if "question" not in enregistrement:
         return None
     return ExemplePivot(
-        identifiant=ExemplePivot.nouvel_identifiant("test"),
+        identifiant=ExemplePivot.nouvel_identifiant("test", enregistrement["question"]),
+        identifiant_source_brute=enregistrement["question"],
         source="test",
         type_exemple=TypeExemple.SFT,
         langue=Langue.FRANCAIS,
@@ -74,3 +75,42 @@ def test_construire_dataset_pivot_ignore_enregistrements_invalides():
 
     assert nombre == 2
     assert repository.compter() == 2
+    assert cas_usage.doublons == []
+
+
+def test_construire_dataset_pivot_dedoublonne_les_registres_identiques():
+    """
+    Deux enregistrements bruts avec la meme cle naturelle (donc le
+    meme identifiant deterministe) sont de vrais doublons -- un seul
+    doit atterrir dans le pivot, l'autre doit etre expose via
+    `.doublons` (jamais silencieusement perdu).
+    """
+    lecteur = FauxLecteurCorpus([
+        {"question": "Q1", "reponse": "R1"},
+        {"question": "Q1", "reponse": "R1"},  # doublon exact de la ligne precedente
+        {"question": "Q2", "reponse": "R2"},
+    ])
+    repository = FauxRepository()
+
+    cas_usage = ConstruireDatasetPivotUseCase(lecteur=lecteur, repository=repository)
+    nombre = cas_usage.executer(_mapper_test)
+
+    assert nombre == 2
+    assert repository.compter() == 2
+    assert len(cas_usage.doublons) == 1
+    assert cas_usage.doublons[0].prompt[0].contenu == "Q1"
+
+
+def test_construire_dataset_pivot_conserve_le_premier_exemple_rencontre():
+    lecteur = FauxLecteurCorpus([
+        {"question": "Q1", "reponse": "R1"},
+        {"question": "Q1", "reponse": "R1"},
+        {"question": "Q1", "reponse": "R1"},
+    ])
+    repository = FauxRepository()
+
+    cas_usage = ConstruireDatasetPivotUseCase(lecteur=lecteur, repository=repository)
+    nombre = cas_usage.executer(_mapper_test)
+
+    assert nombre == 1
+    assert len(cas_usage.doublons) == 2

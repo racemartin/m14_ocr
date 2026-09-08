@@ -4,8 +4,16 @@ Point d'entree CLI — Etape 1, action "decouper en splits".
 
 Usage :
     uv run python interfaces/cli/decouper_splits.py \
-        --dataset data/processed/dataset_pivot.jsonl \
+        --dataset data/processed/dataset_pivot_anonymise.jsonl \
         --n 5000
+
+IMPORTANT (08/09/2026, design source/sortie separes) : --dataset doit
+pointer vers le fichier ANONYMISE (`dataset_pivot_anonymise.jsonl`,
+sortie de `anonymiser_dataset.py`), PAS vers le pivot original
+`dataset_pivot.jsonl` -- celui-ci n'est jamais anonymise en place et
+ne contient donc jamais d'exemple avec `anonymise=True`. Ce script
+lit ET ecrit sur le meme fichier (le champ `split` est ajoute en
+place sur le fichier anonymise).
 
 Option --n (sous-echantillonnage avant repartition, meme logique
 produit que `--limite` sur `anonymiser_dataset.py`) : pour obtenir un
@@ -63,6 +71,9 @@ def main() -> None:
     # -------------------------------------------------------------------------
     repository = JsonlDatasetRepository(arguments.dataset)
 
+    # -------------------------------------------------------------------------
+    # USE CASE EXECUTE
+    # -------------------------------------------------------------------------
     if arguments.n is not None:
         disponible = repository.compter(filtre={"anonymise": True})
         if arguments.n >= disponible:

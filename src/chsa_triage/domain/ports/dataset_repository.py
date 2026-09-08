@@ -44,3 +44,13 @@ class RepositoryLectureEcriture(Protocol[T]):
     def compter(self, filtre: dict | None = None) -> int:
         """Retourne le nombre d'items correspondant au filtre."""
         ...
+
+    def identifiants_existants(self) -> set[str]:
+        """
+        Retourne l'ensemble des identifiants deja presents, sans
+        necessairement reconstruire chaque item complet. Utilise pour
+        determiner "qu'est-ce qui a deja ete traite" sur un fichier de
+        sortie separe du fichier source (cf. AnonymiserDatasetUseCase),
+        sans dependre d'un champ booleen mute sur l'item source.
+        """
+        ...

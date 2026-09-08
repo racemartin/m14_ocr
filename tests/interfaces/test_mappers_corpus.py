@@ -46,6 +46,15 @@ def test_mapper_mediqal_ignore_enregistrement_incomplet():
     assert mapper_mediqal({}) is None
 
 
+def test_mapper_mediqal_identifiant_est_deterministe_et_trace_le_champ_id():
+    enregistrement = {"id": "42", "question": "Symptomes du rhume ?", "answer": "Nez qui coule, toux."}
+    exemple_1 = mapper_mediqal(enregistrement)
+    exemple_2 = mapper_mediqal(dict(enregistrement))
+
+    assert exemple_1.identifiant == exemple_2.identifiant  # meme registre -> meme identifiant
+    assert exemple_1.identifiant_source_brute == "42"
+
+
 def test_mapper_mediqal_qcm_mcqu_valide():
     """Schema reel MediQAl "mcqu" (07/09/2026) : 1 seule reponse correcte."""
     enregistrement = {
@@ -114,6 +123,55 @@ def test_mapper_mediqal_qcm_ignore_enregistrement_incomplet():
     assert mapper_mediqal_qcm({}) is None
 
 
+def test_mapper_mediqal_qcm_meme_id_mais_task_different_ne_collisionne_pas():
+    """
+    Cas reel verifie sur les fichiers bruts : mediqal_mcqu.jsonl et
+    mediqal_mcqm.jsonl partagent des valeurs de `id` identiques (les
+    deux fichiers ont leur propre numerotation) -- l'identifiant
+    deterministe doit rester distinct grace au `task` (QCU/QCM).
+    """
+    base = {
+        "clinical_case": None,
+        "question": "Q",
+        "answer_a": "reponse",
+        "answer_b": "autre",
+        "answer_c": "autre",
+        "answer_d": "autre",
+        "answer_e": "autre",
+        "correct_answers": "A",
+        "id": "999",
+    }
+    exemple_qcu = mapper_mediqal_qcm({**base, "task": "QCU"})
+    exemple_qcm = mapper_mediqal_qcm({**base, "task": "QCM"})
+
+    assert exemple_qcu.identifiant != exemple_qcm.identifiant
+    assert exemple_qcu.identifiant_source_brute == "999"
+    assert exemple_qcm.identifiant_source_brute == "999"
+
+
+def test_mapper_mediqal_oeq_meme_id_que_mcqu_ne_collisionne_pas():
+    """
+    Cas reel verifie sur les fichiers bruts : mediqal_oeq.jsonl et
+    mediqal_mcqu.jsonl partagent 1492 valeurs de `id` identiques.
+    """
+    exemple_oeq = mapper_mediqal({"id": "1", "question": "Q1", "answer": "R1"})
+    exemple_mcqu = mapper_mediqal_qcm(
+        {
+            "id": "1",
+            "task": "QCU",
+            "clinical_case": None,
+            "question": "Q2",
+            "answer_a": "reponse",
+            "answer_b": "autre",
+            "answer_c": "autre",
+            "answer_d": "autre",
+            "answer_e": "autre",
+            "correct_answers": "A",
+        }
+    )
+    assert exemple_oeq.identifiant != exemple_mcqu.identifiant
+
+
 def test_mapper_frenchmedmcqa_valide():
     """
     Schema reel (confirme sur nthngdy/frenchmedmcqa, 07/09/2026) :
@@ -160,6 +218,25 @@ def test_mapper_frenchmedmcqa_ignore_sans_reponse_correcte():
     assert mapper_frenchmedmcqa({"question": "Q", "correct_answers": 0}) is None  # answer_a absent
 
 
+def test_mapper_frenchmedmcqa_identifiant_trace_le_champ_id():
+    enregistrement = {"id": "abc123", "question": "Q", "answer_a": "R", "correct_answers": 0}
+    exemple = mapper_frenchmedmcqa(enregistrement)
+    assert exemple.identifiant_source_brute == "abc123"
+
+
+def test_mapper_frenchmedmcqa_deux_registres_identiques_produisent_le_meme_identifiant():
+    """
+    Cas reel verifie sur le fichier brut : un doublon EXACT existe
+    (meme `id`, meme contenu) -- l'identifiant deterministe doit
+    permettre de le detecter (meme id -> meme identifiant), pour que
+    `ConstruireDatasetPivotUseCase` puisse le dedoublonner.
+    """
+    enregistrement = {"id": "dup-1", "question": "Q", "answer_a": "R", "correct_answers": 0}
+    exemple_1 = mapper_frenchmedmcqa(dict(enregistrement))
+    exemple_2 = mapper_frenchmedmcqa(dict(enregistrement))
+    assert exemple_1.identifiant == exemple_2.identifiant
+
+
 def test_mapper_medquad_valide():
     enregistrement = {"Question": "What is diabetes?", "Answer": "A chronic condition."}
     exemple = mapper_medquad(enregistrement)
@@ -175,6 +252,23 @@ def test_mapper_medquad_accepte_cles_minuscules():
     enregistrement = {"question": "What is diabetes?", "answer": "A chronic condition."}
     exemple = mapper_medquad(enregistrement)
     assert exemple is not None
+
+
+def test_mapper_medquad_identifiant_deterministe_via_hash_question_reponse():
+    """Pas de champ `id` brut pour MedQuAD -- la cle naturelle est un hash de Question+Answer."""
+    enregistrement = {"Question": "What is diabetes?", "Answer": "A chronic condition."}
+    exemple_1 = mapper_medquad(dict(enregistrement))
+    exemple_2 = mapper_medquad(dict(enregistrement))
+
+    assert exemple_1.identifiant == exemple_2.identifiant
+    assert exemple_1.identifiant_source_brute  # non vide
+    assert exemple_1.identifiant_source_brute == exemple_1.identifiant_source_brute  # stable
+
+
+def test_mapper_medquad_meme_question_reponse_differente_donne_un_identifiant_different():
+    exemple_1 = mapper_medquad({"Question": "What is diabetes?", "Answer": "Answer A"})
+    exemple_2 = mapper_medquad({"Question": "What is diabetes?", "Answer": "Answer B"})
+    assert exemple_1.identifiant != exemple_2.identifiant
 
 
 def test_mapper_ultramedical_preference_valide():
@@ -194,6 +288,50 @@ def test_mapper_ultramedical_preference_valide():
 
 def test_mapper_ultramedical_preference_ignore_paire_incomplete():
     assert mapper_ultramedical_preference({"prompt": "Q", "chosen": "R"}) is None
+
+
+def test_mapper_ultramedical_preference_identifiant_source_brute_est_le_prompt_id():
+    enregistrement = {
+        "prompt_id": "MedMCQA,11404",
+        "label_type": "easy",
+        "prompt": "Q",
+        "chosen": "C",
+        "rejected": "R",
+    }
+    exemple = mapper_ultramedical_preference(enregistrement)
+    assert exemple.identifiant_source_brute == "MedMCQA,11404"
+
+
+def test_mapper_ultramedical_preference_meme_prompt_id_mais_label_type_different_ne_collisionne_pas():
+    """
+    Cas reel verifie sur le fichier brut : `prompt_id` seul n'est PAS
+    unique (annotations multiples par prompt, ex. label_type
+    "easy"/"length") -- des reponses differentes doivent produire des
+    identifiants differents.
+    """
+    base = {"prompt_id": "MedMCQA,11404", "prompt": "Q"}
+    exemple_easy = mapper_ultramedical_preference(
+        {**base, "label_type": "easy", "chosen": "Reponse facile", "rejected": "Mauvaise reponse"}
+    )
+    exemple_length = mapper_ultramedical_preference(
+        {**base, "label_type": "length", "chosen": "Reponse longue detaillee", "rejected": "Reponse courte"}
+    )
+    assert exemple_easy.identifiant != exemple_length.identifiant
+    assert exemple_easy.identifiant_source_brute == exemple_length.identifiant_source_brute == "MedMCQA,11404"
+
+
+def test_mapper_ultramedical_preference_registre_strictement_identique_donne_le_meme_identifiant():
+    """Deux registres bruts identiques (vrai doublon, cas reel verifie) -> meme identifiant."""
+    enregistrement = {
+        "prompt_id": "MedMCQA,11404",
+        "label_type": "length",
+        "prompt": "Q",
+        "chosen": "C",
+        "rejected": "R",
+    }
+    exemple_1 = mapper_ultramedical_preference(dict(enregistrement))
+    exemple_2 = mapper_ultramedical_preference(dict(enregistrement))
+    assert exemple_1.identifiant == exemple_2.identifiant
 
 
 def test_mapper_ultramedical_preference_format_chat_reel():

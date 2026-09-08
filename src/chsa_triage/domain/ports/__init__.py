@@ -14,6 +14,10 @@ from chsa_triage.domain.ports.moteur_inference import (
     ReponseModele,
 )
 from chsa_triage.domain.ports.profileur import Profileur, RapportProfilage
+from chsa_triage.domain.ports.verificateur_entites import (
+    VerdictEntiteNommee,
+    VerificateurEntitesNommees,
+)
 
 __all__ = [
     "Anonymiseur",
@@ -25,4 +29,6 @@ __all__ = [
     "ReponseModele",
     "RepositoryLectureEcriture",
     "ResultatAnonymisation",
+    "VerdictEntiteNommee",
+    "VerificateurEntitesNommees",
 ]

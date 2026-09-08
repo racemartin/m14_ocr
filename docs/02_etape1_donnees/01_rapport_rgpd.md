@@ -1,11 +1,46 @@
 # Rapport de justification RGPD — Anonymisation du dataset CHSA
 
-> **Statut : rapport complété avec des données réelles (09/09/2026).**
-> Les sections 3 et 4 ci-dessous ne sont plus un gabarit : elles
-> rapportent des chiffres et des exemples réels, obtenus par exécution
-> effective du pipeline d'anonymisation (`AnonymiserDatasetUseCase` +
-> `PresidioAnonymiseur`) et par relecture assistée d'un échantillon
-> réel. Voir §3 et §4 pour la méthodologie exacte de chaque section.
+> **Statut (08/09/2026) : processus automatisé, ce document devient un
+> rapport de méthodologie + historique.** Sur demande du capitaine, le
+> pipeline génère désormais lui-même ses indicateurs RGPD de façon
+> automatique et reproductible à chaque exécution de
+> `anonymiser_dataset.py`, au lieu d'un calcul manuel ponctuel par un
+> agent (ce que documentaient les sections 3 et 4 ci-dessous, datées du
+> 09/09/2026). **Ces chiffres restent corrects comme trace historique**
+> mais portaient sur l'ANCIEN pivot (147 204 exemples, identifiants
+> aléatoires) — celui-ci a été régénéré le 08/09/2026 avec des
+> identifiants déterministes et un dédoublonnage réel des registres
+> bruts strictement identiques (nouveau total : 134 883 exemples ; voir
+> `00_couverture_exigences_officielles.md` § « Identifiants
+> déterministes + dédoublonnage réel + régénération du pivot »).
+>
+> **Pour les chiffres à jour**, consulter les rapports générés
+> automatiquement à chaque exécution :
+> - `data/processed/rapport_anonymisation_rgpd.{json,md}` — rapport RGPD
+>   CUMULÉ (fusionne toutes les exécutions passées), par source :
+>   registres traités, proportion réelle sur le total du dataset pivot,
+>   taux d'enregistrements avec ≥1 entité détectée, entités par type.
+>   Voir `src/chsa_triage/application/use_cases/rapport_anonymisation.py`.
+> - `data/processed/rapport_controle_qualite_anonymisation.{json,md}` —
+>   contrôle qualité **automatisé** par comparaison du pivot original et
+>   du fichier anonymisé (`controler_qualite_anonymisation.py`) : regex
+>   sans modèle pour les candidats de PII résiduelle (emails,
+>   téléphones, URLs, dates, bigrammes capitalisés), seconde opinion
+>   spaCy (mêmes modèles que `PresidioAnonymiseur`) pour départager les
+>   cas ambigus — jamais de LLM. Les cas non tranchés sont marqués
+>   explicitement "pendant_revision_humaine", jamais une confirmation
+>   inventée. Remplace la relecture manuelle assistée par agent décrite
+>   en §4 ci-dessous pour toute nouvelle vague anonymisée à partir du
+>   08/09/2026 — MAIS ne recouvre PAS rétroactivement l'ancienne vague
+>   de 5 000 exemples décrite en §3-4 (pivot depuis régénéré, cette
+>   vague n'existe plus sous cette forme).
+>
+> **Les sections 3 et 4 ci-dessous restent en l'état** comme
+> méthodologie de référence et comme trace de la revue manuelle
+> assistée effectuée une fois par un agent IA (§4, avertissement
+> méthodologique explicite conservé) — elles ne sont plus régénérées ni
+> mises à jour désormais, ce rôle étant repris par les rapports
+> automatiques ci-dessus à chaque exécution.
 
 ## 1. Cadre légal et périmètre
 

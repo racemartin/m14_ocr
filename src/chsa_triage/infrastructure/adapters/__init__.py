@@ -31,6 +31,9 @@ if TYPE_CHECKING:  # pragma: no cover - uniquement pour les outils de typage
     from chsa_triage.infrastructure.adapters.presidio_anonymiseur import (
         PresidioAnonymiseur,
     )
+    from chsa_triage.infrastructure.adapters.spacy_verificateur_entites import (
+        SpacyVerificateurEntitesNommees,
+    )
     from chsa_triage.infrastructure.adapters.vllm_endpoint_inference_adapter import (
         VllmEndpointInferenceAdapter,
     )
@@ -44,6 +47,7 @@ __all__ = [
     "LecteurCorpusHuggingFace",
     "LlamaCppInferenceAdapter",
     "PresidioAnonymiseur",
+    "SpacyVerificateurEntitesNommees",
     "VllmEndpointInferenceAdapter",
     "YdataProfileur",
 ]
@@ -69,6 +73,10 @@ _CARTE_IMPORTS_PARESSEUX = {
     "PresidioAnonymiseur": (
         "chsa_triage.infrastructure.adapters.presidio_anonymiseur",
         "PresidioAnonymiseur",
+    ),
+    "SpacyVerificateurEntitesNommees": (
+        "chsa_triage.infrastructure.adapters.spacy_verificateur_entites",
+        "SpacyVerificateurEntitesNommees",
     ),
     "VllmEndpointInferenceAdapter": (
         "chsa_triage.infrastructure.adapters.vllm_endpoint_inference_adapter",

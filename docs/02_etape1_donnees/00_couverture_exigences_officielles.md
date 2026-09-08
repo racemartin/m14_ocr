@@ -45,11 +45,11 @@ sur données réelles restant à faire · [A FAIRE] pas encore commencé.
 |---|---|---|
 | Collecter le corpus bilingue | [FAIT] Les 6 fichiers réels (4 sources, MediQAl en 3 fichiers) sont téléchargés dans `data/raw/` (`telecharger_corpus.py`) | `LecteurCorpusFichierLocal`, `LecteurCorpusHuggingFace`, `telecharger_corpus.py` ; cahier des charges §5.1 |
 | Nettoyer et structurer | [FAIT] `ProfilerCorpusUseCase` + adaptateur `ydata-profiling` **validés par smoke test réel** (voir section dédiée ci-dessous) ; les 6 fichiers réels sont profilés (`data/processed/rapports_profilage/`), y compris `ultramedical_preference.jsonl` (966 Mo) via l'option `--bloque` | `profiler_corpus.py` ; diagramme d'activité Étape 1 |
-| ≈5 000 paires SFT | [FAIT] (07/09/2026) Les 5 fichiers SFT (MediQAl-oeq/mcqu/mcqm, FrenchMedMCQA, MedQuAD) sont mappés et fusionnés dans `data/processed/dataset_pivot.jsonl` : **37 851 exemples SFT réels, 0 enregistrement rejeté**, largement au-dessus des ≈5 000 attendus (voir section dédiée ci-dessous pour le détail par source) | `construire_dataset_pivot.py`, `mappers_corpus.py` |
-| Paires DPO validées cliniquement | [OUTILLAGE PRET] Mapper technique prêt **et corrigé** (`mapper_ultramedical_preference` extrayait mal chosen/rejected, voir section dédiée) et exécuté sur données réelles (07/09/2026) : **109 353 paires DPO réelles, 0 rejet** ; la validation clinique par un expert est hors du périmètre purement technique et reste à planifier avec le CHSA | même fichier ; objectifs §3.2-3.3 |
-| Anonymisation + documentation RGPD | [FAIT] Adaptateur `PresidioAnonymiseur` **validé par smoke test réel** (bug de configuration multi-langue découvert et corrigé, cf. section dédiée) ; bug de performance O(n²) corrigé dans `AnonymiserDatasetUseCase` ; processus rendu incrémental/reprenable (`--limite`, échantillonnage stratifié) suite à la mesure réelle (~19h pour le dataset complet) ; **première vague exécutée sur données réelles (08/09/2026) : 5 000/147 204 exemples anonymisés**, 142 204 restants prêts pour une vague ultérieure (voir section dédiée) ; **rapport de justification RGPD complété avec des chiffres réels (09/09/2026)**, section quantitative par corpus (nouvelle instrumentation `AnonymiserDatasetUseCase.statistiques`) et contrôle qualité manuel assisté sur 170 enregistrements (1 PII résiduelle réelle trouvée, faux positifs documentés) — voir `01_rapport_rgpd.md` | `AnonymiserDatasetUseCase` ; `docs/02_etape1_donnees/01_rapport_rgpd.md` ; cahier des charges NF2 |
-| Schéma de métadonnées | [FAIT] Défini **et implémenté** comme entité de domaine (`ExemplePivot`, `ConstantesVitales`) | `domain/model/exemple_pivot.py` ; cahier des charges §5.2 ; diagramme de paquets Étape 1 |
-| Splits train / val / test + éval clinique isolée | [OUTILLAGE PRET] `DecouperSplitsUseCase` implémenté et testé, découpage désormais stratifié par (type_exemple, source), avec sous-échantillonnage optionnel (`--n`, même algorithme que `--limite`) pour repartir seulement N exemples plutôt que tout ce qui est anonymisé ; **exécuté sur les 5 000 exemples anonymisés de la première vague (08/09/2026)** : 4 004 train / 498 val / 498 test, vérifié représentatif par strate (`verifier_repartition_splits.py`, ~80/10/10 sur chaque `(type_exemple, source)`, y compris FrenchMedMCQA à 20 exemples) ; à relancer après chaque vague d'anonymisation supplémentaire | `decouper_splits.py` ; `verifier_repartition_splits.py` ; `tests/application/` |
+| ≈5 000 paires SFT | [FAIT] Les 5 fichiers SFT (MediQAl-oeq/mcqu/mcqm, FrenchMedMCQA, MedQuAD) sont mappés et fusionnés dans `data/processed/dataset_pivot.jsonl` : **37 802 exemples SFT réels** (pivot régénéré le 08/09/2026 avec identifiants déterministes, 49 doublons exacts dédoublonnés sur les 37 851 d'origine — voir section dédiée), largement au-dessus des ≈5 000 attendus | `construire_dataset_pivot.py`, `mappers_corpus.py` |
+| Paires DPO validées cliniquement | [OUTILLAGE PRET] Mapper technique prêt **et corrigé** (`mapper_ultramedical_preference` extrayait mal chosen/rejected, voir section dédiée) et exécuté sur données réelles : **97 081 paires DPO réelles** (pivot régénéré le 08/09/2026, 12 272 doublons exacts dédoublonnés sur les 109 353 d'origine — voir section dédiée) ; la validation clinique par un expert est hors du périmètre purement technique et reste à planifier avec le CHSA | même fichier ; objectifs §3.2-3.3 |
+| Anonymisation + documentation RGPD | [FAIT] Adaptateur `PresidioAnonymiseur` **validé par smoke test réel** ; bug de performance O(n²) corrigé ; processus incrémental/reprenable (`--limite`, échantillonnage stratifié). **Refonte 08/09/2026 (décision du capitaine)** : identifiants déterministes (§ dédiée), dataset pivot **régénéré** avec dédoublonnage réel, et l'anonymisation écrit désormais dans un fichier **séparé** (`dataset_pivot_anonymise.jsonl`) — le pivot original n'est plus jamais modifié. Chaque exécution génère automatiquement/fusionne un **rapport RGPD cumulé** (JSON + Markdown, `application/use_cases/rapport_anonymisation.py`) — remplace le calcul manuel ponctuel. Contrôle qualité désormais **automatisé** par comparaison de fichiers (`controler_qualite_anonymisation.py`, regex + seconde opinion spaCy) plutôt qu'une relecture manuelle assistée par agent — voir § dédiée et `01_rapport_rgpd.md` | `AnonymiserDatasetUseCase` ; `ControlerQualiteAnonymisationUseCase` ; `docs/02_etape1_donnees/01_rapport_rgpd.md` ; cahier des charges NF2 |
+| Schéma de métadonnées | [FAIT] Défini **et implémenté** comme entité de domaine (`ExemplePivot`, `ConstantesVitales`) ; `identifiant` déterministe + `identifiant_source_brute` (traçabilité vers le registre brut d'origine) ajoutés le 08/09/2026 | `domain/model/exemple_pivot.py` ; cahier des charges §5.2 ; diagramme de paquets Étape 1 |
+| Splits train / val / test + éval clinique isolée | [OUTILLAGE PRET] `DecouperSplitsUseCase` implémenté et testé, découpage stratifié par (type_exemple, source), sous-échantillonnage optionnel (`--n`) ; opère désormais sur `dataset_pivot_anonymise.jsonl` (fichier de sortie séparé, cf. § dédiée) ; à relancer après chaque vague d'anonymisation supplémentaire | `decouper_splits.py` ; `verifier_repartition_splits.py` ; `tests/application/` |
 
 ## Couverture des prérequis
 
@@ -62,9 +62,9 @@ sur données réelles restant à faire · [A FAIRE] pas encore commencé.
 
 | Résultat attendu | Statut |
 |---|---|
-| Dataset bilingue anonymisé et versionné (≈5 000 paires SFT + jeu DPO) | [OUTILLAGE PRET] Dataset pivot réel construit et fusionné (147 204 exemples, 37 851 SFT + 109 353 DPO, 0 rejet) ; **5 000 exemples anonymisés et découpés en splits (première vague, 08/09/2026)**, atteignant l'objectif chiffré ≈5 000 de la mission ; 142 204 exemples restants prêts pour des vagues ultérieures (voir section dédiée) |
-| Schéma des métadonnées | [FAIT] Livré (voir ci-dessus) |
-| Justification du processus RGPD suivi | [FAIT] Rapport de justification RGPD complété avec des données réelles (`01_rapport_rgpd.md`, 09/09/2026) : résultats quantitatifs réels par corpus (65 914 entités détectées sur 5 000 exemples, 92,0 % de taux de détection ≥1 entité) et contrôle qualité manuel assisté (170 enregistrements relus, 1 PII résiduelle réelle trouvée, faux positifs documentés par corpus) — revue assistée par IA, pas une revue humaine indépendante ; confirmation d'un réviseur du domaine recommandée avant tout usage clinique réel |
+| Dataset bilingue anonymisé et versionné (≈5 000 paires SFT + jeu DPO) | [OUTILLAGE PRET] Dataset pivot **régénéré** (identifiants déterministes, dédoublonnage réel) : **134 883 exemples** (37 802 SFT + 97 081 DPO, 12 321 doublons exacts écartés sur 147 204 registres bruts) ; **5 000 exemples anonymisés et découpés en splits (première vague sous le nouveau schéma, 08/09/2026)**, atteignant l'objectif chiffré ≈5 000 de la mission, écrits dans un fichier séparé (`dataset_pivot_anonymise.jsonl`, le pivot original n'est jamais modifié) ; 129 883 exemples restants prêts pour des vagues ultérieures (voir section dédiée) |
+| Schéma des métadonnées | [FAIT] Livré (voir ci-dessus) ; `identifiant` déterministe + `identifiant_source_brute` (traçabilité) ajoutés le 08/09/2026 |
+| Justification du processus RGPD suivi | [FAIT] Génération **automatique et reproductible** à chaque exécution (demande du capitaine, 08/09/2026) : rapport RGPD cumulé (`data/processed/rapport_anonymisation_rgpd.{json,md}`, 64 667 entités détectées sur les 5 000 premiers exemples de la vague en cours, 90,6 % de taux de détection ≥1 entité) et contrôle qualité automatisé par comparaison de fichiers (`rapport_controle_qualite_anonymisation.{json,md}`, regex + seconde opinion spaCy, 200 exemples comparés, 0 PII résiduelle confirmée, 35 candidats en attente de révision humaine explicitement marqués comme tels) — voir section dédiée ci-dessous et `01_rapport_rgpd.md` pour le contexte historique (revue manuelle assistée par IA sur l'ancien pivot, non remplacée rétroactivement) |
 
 ## Validation technique effectuée (smoke test d'intégration, 02/09/2026)
 
@@ -190,21 +190,28 @@ dernier message de la liste.
    ci-dessus et ci-dessous).
 4. ~~Construire le dataset pivot fusionné sur les 6 fichiers réels.~~
    Fait le 07/09/2026 : 147 204 exemples, 0 rejet (voir section
-   dédiée ci-dessous).
+   dédiée ci-dessous) — **régénéré depuis le 08/09/2026 avec
+   identifiants déterministes et dédoublonnage réel, nouveau total
+   134 883 exemples, voir point 7**.
 5. ~~Anonymiser le dataset pivot réel et le découper en splits.~~
    Décision produit appliquée le 08/09/2026 : processus incrémental
-   via `--limite` (échantillonnage stratifié), première vague de
-   5 000 exemples anonymisés et découpés en splits (voir section
-   dédiée ci-dessus). **142 204 exemples restants** — relancer
-   `anonymiser_dataset.py --limite N` (N plus grand, ou `full`) puis
-   `decouper_splits.py` pour les vagues suivantes, en évaluant avant
-   chaque vague le risque de saturation/surapprentissage sur un
-   sous-échantillon donné (cf. README, tableau d'avancement).
+   via `--limite` (échantillonnage stratifié). Première vague initiale
+   (5 000 exemples sur l'ancien pivot à identifiants aléatoires)
+   **remplacée par une nouvelle première vague sur le pivot régénéré**
+   (voir point 7) — l'anonymisation écrit désormais dans un fichier
+   séparé, le pivot original n'est plus jamais modifié.
 6. ~~Rédiger le rapport de justification RGPD à partir des résultats
    réels d'anonymisation.~~ Fait le 09/09/2026 (voir `01_rapport_rgpd.md`
    et la section dédiée ci-dessus) : résultats quantitatifs réels par
    corpus (nouvelle instrumentation `AnonymiserDatasetUseCase.statistiques`)
-   et contrôle qualité manuel assisté sur 170 enregistrements.
+   et contrôle qualité manuel assisté sur 170 enregistrements —
+   **remplacé le 08/09/2026 par une génération automatique reproductible
+   à chaque exécution, voir point 7**.
+7. ~~Rendre le pipeline reproductible : identifiants déterministes,
+   pivot régénéré, anonymisation vers un fichier séparé, rapport RGPD
+   et contrôle qualité générés automatiquement.~~ Fait le 08/09/2026
+   (décision du capitaine) — voir les sections dédiées ci-dessus et
+   ci-dessous, `01_rapport_rgpd.md`, et le README.
 
 ## FrenchMedMCQA : bug de mapper corrigé contre le schéma réel (07/09/2026)
 
@@ -277,7 +284,212 @@ documenté côté `profiler_corpus.py --bloque`, mais pas encore côté
 taille du bloc). Utilisée avec succès (`--taille-bloc 5000`) pour
 produire les 109 353 exemples DPO ci-dessus sans OOM.
 
-## Anonymisation réelle : bug de performance O(n²) corrigé, decision produit appliquée, premiere vague exécutée (07-08/09/2026)
+## Identifiants déterministes + dédoublonnage réel + régénération du pivot (08/09/2026)
+
+> **Cette section SUPERSEDE les chiffres de la section précédente**
+> (« Construction du dataset pivot sur les 6 fichiers réels »,
+> 07/09/2026, 147 204 exemples avec identifiants aléatoires). Le pivot
+> a été entièrement régénéré : le total réel actuel du dataset pivot
+> est **134 883 exemples**, pas 147 204. La section précédente reste
+> comme trace historique de ce qui a été construit ce jour-là, mais ne
+> reflète plus l'état courant.
+
+**Contexte** : le capitaine a demandé un design où l'anonymisation
+écrit dans un fichier **séparé**, sans jamais modifier le pivot
+original — nécessaire pour (a) pouvoir régénérer le pivot sans perdre
+le texte original d'exemples déjà anonymisés, et (b) un contrôle
+qualité a posteriori par simple comparaison de fichiers. Ce design
+exige de croiser les enregistrements entre fichiers régénérés par un
+identifiant **stable**, or `ExemplePivot.nouvel_identifiant` générait
+jusqu'ici un UUID aléatoire à chaque appel.
+
+### Identifiant déterministe (`ExemplePivot.nouvel_identifiant`)
+
+Remplacé par un hash SHA-256 tronqué de `(espace_noms, cle_naturelle)`
+— même entrée, toujours le même identifiant. `espace_noms` n'est **pas**
+toujours égal au champ `source` de l'exemple : il doit être assez fin
+pour éviter toute collision entre fichiers qui partagent le même
+espace de clés naturelles. Vérifié sur les données réelles (pas
+supposé) :
+
+| Source | Clé naturelle | Espace de noms | Particularité découverte |
+|---|---|---|---|
+| MediQAl-oeq | champ `id` | `mediqal_oeq` | — |
+| MediQAl-mcqu | champ `id` | `mediqal_mcqu` (via `task="QCU"`) | Partage 1 492 valeurs de `id` avec oeq |
+| MediQAl-mcqm | champ `id` | `mediqal_mcqm` (via `task="QCM"`) | Partage 1 280 valeurs de `id` avec oeq |
+| FrenchMedMCQA | champ `id` | `frenchmedmcqa` | — |
+| MedQuAD | hash(`Question`+`Answer`) | `medquad` | Aucun champ `id` brut |
+| UltraMedical-Preference | `prompt_id`+`label_type`+`chosen`+`rejected` | `ultramedical_preference` | `prompt_id` seul n'est PAS unique |
+
+Sans cette vérification sur les fichiers réels, un espace de noms
+unique `"mediqal"` pour les 3 configurations MediQAl aurait produit
+des collisions d'identifiant entre des registres **différents**
+(1 492 + 1 280 cas réels) — testé explicitement
+(`tests/interfaces/test_mappers_corpus.py::test_mapper_mediqal_oeq_meme_id_que_mcqu_ne_collisionne_pas`
+et l'équivalent mcqu/mcqm).
+
+Le champ `ExemplePivot.identifiant_source_brute` a été ajouté en plus
+(traçabilité, demande explicite du capitaine) : il conserve la clé
+naturelle "brute" telle qu'exposée par le mapper (le `id` d'origine
+pour MediQAl/FrenchMedMCQA, le `prompt_id` pour UltraMedical-Preference,
+le hash Question+Answer pour MedQuAD) — utile pour retrouver le
+registre brut d'origine dans `data/raw/*.jsonl` sans avoir à
+recalculer `identifiant`. Il se propage automatiquement aux fichiers
+dérivés (anonymisé, splits) puisque `dataclasses.replace(...)` ne
+touche jamais ce champ.
+
+### Dédoublonnage réel découvert (décision du capitaine : dédoublonner pour de vrai)
+
+Conséquence directe de la déterminisme : deux registres bruts
+strictement identiques sur les champs qui alimentent le pivot
+produisent désormais le **même** identifiant. Vérifié sur les
+fichiers réels (pas supposé) :
+
+| Source | Registres bruts | Valeurs de clé uniques | Doublons exacts |
+|---|---:|---:|---:|
+| FrenchMedMCQA | 595 | 594 | **1** |
+| MedQuAD | 16 407 | 16 359 | **48** |
+| UltraMedical-Preference | 109 353 | 97 081 | **12 272** |
+| **Total doublons** | | | **12 321** |
+
+**`ConstruireDatasetPivotUseCase` dédoublonne réellement** (décision
+explicite du capitaine, 08/09/2026, après consultation — l'alternative
+"index d'occurrence artificiel pour préserver le total 147 204" a été
+écartée) : seul le premier exemple rencontré pour un identifiant donné
+est conservé dans le pivot ; les registres écartés sont archivés (pas
+silencieusement perdus) dans **`data/processed/doublons_supprimes.jsonl`**
+(12 321 lignes, format `ExemplePivot`, un fichier partagé entre les 6
+exécutions de `construire_dataset_pivot.py`, mode ajout).
+
+**Investigation légère sur la cause des doublons UltraMedical-Preference**
+(hypothèse du capitaine : chevauchement entre/dans les datasets
+source) : la distribution de multiplicité des clés dupliquées est
+`{1: 84 809, 2: 12 272}` — **aucune clé n'apparaît plus de 2 fois**,
+et le taux de duplication est réparti proportionnellement à travers
+tous les préfixes de source visibles dans `prompt_id` (WikiInstruct,
+MedMCQA, TextBookQA, ChatDoctor, MedQA, MedQA-Evol, MedQuad,
+Medical-Instruct-120k, PubMedQA, MedInstruct-52k — tous représentés
+dans les doublons à peu près à hauteur de leur poids réel dans le
+corpus). Ce profil (toujours exactement 2 copies, proportionnel à
+toutes les sources) est plus cohérent avec un **artefact d'export en
+double** lors de la construction du corpus `UltraMedical-Preference`
+lui-même (concaténation de deux exports qui se recouvrent, ou une
+étape de dédoublonnage amont manquée) qu'avec un chevauchement de
+questions **entre** sous-corpus différents (ce qui produirait des
+`prompt_id` différents pour un contenu similaire, pas des quadruplets
+`prompt_id`+`label_type`+`chosen`+`rejected` strictement identiques).
+Investigation volontairement limitée à ce constat (pas de fouille plus
+poussée dans la provenance du miroir Hugging Face) — hors du périmètre
+de cette tâche (identifiant + anonymisation + splits + contrôle
+qualité), pas nécessaire pour trancher la décision de dédoublonnage.
+
+### Régénération complète du pivot (08/09/2026)
+
+Les 6 commandes de `construire_dataset_pivot.py` (§ README) ont été
+ré-exécutées depuis zéro sur les mêmes fichiers `data/raw/` (aucun
+re-téléchargement), avec les mappers mis à jour (identifiant
+déterministe) :
+
+| Fichier source | `--corpus` | Registres bruts | Exemples pivot | Doublons écartés |
+|---|---|---:|---:|---:|
+| `mediqal_oeq.jsonl` | `mediqal_oeq` | 4 969 | 4 969 | 0 |
+| `mediqal_mcqu.jsonl` | `mediqal_mcqu` | 10 113 | 10 113 | 0 |
+| `mediqal_mcqm.jsonl` | `mediqal_mcqm` | 5 767 | 5 767 | 0 |
+| `frenchmedmcqa.jsonl` | `frenchmedmcqa` | 595 | 594 | 1 |
+| `medquad.jsonl` | `medquad` | 16 407 | 16 359 | 48 |
+| `ultramedical_preference.jsonl` | `ultramedical_preference` | 109 353 | 97 081 | 12 272 |
+| **Total** | | **147 204** | **134 883** | **12 321** |
+
+Soit **37 802 exemples SFT** (MediQAl 20 849 + FrenchMedMCQA 594 +
+MedQuAD 16 359, toujours largement au-dessus des ≈5 000 attendus par
+la mission) et **97 081 paires DPO** (UltraMedical-Preference).
+Vérification de cohérence effectuée : 0 collision d'identifiant
+résiduelle dans le pivot final (134 883 identifiants tous uniques),
+et le total par source (`MediQAl` 20 849, `FrenchMedMCQA` 594,
+`MedQuAD` 16 359, `UltraMedical-Preference` 97 081) correspond
+exactement à `registres bruts - doublons écartés` pour chaque source.
+
+## Anonymisation vers fichier séparé + rapport RGPD et contrôle qualité automatiques (08/09/2026, exécution réelle)
+
+Sur le pivot régénéré (134 883 exemples, § précédente), le nouveau
+pipeline a été exécuté de bout en bout pour de vrai (pas un test) :
+
+```bash
+uv run python interfaces/cli/anonymiser_dataset.py --dataset data/processed/dataset_pivot.jsonl --sortie data/processed/dataset_pivot_anonymise.jsonl --strategie replace --limite 5000
+uv run python interfaces/cli/controler_qualite_anonymisation.py --dataset data/processed/dataset_pivot.jsonl --anonymise data/processed/dataset_pivot_anonymise.jsonl --taille-echantillon 200
+uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset_pivot_anonymise.jsonl
+uv run python interfaces/cli/verifier_repartition_splits.py --dataset data/processed/dataset_pivot_anonymise.jsonl
+```
+
+**Anonymisation** (durée réelle mesurée : 57 min 48 s pour 5 000
+exemples, cohérente avec les temps par source mesurés en 07-08/09,
+voir § dédiée ci-dessous) — rapport RGPD cumulé généré automatiquement
+dans `data/processed/rapport_anonymisation_rgpd.{json,md}` :
+
+| Source | Traités (cette vague) | Avec ≥1 entité | Taux |
+|---|---:|---:|---:|
+| FrenchMedMCQA | 22 | 7 | 31,8 % |
+| MedQuAD | 606 | 528 | 87,1 % |
+| MediQAl | 773 | 421 | 54,5 % |
+| UltraMedical-Preference | 3 599 | 3 575 | 99,3 % |
+| **Total** | **5 000** | **4 531** | **90,6 %** |
+
+Soit **5 000/134 883 exemples anonymisés (3,7 % du dataset pivot,
+compté réellement dans le fichier à l'exécution)**, **64 667 entités
+détectées** au total. Portée explicitement indiquée dans le rapport
+(cumulé sur 1 exécution à ce stade, tracé avec horodatage/stratégie/
+limite/graine — voir `data/processed/rapport_anonymisation_rgpd.md`
+§ « Executions ayant contribué »).
+
+**Contrôle qualité automatique** (200 exemples comparés, échantillon
+stratifié parmi les 5 000 disponibles, regex + seconde opinion spaCy —
+rapport dans `data/processed/rapport_controle_qualite_anonymisation.{json,md}`) :
+
+- **631 candidats de PII résiduelle** détectés par regex sur le texte
+  anonymisé : **0 confirmés** (aucun match déterministe email/
+  téléphone/URL/date non masqué, et aucun bigramme capitalisé confirmé
+  entité nommée par spaCy), **596 écartés** par spaCy (bigrammes
+  capitalisés type titres de section markdown `### Conclusion`,
+  vocabulaire scientifique — cohérent avec les faux positifs déjà
+  documentés dans la revue manuelle historique), **35 en attente de
+  revision humaine** explicitement marqués comme tels (jamais une
+  confirmation inventée).
+- **18 candidats de faux positifs de masquage** (fragments originaux
+  masqués sans confirmation spaCy qu'il s'agissait d'une entité
+  nommée) : 2 sans aucune entité détectée, 16 avec une entité d'un
+  type non tranchant (ex. plages temporelles `"30 minutes"`,
+  `"hours to days"` masquées à tort comme `DATE_TIME`, âges
+  `"30-year-old"` — sur-masquage inoffensif RGPD-wise mais qui dégrade
+  la lisibilité, cohérent avec le phénomène déjà documenté dans la
+  revue manuelle historique §4 de `01_rapport_rgpd.md`).
+- Exemples réels (original → anonymisé) inspectables dans le rapport
+  Markdown pour chacune des 4 sources.
+
+**Splits** (sur les 5 000 exemples anonymisés) : identique à la vague
+historique (4 004 train / 498 val / 498 test), vérifié représentatif
+par strate à ~80/10/10 dans chaque `(type_exemple, source)` (y compris
+`FrenchMedMCQA`, 22 exemples, 18/2/2).
+
+Cette exécution remplace la « première vague » historique (§
+ci-dessous, ancien pivot à identifiants aléatoires) sous le nouveau
+schéma reproductible. **142 204 exemples restaient dans l'ancien
+schéma ; il en reste désormais 129 883** (134 883 − 5 000) à traiter
+par des vagues ultérieures (`anonymiser_dataset.py --limite N` plus
+grand, ou `full`).
+
+## Anonymisation réelle (ANCIEN schéma, ids aléatoires) : bug de performance O(n²) corrigé, decision produit appliquée, premiere vague exécutée (07-08/09/2026)
+
+> **SUPERSEDÉ le 08/09/2026** par le design source/sortie séparés (cf.
+> section dédiée plus bas) : la « première vague » décrite ci-dessous
+> anonymisait le pivot **en place** (identifiants aléatoires, champ
+> `anonymise` muté sur le fichier source lui-même) — ce fichier n'existe
+> plus, remplacé par le pivot régénéré (134 883 exemples,
+> identifiants déterministes, jamais modifié) et une nouvelle première
+> vague écrite dans `dataset_pivot_anonymise.jsonl` (fichier séparé).
+> Les mesures de temps ci-dessous (durée par source, bug O(n²)
+> corrigé) restent valables techniquement — le mécanisme
+> d'anonymisation Presidio lui-même n'a pas changé, seul l'emplacement
+> d'écriture du résultat a changé.
 
 En préparant l'exécution de `anonymiser_dataset.py` sur le dataset
 pivot réel (147 204 exemples, 624 Mo), un second bug d'infrastructure
@@ -367,6 +579,20 @@ chaque strate `(type_exemple, source)` respecte bien les proportions
 | sft/MediQAl | 708 | 568 (80,2 %) | 70 (9,9 %) | 70 (9,9 %) |
 
 ## Rapport de justification RGPD complété avec des données réelles (09/09/2026)
+
+> **SUPERSEDÉ le 08/09/2026** par la génération automatique du rapport
+> RGPD (demande du capitaine : que le pipeline produise lui-même ses
+> indicateurs, de façon reproductible, plutôt qu'un calcul manuel
+> ponctuel comme celui décrit ci-dessous). Voir la section
+> « Génération automatique du rapport RGPD + contrôle qualité par
+> comparaison de fichiers (08/09/2026) » plus bas pour le nouveau
+> mécanisme. L'échantillon de 5 000 exemples et l'instrumentation
+> `AnonymiserDatasetUseCase.statistiques` décrits ci-dessous restent
+> corrects comme description de principe, mais les chiffres exacts
+> (5 000/147 204, 708/20/557/3 715 par source) portaient sur l'ANCIEN
+> pivot (identifiants aléatoires, depuis régénéré) et ne reflètent
+> plus l'état courant — voir `01_rapport_rgpd.md` pour la note de tête
+> à jour.
 
 `docs/02_etape1_donnees/01_rapport_rgpd.md` (auparavant un gabarit
 `01_rapport_rgpd_template.md`) est désormais complété avec des chiffres

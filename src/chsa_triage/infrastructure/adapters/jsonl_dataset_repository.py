@@ -26,6 +26,61 @@ from chsa_triage.domain.model import (
 )
 
 
+def exemple_pivot_vers_dict(exemple: ExemplePivot) -> dict:
+    """Serialise un ExemplePivot en dict JSON-compatible (enums -> `.value`)."""
+    d = asdict(exemple)
+    d["type_exemple"] = exemple.type_exemple.value
+    d["langue"] = exemple.langue.value
+    d["niveau_confiance"] = exemple.niveau_confiance.value
+    d["split"] = exemple.split.value if exemple.split else None
+    return d
+
+
+def exemple_pivot_depuis_dict(d: dict) -> ExemplePivot:
+    """Reconstruit un ExemplePivot depuis un dict issu de `json.loads`."""
+
+    def messages(cle: str) -> tuple[Message, ...]:
+        return tuple(Message(**m) for m in d.get(cle, []))
+
+    constantes = d.get("constantes_vitales")
+    return ExemplePivot(
+        identifiant=d["identifiant"],
+        identifiant_source_brute=d.get("identifiant_source_brute", ""),
+        source=d["source"],
+        type_exemple=TypeExemple(d["type_exemple"]),
+        langue=Langue(d["langue"]),
+        symptomes=d.get("symptomes", ""),
+        antecedents=d.get("antecedents"),
+        constantes_vitales=ConstantesVitales(**constantes) if constantes else None,
+        prompt=messages("prompt"),
+        completion=messages("completion"),
+        chosen=messages("chosen"),
+        rejected=messages("rejected"),
+        niveau_confiance=NiveauConfiance(d.get("niveau_confiance", "moyenne")),
+        anonymise=d.get("anonymise", False),
+        split=TypeSplit(d["split"]) if d.get("split") else None,
+    )
+
+
+def ajouter_exemples_jsonl(chemin_fichier: str | Path, exemples: Iterable[ExemplePivot]) -> None:
+    """
+    Ajoute `exemples` en fin de fichier JSONL, SANS fusion par
+    identifiant (contrairement a `JsonlDatasetRepository.sauvegarder_plusieurs`).
+
+    Utilise pour les fichiers d'AUDIT (ex. `doublons_supprimes.jsonl`)
+    ou plusieurs entrees peuvent legitimement partager le meme
+    `identifiant` (plusieurs registres bruts identiques ecartes lors du
+    dedoublonnage, cf. `ConstruireDatasetPivotUseCase.doublons`) -- un
+    stockage indexe par identifiant en perdrait silencieusement une
+    partie.
+    """
+    chemin = Path(chemin_fichier)
+    chemin.parent.mkdir(parents=True, exist_ok=True)
+    with chemin.open("a", encoding="utf-8") as f:
+        for exemple in exemples:
+            f.write(json.dumps(exemple_pivot_vers_dict(exemple), ensure_ascii=False) + "\n")
+
+
 class JsonlDatasetRepository:
     """Adaptateur JSONL local implementant RepositoryLectureEcriture[ExemplePivot]."""
 
@@ -69,6 +124,26 @@ class JsonlDatasetRepository:
     def compter(self, filtre: dict | None = None) -> int:
         return sum(1 for _ in self.lister(filtre))
 
+    def identifiants_existants(self) -> set[str]:
+        """
+        Retourne l'ensemble des `identifiant` deja presents dans le
+        fichier, sans reconstruire chaque ExemplePivot complet (evite
+        de parser les messages/enums pour ne garder qu'un champ) --
+        utilise par `AnonymiserDatasetUseCase` pour determiner, sur le
+        fichier de SORTIE (jamais sur le pivot source), quels
+        identifiants ont deja ete traites lors d'une execution
+        precedente.
+        """
+        if not self._chemin.exists() or self._chemin.stat().st_size == 0:
+            return set()
+        identifiants: set[str] = set()
+        with self._chemin.open("r", encoding="utf-8") as f:
+            for ligne in f:
+                ligne = ligne.strip()
+                if ligne:
+                    identifiants.add(json.loads(ligne)["identifiant"])
+        return identifiants
+
     # ------------------------------------------------------------------
     # Details prives de serialisation
     # ------------------------------------------------------------------
@@ -101,32 +176,8 @@ class JsonlDatasetRepository:
 
     @staticmethod
     def _vers_dict(exemple: ExemplePivot) -> dict:
-        d = asdict(exemple)
-        d["type_exemple"] = exemple.type_exemple.value
-        d["langue"] = exemple.langue.value
-        d["niveau_confiance"] = exemple.niveau_confiance.value
-        d["split"] = exemple.split.value if exemple.split else None
-        return d
+        return exemple_pivot_vers_dict(exemple)
 
     @staticmethod
     def _depuis_dict(d: dict) -> ExemplePivot:
-        def messages(cle: str) -> tuple[Message, ...]:
-            return tuple(Message(**m) for m in d.get(cle, []))
-
-        constantes = d.get("constantes_vitales")
-        return ExemplePivot(
-            identifiant=d["identifiant"],
-            source=d["source"],
-            type_exemple=TypeExemple(d["type_exemple"]),
-            langue=Langue(d["langue"]),
-            symptomes=d.get("symptomes", ""),
-            antecedents=d.get("antecedents"),
-            constantes_vitales=ConstantesVitales(**constantes) if constantes else None,
-            prompt=messages("prompt"),
-            completion=messages("completion"),
-            chosen=messages("chosen"),
-            rejected=messages("rejected"),
-            niveau_confiance=NiveauConfiance(d.get("niveau_confiance", "moyenne")),
-            anonymise=d.get("anonymise", False),
-            split=TypeSplit(d["split"]) if d.get("split") else None,
-        )
+        return exemple_pivot_depuis_dict(d)

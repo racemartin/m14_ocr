@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import replace
+from uuid import uuid4
 
 from chsa_triage.application.use_cases import VerifierRepartitionSplitsUseCase
 from chsa_triage.domain.model import ExemplePivot, Langue, Message, TypeExemple, TypeSplit
@@ -40,7 +41,7 @@ class FauxRepository:
 def _exemple_reparti(source: str, split: TypeSplit, type_exemple: TypeExemple = TypeExemple.SFT) -> ExemplePivot:
     return replace(
         ExemplePivot(
-            identifiant=ExemplePivot.nouvel_identifiant(source),
+            identifiant=ExemplePivot.nouvel_identifiant(source, uuid4().hex),
             source=source,
             type_exemple=type_exemple,
             langue=Langue.FRANCAIS,

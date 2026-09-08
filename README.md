@@ -85,35 +85,95 @@ uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/medqu
 uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/ultramedical_preference.jsonl --corpus ultramedical_preference --sortie data/processed/dataset_pivot.jsonl --taille-bloc 5000
 ```
 
-Resultat reel (07/09/2026, execution complete sur les 6 fichiers) :
+Resultat reel (08/09/2026, pivot regenere avec identifiants **deterministes**,
+remplace l'execution du 07/09/2026 dont les identifiants etaient aleatoires) :
 
-| Source | Corpus | Enregistrements Écrits | Exemples Pivot Écrits |
-| --- | --- | --- | --- |
-| `data/raw/mediqal_oeq.jsonl` | `mediqal_oeq` | 4 969 | 4 969 |
-| `data/raw/mediqal_mcqu.jsonl` | `mediqal_mcqu` | 10 113 | 10 113 |
-| `data/raw/mediqal_mcqm.jsonl` | `mediqal_mcqm` | 5 767 | 5 767 |
-| `data/raw/frenchmedmcqa.jsonl` | `frenchmedmcqa` | 595 | 595 |
-| `data/raw/medquad.jsonl` | `medquad` | 16 407 | 16 407 |
-| `data/raw/ultramedical_preference.jsonl` | `ultramedical_preference` | 109 353 | 109 353 |
-| **TOTAL** | — | — | **147 204** |
+| Source | Corpus | Enregistrements bruts | Exemples pivot ecrits | Doublons exacts ecartes |
+| --- | --- | --- | --- | --- |
+| `data/raw/mediqal_oeq.jsonl` | `mediqal_oeq` | 4 969 | 4 969 | 0 |
+| `data/raw/mediqal_mcqu.jsonl` | `mediqal_mcqu` | 10 113 | 10 113 | 0 |
+| `data/raw/mediqal_mcqm.jsonl` | `mediqal_mcqm` | 5 767 | 5 767 | 0 |
+| `data/raw/frenchmedmcqa.jsonl` | `frenchmedmcqa` | 595 | 594 | 1 |
+| `data/raw/medquad.jsonl` | `medquad` | 16 407 | 16 359 | 48 |
+| `data/raw/ultramedical_preference.jsonl` | `ultramedical_preference` | 109 353 | 97 081 | 12 272 |
+| **TOTAL** | — | **147 204** | **134 883** | **12 321** |
 
-### 4. Anonymisation (incrementale/reprenable, cf. --limite)
+L'identifiant deterministe (`ExemplePivot.nouvel_identifiant`, hash
+stable derive d'une cle naturelle propre a chaque source -- champ
+`id` brut pour MediQAl/FrenchMedMCQA, hash Question+Answer pour
+MedQuAD, `prompt_id`+`label_type`+chosen+rejected pour
+UltraMedical-Preference) a mis au jour de VRAIS doublons exacts dans
+les donnees brutes, invisibles auparavant (chaque appel generait un
+UUID aleatoire different, donc jamais de collision). `--corpus`
+determine desormais un **espace de noms** plus fin que la simple
+`source` du pivot : verifie sur les fichiers reels, `mediqal_oeq.jsonl`
+et `mediqal_mcqu.jsonl` partagent 1 492 valeurs de champ `id`
+identiques bien que decrivant des registres differents.
+`ConstruireDatasetPivotUseCase` dedoublonne reellement (decision du
+capitaine) : un seul exemplaire par identifiant atterrit dans le
+pivot, les doublons ecartes sont archives (jamais perdus) dans
+`data/processed/doublons_supprimes.jsonl`. Detail complet (methodologie,
+cle naturelle par source, investigation legere sur la cause probable
+des doublons UltraMedical-Preference) dans
+`docs/02_etape1_donnees/00_couverture_exigences_officielles.md`.
+
+### 4. Anonymisation (incrementale/reprenable, cf. --limite) -- ecrit dans un fichier SEPARE
 
 ```bash
-# NB : anonymisation complete du dataset (147204 exemples) mesuree a
-# ~19h (cout NLP Presidio/spaCy) -- --limite (defaut 5000, l'objectif
-# chiffre de la mission) anonymise un echantillon stratifie par
-# (type_exemple, source) parmi les exemples encore anonymise=False ;
-# le reste attend un appel ulterieur avec un N plus grand ou "full".
-uv run python interfaces/cli/anonymiser_dataset.py --dataset data/processed/dataset_pivot.jsonl --strategie replace --limite 5000
+# IMPORTANT (08/09/2026, design source/sortie separes, decision du
+# capitaine) : --dataset (le pivot original) n'est JAMAIS modifie --
+# le resultat est ecrit dans --sortie, un fichier separe (defaut
+# data/processed/dataset_pivot_anonymise.jsonl). "Deja anonymise" se
+# determine par la presence de l'identifiant dans --sortie, pas par un
+# champ mute sur le pivot source. Anonymisation complete du dataset
+# (134883 exemples) mesuree a ~19h (cout NLP Presidio/spaCy) --
+# --limite (defaut 5000, l'objectif chiffre de la mission) anonymise
+# un echantillon stratifie par (type_exemple, source) parmi les
+# exemples du pivot pas encore presents dans --sortie ; le reste
+# attend un appel ulterieur avec un N plus grand ou "full".
+uv run python interfaces/cli/anonymiser_dataset.py --dataset data/processed/dataset_pivot.jsonl --sortie data/processed/dataset_pivot_anonymise.jsonl --strategie replace --limite 5000
 ```
 
-### 5. Decoupage en splits (train / val / test, stratifie)
+Chaque execution genere/fusionne automatiquement un **rapport RGPD
+cumule** (JSON + Markdown, `data/processed/rapport_anonymisation_rgpd.{json,md}`)
+avec, par source et au total : registres traites (cumule sur toutes
+les executions) et proportion reelle sur le total du dataset pivot
+(compte a chaque execution, jamais code en dur), taux d'enregistrements
+avec >=1 entite detectee, entites par type, et la liste tracable des
+executions ayant contribue (horodatage, strategie, limite, graine).
+Voir `application/use_cases/rapport_anonymisation.py`.
+
+### 5. Controle qualite de l'anonymisation (comparaison de fichiers)
 
 ```bash
-# decouper_splits.py ne decoupe que les exemples deja anonymises --
-# le relancer apres chaque nouvelle vague d'anonymisation.
-uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset_pivot.jsonl
+# Compare le pivot ORIGINAL (jamais modifie) au fichier ANONYMISE,
+# croises par identifiant, sur un echantillon stratifie -- peut se
+# relancer a tout moment, y compris retroactivement sur une vague
+# anonymisee il y a longtemps (le pivot original existe toujours).
+uv run python interfaces/cli/controler_qualite_anonymisation.py --dataset data/processed/dataset_pivot.jsonl --anonymise data/processed/dataset_pivot_anonymise.jsonl --taille-echantillon 200
+```
+
+Detecte les candidats de PII residuelle (regex sans modele -- emails,
+telephones, URLs, dates, bigrammes capitalises -- sur le texte
+anonymise) et les tranche avec une seconde opinion spaCy (memes
+modeles que `PresidioAnonymiseur`, `fr_core_news_md`/`en_core_web_sm` --
+jamais de LLM) : confirme, ecarte comme faux positif du regex, ou
+marque explicitement "pendant_revision_humaine" si ni le regex ni
+spaCy ne tranchent. Detecte aussi les candidats de sur-masquage
+(termes originaux masques que spaCy ne reconnait pas comme entite
+nommee) par diff texte original/anonymise. Ecrit son propre rapport
+(`data/processed/rapport_controle_qualite_anonymisation.{json,md}`),
+avec des exemples reels inspectables par source et les compteurs
+d'entites par type repris du rapport RGPD cumule (§4 ci-dessus, pas
+recalcules). Voir `application/use_cases/controler_qualite_anonymisation.py`.
+
+### 6. Decoupage en splits (train / val / test, stratifie)
+
+```bash
+# decouper_splits.py opere sur le fichier ANONYMISE (dataset_pivot_anonymise.jsonl),
+# PAS sur le pivot original -- le relancer apres chaque nouvelle vague
+# d'anonymisation.
+uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset_pivot_anonymise.jsonl
 
 # --n (optionnel) : pour obtenir un dataset d'entrainement de taille N
 # plutot que repartir TOUT ce qui est deja anonymise, --n preleve
@@ -124,20 +184,21 @@ uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset
 # disponibles, comportement inchange (tout ce qui est anonymise est
 # reparti) -- un avertissement est trace via LogTool si N depasse le
 # disponible, sans erreur.
-uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset_pivot.jsonl --n 5000
+uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset_pivot_anonymise.jsonl --n 5000
 ```
 
-### 6. Verification de la repartition des splits par strate
+### 7. Verification de la repartition des splits par strate
 
 ```bash
 # decouper_splits.py n'affiche que le total global (train/val/test).
-# verifier_repartition_splits.py relit le dataset pivot deja reparti
-# et affiche, pour chaque strate (type_exemple, source), le decompte
-# ET le pourcentage par split -- pour verifier visuellement que
-# l'echantillonnage stratifie reste representatif DANS CHAQUE split
-# (ex. une petite source comme FrenchMedMCQA doit rester ~80/10/10
-# comme les grosses sources, pas disparaitre de train ou de test).
-uv run python interfaces/cli/verifier_repartition_splits.py --dataset data/processed/dataset_pivot.jsonl
+# verifier_repartition_splits.py relit le fichier anonymise deja
+# reparti et affiche, pour chaque strate (type_exemple, source), le
+# decompte ET le pourcentage par split -- pour verifier visuellement
+# que l'echantillonnage stratifie reste representatif DANS CHAQUE
+# split (ex. une petite source comme FrenchMedMCQA doit rester
+# ~80/10/10 comme les grosses sources, pas disparaitre de train ou de
+# test).
+uv run python interfaces/cli/verifier_repartition_splits.py --dataset data/processed/dataset_pivot_anonymise.jsonl
 ```
 
 `anonymiser_dataset.py` affiche une barre de progression `tqdm` pendant le traitement (peut durer plusieurs dizaines de minutes sur un gros dataset).
@@ -159,16 +220,26 @@ Détail complet : `docs/01_environnement/01_architecture_hexagonale.md`.
 ## État d'avancement
 
 - [x] Étape 0 — Cadrage, environnement, architecture
-- [ ] Étape 1 — Préparation des données : dataset pivot construit sur
-      les 6 fichiers réels (147 204 exemples, 0 rejet) ; anonymisation
-      complète mesurée à ~19h (coût NLP Presidio/spaCy) -- rendue
-      incrémentale/reprenable via `--limite` (échantillonnage
-      stratifié par type_exemple+source, champ `anonymise` déjà
-      présent sur `ExemplePivot`) ; **première vague exécutée
-      (5 000/147 204 exemples anonymisés et découpés en splits,
-      atteignant l'objectif chiffré de la mission)**, 142 204 exemples
-      restants pour des vagues ultérieures — voir
-      `docs/02_etape1_donnees/00_couverture_exigences_officielles.md`.
+- [ ] Étape 1 — Préparation des données : dataset pivot **régénéré**
+      (08/09/2026) avec identifiants **déterministes** sur les 6
+      fichiers réels — **134 883 exemples** (147 204 registres bruts,
+      **12 321 doublons exacts dédoublonnés réellement**, archivés
+      dans `data/processed/doublons_supprimes.jsonl`, jamais perdus) ;
+      anonymisation écrit désormais dans un fichier **séparé**
+      (`dataset_pivot_anonymise.jsonl`, le pivot original n'est plus
+      jamais modifié), complète mesurée à ~19h (coût NLP
+      Presidio/spaCy) -- rendue incrémentale/reprenable via `--limite`
+      (échantillonnage stratifié par type_exemple+source) ; chaque
+      exécution génère/fusionne automatiquement un **rapport RGPD
+      cumulé** (JSON + Markdown) ; contrôle qualité **automatisé** par
+      comparaison de fichiers (regex + seconde opinion spaCy,
+      `controler_qualite_anonymisation.py`) ; **première vague
+      exécutée sur le pivot régénéré (5 000/134 883 exemples, 90,6 %
+      avec ≥1 entité détectée, 64 667 entités) et découpée en splits
+      (4 004/498/498, vérifiée représentative par strate)** — 200
+      exemples contrôlés automatiquement (0 PII résiduelle confirmée,
+      35 candidats explicitement en attente de révision humaine) —
+      voir `docs/02_etape1_donnees/00_couverture_exigences_officielles.md`.
       **Vagues ultérieures** : à relancer avec `--limite` plus grand
       (ou `full`) avant le SFT/DPO ; réévaluer d'abord le risque de
       saturation/surapprentissage d'un entraînement sur un

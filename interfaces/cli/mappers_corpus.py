@@ -24,9 +24,44 @@ DEUX schemas differents, desormais toutes deux couvertes :
     (peut etre `null`) + `answer_a` a `answer_e` + `correct_answers`
     + `task` ("QCU"/"QCM") -- PAS de champ `answer`.
     -> `mapper_mediqal_qcm` (cles `mediqal_mcqu` / `mediqal_mcqm`).
+
+NOTE (08/09/2026, identifiant deterministe, cf.
+`ExemplePivot.nouvel_identifiant`) : chaque mapper derive desormais un
+identifiant STABLE (pas aleatoire) a partir d'une cle naturelle propre
+a chaque registre brut, verifiee sur les fichiers reels de
+`data/raw/` (pas supposee depuis la fiche Hugging Face) :
+  - mediqal_oeq/mcqu/mcqm, frenchmedmcqa : champ `id` du registre brut.
+    ATTENTION -- verifie sur les fichiers reels : `mediqal_oeq.jsonl`
+    et `mediqal_mcqu.jsonl` partagent 1492 valeurs de `id` identiques
+    bien qu'ils decrivent des registres differents (et 1280 avec
+    mediqal_mcqm) -- l'espace de noms passe a `nouvel_identifiant` doit
+    donc etre plus fin que le simple `source="MediQAl"` commun aux
+    trois (`mediqal_oeq`/`mediqal_mcqu`/`mediqal_mcqm`, distingues via
+    le champ `task` pour le mapper QCM partage par les deux derniers).
+  - medquad : aucun champ `id` dans le registre brut -- cle naturelle
+    = `Question` + `Answer` concatenes (verifie : 16 359 valeurs
+    uniques sur 16 407 registres, 48 doublons EXACTS Question+Answer
+    -- `Question` seule n'aurait donne que 14 979 valeurs uniques,
+    beaucoup moins fiable).
+  - ultramedical_preference : `prompt_id` seul n'est PAS unique
+    (verifie : 77 046 valeurs uniques sur 109 353 registres) --
+    cle naturelle = `prompt_id` + `label_type` + reponse `chosen` +
+    reponse `rejected` (verifie : 97 081 valeurs uniques, donc 12 272
+    registres strictement identiques sur ces 4 champs -- de vrais
+    doublons, pas une collision de cle insuffisante).
+
+Les registres dont la cle naturelle produit un identifiant deja vu
+sont de VRAIS doublons (contenu strictement identique sur les champs
+qui alimentent le pivot) -- `ConstruireDatasetPivotUseCase` les
+detecte et les ecarte (dedoublonnage reel, decision du capitaine
+08/09/2026), voir `doublons_supprimes.jsonl` et
+`docs/02_etape1_donnees/00_couverture_exigences_officielles.md` pour
+le detail par source.
 """
 
 from __future__ import annotations
+
+import hashlib
 
 from chsa_triage.domain.model import (
     ExemplePivot,
@@ -62,8 +97,11 @@ def mapper_mediqal(enregistrement: dict) -> ExemplePivot | None:
     if not question or not reponse:
         return None
 
+    cle_naturelle = str(enregistrement.get("id"))
+
     return ExemplePivot(
-        identifiant=ExemplePivot.nouvel_identifiant("mediqal"),
+        identifiant=ExemplePivot.nouvel_identifiant("mediqal_oeq", cle_naturelle),
+        identifiant_source_brute=cle_naturelle,
         source="MediQAl",
         type_exemple=TypeExemple.SFT,
         langue=Langue.FRANCAIS,
@@ -147,8 +185,18 @@ def mapper_mediqal_qcm(enregistrement: dict) -> ExemplePivot | None:
 
     completion_texte = " ".join(textes_reponses)
 
+    # Distingue mcqu ("QCU") de mcqm ("QCM") -- verifie sur les fichiers
+    # reels : `task` vaut exclusivement "QCU" dans mediqal_mcqu.jsonl et
+    # "QCM" dans mediqal_mcqm.jsonl, aucune valeur mixte. Necessaire car
+    # les deux fichiers partagent des valeurs de `id` avec mediqal_oeq
+    # (et donc, sans cette distinction, l'identifiant deterministe
+    # collisionnerait entre registres differents).
+    espace_noms = "mediqal_mcqu" if enregistrement.get("task") == "QCU" else "mediqal_mcqm"
+    cle_naturelle = str(enregistrement.get("id"))
+
     return ExemplePivot(
-        identifiant=ExemplePivot.nouvel_identifiant("mediqal"),
+        identifiant=ExemplePivot.nouvel_identifiant(espace_noms, cle_naturelle),
+        identifiant_source_brute=cle_naturelle,
         source="MediQAl",
         type_exemple=TypeExemple.SFT,
         langue=Langue.FRANCAIS,
@@ -211,8 +259,11 @@ def mapper_frenchmedmcqa(enregistrement: dict) -> ExemplePivot | None:
     if not reponse_correcte:
         return None
 
+    cle_naturelle = str(enregistrement.get("id"))
+
     return ExemplePivot(
-        identifiant=ExemplePivot.nouvel_identifiant("frenchmedmcqa"),
+        identifiant=ExemplePivot.nouvel_identifiant("frenchmedmcqa", cle_naturelle),
+        identifiant_source_brute=cle_naturelle,
         source="FrenchMedMCQA",
         type_exemple=TypeExemple.SFT,
         langue=Langue.FRANCAIS,
@@ -236,8 +287,15 @@ def mapper_medquad(enregistrement: dict) -> ExemplePivot | None:
     if not question or not reponse:
         return None
 
+    # Aucun champ `id` dans le registre brut MedQuAD (verifie sur le
+    # fichier reel) -- cle naturelle = hash de Question+Answer, verifie
+    # unique a 16 359/16 407 (48 doublons EXACTS Question+Answer ;
+    # Question seule n'aurait donne que 14 979 valeurs uniques).
+    cle_naturelle = hashlib.sha256(f"{question}||{reponse}".encode("utf-8")).hexdigest()
+
     return ExemplePivot(
-        identifiant=ExemplePivot.nouvel_identifiant("medquad"),
+        identifiant=ExemplePivot.nouvel_identifiant("medquad", cle_naturelle),
+        identifiant_source_brute=cle_naturelle,
         source="MedQuAD",
         type_exemple=TypeExemple.SFT,
         langue=Langue.ANGLAIS,
@@ -302,8 +360,22 @@ def mapper_ultramedical_preference(enregistrement: dict) -> ExemplePivot | None:
     if not prompt or not chosen or not rejected:
         return None
 
+    prompt_id = enregistrement.get("prompt_id", "")
+    label_type = enregistrement.get("label_type", "")
+
+    # `prompt_id` seul n'est PAS unique (verifie sur le fichier reel :
+    # 77 046 valeurs uniques sur 109 353 registres -- le meme prompt
+    # est annote plusieurs fois avec des criteres de preference
+    # differents, ex. label_type "easy"/"hard"/"length"). Cle naturelle
+    # = prompt_id + label_type + reponses chosen/rejected, verifiee
+    # unique a 97 081/109 353 (12 272 registres strictement identiques
+    # sur ces 4 champs -- de vrais doublons, pas une collision de cle
+    # insuffisante).
+    cle_naturelle = f"{prompt_id}|{label_type}|{chosen}|{rejected}"
+
     return ExemplePivot(
-        identifiant=ExemplePivot.nouvel_identifiant("ultramedical"),
+        identifiant=ExemplePivot.nouvel_identifiant("ultramedical_preference", cle_naturelle),
+        identifiant_source_brute=str(prompt_id),
         source="UltraMedical-Preference",
         type_exemple=TypeExemple.DPO,
         langue=Langue.ANGLAIS,

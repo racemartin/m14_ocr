@@ -13,7 +13,12 @@ FrenchMedMCQA ne doit pas se retrouver absente de train ou de test).
 
 Usage :
     uv run python interfaces/cli/verifier_repartition_splits.py \
-        --dataset data/processed/dataset_pivot.jsonl
+        --dataset data/processed/dataset_pivot_anonymise.jsonl
+
+IMPORTANT (08/09/2026, design source/sortie separes) : --dataset doit
+pointer vers le fichier ANONYMISE (`dataset_pivot_anonymise.jsonl`),
+PAS vers le pivot original -- celui-ci n'est jamais anonymise/reparti
+en place.
 """
 
 from __future__ import annotations

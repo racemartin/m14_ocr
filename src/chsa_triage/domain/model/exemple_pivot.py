@@ -10,8 +10,8 @@ pas de domaine).
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass, field
-from uuid import uuid4
 
 from chsa_triage.domain.model.enums import (
     Langue,
@@ -56,6 +56,15 @@ class ExemplePivot:
     type_exemple          : TypeExemple
     langue                : Langue
 
+    # Cle naturelle du registre brut d'origine (id/hash), telle
+    # qu'exposee par le mapper -- PAS l'entree exacte du hash de
+    # `identifiant` (qui peut inclure un espace de noms plus fin, cf.
+    # `nouvel_identifiant`), mais la valeur la plus utile pour
+    # retrouver le registre source dans data/raw/*.jsonl. Vide par
+    # defaut (ExemplePivot synthetiques de test) -- toujours renseignee
+    # par les mappers reels (interfaces/cli/mappers_corpus.py).
+    identifiant_source_brute: str = ""
+
     symptomes             : str = ""
     antecedents           : str | None = None
     constantes_vitales    : ConstantesVitales | None = None
@@ -70,9 +79,33 @@ class ExemplePivot:
     split                   : TypeSplit | None = None
 
     @staticmethod
-    def nouvel_identifiant(source: str) -> str:
-        """Genere un identifiant conforme au schema `chsa-<source>-<uuid>`."""
-        return f"chsa-{source.lower()}-{uuid4().hex[:12]}"
+    def nouvel_identifiant(espace_noms: str, cle_naturelle: str) -> str:
+        """
+        Genere un identifiant DETERMINISTE : meme (espace_noms,
+        cle_naturelle) en entree -> toujours le meme identifiant en
+        sortie (hash sha256 tronque de "espace_noms:cle_naturelle").
+
+        Deterministe (et non aleatoire, contrairement a l'ancien
+        `uuid4()`) pour que le dataset pivot puisse etre regenere sans
+        perdre la correspondance entre un ExemplePivot et son registre
+        brut d'origine -- necessaire pour croiser "cet exemple
+        anonymise" avec "son original" entre le pivot immuable et le
+        fichier de sortie anonymise (fichiers separes, cf.
+        AnonymiserDatasetUseCase).
+
+        `espace_noms` n'est PAS forcement egal au champ `source` de
+        l'ExemplePivot : il doit etre assez fin pour eviter toute
+        collision entre sous-configurations d'une meme source qui
+        partagent le meme espace de cles naturelles. Exemple reel
+        rencontre sur les donnees brutes : les fichiers MediQAl "oeq"
+        et "mcqu" partagent 1492 valeurs de champ `id` identiques bien
+        qu'ils decrivent des registres differents -- `espace_noms` doit
+        donc valoir "mediqal_oeq"/"mediqal_mcqu"/"mediqal_mcqm"
+        (distincts), meme si `source="MediQAl"` reste commun aux trois
+        pour le reste du pipeline (stratification, rapports).
+        """
+        empreinte = hashlib.sha256(f"{espace_noms}:{cle_naturelle}".encode("utf-8")).hexdigest()[:16]
+        return f"chsa-{espace_noms.lower()}-{empreinte}"
 
     def est_complet_pour_sft(self) -> bool:
         """Verifie qu'un exemple SFT a bien un prompt et une completion."""
