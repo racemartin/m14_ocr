@@ -15,6 +15,7 @@ docs/diagrams/
 ├── 02_etape1_donnees/
 │   ├── activite/                  pipeline de données bout-en-bout
 │   ├── sequence/                   les 6 scripts CLI (telecharger, profiler, construire le pivot, anonymiser, decouper, verifier la repartition)
+│   │                                + vue frontiere generique/specifique du pivot (mappers_corpus.py)
 │   ├── paquets/                     classes réelles de l'Étape 1
 │   └── deploiement/                 environnement local (WSL2, uv)
 ├── 03_etape2_sft/
