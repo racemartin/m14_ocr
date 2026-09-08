@@ -86,9 +86,6 @@ uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/ultra
 
 # 4. Anonymisation et decoupage en splits (une seule fois, sur le dataset pivot fusionne)
 uv run python interfaces/cli/anonymiser_dataset.py --dataset data/processed/dataset_pivot.jsonl --strategie replace
-# Si le corpus est gros et qu'une seule passe risque de planter (OOM), utiliser
-# scripts/anonymiser_par_lots.sh a la place : il relance la commande ci-dessus en boucle
-# jusqu'a couverture complete du pivot, sans intervention manuelle.
 uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset_pivot.jsonl
 ```
 
@@ -140,6 +137,8 @@ des doublons UltraMedical-Preference) dans
 # attend un appel ulterieur avec un N plus grand ou "full".
 uv run python interfaces/cli/anonymiser_dataset.py --dataset data/processed/dataset_pivot.jsonl --sortie data/processed/dataset_pivot_anonymise.jsonl --strategie replace --limite 5000
 ```
+
+Pour enchainer les vagues successives sans relancer la commande a la main a chaque fois, `scripts/anonymiser_par_lots.sh` la rappelle en boucle jusqu'a couverture complete du pivot.
 
 Chaque execution genere/fusionne automatiquement un **rapport RGPD
 cumule** (JSON + Markdown, `data/processed/rapport_anonymisation_rgpd.{json,md}`)
