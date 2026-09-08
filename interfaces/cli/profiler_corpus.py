@@ -61,6 +61,8 @@ def _profiler_par_blocs(source: str, nom: str, taille_bloc: int) -> None:
     numero_bloc = 0
     total_enregistrements = 0
     try:
+        # Un seul bloc a la fois en memoire (islice consomme l'iterateur au fil de l'eau) :
+        # borne le pic memoire au prix de correlations/doublons calcules par bloc, pas globalement.
         while True:
             bloc = list(itertools.islice(iterateur, taille_bloc))
             if not bloc:
@@ -114,6 +116,9 @@ def main() -> None:
     # -------------------------------------------------------------------------
     # PREPARE ADAPTERS
     # -------------------------------------------------------------------------
+    # Chemin par defaut (sans --bloque) : le corpus entier est charge en memoire d'un coup.
+    # Adaptateurs concrets injectes dans le cas d'usage plutot qu'instancies a l'interieur de
+    # celui-ci : Injection de Dependances / Ports et Adaptateurs (Architecture Hexagonale).
     lecteur   = LecteurCorpusFichierLocal(arguments.source)
     profileur = YdataProfileur()
 

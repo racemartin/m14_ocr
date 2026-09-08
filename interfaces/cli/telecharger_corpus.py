@@ -54,6 +54,8 @@ def main() -> None:
     # -------------------------------------------------------------------------
     # PREPARE ADAPTERS
     # -------------------------------------------------------------------------
+    # Adaptateur concret instancie ici et non dans la logique metier : Injection de
+    # Dependances, partie du patron Ports et Adaptateurs (cf. docs/01_environnement/01_architecture_hexagonale.md).
     log.STEP(1, "Connexion au Hugging Face Hub", "chargement paresseux, premiere iteration a suivre")
     lecteur = LecteurCorpusHuggingFace(
         identifiant_hub=arguments.identifiant_hub,
@@ -70,6 +72,7 @@ def main() -> None:
     log.STEP(2, "Ecriture JSONL", f"vers {chemin_sortie}")
     nombre_enregistrements = 0
     try:
+        # Ecriture ligne a ligne au fil du streaming du Hub, sans charger tout le corpus en memoire.
         with chemin_sortie.open("w", encoding="utf-8") as fichier_sortie:
             for enregistrement in lecteur.lire_enregistrements():
                 fichier_sortie.write(json.dumps(enregistrement, ensure_ascii=False) + "\n")
