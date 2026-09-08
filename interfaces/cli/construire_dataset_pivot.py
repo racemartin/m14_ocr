@@ -1,4 +1,5 @@
 """
+STEP 02
 Point d'entree CLI — Etape 1, action "construire le dataset pivot".
 
 Usage :
@@ -38,6 +39,9 @@ log = LogTool(origin="construire_dataset_pivot")
 
 
 def main() -> None:
+    # -------------------------------------------------------------------------
+    # PARSE ARGUMENTS
+    # -------------------------------------------------------------------------
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", required=True, help="Chemin du fichier corpus brut")
     parser.add_argument("--corpus", required=True, choices=sorted(MAPPERS_PAR_CORPUS.keys()))
@@ -56,10 +60,16 @@ def main() -> None:
     log.PARAMETER_VALUE("sortie", arguments.sortie)
     log.PARAMETER_VALUE("taille-bloc", arguments.taille_bloc or "(desactive -- lecture complete)")
 
+    # -------------------------------------------------------------------------
+    # PREPARE ADAPTERS
+    # -------------------------------------------------------------------------
     lecteur    = LecteurCorpusFichierLocal(arguments.source, taille_bloc=arguments.taille_bloc)
     repository = JsonlDatasetRepository(arguments.sortie)
     mapper     = MAPPERS_PAR_CORPUS[arguments.corpus]
 
+    # -------------------------------------------------------------------------
+    # USE CASE EXECUTE
+    # -------------------------------------------------------------------------
     log.STEP(1, "Mapping enregistrement -> ExemplePivot", f"mapper={mapper.__name__}")
     try:
         cas_usage = ConstruireDatasetPivotUseCase(lecteur=lecteur, repository=repository)
@@ -68,6 +78,9 @@ def main() -> None:
         log.LEVEL_4_ERROR("construire_dataset_pivot", f"echec du mapping pour {arguments.corpus} : {erreur}")
         raise
 
+    # -------------------------------------------------------------------------
+    # LOG FINAL INFO
+    # -------------------------------------------------------------------------
     if nombre_exemples == 0:
         log.LEVEL_5_WARNING(
             "construire_dataset_pivot",

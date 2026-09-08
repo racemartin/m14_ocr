@@ -1,4 +1,5 @@
 """
+STEP 01
 Point d'entree CLI — Etape 1, action "profiler".
 
 Injecte les adaptateurs concrets (lecteur + profileur) dans le cas
@@ -86,6 +87,9 @@ def _profiler_par_blocs(source: str, nom: str, taille_bloc: int) -> None:
 
 
 def main() -> None:
+    # -------------------------------------------------------------------------
+    # PARSE ARGUMENTS
+    # -------------------------------------------------------------------------
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", required=True, help="Chemin du fichier corpus brut (.csv/.jsonl)")
     parser.add_argument("--nom", required=True, help="Nom du corpus (pour le rapport)")
@@ -107,9 +111,15 @@ def main() -> None:
         _profiler_par_blocs(arguments.source, arguments.nom, arguments.bloque)
         return
 
+    # -------------------------------------------------------------------------
+    # PREPARE ADAPTERS
+    # -------------------------------------------------------------------------
     lecteur   = LecteurCorpusFichierLocal(arguments.source)
     profileur = YdataProfileur()
 
+    # -------------------------------------------------------------------------
+    # USE CASE EXECUTE
+    # -------------------------------------------------------------------------
     log.STEP(1, "Lecture + profilage ydata-profiling", "peut prendre plusieurs minutes sur un gros corpus")
     try:
         cas_usage = ProfilerCorpusUseCase(lecteur=lecteur, profileur=profileur)
@@ -118,6 +128,9 @@ def main() -> None:
         log.LEVEL_4_ERROR("profiler_corpus", f"echec du profilage de {arguments.source} : {erreur}")
         raise
 
+    # -------------------------------------------------------------------------
+    # LOG FINAL INFO
+    # -------------------------------------------------------------------------
     log.PARAMETER_VALUE("enregistrements", rapport.nombre_enregistrements)
     log.PARAMETER_VALUE("taux de doublons", f"{rapport.taux_doublons:.2%}")
     log.PARAMETER_VALUE("rapport detaille", rapport.chemin_rapport_detaille)

@@ -1,4 +1,5 @@
 """
+STEP 04.1
 Point d'entree CLI — Etape 1, action "verifier la repartition des
 splits".
 
@@ -29,6 +30,9 @@ ORDRE_SPLITS = ("train", "val", "test")
 
 
 def main() -> None:
+    # -------------------------------------------------------------------------
+    # PARSE ARGUMENTS
+    # -------------------------------------------------------------------------
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset", required=True, help="Chemin du fichier pivot JSONL")
     arguments = parser.parse_args()
@@ -36,8 +40,14 @@ def main() -> None:
     log.START_ACTION("verifier_repartition_splits", "main", "verification de la repartition des splits par strate")
     log.PARAMETER_VALUE("dataset", arguments.dataset)
 
+    # -------------------------------------------------------------------------
+    # PREPARE ADAPTERS
+    # -------------------------------------------------------------------------
     repository = JsonlDatasetRepository(arguments.dataset)
 
+    # -------------------------------------------------------------------------
+    # USE CASE EXECUTE
+    # -------------------------------------------------------------------------
     log.STEP(1, "Lecture des exemples deja anonymises et repartis")
     try:
         cas_usage = VerifierRepartitionSplitsUseCase(repository=repository)
@@ -46,6 +56,9 @@ def main() -> None:
         log.LEVEL_4_ERROR("verifier_repartition_splits", f"echec de la verification pour {arguments.dataset} : {erreur}")
         raise
 
+    # -------------------------------------------------------------------------
+    # LOG FINAL INFO
+    # -------------------------------------------------------------------------
     if not repartition:
         log.LEVEL_5_WARNING(
             "verifier_repartition_splits",

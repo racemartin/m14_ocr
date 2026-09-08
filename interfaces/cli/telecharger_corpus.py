@@ -1,4 +1,5 @@
 """
+STEP 00 
 Point d'entree CLI -- telecharger un corpus brut depuis Hugging Face
 Hub et l'exporter en JSONL local (data/raw/).
 
@@ -26,6 +27,9 @@ log = LogTool(origin="telecharger_corpus")
 
 
 def main() -> None:
+    # -------------------------------------------------------------------------
+    # PARSE ARGUMENTS
+    # -------------------------------------------------------------------------
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--identifiant-hub",
@@ -47,6 +51,9 @@ def main() -> None:
     log.PARAMETER_VALUE("split", arguments.split)
     log.PARAMETER_VALUE("sortie", arguments.sortie)
 
+    # -------------------------------------------------------------------------
+    # PREPARE ADAPTERS
+    # -------------------------------------------------------------------------
     log.STEP(1, "Connexion au Hugging Face Hub", "chargement paresseux, premiere iteration a suivre")
     lecteur = LecteurCorpusHuggingFace(
         identifiant_hub=arguments.identifiant_hub,
@@ -57,6 +64,9 @@ def main() -> None:
     chemin_sortie = Path(arguments.sortie)
     chemin_sortie.parent.mkdir(parents=True, exist_ok=True)
 
+    # -------------------------------------------------------------------------
+    # USE CASE EXECUTE
+    # -------------------------------------------------------------------------
     log.STEP(2, "Ecriture JSONL", f"vers {chemin_sortie}")
     nombre_enregistrements = 0
     try:
@@ -77,6 +87,9 @@ def main() -> None:
         )
         raise
 
+    # -------------------------------------------------------------------------
+    # LOG FINAL INFO
+    # -------------------------------------------------------------------------
     log.PARAMETER_VALUE("enregistrements ecrits", nombre_enregistrements)
     log.FINISH_ACTION("telecharger_corpus", "main", f"{nombre_enregistrements} enregistrements ecrits dans {chemin_sortie}")
 

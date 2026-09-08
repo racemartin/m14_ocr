@@ -1,4 +1,5 @@
 """
+STEP 04
 Point d'entree CLI — Etape 1, action "decouper en splits".
 
 Usage :
@@ -32,6 +33,9 @@ log = LogTool(origin="decouper_splits")
 
 
 def main() -> None:
+    # -------------------------------------------------------------------------
+    # PARSE ARGUMENTS
+    # -------------------------------------------------------------------------
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset", required=True, help="Chemin du fichier pivot JSONL")
     parser.add_argument("--graine", type=int, default=42)
@@ -54,6 +58,9 @@ def main() -> None:
     log.PARAMETER_VALUE("proportion-test", arguments.proportion_test)
     log.PARAMETER_VALUE("n", arguments.n if arguments.n is not None else "(aucun -- tout repartir)")
 
+    # -------------------------------------------------------------------------
+    # PREPARE ADAPTERS
+    # -------------------------------------------------------------------------
     repository = JsonlDatasetRepository(arguments.dataset)
 
     if arguments.n is not None:
@@ -65,6 +72,9 @@ def main() -> None:
                 "tous les exemples anonymises seront repartis (aucune erreur, --n ignore pour cette execution)",
             )
 
+    # -------------------------------------------------------------------------
+    # USE CASE EXECUTE
+    # -------------------------------------------------------------------------
     log.STEP(1, "Decoupage aleatoire des splits")
     try:
         cas_usage = DecouperSplitsUseCase(
@@ -79,6 +89,9 @@ def main() -> None:
         log.LEVEL_4_ERROR("decouper_splits", f"echec du decoupage de {arguments.dataset} : {erreur}")
         raise
 
+    # -------------------------------------------------------------------------
+    # LOG FINAL INFO
+    # -------------------------------------------------------------------------
     for split, nombre in decompte.items():
         log.PARAMETER_VALUE(f"split {split}", nombre)
     log.FINISH_ACTION("decouper_splits", "main", f"splits ecrits pour {arguments.dataset}")

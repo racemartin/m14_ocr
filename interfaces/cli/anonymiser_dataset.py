@@ -1,4 +1,5 @@
 """
+STEP 03
 Point d'entree CLI — Etape 1, action "anonymiser".
 
 Usage :
@@ -51,6 +52,9 @@ def _parser_limite(valeur: str) -> int | None:
 
 
 def main() -> None:
+    # -------------------------------------------------------------------------
+    # PARSE ARGUMENTS 
+    # -------------------------------------------------------------------------
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset",   required=True,     help="Chemin du fichier pivot JSONL")
     parser.add_argument("--strategie", default="replace", choices=["replace", "mask", "redact"])
@@ -68,9 +72,15 @@ def main() -> None:
     log.PARAMETER_VALUE("strategie", arguments.strategie)
     log.PARAMETER_VALUE("limite", arguments.limite if arguments.limite is not None else "full (aucune limite)")
 
+    # -------------------------------------------------------------------------
+    # PREPARE ADAPTERS 
+    # -------------------------------------------------------------------------
     repository  = JsonlDatasetRepository(arguments.dataset)
     anonymiseur = PresidioAnonymiseur(strategie=arguments.strategie)
 
+    # -------------------------------------------------------------------------
+    # USE CASE EXECUTE 
+    # -------------------------------------------------------------------------
     log.STEP(1, "Anonymisation Presidio", "peut prendre du temps selon le nombre d'exemples")
     try:
         cas_usage = AnonymiserDatasetUseCase(repository=repository, anonymiseur=anonymiseur, limite=arguments.limite)
@@ -81,6 +91,9 @@ def main() -> None:
         log.LEVEL_4_ERROR("anonymiser_dataset", f"echec de l'anonymisation de {arguments.dataset} : {erreur}")
         raise
 
+    # -------------------------------------------------------------------------
+    # LOG FINAL INFO
+    # -------------------------------------------------------------------------
     log.PARAMETER_VALUE("exemples anonymises", nombre_traites)
     log.FINISH_ACTION("anonymiser_dataset", "main", f"{nombre_traites} exemples anonymises (strategie={arguments.strategie})")
 

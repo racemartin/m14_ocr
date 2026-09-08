@@ -120,10 +120,10 @@ class AnonymiserDatasetUseCase:
             resultats_champ.append(resultat_antecedents)
             antecedents_anon = resultat_antecedents.texte_anonymise
 
-        prompt_anon, resultats_prompt = self._anonymiser_messages(exemple.prompt, langue)
+        prompt_anon, resultats_prompt         = self._anonymiser_messages(exemple.prompt, langue)
         completion_anon, resultats_completion = self._anonymiser_messages(exemple.completion, langue)
-        chosen_anon, resultats_chosen = self._anonymiser_messages(exemple.chosen, langue)
-        rejected_anon, resultats_rejected = self._anonymiser_messages(exemple.rejected, langue)
+        chosen_anon, resultats_chosen         = self._anonymiser_messages(exemple.chosen, langue)
+        rejected_anon, resultats_rejected     = self._anonymiser_messages(exemple.rejected, langue)
         resultats_champ.extend(resultats_prompt + resultats_completion + resultats_chosen + resultats_rejected)
 
         self._enregistrer_statistiques(exemple.source, resultats_champ)
