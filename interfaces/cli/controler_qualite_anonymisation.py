@@ -20,6 +20,16 @@ ambigus -- jamais de LLM/IA generative. Les cas ou ni le regex ni
 spaCy ne tranchent sont explicitement marques "pendant_revision_humaine",
 jamais une confirmation inventee.
 
+Stratum dedie "sans entite detectee" (--taille-echantillon-sans-entite,
+08/09/2026, item explicite du capitaine) : independant du tirage
+stratifie (type_exemple, source) ci-dessus, tire un echantillon a part
+parmi les couples ou `texte_original == texte_anonymise` sur tous les
+champs -- c'est-a-dire ceux ou Presidio n'a RIEN detecte. "Rien
+detecte" peut vouloir dire "vraiment aucune PII" ou "Presidio a rate
+une PII", d'ou la relecture dediee (30-50 cas par defaut) plutot que
+de les laisser se noyer dans le tirage general. Compteurs et section
+de rapport (§5) toujours SEPARES du reste.
+
 Usage :
     uv run python interfaces/cli/controler_qualite_anonymisation.py \
         --dataset data/processed/dataset_pivot.jsonl \
@@ -71,6 +81,16 @@ def main() -> None:
     )
     parser.add_argument("--graine", type=int, default=42)
     parser.add_argument(
+        "--taille-echantillon-sans-entite",
+        type=int,
+        default=40,
+        help="Taille du stratum DEDIE aux exemples ou aucune entite n'a ete detectee "
+             "(texte_original == texte_anonymise sur tous les champs) -- independant de "
+             "--taille-echantillon ci-dessus. Le capitaine demande explicitement 30-50 cas "
+             "relus a la main/seconde opinion spaCy (defaut 40)",
+    )
+    parser.add_argument("--graine-sans-entite", type=int, default=43)
+    parser.add_argument(
         "--max-exemples-par-source",
         type=int,
         default=10,
@@ -96,6 +116,7 @@ def main() -> None:
     log.PARAMETER_VALUE("dataset (original)", arguments.dataset)
     log.PARAMETER_VALUE("anonymise", arguments.anonymise)
     log.PARAMETER_VALUE("taille-echantillon", arguments.taille_echantillon)
+    log.PARAMETER_VALUE("taille-echantillon-sans-entite", arguments.taille_echantillon_sans_entite)
 
     # -------------------------------------------------------------------------
     # PREPARE ADAPTERS
@@ -113,13 +134,15 @@ def main() -> None:
     log.STEP(1, "Comparaison original/anonymise", "regex + seconde opinion spaCy")
     try:
         cas_usage = ControlerQualiteAnonymisationUseCase(
-            repository_original          = repository_original,
-            repository_anonymise         = repository_anonymise,
-            verificateur_entites         = verificateur,
-            taille_echantillon           = arguments.taille_echantillon,
-            graine_aleatoire             = arguments.graine,
-            max_exemples_par_source      = arguments.max_exemples_par_source,
-            max_faux_positifs_par_source = arguments.max_faux_positifs_par_source,
+            repository_original            = repository_original,
+            repository_anonymise           = repository_anonymise,
+            verificateur_entites           = verificateur,
+            taille_echantillon             = arguments.taille_echantillon,
+            graine_aleatoire               = arguments.graine,
+            taille_echantillon_sans_entite = arguments.taille_echantillon_sans_entite,
+            graine_aleatoire_sans_entite   = arguments.graine_sans_entite,
+            max_exemples_par_source        = arguments.max_exemples_par_source,
+            max_faux_positifs_par_source   = arguments.max_faux_positifs_par_source,
         )
         controle = cas_usage.executer()
     except Exception as erreur:
@@ -185,6 +208,9 @@ def main() -> None:
     log.PARAMETER_VALUE("exemples compares", controle.nombre_exemples_observes)
     log.PARAMETER_VALUE("candidats PII residuelle", len(controle.candidats_pii))
     log.PARAMETER_VALUE("candidats faux positifs", len(controle.candidats_faux_positifs))
+    log.PARAMETER_VALUE("stratum sans entite : disponibles", controle.nombre_disponibles_sans_entite)
+    log.PARAMETER_VALUE("stratum sans entite : relus", controle.nombre_exemples_sans_entite_observes)
+    log.PARAMETER_VALUE("stratum sans entite : candidats PII", len(controle.candidats_pii_sans_entite))
     log.FINISH_ACTION(
         "controler_qualite_anonymisation", "main", f"rapport ecrit dans {chemin_json} / {chemin_markdown}"
     )

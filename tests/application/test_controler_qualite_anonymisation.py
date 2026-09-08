@@ -19,6 +19,7 @@ from chsa_triage.application.use_cases.uc_03_02_controler_qualite_anonymisation 
     VERDICT_REVISION_HUMAINE,
     ControleQualiteAnonymisation,
     ControlerQualiteAnonymisationUseCase,
+    _est_exemple_sans_entite,
     controle_vers_dict,
     formater_rapport_markdown,
 )
@@ -265,3 +266,115 @@ def test_use_case_signale_les_identifiants_introuvables_dans_l_original():
 
     assert controle.nombre_exemples_observes == 0
     assert cas_usage.nombre_introuvables_dans_original == 1
+
+
+# ----------------------------------------------------------------------
+# Item 3 : stratum dedie "sans entite detectee" -- independant du
+# tirage stratifie (type_exemple, source) ci-dessus.
+# ----------------------------------------------------------------------
+
+
+def test_est_exemple_sans_entite_vrai_quand_rien_ne_change():
+    original = _exemple(symptomes="Rien de particulier a signaler.")
+    anonymise = _anonymiser(original, "Rien de particulier a signaler.")
+    assert _est_exemple_sans_entite(original, anonymise) is True
+
+
+def test_est_exemple_sans_entite_faux_des_qu_un_champ_change():
+    original = _exemple(symptomes="Jean Dupont est venu.")
+    anonymise = _anonymiser(original, "<INFO_MASQUEE> est venu.")
+    assert _est_exemple_sans_entite(original, anonymise) is False
+
+
+def test_observer_sans_entite_compte_a_part_de_observer():
+    controle = ControleQualiteAnonymisation(verificateur_entites=FauxVerificateurEntites({}))
+    original = _exemple(symptomes="contact jean@example.com")
+    controle.observer_sans_entite(original, _anonymiser(original, "contact jean@example.com"))
+
+    assert controle.nombre_exemples_sans_entite_observes == 1
+    assert controle.nombre_exemples_observes == 0
+    assert len(controle.candidats_pii_sans_entite) == 1
+    assert controle.candidats_pii_sans_entite[0].type_motif == "email"
+    assert controle.candidats_pii == []
+    assert len(controle.exemples_sans_entite) == 1
+
+
+def test_use_case_isole_le_stratum_sans_entite_independamment_du_tirage_principal():
+    originaux_sans_entite = [_exemple("MediQAl", symptomes=f"Rien de notable numero {i}.") for i in range(5)]
+    anonymises_sans_entite = [_anonymiser(e, e.symptomes) for e in originaux_sans_entite]
+
+    originaux_avec_entite = [_exemple("MediQAl", symptomes=f"Jean Dupont {i} est venu.") for i in range(5)]
+    anonymises_avec_entite = [_anonymiser(e, "<INFO_MASQUEE> est venu.") for e in originaux_avec_entite]
+
+    cas_usage = ControlerQualiteAnonymisationUseCase(
+        repository_original=FauxRepository(originaux_sans_entite + originaux_avec_entite),
+        repository_anonymise=FauxRepository(anonymises_sans_entite + anonymises_avec_entite),
+        verificateur_entites=FauxVerificateurEntites({}),
+        taille_echantillon=None,
+        taille_echantillon_sans_entite=None,
+    )
+    controle = cas_usage.executer()
+
+    # Le tirage principal (§1-4) porte toujours sur TOUS les exemples,
+    # avec ou sans entite -- inchange par l'ajout du nouveau stratum.
+    assert controle.nombre_exemples_observes == 10
+    # Le nouveau stratum isole EXACTEMENT les 5 "sans entite".
+    assert controle.nombre_disponibles_sans_entite == 5
+    assert controle.nombre_exemples_sans_entite_observes == 5
+
+
+def test_use_case_echantillonne_le_stratum_sans_entite_independamment():
+    originaux = [_exemple("MediQAl", symptomes=f"Rien de notable numero {i}.") for i in range(20)]
+    anonymises = [_anonymiser(e, e.symptomes) for e in originaux]
+
+    cas_usage = ControlerQualiteAnonymisationUseCase(
+        repository_original=FauxRepository(originaux),
+        repository_anonymise=FauxRepository(anonymises),
+        verificateur_entites=FauxVerificateurEntites({}),
+        taille_echantillon=None,
+        taille_echantillon_sans_entite=5,
+        graine_aleatoire_sans_entite=7,
+    )
+    controle = cas_usage.executer()
+
+    assert controle.nombre_disponibles_sans_entite == 20
+    assert controle.nombre_exemples_sans_entite_observes == 5
+
+
+def test_controle_vers_dict_inclut_le_stratum_sans_entite():
+    controle = ControleQualiteAnonymisation(verificateur_entites=FauxVerificateurEntites({}))
+    original = _exemple("MediQAl", "contact jean@example.com")
+    controle.observer_sans_entite(original, _anonymiser(original, "contact jean@example.com"))
+
+    d = controle_vers_dict(
+        controle,
+        horodatage="2026-09-08T10:00:00+00:00",
+        dataset_original="data/processed/dataset_pivot.jsonl",
+        dataset_anonymise="data/processed/dataset_pivot_anonymise.jsonl",
+    )
+
+    stratum = d["stratum_sans_entite_detectee"]
+    assert stratum["nombre_observes"] == 1
+    assert len(stratum["candidats_pii_residuelle"]) == 1
+    assert len(stratum["exemples"]) == 1
+
+
+def test_rapport_markdown_inclut_la_section_stratum_sans_entite():
+    controle = ControleQualiteAnonymisation(verificateur_entites=FauxVerificateurEntites({}))
+    original = _exemple("MediQAl", "contact jean@example.com")
+    controle.observer_sans_entite(original, _anonymiser(original, "contact jean@example.com"))
+    controle.nombre_disponibles_sans_entite = 42
+
+    markdown = formater_rapport_markdown(
+        controle,
+        horodatage="2026-09-08T10:00:00+00:00",
+        dataset_original="data/processed/dataset_pivot.jsonl",
+        dataset_anonymise="data/processed/dataset_pivot_anonymise.jsonl",
+        taille_echantillon_demandee=200,
+        total_anonymise_disponible=5000,
+        statistiques_cumulees={},
+    )
+
+    assert "Stratum dedie" in markdown
+    assert "**42**" in markdown
+    assert "jean@example.com" in markdown

@@ -267,3 +267,176 @@ capitaine ou un réviseur du domaine médical doit confirmer ce verdict
 sur un nouvel échantillon, en particulier sur le cas de PII résiduelle
 trouvé (`chsa-ultramedical-f87736240ce5`) et sur la stratégie retenue
 pour les faux positifs bibliographiques d'UltraMedical-Preference.
+
+## 7. Améliorations avancées (risques réels + sur-anonymisation) — 08/09/2026
+
+Suite à l'analyse technique du capitaine sur les risques réels de fuite
+RGPD du pipeline actuel et de sur-anonymisation (âge/durée perdus sans
+nécessité), quatre chantiers ont été menés dans
+`PresidioAnonymiseur` et `controler_qualite_anonymisation.py`. Chaque
+sous-section documente une hypothèse **vérifiée contre des données et
+un comportement réels**, pas contre ce qui « devrait » se passer en
+théorie — y compris quand la vérification infirme partiellement
+l'hypothèse de départ.
+
+### 7.1 Recognizers personnalisés pour faux négatifs connus
+
+**NIR français (numéro de sécurité sociale)** : absent des
+recognizers par défaut de Presidio (vérifié par inspection du code
+source de `presidio-analyzer` installé — ni
+`predefined_recognizers/generic` ni le modèle spaCy `fr_core_news_md`
+ne le couvrent). Structure réelle investiguée (pas reconstituée de
+mémoire) auprès de `xml.insee.fr/schema/nir.html` et de
+`fr.wikipedia.org/wiki/Numéro_de_sécurité_sociale_en_France` : 15
+chiffres = sexe(1) + année(2) + mois(2) + département de naissance(2,
+ou 2A/2B pour la Corse) + commune(3) + ordre(3) + clé de contrôle(2),
+clé = 97 − (13 premiers chiffres mod 97), avec pour la Corse la
+substitution standard A→0/−1 000 000, B→0/−2 000 000. Implémenté en
+`RecognizeurNirFrance` (`PatternRecognizer` + `validate_result` qui
+recalcule et compare la clé réelle — un motif « 15 chiffres » seul
+produirait trop de faux positifs, la validation de clé les élimine :
+un nombre à 15 chiffres pris au hasard n'a qu'1 chance sur 97 de
+passer). Testé avec un NIR valide construit avec le même algorithme
+(`185037511600127`, y compris la variante Corse
+`278062B04500358`) et un NIR à clé invalide, en unitaire et en
+intégration réelle via `AnalyzerEngine.analyze()` — cf.
+`tests/infrastructure/test_presidio_anonymiseur.py`.
+
+**Autres identifiants internes (dossier/numéro patient)** : inspection
+réelle d'un échantillon de `data/processed/dataset_pivot.jsonl`
+(21 922 exemples reconstruits localement : MediQAl-oeq, FrenchMedMCQA,
+MedQuAD) — recherche de motifs `n° patient`, `numéro de dossier`,
+`dossier n°`, `IPP`, `MRN`, `medical record number`, `patient
+identifier`. Seules 3 occurrences de la chaîne `IPP` trouvées, toutes
+des **faux positifs** : « IPP » y désigne un Inhibiteur de la Pompe à
+Protons (terme médical), jamais un « Identifiant Permanent du
+Patient ». **Aucun identifiant interne réel trouvé** → aucun
+recognizer ajouté pour ce cas, conformément à la consigne de ne pas
+ajouter de recognizer pour un motif non confirmé dans les données
+réelles (les `identifiant`/`identifiant_source_brute` du schéma pivot
+sont des hash générés par le pipeline lui-même, jamais présents dans
+le texte libre d'origine).
+
+### 7.2 Entités qui se chevauchent / coupées par un saut de ligne — vérifié, pas supposé
+
+Trois scénarios réels testés via `PresidioAnonymiseur.anonymiser()`
+(Presidio réel, pas de mock) :
+
+1. **Chevauchement réel** : `"Jean.Dupont@example.com a signalé le
+   problème."` déclenche SIMULTANÉMENT `EMAIL_ADDRESS` (span entier),
+   `PERSON` (même span entier — spaCy classe l'adresse comme nom de
+   personne) et `URL` (sous-span `example.com`, imbriqué dans les
+   deux précédents) — trois entités de types différents qui se
+   chevauchent/s'imbriquent. Résultat réel :
+   `"<INFO_MASQUEE> a signalé le problème."` — **un seul jeton, aucun
+   doublon, aucun fragment résiduel**. Un second cas de chevauchement
+   du même type est apparu spontanément dans un autre test (§7.3, une
+   date `05/12/2018` classée à la fois `DATE_TIME` et `PERSON` sur le
+   même span) avec la même résolution correcte.
+2. **Nom coupé par un saut de ligne** : `"Contactez\nJean\nDupont pour
+   un avis médical urgent."` → spaCy (`fr_core_news_md`) reconnaît
+   `"Jean\nDupont"` comme **une seule** entité `PERSON` malgré le `\n`
+   interne, masquée comme un seul jeton :
+   `"Contactez\n<INFO_MASQUEE> pour un avis médical urgent."`.
+
+**Conclusion vérifiée** : `AnonymizerEngine.anonymize()` de Presidio
+résout déjà nativement les chevauchements et les entités multi-tokens
+traversant un saut de ligne — **aucun code de résolution
+supplémentaire n'a été ajouté**, le risque signalé par le capitaine
+est réel en théorie mais déjà couvert en pratique par la version de
+Presidio installée. Ces trois cas sont figés en tests de régression
+(`test_entites_qui_se_chevauchent_sont_resolues_sans_duplication`,
+`test_nom_coupe_par_un_saut_de_ligne_est_masque_comme_une_seule_entite`)
+pour que toute régression future (mise à jour de Presidio) soit
+détectée automatiquement plutôt que re-vérifiée manuellement une
+seule fois puis oubliée.
+
+### 7.3 Contrôle qualité : stratum dédié « sans entité détectée »
+
+`controler_qualite_anonymisation.py` disposait déjà de tout le
+nécessaire (texte original ET anonymisé pour chaque exemple) mais son
+tirage stratifié (type_exemple, source) ne distinguait pas « rien
+détecté » de « quelque chose détecté ». Ajout d'un stratum
+INDÉPENDANT (`--taille-echantillon-sans-entite`, 40 par défaut,
+graine distincte 43) qui isole spécifiquement les couples où
+`texte_original == texte_anonymise` sur tous les champs texte libre,
+et les soumet à la même heuristique regex + seconde opinion spaCy que
+le reste — la question posée étant : « ce texte inchangé contient-il
+malgré tout un motif de PII évident, signe d'un faux négatif complet
+de Presidio ? ». Compteurs et section de rapport (§5 du rapport de
+contrôle qualité, `nombre_disponibles_sans_entite` /
+`nombre_exemples_sans_entite_observes` / `candidats_pii_sans_entite`)
+toujours séparés du reste, jamais fusionnés — cf.
+`ControleQualiteAnonymisation.observer_sans_entite`.
+
+### 7.4 Âge comme quasi-identifiant clinique — généraliser, pas supprimer
+
+**Problème réel** : le recognizer `DATE_TIME` de Presidio (porté par
+le modèle spaCy sous-jacent) ne distingue pas une date de naissance
+exacte (identifiante) d'un âge ou d'une durée relative (signal
+clinique réel — enfant/adulte/personne âgée — pas identifiant en
+soi). Masquer les deux indifféremment perd de la valeur clinique sans
+gain RGPD supplémentaire.
+
+**Vérification empirique réelle** (pas supposée) faite AVANT
+d'écrire le code, sur des phrases réelles/réalistes tirées de
+`data/processed/dataset_pivot.jsonl` :
+
+- **Anglais (`en_core_web_sm`)** : le bug est réel et confirmé —
+  `"7-year-old"`, `"70 year old"`, `"38-year-old"`, `"aged 3 years"`,
+  `"45 years old"` sont tous étiquetés `DATE_TIME` et auraient été
+  masqués sans distinction.
+- **Français (`fr_core_news_md`)** : sur 8+ phrases réelles/réalistes
+  testées (dont la phrase réelle exacte du corpus MediQAl `"Homme âgé
+  (60 ans), chronique (7 mois), pas de fluctuations..."`, ainsi que
+  `"un enfant de 2 ans"`, `"Patiente de 70 ans"`, `"Age > 60 ans"`,
+  `"Il y a 3 semaines"`, `"Depuis 2 mois"`), **aucune** des mentions
+  d'âge/durée n'a déclenché `DATE_TIME` — le modèle français ne
+  reproduit pas (encore) ce bug sur les constructions testées.
+
+**Décision** : les deux mécanismes ci-dessous sont appliqués pour le
+FR et l'EN par cohérence de conception et par prudence (une évolution
+future du modèle spaCy français pourrait changer ce comportement),
+mais l'impact réel actuel est concentré côté anglais — documenté
+honnêtement plutôt que présenté comme un correctif bilingue
+symétrique.
+
+1. **Normalisation de l'âge avant analyse** (`_normaliser_ages`,
+   appelée en tête de `PresidioAnonymiseur.anonymiser()`) : détecte
+   par regex les mentions explicites d'âge (FR : `"âgé(e) de X ans"`,
+   `"âgé (X ans)"`, `"{enfant,homme,femme,patient(e)...} de X ans"` ;
+   EN : `"X-year-old"`, `"X years old"`, `"aged X"`) et les remplace
+   par un jeton de tranche clinique **avant** que Presidio ne voie le
+   texte, afin que `DATE_TIME` ne puisse jamais l'éliminer. Tranches
+   reprises telles que suggérées par le capitaine (aucune autre
+   coupure d'âge n'étant définie dans le cahier des charges ni les
+   niveaux ESI du projet) : pédiatrique 0-12, adolescent 13-17, adulte
+   18-64, personne âgée 65+ → jetons `<AGE_PEDIATRIQUE>` /
+   `<AGE_ADOLESCENT>` / `<AGE_ADULTE>` / `<AGE_PERSONNE_AGEE>` (FR),
+   `<AGE_PEDIATRIC>` / `<AGE_ADOLESCENT>` / `<AGE_ADULT>` /
+   `<AGE_ELDERLY>` (EN).
+2. **Opérateur `DATE_TIME` dédié** (`_construire_operateurs`, clé
+   `"DATE_TIME"` séparée de `"DEFAULT"`, via
+   `OperatorConfig("custom", {"lambda": ...})`) : pour toute entité
+   `DATE_TIME` restante (âge déjà neutralisé en amont), distingue une
+   date calendaire absolue (jour/mois/année, `12/05/1980`, `12 janvier
+   2020` → masquée comme le reste) d'une durée relative (`"il y a 3
+   semaines"`, `"depuis 2 mois"`, `"pendant 2 semaines"`, `"3 months
+   ago"`, `"since 2 weeks"` et équivalents → **texte laissé intact**).
+   Vérifié en intégration réelle : `"The boy, born 05/12/2018, was
+   seen 3 months ago."` → `"The <AGE_PEDIATRIC> boy, born
+   <INFO_MASQUEE>, was seen 3 months ago."` (date de naissance
+   masquée, durée écoulée conservée, âge généralisé).
+
+**Justification méthodologique** (à faire valoir explicitement en
+soutenance si la question est posée) : il s'agit d'une **minimisation
+des données appliquée de façon proportionnée** — généraliser ce qui
+est cliniquement nécessaire (âge en tranche, durée écoulée), supprimer
+ce qui est identifiant (date de naissance exacte, nom, lieu) — **pas**
+une élimination indiscriminée de tout ce qui est marqué « sensible »
+par le recognizer sous-jacent. L'art. 5 RGPD (minimisation) n'impose
+pas de supprimer plus d'information que nécessaire ; un âge en tranche
+ne permet pas de ré-identifier un patient mais reste indispensable au
+triage clinique (ESI), alors qu'une date de naissance exacte est un
+identifiant direct sans valeur clinique ajoutée par rapport à la
+tranche d'âge.

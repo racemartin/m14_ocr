@@ -149,6 +149,19 @@ avec >=1 entite detectee, entites par type, et la liste tracable des
 executions ayant contribue (horodatage, strategie, limite, graine).
 Voir `application/use_cases/uc_03_01_rapport_anonymisation.py`.
 
+`PresidioAnonymiseur` (08/09/2026, ameliorations avancees -- voir
+`docs/02_etape1_donnees/01_rapport_rgpd.md` §7 pour la justification
+complete) ajoute un recognizer NIR francais (numero de securite
+sociale, valide par cle de controle modulo 97, pas juste un motif "15
+chiffres") et normalise les mentions explicites d'age
+("age de X ans"/"X-year-old"/"aged X") en tranche clinique
+(pediatrique/adolescent/adulte/personne agee) AVANT que Presidio ne
+les analyse, pour que `DATE_TIME` ne les elimine pas comme une date de
+naissance -- l'operateur `DATE_TIME` distingue en plus une date
+calendaire absolue (masquee) d'une duree relative ("il y a 3
+semaines", "depuis 2 mois" -- laissee intacte, signal clinique pas
+identifiant).
+
 ### 5. Controle qualite de l'anonymisation (comparaison de fichiers)
 
 ```bash
@@ -167,8 +180,13 @@ jamais de LLM) : confirme, ecarte comme faux positif du regex, ou
 marque explicitement "pendant_revision_humaine" si ni le regex ni
 spaCy ne tranchent. Detecte aussi les candidats de sur-masquage
 (termes originaux masques que spaCy ne reconnait pas comme entite
-nommee) par diff texte original/anonymise. Ecrit son propre rapport
-(`data/processed/rapport_controle_qualite_anonymisation.{json,md}`),
+nommee) par diff texte original/anonymise. Tire en plus un stratum
+DEDIE et independant (`--taille-echantillon-sans-entite`, 40 par
+defaut) parmi les exemples ou Presidio n'a RIEN detecte du tout
+(texte_original == texte_anonymise) -- distingue explicitement "rien
+detecte" de "quelque chose detecte" pour la relecture manuelle,
+plutot que de presumer ces cas corrects par defaut. Ecrit son propre
+rapport (`data/processed/rapport_controle_qualite_anonymisation.{json,md}`),
 avec des exemples reels inspectables par source et les compteurs
 d'entites par type repris du rapport RGPD cumule (§4 ci-dessus, pas
 recalcules). Voir `application/use_cases/uc_03_02_controler_qualite_anonymisation.py`.
