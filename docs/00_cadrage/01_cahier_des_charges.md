@@ -61,22 +61,43 @@ protocole MCP.
 
 ```json
 {
-  "id": "chsa-<source>-<uuid>",
-  "langue": "fr | en",
+  "identifiant": "chsa-<espace_noms>-<hash>",
+  "identifiant_source_brute": "cle naturelle du registre brut d'origine",
   "source": "MediQAl | FrenchMedMCQA | MedQuAD | UltraMedical-Preference",
-  "type": "sft | dpo",
+  "type_exemple": "sft | dpo",
+  "langue": "fr | en",
   "symptomes": "texte libre ou structuré",
   "antecedents": "texte libre, optionnel",
-  "constantes_vitales": {"pa": null, "fc": null, "spo2": null, "fr": null},
-  "prompt": [{"role": "system", "content": "..."}, {"role": "user", "content": "..."}],
-  "completion": [{"role": "assistant", "content": "..."}],
-  "chosen": null,
-  "rejected": null,
+  "constantes_vitales": {"pression_arterielle": null, "frequence_cardiaque": null, "saturation_o2": null, "frequence_respiratoire": null},
+  "prompt": [{"role": "system", "contenu": "..."}, {"role": "user", "contenu": "..."}],
+  "completion": [{"role": "assistant", "contenu": "..."}],
+  "chosen": [],
+  "rejected": [],
   "niveau_confiance": "haute | moyenne | basse",
   "anonymise": true,
   "split": "train | val | test"
 }
 ```
+
+> **Note (implémentation, 08/09/2026)** : les noms de champ ci-dessus
+> sont ceux **réellement implémentés** (`ExemplePivot`,
+> `ConstantesVitales` — `src/chsa_triage/domain/model/exemple_pivot.py`),
+> pas ceux de l'énoncé initial de la mission. Ils ont été adaptés au
+> français/vocabulaire du domaine pendant l'implémentation, pour
+> rester cohérents avec le reste du code (100 % en français) : `id` →
+> `identifiant`, `type` → `type_exemple`, `pa/fc/spo2/fr` →
+> `pression_arterielle/frequence_cardiaque/saturation_o2/frequence_respiratoire`,
+> et la clé `content` des messages `prompt`/`completion` →
+> `contenu`. `chosen`/`rejected` valent un tuple vide `()` (`[]` en
+> JSON) quand ils ne s'appliquent pas, jamais `null`. Le champ
+> `identifiant_source_brute` a été ajouté a posteriori (08/09/2026,
+> décision du capitaine) — il ne figurait pas dans l'énoncé — pour
+> tracer chaque `ExemplePivot` jusqu'au registre brut d'origine dans
+> `data/raw/*.jsonl` (exigence RGPD d'auditabilité, cf. NF6). Les
+> valeurs des énumérations (`fr`/`en`, `sft`/`dpo`,
+> `haute`/`moyenne`/`basse`, `train`/`val`/`test`) sont, elles,
+> inchangées par rapport à l'énoncé. Le code fait foi : cette section
+> documente l'implémentation réelle, elle ne la prescrit plus.
 
 ### 5.3 Volumétrie cible
 
