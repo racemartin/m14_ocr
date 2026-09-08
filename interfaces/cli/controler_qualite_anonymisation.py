@@ -39,7 +39,7 @@ from chsa_triage.application.use_cases import (
     controle_vers_dict,
     formater_rapport_controle_qualite_markdown,
 )
-from chsa_triage.application.use_cases.rapport_anonymisation import rapport_depuis_dict
+from chsa_triage.application.use_cases.uc_03_01_rapport_anonymisation import rapport_depuis_dict
 from chsa_triage.infrastructure.adapters import JsonlDatasetRepository
 from tools.rafael.log_tool import LogTool
 

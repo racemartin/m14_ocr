@@ -98,7 +98,7 @@ implémente ce port en lisant/écrivant des fichiers `.jsonl`.
 Adaptateur distant (à écrire plus tard) : implémenterait le **même**
 port en s'appuyant sur `datasets.load_dataset` / `push_to_hub`.
 
-`application/use_cases/construire_dataset_pivot.py` ne sait *jamais*
+`application/use_cases/uc_02_construire_dataset_pivot.py` ne sait *jamais*
 lequel des deux est branché — il appelle `repository.sauvegarder(...)`.
 L'injection de l'adaptateur concret se fait dans `interfaces/cli/`
 (le point d'entrée), pas dans le domaine ni l'application.

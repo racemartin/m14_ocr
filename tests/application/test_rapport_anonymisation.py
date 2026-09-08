@@ -7,8 +7,8 @@ necessaire dans ces tests.
 
 from __future__ import annotations
 
-from chsa_triage.application.use_cases.anonymiser_dataset import StatistiquesSource
-from chsa_triage.application.use_cases.rapport_anonymisation import (
+from chsa_triage.application.use_cases.uc_03_00_anonymiser_dataset import StatistiquesSource
+from chsa_triage.application.use_cases.uc_03_01_rapport_anonymisation import (
     ExecutionAnonymisation,
     RapportAnonymisationCumule,
     formater_rapport_markdown,

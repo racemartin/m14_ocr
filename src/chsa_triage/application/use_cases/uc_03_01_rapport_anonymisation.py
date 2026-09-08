@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from src.chsa_triage.application.use_cases.uc_03_anonymiser_dataset import StatistiquesSource
+from chsa_triage.application.use_cases.uc_03_00_anonymiser_dataset import StatistiquesSource
 
 
 @dataclass(slots=True)

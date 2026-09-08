@@ -141,7 +141,7 @@ les executions) et proportion reelle sur le total du dataset pivot
 (compte a chaque execution, jamais code en dur), taux d'enregistrements
 avec >=1 entite detectee, entites par type, et la liste tracable des
 executions ayant contribue (horodatage, strategie, limite, graine).
-Voir `application/use_cases/rapport_anonymisation.py`.
+Voir `application/use_cases/uc_03_01_rapport_anonymisation.py`.
 
 ### 5. Controle qualite de l'anonymisation (comparaison de fichiers)
 
@@ -165,7 +165,7 @@ nommee) par diff texte original/anonymise. Ecrit son propre rapport
 (`data/processed/rapport_controle_qualite_anonymisation.{json,md}`),
 avec des exemples reels inspectables par source et les compteurs
 d'entites par type repris du rapport RGPD cumule (§4 ci-dessus, pas
-recalcules). Voir `application/use_cases/controler_qualite_anonymisation.py`.
+recalcules). Voir `application/use_cases/uc_03_02_controler_qualite_anonymisation.py`.
 
 ### 6. Decoupage en splits (train / val / test, stratifie)
 

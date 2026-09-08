@@ -24,7 +24,7 @@ from chsa_triage.application.detection_pii_residuelle import (
     detecter_candidats,
 )
 from chsa_triage.application.echantillonnage import echantillon_stratifie
-from src.chsa_triage.application.use_cases.uc_03_anonymiser_dataset import StatistiquesSource
+from chsa_triage.application.use_cases.uc_03_00_anonymiser_dataset import StatistiquesSource
 from chsa_triage.domain.model import ExemplePivot
 from chsa_triage.domain.ports import RepositoryLectureEcriture
 from chsa_triage.domain.ports.verificateur_entites import (

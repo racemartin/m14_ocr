@@ -20,7 +20,7 @@
 >   CUMULÉ (fusionne toutes les exécutions passées), par source :
 >   registres traités, proportion réelle sur le total du dataset pivot,
 >   taux d'enregistrements avec ≥1 entité détectée, entités par type.
->   Voir `src/chsa_triage/application/use_cases/rapport_anonymisation.py`.
+>   Voir `src/chsa_triage/application/use_cases/uc_03_01_rapport_anonymisation.py`.
 > - `data/processed/rapport_controle_qualite_anonymisation.{json,md}` —
 >   contrôle qualité **automatisé** par comparaison du pivot original et
 >   du fichier anonymisé (`controler_qualite_anonymisation.py`) : regex
@@ -83,7 +83,7 @@ exigés ci-dessous, `AnonymiserDatasetUseCase` a été instrumenté
 (nouveau champ `statistiques: dict[str, StatistiquesSource]`, qui
 accumule pendant l'anonymisation le nombre de registres traités, le
 nombre de registres avec ≥1 entité, et le détail des entités par
-type — voir `src/chsa_triage/application/use_cases/anonymiser_dataset.py`),
+type — voir `src/chsa_triage/application/use_cases/uc_03_00_anonymiser_dataset.py`),
 puis exécutée pour de vrai (Presidio réel, pas de mock) sur un nouvel
 échantillon stratifié de 5 000 exemples, prélevé avec le **même
 algorithme, la même graine (42) et les mêmes corpus bruts**
