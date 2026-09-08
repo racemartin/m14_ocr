@@ -24,7 +24,7 @@ from chsa_triage.application.detection_pii_residuelle import (
     detecter_candidats,
 )
 from chsa_triage.application.echantillonnage import echantillon_stratifie
-from chsa_triage.application.use_cases.anonymiser_dataset import StatistiquesSource
+from src.chsa_triage.application.use_cases.uc_03_anonymiser_dataset import StatistiquesSource
 from chsa_triage.domain.model import ExemplePivot
 from chsa_triage.domain.ports import RepositoryLectureEcriture
 from chsa_triage.domain.ports.verificateur_entites import (
@@ -32,9 +32,9 @@ from chsa_triage.domain.ports.verificateur_entites import (
     VerificateurEntitesNommees,
 )
 
-VERDICT_CONFIRME = "confirme"
+VERDICT_CONFIRME           = "confirme"
 VERDICT_FAUX_POSITIF_REGEX = "faux_positif_regex_ecarte_par_spacy"
-VERDICT_REVISION_HUMAINE = "pendant_revision_humaine"
+VERDICT_REVISION_HUMAINE   = "pendant_revision_humaine"
 
 # Jeton de masquage par defaut de PresidioAnonymiseur (strategie
 # "replace", la strategie retenue par la mission -- cf.

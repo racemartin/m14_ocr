@@ -100,7 +100,7 @@ def main() -> None:
     # -------------------------------------------------------------------------
     # PREPARE ADAPTERS
     # -------------------------------------------------------------------------
-    repository_original  = JsonlDatasetRepository(arguments.dataset)
+    repository_original   = JsonlDatasetRepository(arguments.dataset)
     repository_anonymise  = JsonlDatasetRepository(arguments.anonymise)
 
     from chsa_triage.infrastructure.adapters import SpacyVerificateurEntitesNommees
@@ -113,13 +113,13 @@ def main() -> None:
     log.STEP(1, "Comparaison original/anonymise", "regex + seconde opinion spaCy")
     try:
         cas_usage = ControlerQualiteAnonymisationUseCase(
-            repository_original=repository_original,
-            repository_anonymise=repository_anonymise,
-            verificateur_entites=verificateur,
-            taille_echantillon=arguments.taille_echantillon,
-            graine_aleatoire=arguments.graine,
-            max_exemples_par_source=arguments.max_exemples_par_source,
-            max_faux_positifs_par_source=arguments.max_faux_positifs_par_source,
+            repository_original          = repository_original,
+            repository_anonymise         = repository_anonymise,
+            verificateur_entites         = verificateur,
+            taille_echantillon           = arguments.taille_echantillon,
+            graine_aleatoire             = arguments.graine,
+            max_exemples_par_source      = arguments.max_exemples_par_source,
+            max_faux_positifs_par_source = arguments.max_faux_positifs_par_source,
         )
         controle = cas_usage.executer()
     except Exception as erreur:
@@ -157,7 +157,7 @@ def main() -> None:
 
     horodatage = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
-    chemin_json = Path(arguments.rapport_json)
+    chemin_json     = Path(arguments.rapport_json)
     chemin_markdown = Path(arguments.rapport_markdown)
     chemin_json.parent.mkdir(parents=True, exist_ok=True)
     chemin_markdown.parent.mkdir(parents=True, exist_ok=True)

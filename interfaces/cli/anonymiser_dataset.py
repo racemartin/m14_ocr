@@ -71,8 +71,8 @@ from tools.rafael.log_tool import LogTool
 
 log = LogTool(origin="anonymiser_dataset")
 
-CHEMIN_SORTIE_DEFAUT = "data/processed/dataset_pivot_anonymise.jsonl"
-CHEMIN_RAPPORT_JSON_DEFAUT = "data/processed/rapport_anonymisation_rgpd.json"
+CHEMIN_SORTIE_DEFAUT           = "data/processed/dataset_pivot_anonymise.jsonl"
+CHEMIN_RAPPORT_JSON_DEFAUT     = "data/processed/rapport_anonymisation_rgpd.json"
 CHEMIN_RAPPORT_MARKDOWN_DEFAUT = "data/processed/rapport_anonymisation_rgpd.md"
 
 
@@ -152,8 +152,8 @@ def main() -> None:
     # -------------------------------------------------------------------------
     # PREPARE ADAPTERS (Dependency Injection)
     # -------------------------------------------------------------------------
-    repository_source  = JsonlDatasetRepository(arguments.dataset)
-    repository_sortie   = JsonlDatasetRepository(arguments.sortie)
+    repository_source    = JsonlDatasetRepository(arguments.dataset)
+    repository_sortie    = JsonlDatasetRepository(arguments.sortie)
     anonymiseur          = PresidioAnonymiseur(strategie=arguments.strategie)
 
     # -------------------------------------------------------------------------
@@ -192,17 +192,17 @@ def main() -> None:
     total_dataset = repository_source.compter()
 
     execution = ExecutionAnonymisation(
-        horodatage=horodatage,
-        dataset=arguments.dataset,
-        strategie=arguments.strategie,
-        limite=limite_affichee,
-        graine_aleatoire=cas_usage.graine_aleatoire,
-        nombre_traites=nombre_traites,
-        statistiques_par_source=cas_usage.statistiques,
+        horodatage              = horodatage,
+        dataset                 = arguments.dataset,
+        strategie               = arguments.strategie,
+        limite                  = limite_affichee,
+        graine_aleatoire        = cas_usage.graine_aleatoire,
+        nombre_traites          = nombre_traites,
+        statistiques_par_source = cas_usage.statistiques,
     )
 
     chemin_rapport_json = Path(arguments.rapport_json)
-    rapport_cumule = fusionner_execution(_charger_rapport_cumule(chemin_rapport_json), execution)
+    rapport_cumule      = fusionner_execution(_charger_rapport_cumule(chemin_rapport_json), execution)
     _sauvegarder_rapport_cumule(rapport_cumule, chemin_rapport_json, Path(arguments.rapport_markdown), total_dataset)
 
     print()

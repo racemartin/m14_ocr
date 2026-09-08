@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from chsa_triage.application.use_cases.anonymiser_dataset import StatistiquesSource
+from src.chsa_triage.application.use_cases.uc_03_anonymiser_dataset import StatistiquesSource
 
 
 @dataclass(slots=True)
@@ -30,11 +30,11 @@ class ExecutionAnonymisation:
     """Trace d'UNE execution de `anonymiser_dataset.py` ayant contribue au rapport."""
 
     horodatage               : str  # ISO 8601
-    dataset                    : str
-    strategie                  : str
-    limite                      : str  # valeur de --limite telle qu'affichee ("5000", "full", ...)
-    graine_aleatoire            : int
-    nombre_traites              : int
+    dataset                  : str
+    strategie                : str
+    limite                   : str  # valeur de --limite telle qu'affichee ("5000", "full", ...)
+    graine_aleatoire         : int
+    nombre_traites            : int
     # Contribution de CETTE execution uniquement (pas cumulee) -- c'est
     # ce qui permet de reconstituer "qui a apporte quoi" a la lecture.
     statistiques_par_source     : dict[str, StatistiquesSource]
@@ -44,7 +44,7 @@ class ExecutionAnonymisation:
 class RapportAnonymisationCumule:
     """Etat cumule de toutes les executions d'anonymisation ayant contribue au rapport."""
 
-    executions            : list[ExecutionAnonymisation] = field(default_factory=list)
+    executions             : list[ExecutionAnonymisation] = field(default_factory=list)
     statistiques_cumulees  : dict[str, StatistiquesSource] = field(default_factory=dict)
 
 
@@ -55,17 +55,17 @@ class RapportAnonymisationCumule:
 
 def _statistiques_vers_dict(stats: StatistiquesSource) -> dict:
     return {
-        "registres_traites": stats.registres_traites,
+        "registres_traites"    : stats.registres_traites,
         "registres_avec_entite": stats.registres_avec_entite,
-        "entites_par_type": dict(stats.entites_par_type),
+        "entites_par_type"     : dict(stats.entites_par_type),
     }
 
 
 def _statistiques_depuis_dict(d: dict) -> StatistiquesSource:
     return StatistiquesSource(
-        registres_traites=d.get("registres_traites", 0),
-        registres_avec_entite=d.get("registres_avec_entite", 0),
-        entites_par_type=dict(d.get("entites_par_type", {})),
+        registres_traites     = d.get("registres_traites", 0),
+        registres_avec_entite = d.get("registres_avec_entite", 0),
+        entites_par_type      = dict(d.get("entites_par_type", {})),
     )
 
 
@@ -74,12 +74,12 @@ def rapport_vers_dict(rapport: RapportAnonymisationCumule) -> dict:
     return {
         "executions": [
             {
-                "horodatage": execution.horodatage,
-                "dataset": execution.dataset,
-                "strategie": execution.strategie,
-                "limite": execution.limite,
+                "horodatage"      : execution.horodatage,
+                "dataset"         : execution.dataset,
+                "strategie"       : execution.strategie,
+                "limite"          : execution.limite,
                 "graine_aleatoire": execution.graine_aleatoire,
-                "nombre_traites": execution.nombre_traites,
+                "nombre_traites"  : execution.nombre_traites,
                 "statistiques_par_source": {
                     source: _statistiques_vers_dict(stats)
                     for source, stats in execution.statistiques_par_source.items()
@@ -97,12 +97,12 @@ def rapport_depuis_dict(d: dict) -> RapportAnonymisationCumule:
     """Desserialise un rapport cumule depuis un dict issu de `json.load`."""
     executions = [
         ExecutionAnonymisation(
-            horodatage=execution["horodatage"],
-            dataset=execution["dataset"],
-            strategie=execution["strategie"],
-            limite=execution["limite"],
-            graine_aleatoire=execution["graine_aleatoire"],
-            nombre_traites=execution["nombre_traites"],
+            horodatage       = execution["horodatage"],
+            dataset          = execution["dataset"],
+            strategie        = execution["strategie"],
+            limite           = execution["limite"],
+            graine_aleatoire = execution["graine_aleatoire"],
+            nombre_traites   = execution["nombre_traites"],
             statistiques_par_source={
                 source: _statistiques_depuis_dict(sd)
                 for source, sd in execution.get("statistiques_par_source", {}).items()
@@ -135,22 +135,22 @@ def fusionner_execution(
 
     nouvelles_statistiques_cumulees: dict[str, StatistiquesSource] = {
         source: StatistiquesSource(
-            registres_traites=stats.registres_traites,
-            registres_avec_entite=stats.registres_avec_entite,
-            entites_par_type=dict(stats.entites_par_type),
+            registres_traites     = stats.registres_traites,
+            registres_avec_entite = stats.registres_avec_entite,
+            entites_par_type      = dict(stats.entites_par_type),
         )
         for source, stats in rapport.statistiques_cumulees.items()
     }
     for source, stats_execution in execution.statistiques_par_source.items():
         cumul = nouvelles_statistiques_cumulees.setdefault(source, StatistiquesSource())
-        cumul.registres_traites += stats_execution.registres_traites
+        cumul.registres_traites     += stats_execution.registres_traites
         cumul.registres_avec_entite += stats_execution.registres_avec_entite
         for type_entite, compte in stats_execution.entites_par_type.items():
             cumul.entites_par_type[type_entite] = cumul.entites_par_type.get(type_entite, 0) + compte
 
     return RapportAnonymisationCumule(
-        executions=nouvelles_executions,
-        statistiques_cumulees=nouvelles_statistiques_cumulees,
+        executions            = nouvelles_executions,
+        statistiques_cumulees = nouvelles_statistiques_cumulees,
     )
 
 
@@ -162,11 +162,12 @@ def fusionner_execution(
 
 def formater_resume_console(rapport: RapportAnonymisationCumule, total_dataset: int) -> str:
     """Resume lisible en console : chiffres CUMULES, avec le total du dataset pivot pour l'echelle."""
-    total_traites = sum(s.registres_traites for s in rapport.statistiques_cumulees.values())
-    total_avec_entite = sum(s.registres_avec_entite for s in rapport.statistiques_cumulees.values())
-    total_entites = sum(sum(s.entites_par_type.values()) for s in rapport.statistiques_cumulees.values())
+    total_traites      = sum(s.registres_traites              for s in rapport.statistiques_cumulees.values())
+    total_avec_entite  = sum(s.registres_avec_entite          for s in rapport.statistiques_cumulees.values())
+    total_entites      = sum(sum(s.entites_par_type.values()) for s in rapport.statistiques_cumulees.values())
+    
     proportion_dataset = (total_traites / total_dataset * 100) if total_dataset else 0.0
-    taux_entite = (total_avec_entite / total_traites * 100) if total_traites else 0.0
+    taux_entite        = (total_avec_entite / total_traites * 100) if total_traites else 0.0
 
     lignes = [
         "Rapport RGPD cumule (toutes executions d'anonymisation confondues) :",
