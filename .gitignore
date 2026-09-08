@@ -29,6 +29,7 @@ mlruns/
 
 # Logs
 *.log
+logs/
 
 # Corpus et donnees : jamais commites sur Git, verses sur Hugging Face Hub
 data/raw/*

@@ -83,6 +83,13 @@ uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/mediq
 uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/frenchmedmcqa.jsonl --corpus frenchmedmcqa --sortie data/processed/dataset_pivot.jsonl
 uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/medquad.jsonl --corpus medquad --sortie data/processed/dataset_pivot.jsonl
 uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/ultramedical_preference.jsonl --corpus ultramedical_preference --sortie data/processed/dataset_pivot.jsonl --taille-bloc 5000
+
+# 4. Anonymisation et decoupage en splits (une seule fois, sur le dataset pivot fusionne)
+uv run python interfaces/cli/anonymiser_dataset.py --dataset data/processed/dataset_pivot.jsonl --strategie replace
+# Si le corpus est gros et qu'une seule passe risque de planter (OOM), utiliser
+# scripts/anonymiser_par_lots.sh a la place : il relance la commande ci-dessus en boucle
+# jusqu'a couverture complete du pivot, sans intervention manuelle.
+uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset_pivot.jsonl
 ```
 
 Resultat reel (08/09/2026, pivot regenere avec identifiants **deterministes**,
