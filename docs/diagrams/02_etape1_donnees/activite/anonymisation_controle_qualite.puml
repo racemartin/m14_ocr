@@ -11,9 +11,32 @@ partition "Étape 4 — Anonymisation (Presidio)" #FCEBE6 {
   :_anonymiser_exemple(exemple);
   :_anonymiser_messages\n(prompt / completion / chosen / rejected);
   :PresidioAnonymiseur.anonymiser(texte, langue);
+  :_normaliser_ages(texte, code_langue)\nremplace "X ans" par une tranche\nclinique (pédiatrique / adolescent /\nadulte / personne âgée) via\n_tranche_pour_age() -- AVANT analyse,\npour que DATE_TIME ne voie jamais\nl'âge exact;
   :NlpEngineProvider\n(fr_core_news_md / en_core_web_sm);
   :AnalyzerEngine.analyze()\ndétecte les entités;
-  :AnonymizerEngine.anonymize()\napplique l'opérateur\n(replace / mask / redact);
+  note right
+    RecognizeurNirFrance, enregistré sur
+    l'AnalyzerEngine via
+    moteur.registry.add_recognizer()
+    dans _construire_analyzer_multilangue()
+    --
+    détecte le NIR français (FR_NIR) en
+    validant la clé de contrôle réelle
+    (modulo 97) dans validate_result(),
+    pas seulement le motif à 15 chiffres
+  end note
+  :AnonymizerEngine.anonymize()\napplique un opérateur par type\nd'entité (DEFAULT + DATE_TIME dédié);
+  if (Entité DATE_TIME ?\n(_construire_operateur_date_time)) then (oui)
+    if (_est_date_absolue\n(texte_capture) ?) then (oui)
+      :Masque -- date calendaire\nidentifiante;
+    elseif (_est_duree_relative\n(texte_capture) ?) then (oui)
+      :Conserve intacte -- durée\nclinique non identifiante\n("il y a 3 semaines", etc.);
+    else (ni l'un ni l'autre)
+      :Masque (comportement\nDEFAULT par défaut);
+    endif
+  else (non)
+    :Opérateur DEFAULT\n(replace / mask / redact);
+  endif
   :Écrit dans\ndataset_pivot_anonymise.jsonl;
   note right
     Le pivot original
@@ -55,9 +78,25 @@ partition "Étape 5 — Contrôle qualité (comparaison de 2 fichiers)" #F0EEE7 
     else (ENTITE_NON_PERTINENTE)
       :VERDICT_REVISION_HUMAINE;
     endif
+  fork again
+    :_est_exemple_sans_entite\n(original, anonymise);
+    note right
+      Stratum dédié "sans entité détectée" :
+      échantillonné indépendamment
+      (graine_aleatoire_sans_entite),
+      pas tiré du même échantillon
+      stratifié (type_exemple, source) --
+      distingue explicitement "Presidio
+      n'a RIEN détecté" du reste
+    end note
+    if (Aucun champ changé\n(original == anonymisé) ?) then (oui)
+      :ControleQualiteAnonymisation\n.observer_sans_entite();
+      :_detecter_pii_residuelle\nsur le texte inchangé\n(PII potentiellement manquée);
+    else (non\n(hors stratum))
+    endif
   end fork
 
-  :rapport_controle_qualite_anonymisation.json / .md;
+  :rapport_controle_qualite_anonymisation.json / .md\n(inclut stratum_sans_entite_detectee);
 }
 
 stop
