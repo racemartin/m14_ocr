@@ -1,0 +1,48 @@
+@startuml echantillonnage_stratifie
+!include ../../_common/estilo.iuml
+
+title échantillon_stratifie() — méthode du plus grand reste\nDiagramme d'activité
+
+start
+
+:Entrée : candidats, taille, graine_aleatoire;
+note right #FDF6EC
+  Fonction PARTAGÉE (chsa_triage.application.echantillonnage)
+  Appelée depuis :
+  - AnonymiserDatasetUseCase (paramètre --limite)
+  - DecouperSplitsUseCase (paramètre --n)
+  Extraite pour éviter de dupliquer l'algorithme
+end note
+:rng = random.Random(graine_aleatoire);
+:Groupement des candidats en\ngroupes[(type_exemple, source)];
+
+partition "2. Calcul des quotas de base" #FCEBE6 {
+  :Pour chaque (cle, groupe) de groupes;
+  :part_exacte = taille * (len(groupe) / total);
+  :quotas[cle] = min(int(part_exacte), len(groupe));
+  :Stocker le reste :\n(part_exacte - int(part_exacte), cle)\ndans restes;
+}
+
+partition "3. Méthode du plus grand reste" #F0EEE7 {
+  :deficit = taille - sum(quotas.values());
+  :Trier restes par ordre décroissant\nde reste fractionnaire;
+  while (deficit > 0 ?) is (oui)
+    if (quotas[cle] < len(groupe) ?) then (oui)
+      :quotas[cle] += 1;
+      :deficit -= 1;
+    else (non)
+    endif
+  endwhile (non)
+}
+
+partition "4. Tirage aléatoire reproductible" #FCEBE6 {
+  :Tri déterministe des clés\nde groupes (sorted(groupes));
+  :rng.shuffle(groupe)\nau sein de chaque strate;
+  :selection.extend(groupe[:quotas[cle]])\n(les quotas[cle] premiers éléments);
+}
+
+:Retour : selection (list[ExemplePivot]);
+
+stop
+
+@enduml

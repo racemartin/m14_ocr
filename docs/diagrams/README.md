@@ -14,7 +14,9 @@ docs/diagrams/
 │   └── paquets/                  architecture hexagonale (classes réelles)
 ├── 02_etape1_donnees/
 │   ├── activite/                  pipeline de données bout-en-bout ;
-│   │                                anonymisation Presidio + contrôle qualité PII résiduelle
+│   │                                anonymisation Presidio + contrôle qualité PII résiduelle ;
+│   │                                échantillon_stratifie() (méthode du plus grand reste,
+│   │                                partagée entre --limite et --n)
 │   ├── sequence/                   les 6 scripts CLI (telecharger, profiler, construire le pivot, anonymiser, decouper, verifier la repartition)
 │   │                                + vue frontiere generique/specifique du pivot (mappers_corpus.py)
 │   ├── paquets/                     classes réelles de l'Étape 1
