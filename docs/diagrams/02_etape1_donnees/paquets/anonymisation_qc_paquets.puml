@@ -1,0 +1,101 @@
+@startuml anonymisation_qc_paquets
+!pragma layout smetana
+!include ../../_common/estilo.iuml
+
+title Étape 1 — Diagramme de paquets\nCe qui est en jeu au lancement des 3 commandes anonymisation / rapport / contrôle qualité
+
+package "interfaces\n(adaptateurs primaires)" as INTERFACES {
+  package "cli" {
+    class anonymiser_dataset
+    class controler_qualite_anonymisation
+  }
+}
+
+package "application" as APPLICATION {
+  package "use_cases" {
+    class AnonymiserDatasetUseCase
+    class StatistiquesSource
+    class RapportAnonymisationCumule
+    class ExecutionAnonymisation
+    class rapport_depuis_dict
+    class ControlerQualiteAnonymisationUseCase
+    class ControleQualiteAnonymisation
+  }
+  class echantillon_stratifie
+  class detecter_candidats
+  class CandidatRegex
+}
+
+package "domain\n(zéro dépendance externe)" as DOMAIN {
+  package "model" {
+    class ExemplePivot
+    class Message
+  }
+  package "ports" {
+    interface Anonymiseur
+    interface RepositoryLectureEcriture
+    interface VerificateurEntitesNommees
+    class ResultatAnonymisation
+    class VerdictEntiteNommee
+  }
+}
+
+package "infrastructure" as INFRASTRUCTURE {
+  package "adapters" {
+    class JsonlDatasetRepository
+    class PresidioAnonymiseur
+    class SpacyVerificateurEntitesNommees
+  }
+}
+
+' ----------------------------------------------------------------------
+' Dependances (import reel, fichier par fichier)
+' ----------------------------------------------------------------------
+
+anonymiser_dataset ..> JsonlDatasetRepository
+anonymiser_dataset ..> PresidioAnonymiseur
+anonymiser_dataset ..> AnonymiserDatasetUseCase
+anonymiser_dataset ..> RapportAnonymisationCumule
+anonymiser_dataset ..> ExecutionAnonymisation
+
+controler_qualite_anonymisation ..> JsonlDatasetRepository
+controler_qualite_anonymisation ..> SpacyVerificateurEntitesNommees
+controler_qualite_anonymisation ..> ControlerQualiteAnonymisationUseCase
+controler_qualite_anonymisation ..> rapport_depuis_dict
+
+AnonymiserDatasetUseCase --> echantillon_stratifie
+AnonymiserDatasetUseCase --> ExemplePivot
+AnonymiserDatasetUseCase --> Message
+AnonymiserDatasetUseCase --> Anonymiseur
+AnonymiserDatasetUseCase --> RepositoryLectureEcriture
+AnonymiserDatasetUseCase --> ResultatAnonymisation
+
+RapportAnonymisationCumule ..> StatistiquesSource : mêmes use_cases\n(uc_03_00_anonymiser_dataset)
+
+ControlerQualiteAnonymisationUseCase --> detecter_candidats
+ControlerQualiteAnonymisationUseCase --> CandidatRegex
+ControlerQualiteAnonymisationUseCase --> echantillon_stratifie
+ControlerQualiteAnonymisationUseCase --> StatistiquesSource
+ControlerQualiteAnonymisationUseCase --> ExemplePivot
+ControlerQualiteAnonymisationUseCase --> RepositoryLectureEcriture
+ControlerQualiteAnonymisationUseCase --> VerificateurEntitesNommees
+ControlerQualiteAnonymisationUseCase --> VerdictEntiteNommee
+
+echantillon_stratifie --> ExemplePivot
+
+JsonlDatasetRepository ..|> RepositoryLectureEcriture
+PresidioAnonymiseur ..|> Anonymiseur
+SpacyVerificateurEntitesNommees ..|> VerificateurEntitesNommees
+
+note bottom of detecter_candidats
+  detection_pii_residuelle.py : regex pur,
+  aucune dependance domaine ni port
+end note
+
+note right of RapportAnonymisationCumule
+  uc_03_01_rapport_anonymisation.py n'importe
+  aucun port : formatage/agregation pure de
+  StatistiquesSource
+end note
+
+@enduml
