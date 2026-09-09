@@ -15,23 +15,30 @@ existe encore. Aucune dependance au moment precis de l'anonymisation.
 
 from __future__ import annotations
 
-import difflib
-import random
-from dataclasses import dataclass, field
+import difflib  # diff par opcodes entre texte original et anonymise
+import random   # tirage aleatoire du stratum "sans entite detectee"
 
-from chsa_triage.application.detection_pii_residuelle import (
+# Structures de donnees immuables
+from dataclasses import dataclass, field  # dataclasses figees (accumulateur, resultats)
+
+# Detection de PII residuelle et seconde opinion sur les entites nommees
+from chsa_triage.application.detection_pii_residuelle import (  # regex : motifs deterministes + candidats
     CATEGORIES_DETERMINISTES,
     CandidatRegex,
     detecter_candidats,
 )
-from chsa_triage.application.echantillonnage import echantillon_stratifie
-from chsa_triage.application.use_cases.uc_03_00_anonymiser_dataset import StatistiquesSource
-from chsa_triage.domain.model import ExemplePivot
-from chsa_triage.domain.ports import RepositoryLectureEcriture
-from chsa_triage.domain.ports.verificateur_entites import (
+from chsa_triage.domain.ports.verificateur_entites import (  # port : seconde opinion spaCy
     VerdictEntiteNommee,
     VerificateurEntitesNommees,
 )
+
+# Echantillonnage stratifie de l'echantillon compare
+from chsa_triage.application.echantillonnage import echantillon_stratifie  # tirage stratifie (type_exemple, source)
+
+# Modele pivot, ports du domaine et statistiques RGPD cumulees
+from chsa_triage.application.use_cases.uc_03_00_anonymiser_dataset import StatistiquesSource  # stats cumulees (Partie 1)
+from chsa_triage.domain.model import ExemplePivot  # entite pivot comparee (original/anonymise)
+from chsa_triage.domain.ports import RepositoryLectureEcriture  # port de lecture/ecriture generique
 
 VERDICT_CONFIRME           = "confirme"
 VERDICT_FAUX_POSITIF_REGEX = "faux_positif_regex_ecarte_par_spacy"
@@ -51,38 +58,41 @@ class CandidatPiiResiduelle:
     """Un passage du texte ANONYMISE signale par regex comme PII potentiellement residuelle."""
 
     identifiant : str
-    source       : str
-    champ         : str
-    langue         : str
-    type_motif      : str
-    passage          : str
-    verdict           : str  # VERDICT_CONFIRME | VERDICT_FAUX_POSITIF_REGEX | VERDICT_REVISION_HUMAINE
+    source      : str
+    champ       : str
+    langue      : str
+    type_motif  : str
+    passage     : str
+    verdict     : str  # VERDICT_CONFIRME | VERDICT_FAUX_POSITIF_REGEX | VERDICT_REVISION_HUMAINE
 
 
 @dataclass(frozen=True, slots=True)
 class ExempleControle:
     """Un exemple reel original -> anonymise, conserve pour inspection manuelle."""
 
-    identifiant       : str
-    source             : str
-    champ               : str
-    texte_original        : str
-    texte_anonymise        : str
+    identifiant     : str
+    source          : str
+    champ           : str
+    texte_original  : str
+    texte_anonymise : str
 
 
 @dataclass(frozen=True, slots=True)
 class CandidatFauxPositifAnonymisation:
     """Un fragment du texte ORIGINAL masque dans l'anonymise, sans confirmation spaCy qu'il s'agissait d'une entite nommee."""
 
-    identifiant       : str
-    source             : str
-    champ               : str
-    fragment_masque       : str
-    texte_original          : str
-    texte_anonymise           : str
-    verdict                    : str  # VERDICT_FAUX_POSITIF_REGEX | VERDICT_REVISION_HUMAINE (jamais CONFIRME -- cf. observer())
+    identifiant     : str
+    source          : str
+    champ           : str
+    fragment_masque : str
+    texte_original  : str
+    texte_anonymise : str
+    verdict         : str  # VERDICT_FAUX_POSITIF_REGEX | VERDICT_REVISION_HUMAINE (jamais CONFIRME -- cf. observer())
 
 
+# ##############################################################################
+# _paires_champs
+# ##############################################################################
 def _paires_champs(original: ExemplePivot, anonymise: ExemplePivot) -> list[tuple[str, str, str]]:
     """Aligne les champs texte libre de deux ExemplePivot (meme identifiant) : (nom_champ, original, anonymise)."""
     paires = [("symptomes", original.symptomes, anonymise.symptomes)]
@@ -96,6 +106,9 @@ def _paires_champs(original: ExemplePivot, anonymise: ExemplePivot) -> list[tupl
     return paires
 
 
+# ##############################################################################
+# _est_exemple_sans_entite
+# ##############################################################################
 def _est_exemple_sans_entite(original: ExemplePivot, anonymise: ExemplePivot) -> bool:
     """
     True si AUCUN champ texte libre n'a change entre original et
@@ -111,6 +124,9 @@ def _est_exemple_sans_entite(original: ExemplePivot, anonymise: ExemplePivot) ->
     return all(texte_original == texte_anonymise for _, texte_original, texte_anonymise in paires)
 
 
+# ##############################################################################
+# _premier_champ_non_vide
+# ##############################################################################
 def _premier_champ_non_vide(original: ExemplePivot, anonymise: ExemplePivot) -> ExempleControle | None:
     for nom_champ, texte_original, texte_anonymise in _paires_champs(original, anonymise):
         if texte_original:
@@ -124,6 +140,9 @@ def _premier_champ_non_vide(original: ExemplePivot, anonymise: ExemplePivot) -> 
     return None
 
 
+# ##############################################################################
+# _extraire_fragments_masques
+# ##############################################################################
 def _extraire_fragments_masques(
     texte_original: str, texte_anonymise: str, jeton_masque: str
 ) -> list[tuple[str, int, int]]:
@@ -146,24 +165,27 @@ def _extraire_fragments_masques(
 class ControleQualiteAnonymisation:
     """Accumulateur des observations de controle qualite -- pas d'I/O ici."""
 
-    verificateur_entites          : VerificateurEntitesNommees
-    max_exemples_par_source         : int = 10
+    verificateur_entites             : VerificateurEntitesNommees
+    max_exemples_par_source          : int = 10
     max_faux_positifs_par_source     : int = 10
-    jeton_masque                      : str = JETON_MASQUE_DEFAUT
+    jeton_masque                     : str = JETON_MASQUE_DEFAUT
 
-    nombre_exemples_observes          : int = field(default=0, init=False)
-    exemples_par_source                : dict[str, list[ExempleControle]] = field(default_factory=dict, init=False)
-    candidats_pii                       : list[CandidatPiiResiduelle] = field(default_factory=list, init=False)
-    candidats_faux_positifs              : list[CandidatFauxPositifAnonymisation] = field(default_factory=list, init=False)
+    nombre_exemples_observes : int = field(default=0, init=False)
+    exemples_par_source      : dict[str, list[ExempleControle]] = field(default_factory=dict, init=False)
+    candidats_pii            : list[CandidatPiiResiduelle] = field(default_factory=list, init=False)
+    candidats_faux_positifs  : list[CandidatFauxPositifAnonymisation] = field(default_factory=list, init=False)
 
     # Stratum dedie "sans entite detectee" (item 3) -- compteurs et
     # listes SEPARES du reste : jamais melanges a candidats_pii /
     # nombre_exemples_observes ci-dessus. cf. `observer_sans_entite`.
     nombre_disponibles_sans_entite       : int = field(default=0, init=False)
-    nombre_exemples_sans_entite_observes  : int = field(default=0, init=False)
-    candidats_pii_sans_entite              : list[CandidatPiiResiduelle] = field(default_factory=list, init=False)
-    exemples_sans_entite                    : list[ExempleControle] = field(default_factory=list, init=False)
+    nombre_exemples_sans_entite_observes : int = field(default=0, init=False)
+    candidats_pii_sans_entite            : list[CandidatPiiResiduelle] = field(default_factory=list, init=False)
+    exemples_sans_entite                 : list[ExempleControle] = field(default_factory=list, init=False)
 
+    # ##########################################################################
+    # observer
+    # ##########################################################################
     def observer(self, original: ExemplePivot, anonymise: ExemplePivot) -> None:
         """Compare un couple (original, anonymise) partageant le meme identifiant, champ par champ."""
         self.nombre_exemples_observes += 1
@@ -175,6 +197,9 @@ class ControleQualiteAnonymisation:
 
         self._conserver_exemple_illustratif(original, anonymise)
 
+    # ##########################################################################
+    # observer_sans_entite
+    # ##########################################################################
     def observer_sans_entite(self, original: ExemplePivot, anonymise: ExemplePivot) -> None:
         """
         Stratum dedie "sans entite detectee" (item 3, cf. rapport RGPD
@@ -202,6 +227,9 @@ class ControleQualiteAnonymisation:
         if exemple is not None:
             self.exemples_sans_entite.append(exemple)
 
+    # ##########################################################################
+    # _conserver_exemple_illustratif
+    # ##########################################################################
     def _conserver_exemple_illustratif(self, original: ExemplePivot, anonymise: ExemplePivot) -> None:
         exemples_source = self.exemples_par_source.setdefault(original.source, [])
         if len(exemples_source) >= self.max_exemples_par_source:
@@ -210,9 +238,15 @@ class ControleQualiteAnonymisation:
         if exemple is not None:
             exemples_source.append(exemple)
 
+    # ##########################################################################
+    # _detecter_pii_residuelle
+    # ##########################################################################
     def _detecter_pii_residuelle(self, original: ExemplePivot, nom_champ: str, texte_anonymise: str, langue: str) -> None:
         self.candidats_pii.extend(self._detecter_pii_residuelle_champ(original, nom_champ, texte_anonymise, langue))
 
+    # ##########################################################################
+    # _detecter_pii_residuelle_champ
+    # ##########################################################################
     def _detecter_pii_residuelle_champ(
         self, original: ExemplePivot, nom_champ: str, texte_anonymise: str, langue: str
     ) -> list[CandidatPiiResiduelle]:
@@ -232,6 +266,9 @@ class ControleQualiteAnonymisation:
             )
         return resultats
 
+    # ##########################################################################
+    # _trancher_candidat
+    # ##########################################################################
     def _trancher_candidat(self, candidat: CandidatRegex, texte_anonymise: str, langue: str) -> str:
         if candidat.type_motif in CATEGORIES_DETERMINISTES:
             # email/telephone/url/date : match non ambigu, confirme directement.
@@ -243,6 +280,9 @@ class ControleQualiteAnonymisation:
             return VERDICT_FAUX_POSITIF_REGEX
         return VERDICT_REVISION_HUMAINE
 
+    # ##########################################################################
+    # _detecter_candidats_faux_positifs
+    # ##########################################################################
     def _detecter_candidats_faux_positifs(
         self, original: ExemplePivot, nom_champ: str, texte_original: str, texte_anonymise: str, langue: str
     ) -> None:
@@ -286,24 +326,27 @@ class ControlerQualiteAnonymisationUseCase:
     """
 
     repository_original          : RepositoryLectureEcriture
-    repository_anonymise           : RepositoryLectureEcriture
-    verificateur_entites             : VerificateurEntitesNommees
-    taille_echantillon                : int | None = 200
-    graine_aleatoire                   : int = 42
-    max_exemples_par_source              : int = 10
-    max_faux_positifs_par_source          : int = 10
-    jeton_masque                           : str = JETON_MASQUE_DEFAUT
+    repository_anonymise         : RepositoryLectureEcriture
+    verificateur_entites         : VerificateurEntitesNommees
+    taille_echantillon           : int | None = 200
+    graine_aleatoire             : int = 42
+    max_exemples_par_source      : int = 10
+    max_faux_positifs_par_source : int = 10
+    jeton_masque                 : str = JETON_MASQUE_DEFAUT
     # Stratum dedie "sans entite detectee" (item 3) -- independant de
     # `taille_echantillon`/`graine_aleatoire` ci-dessus (graine
     # distincte pour ne pas correler les deux tirages). Le capitaine
     # demande explicitement 30-50 exemples relus a la main/seconde
     # opinion spaCy pour ce stratum -- 40 par defaut (milieu de la
     # fourchette).
-    taille_echantillon_sans_entite          : int | None = 40
-    graine_aleatoire_sans_entite              : int = 43
+    taille_echantillon_sans_entite : int | None = 40
+    graine_aleatoire_sans_entite   : int = 43
 
-    nombre_introuvables_dans_original        : int = field(default=0, init=False)
+    nombre_introuvables_dans_original : int = field(default=0, init=False)
 
+    # ##########################################################################
+    # executer
+    # ##########################################################################
     def executer(self) -> ControleQualiteAnonymisation:
         originaux_par_id = {e.identifiant: e for e in self.repository_original.lister()}
         anonymises = list(self.repository_anonymise.lister())
@@ -320,6 +363,9 @@ class ControlerQualiteAnonymisationUseCase:
             jeton_masque=self.jeton_masque,
         )
 
+        # ----------------------------------------------------------------------
+        # Echantillon stratifie principal (type_exemple, source)
+        # ----------------------------------------------------------------------
         self.nombre_introuvables_dans_original = 0
         for exemple_anonymise in echantillon:
             exemple_original = originaux_par_id.get(exemple_anonymise.identifiant)
@@ -330,11 +376,13 @@ class ControlerQualiteAnonymisationUseCase:
                 continue
             controle.observer(exemple_original, exemple_anonymise)
 
+        # ----------------------------------------------------------------------
         # Stratum dedie "sans entite detectee" (item 3) : independant
-        # du tirage stratifie (type_exemple, source) ci-dessus -- tire
-        # sur TOUS les couples valides disponibles (pas seulement
-        # `echantillon`), pour ne pas dependre du hasard du premier
-        # tirage. cf. ControleQualiteAnonymisation.observer_sans_entite.
+        # du tirage stratifie ci-dessus -- tire sur TOUS les couples
+        # valides disponibles (pas seulement `echantillon`), pour ne
+        # pas dependre du hasard du premier tirage. cf.
+        # ControleQualiteAnonymisation.observer_sans_entite.
+        # ----------------------------------------------------------------------
         sans_entite = [
             (originaux_par_id[a.identifiant], a)
             for a in anonymises
@@ -358,6 +406,9 @@ class ControlerQualiteAnonymisationUseCase:
 # ----------------------------------------------------------------------
 
 
+# ##############################################################################
+# _candidat_pii_vers_dict
+# ##############################################################################
 def _candidat_pii_vers_dict(c: CandidatPiiResiduelle) -> dict:
     return {
         "identifiant": c.identifiant,
@@ -370,6 +421,9 @@ def _candidat_pii_vers_dict(c: CandidatPiiResiduelle) -> dict:
     }
 
 
+# ##############################################################################
+# _exemple_controle_vers_dict
+# ##############################################################################
 def _exemple_controle_vers_dict(e: ExempleControle) -> dict:
     return {
         "identifiant": e.identifiant,
@@ -379,6 +433,9 @@ def _exemple_controle_vers_dict(e: ExempleControle) -> dict:
     }
 
 
+# ##############################################################################
+# controle_vers_dict
+# ##############################################################################
 def controle_vers_dict(
     controle: ControleQualiteAnonymisation,
     horodatage: str,
@@ -419,6 +476,9 @@ def controle_vers_dict(
     }
 
 
+# ##############################################################################
+# formater_rapport_markdown
+# ##############################################################################
 def formater_rapport_markdown(
     controle: ControleQualiteAnonymisation,
     horodatage: str,
@@ -448,6 +508,9 @@ def formater_rapport_markdown(
         1 for c in controle.candidats_faux_positifs if c.verdict == VERDICT_REVISION_HUMAINE
     )
 
+    # ----------------------------------------------------------------------
+    # En-tete et portee de l'execution
+    # ----------------------------------------------------------------------
     lignes = [
         "# Rapport de controle qualite -- anonymisation (comparaison original/anonymise)",
         "",
@@ -484,6 +547,9 @@ def formater_rapport_markdown(
     if not statistiques_cumulees:
         lignes.append("| (rapport RGPD cumule introuvable ou vide) | -- | -- | -- |")
 
+    # ----------------------------------------------------------------------
+    # PII residuelle detectee dans le texte anonymise
+    # ----------------------------------------------------------------------
     lignes += [
         "",
         "## 2. Candidats de PII residuelle (regex sur texte anonymise + seconde opinion spaCy)",
@@ -502,6 +568,9 @@ def formater_rapport_markdown(
     lignes += ["", "### Passages en attente de revision humaine"]
     lignes += _lister_candidats_pii(controle.candidats_pii, VERDICT_REVISION_HUMAINE)
 
+    # ----------------------------------------------------------------------
+    # Faux positifs de masquage (termes masques sans necessite)
+    # ----------------------------------------------------------------------
     lignes += [
         "",
         "## 3. Candidats de faux positifs de l'anonymisation (termes masques sans necessite)",
@@ -525,6 +594,9 @@ def formater_rapport_markdown(
     if not controle.candidats_faux_positifs:
         lignes.append("- (aucun)")
 
+    # ----------------------------------------------------------------------
+    # Exemples illustratifs par source
+    # ----------------------------------------------------------------------
     lignes += ["", "## 4. Exemples reels (original -> anonymise) par source", ""]
     for source in sorted(controle.exemples_par_source):
         lignes.append(f"### {source}")
@@ -534,6 +606,9 @@ def formater_rapport_markdown(
             lignes.append(f"  - anonymise : {exemple.texte_anonymise[:200]!r}")
         lignes.append("")
 
+    # ----------------------------------------------------------------------
+    # Stratum dedie "sans entite detectee" (item 3)
+    # ----------------------------------------------------------------------
     total_confirmes_sans_entite = sum(
         1 for c in controle.candidats_pii_sans_entite if c.verdict == VERDICT_CONFIRME
     )
@@ -576,6 +651,9 @@ def formater_rapport_markdown(
     return "\n".join(lignes)
 
 
+# ##############################################################################
+# _lister_candidats_pii
+# ##############################################################################
 def _lister_candidats_pii(candidats: list[CandidatPiiResiduelle], verdict: str) -> list[str]:
     lignes = []
     for candidat in candidats:
