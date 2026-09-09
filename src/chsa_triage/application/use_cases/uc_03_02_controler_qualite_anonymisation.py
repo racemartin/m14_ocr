@@ -374,7 +374,8 @@ class ControlerQualiteAnonymisationUseCase:
             exemple_original = originaux_par_id.get(exemple_anonymise.identifiant)
             if exemple_original is None:
                 # Garde-fou : ne devrait jamais arriver si --sortie a
-                # bien ete alimente depuis --dataset par AnonymiserDatasetUseCase.
+                # bien ete alimente depuis --dataset par
+                # AnonymiserDatasetUseCase.
                 self.nombre_introuvables_dans_original += 1
                 continue
             controle.observer(exemple_original, exemple_anonymise)
