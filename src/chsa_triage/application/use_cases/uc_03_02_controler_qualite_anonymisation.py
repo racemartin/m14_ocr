@@ -415,13 +415,13 @@ class ControlerQualiteAnonymisationUseCase:
 # ##############################################################################
 def _candidat_pii_vers_dict(c: CandidatPiiResiduelle) -> dict:
     return {
-        "identifiant": c.identifiant,
-        "source": c.source,
-        "champ": c.champ,
-        "langue": c.langue,
-        "type_motif": c.type_motif,
-        "passage": c.passage,
-        "verdict": c.verdict,
+        "identifiant" : c.identifiant,
+        "source"      : c.source,
+        "champ"       : c.champ,
+        "langue"      : c.langue,
+        "type_motif"  : c.type_motif,
+        "passage"     : c.passage,
+        "verdict"     : c.verdict,
     }
 
 
@@ -430,10 +430,10 @@ def _candidat_pii_vers_dict(c: CandidatPiiResiduelle) -> dict:
 # ##############################################################################
 def _exemple_controle_vers_dict(e: ExempleControle) -> dict:
     return {
-        "identifiant": e.identifiant,
-        "champ": e.champ,
-        "texte_original": e.texte_original,
-        "texte_anonymise": e.texte_anonymise,
+        "identifiant"     : e.identifiant,
+        "champ"           : e.champ,
+        "texte_original"  : e.texte_original,
+        "texte_anonymise" : e.texte_anonymise,
     }
 
 
@@ -448,34 +448,34 @@ def controle_vers_dict(
 ) -> dict:
     """Serialise l'accumulateur en dict JSON, pour inspection programmatique (pas seulement le Markdown)."""
     return {
-        "horodatage": horodatage,
-        "dataset_original": dataset_original,
-        "dataset_anonymise": dataset_anonymise,
-        "nombre_exemples_observes": controle.nombre_exemples_observes,
-        "candidats_pii_residuelle": [_candidat_pii_vers_dict(c) for c in controle.candidats_pii],
-        "candidats_faux_positifs": [
+        "horodatage"                    : horodatage,
+        "dataset_original"              : dataset_original,
+        "dataset_anonymise"             : dataset_anonymise,
+        "nombre_exemples_observes"      : controle.nombre_exemples_observes,
+        "candidats_pii_residuelle"      : [_candidat_pii_vers_dict(c) for c in controle.candidats_pii],
+        "candidats_faux_positifs"       : [
             {
-                "identifiant": c.identifiant,
-                "source": c.source,
-                "champ": c.champ,
-                "fragment_masque": c.fragment_masque,
-                "texte_original": c.texte_original,
-                "texte_anonymise": c.texte_anonymise,
-                "verdict": c.verdict,
+                "identifiant"     : c.identifiant,
+                "source"          : c.source,
+                "champ"           : c.champ,
+                "fragment_masque" : c.fragment_masque,
+                "texte_original"  : c.texte_original,
+                "texte_anonymise" : c.texte_anonymise,
+                "verdict"         : c.verdict,
             }
             for c in controle.candidats_faux_positifs
         ],
-        "exemples_par_source": {
+        "exemples_par_source"           : {
             source: [_exemple_controle_vers_dict(e) for e in exemples]
             for source, exemples in controle.exemples_par_source.items()
         },
         # Stratum dedie "sans entite detectee" (item 3) -- compteurs et
         # listes toujours SEPARES des cles ci-dessus, jamais fusionnes.
-        "stratum_sans_entite_detectee": {
-            "nombre_disponibles": controle.nombre_disponibles_sans_entite,
-            "nombre_observes": controle.nombre_exemples_sans_entite_observes,
-            "candidats_pii_residuelle": [_candidat_pii_vers_dict(c) for c in controle.candidats_pii_sans_entite],
-            "exemples": [_exemple_controle_vers_dict(e) for e in controle.exemples_sans_entite],
+        "stratum_sans_entite_detectee"  : {
+            "nombre_disponibles"       : controle.nombre_disponibles_sans_entite,
+            "nombre_observes"          : controle.nombre_exemples_sans_entite_observes,
+            "candidats_pii_residuelle" : [_candidat_pii_vers_dict(c) for c in controle.candidats_pii_sans_entite],
+            "exemples"                 : [_exemple_controle_vers_dict(e) for e in controle.exemples_sans_entite],
         },
     }
 
