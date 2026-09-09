@@ -79,7 +79,10 @@ class ExempleControle:
 
 @dataclass(frozen=True, slots=True)
 class CandidatFauxPositifAnonymisation:
-    """Un fragment du texte ORIGINAL masque dans l'anonymise, sans confirmation spaCy qu'il s'agissait d'une entite nommee."""
+    """
+    Un fragment du texte ORIGINAL masque dans l'anonymise, sans
+    confirmation spaCy qu'il s'agissait d'une entite nommee.
+    """
 
     identifiant     : str
     source          : str
