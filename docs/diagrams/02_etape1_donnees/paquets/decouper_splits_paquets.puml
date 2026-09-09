@@ -1,0 +1,65 @@
+@startuml decouper_splits_paquets
+!pragma layout smetana
+!include ../../_common/estilo.iuml
+
+title Étape 1 — Diagramme de paquets\nCe qui est en jeu au lancement des 2 commandes decouper_splits / verifier_repartition_splits
+
+package "interfaces\n(adaptateurs primaires)" as INTERFACES {
+  package "cli" {
+    class decouper_splits
+    class verifier_repartition_splits
+  }
+}
+
+package "application" as APPLICATION {
+  package "use_cases" {
+    class DecouperSplitsUseCase
+    class VerifierRepartitionSplitsUseCase
+  }
+  class echantillon_stratifie
+}
+
+package "domain\n(zéro dépendance externe)" as DOMAIN {
+  package "model" {
+    class ExemplePivot
+    class TypeSplit
+  }
+  package "ports" {
+    interface RepositoryLectureEcriture
+  }
+}
+
+package "infrastructure" as INFRASTRUCTURE {
+  package "adapters" {
+    class JsonlDatasetRepository
+  }
+}
+
+' ----------------------------------------------------------------------
+' Dependances (import reel, fichier par fichier)
+' ----------------------------------------------------------------------
+
+decouper_splits ..> JsonlDatasetRepository
+decouper_splits ..> DecouperSplitsUseCase
+
+verifier_repartition_splits ..> JsonlDatasetRepository
+verifier_repartition_splits ..> VerifierRepartitionSplitsUseCase
+
+DecouperSplitsUseCase --> echantillon_stratifie
+DecouperSplitsUseCase --> ExemplePivot
+DecouperSplitsUseCase --> TypeSplit
+DecouperSplitsUseCase --> RepositoryLectureEcriture
+
+VerifierRepartitionSplitsUseCase --> RepositoryLectureEcriture
+
+echantillon_stratifie --> ExemplePivot
+
+JsonlDatasetRepository ..|> RepositoryLectureEcriture
+
+note right of VerifierRepartitionSplitsUseCase
+  uc_04_01_verifier_repartition_splits.py n'importe
+  aucun echantillonnage : lecture seule pour verifier
+  une repartition deja faite, pas de parametre --n
+end note
+
+@enduml

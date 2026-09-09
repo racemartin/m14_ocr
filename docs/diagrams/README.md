@@ -20,8 +20,8 @@ docs/diagrams/
 │   ├── sequence/                   les 6 scripts CLI (telecharger, profiler, construire le pivot, anonymiser, decouper, verifier la repartition)
 │   │                                + vue frontiere generique/specifique du pivot (mappers_corpus.py)
 │   ├── paquets/                     classes réelles de l'Étape 1 ;
-│   │                                 paquets en jeu pour anonymisation/rapport/QC
-
+│   │                                 paquets en jeu pour anonymisation/rapport/QC ;
+│   │                                 paquets en jeu pour decouper_splits/verifier_repartition_splits
 │   └── deploiement/                 environnement local (WSL2, uv)
 ├── 03_etape2_sft/
 │   ├── activite/                  pipeline SFT (conceptuel)
