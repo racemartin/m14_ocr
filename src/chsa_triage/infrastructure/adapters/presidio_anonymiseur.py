@@ -174,9 +174,9 @@ class RecognizeurNirFrance(PatternRecognizer):
 # comportement), pas parce qu'un bug francais actuel a ete observe.
 # ----------------------------------------------------------------------
 
-_TRANCHE_PEDIATRIQUE = "pediatrique"
-_TRANCHE_ADOLESCENT = "adolescent"
-_TRANCHE_ADULTE = "adulte"
+_TRANCHE_PEDIATRIQUE   = "pediatrique"
+_TRANCHE_ADOLESCENT    = "adolescent"
+_TRANCHE_ADULTE        = "adulte"
 _TRANCHE_PERSONNE_AGEE = "personne_agee"
 
 # Tranches suggerees par le capitaine (0-12 / 13-17 / 18-64 / 65+) --

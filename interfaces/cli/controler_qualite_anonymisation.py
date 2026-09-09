@@ -55,9 +55,9 @@ from tools.rafael.log_tool import LogTool
 
 log = LogTool(origin="controler_qualite_anonymisation")
 
-CHEMIN_ANONYMISE_DEFAUT = "data/processed/dataset_pivot_anonymise.jsonl"
-CHEMIN_RAPPORT_RGPD_DEFAUT = "data/processed/rapport_anonymisation_rgpd.json"
-CHEMIN_RAPPORT_QUALITE_JSON_DEFAUT = "data/processed/rapport_controle_qualite_anonymisation.json"
+CHEMIN_ANONYMISE_DEFAUT                = "data/processed/dataset_pivot_anonymise.jsonl"
+CHEMIN_RAPPORT_RGPD_DEFAUT             = "data/processed/rapport_anonymisation_rgpd.json"
+CHEMIN_RAPPORT_QUALITE_JSON_DEFAUT     = "data/processed/rapport_controle_qualite_anonymisation.json"
 CHEMIN_RAPPORT_QUALITE_MARKDOWN_DEFAUT = "data/processed/rapport_controle_qualite_anonymisation.md"
 
 

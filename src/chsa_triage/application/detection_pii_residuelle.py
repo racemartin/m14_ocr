@@ -52,8 +52,8 @@ _MOTIFS: dict[str, re.Pattern[str]] = {
 class CandidatRegex:
     """Un passage signale par une regex de detection de PII residuelle."""
 
-    type_motif : str
-    debut       : int
+    type_motif   : str
+    debut        : int
     fin          : int
     passage      : str  # texte trouve + contexte autour, pour inspection
 
