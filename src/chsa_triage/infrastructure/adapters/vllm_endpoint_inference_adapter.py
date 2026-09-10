@@ -1,5 +1,5 @@
 """
-Adaptateur secondaire (SQUELETTE — branche a l'Etape 4) : inference
+Adaptateur secondaire (SQUELETTE, branche a l'Etape 4) : inference
 distante via l'endpoint vLLM deploye sur le cloud (livrable mission).
 
 Implemente le meme port `MoteurInference` que l'adaptateur local :

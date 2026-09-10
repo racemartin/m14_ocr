@@ -1,6 +1,6 @@
 \newpage
 
-# Étape 1 — Couverture des exigences officielles de la mission
+# Étape 1 : Couverture des exigences officielles de la mission
 
 > Texte ci-dessous : reprise littérale du descriptif officiel de
 > l'Étape 1 tel que fourni par la mission OpenClassrooms, suivi de la
@@ -45,9 +45,9 @@ sur données réelles restant à faire · [A FAIRE] pas encore commencé.
 |---|---|---|
 | Collecter le corpus bilingue | [FAIT] Les 6 fichiers réels (4 sources, MediQAl en 3 fichiers) sont téléchargés dans `data/raw/` (`telecharger_corpus.py`) | `LecteurCorpusFichierLocal`, `LecteurCorpusHuggingFace`, `telecharger_corpus.py` ; cahier des charges §5.1 |
 | Nettoyer et structurer | [FAIT] `ProfilerCorpusUseCase` + adaptateur `ydata-profiling` **validés par smoke test réel** (voir section dédiée ci-dessous) ; les 6 fichiers réels sont profilés (`data/processed/rapports_profilage/`), y compris `ultramedical_preference.jsonl` (966 Mo) via l'option `--bloque` | `profiler_corpus.py` ; diagramme d'activité Étape 1 |
-| ≈5 000 paires SFT | [FAIT] Les 5 fichiers SFT (MediQAl-oeq/mcqu/mcqm, FrenchMedMCQA, MedQuAD) sont mappés et fusionnés dans `data/processed/dataset_pivot.jsonl` : **37 802 exemples SFT réels** (pivot régénéré le 08/09/2026 avec identifiants déterministes, 49 doublons exacts dédoublonnés sur les 37 851 d'origine — voir section dédiée), largement au-dessus des ≈5 000 attendus | `construire_dataset_pivot.py`, `mappers_corpus.py` |
-| Paires DPO validées cliniquement | [OUTILLAGE PRET] Mapper technique prêt **et corrigé** (`mapper_ultramedical_preference` extrayait mal chosen/rejected, voir section dédiée) et exécuté sur données réelles : **97 081 paires DPO réelles** (pivot régénéré le 08/09/2026, 12 272 doublons exacts dédoublonnés sur les 109 353 d'origine — voir section dédiée) ; la validation clinique par un expert est hors du périmètre purement technique et reste à planifier avec le CHSA | même fichier ; objectifs §3.2-3.3 |
-| Anonymisation + documentation RGPD | [FAIT] Adaptateur `PresidioAnonymiseur` **validé par smoke test réel** ; bug de performance O(n²) corrigé ; processus incrémental/reprenable (`--limite`, échantillonnage stratifié). **Refonte 08/09/2026** : identifiants déterministes (§ dédiée), dataset pivot **régénéré** avec dédoublonnage réel, et l'anonymisation écrit désormais dans un fichier **séparé** (`dataset_pivot_anonymise.jsonl`) — le pivot original n'est plus jamais modifié. Chaque exécution génère automatiquement/fusionne un **rapport RGPD cumulé** (JSON + Markdown, `application/use_cases/uc_03_01_rapport_anonymisation.py`) — remplace le calcul manuel ponctuel. Contrôle qualité désormais **automatisé** par comparaison de fichiers (`uc_03_02_controler_qualite_anonymisation.py`, regex + seconde opinion spaCy) plutôt qu'une relecture manuelle ponctuelle — voir § dédiée et `01_rapport_rgpd.md` | `AnonymiserDatasetUseCase` ; `ControlerQualiteAnonymisationUseCase` ; `docs/02_etape1_donnees/01_rapport_rgpd.md` ; cahier des charges NF2 |
+| ≈5 000 paires SFT | [FAIT] Les 5 fichiers SFT (MediQAl-oeq/mcqu/mcqm, FrenchMedMCQA, MedQuAD) sont mappés et fusionnés dans `data/processed/dataset_pivot.jsonl` : **37 802 exemples SFT réels** (pivot régénéré le 08/09/2026 avec identifiants déterministes, 49 doublons exacts dédoublonnés sur les 37 851 d'origine; voir section dédiée), largement au-dessus des ≈5 000 attendus | `construire_dataset_pivot.py`, `mappers_corpus.py` |
+| Paires DPO validées cliniquement | [OUTILLAGE PRET] Mapper technique prêt **et corrigé** (`mapper_ultramedical_preference` extrayait mal chosen/rejected, voir section dédiée) et exécuté sur données réelles : **97 081 paires DPO réelles** (pivot régénéré le 08/09/2026, 12 272 doublons exacts dédoublonnés sur les 109 353 d'origine; voir section dédiée) ; la validation clinique par un expert est hors du périmètre purement technique et reste à planifier avec le CHSA | même fichier ; objectifs §3.2-3.3 |
+| Anonymisation + documentation RGPD | [FAIT] Adaptateur `PresidioAnonymiseur` **validé par smoke test réel** ; bug de performance O(n²) corrigé ; processus incrémental/reprenable (`--limite`, échantillonnage stratifié). **Refonte 08/09/2026** : identifiants déterministes (§ dédiée), dataset pivot **régénéré** avec dédoublonnage réel, et l'anonymisation écrit désormais dans un fichier **séparé** (`dataset_pivot_anonymise.jsonl`); le pivot original n'est plus jamais modifié. Chaque exécution génère automatiquement/fusionne un **rapport RGPD cumulé** (JSON + Markdown, `application/use_cases/uc_03_01_rapport_anonymisation.py`); remplace le calcul manuel ponctuel. Contrôle qualité désormais **automatisé** par comparaison de fichiers (`uc_03_02_controler_qualite_anonymisation.py`, regex + seconde opinion spaCy) plutôt qu'une relecture manuelle ponctuelle; voir § dédiée et `01_rapport_rgpd.md` | `AnonymiserDatasetUseCase` ; `ControlerQualiteAnonymisationUseCase` ; `docs/02_etape1_donnees/01_rapport_rgpd.md` ; cahier des charges NF2 |
 | Schéma de métadonnées | [FAIT] Défini **et implémenté** comme entité de domaine (`ExemplePivot`, `ConstantesVitales`) ; `identifiant` déterministe + `identifiant_source_brute` (traçabilité vers le registre brut d'origine) ajoutés le 08/09/2026 | `domain/model/exemple_pivot.py` ; cahier des charges §5.2 ; diagramme de paquets Étape 1 |
 | Splits train / val / test + éval clinique isolée | [OUTILLAGE PRET] `DecouperSplitsUseCase` implémenté et testé, découpage stratifié par (type_exemple, source), sous-échantillonnage optionnel (`--n`) ; opère désormais sur `dataset_pivot_anonymise.jsonl` (fichier de sortie séparé, cf. § dédiée) ; à relancer après chaque vague d'anonymisation supplémentaire | `decouper_splits.py` ; `verifier_repartition_splits.py` ; `tests/application/` |
 
@@ -64,13 +64,13 @@ sur données réelles restant à faire · [A FAIRE] pas encore commencé.
 |---|---|
 | Dataset bilingue anonymisé et versionné (≈5 000 paires SFT + jeu DPO) | [OUTILLAGE PRET] Dataset pivot **régénéré** (identifiants déterministes, dédoublonnage réel) : **134 883 exemples** (37 802 SFT + 97 081 DPO, 12 321 doublons exacts écartés sur 147 204 registres bruts) ; **5 000 exemples anonymisés et découpés en splits (première vague sous le nouveau schéma, 08/09/2026)**, atteignant l'objectif chiffré ≈5 000 de la mission, écrits dans un fichier séparé (`dataset_pivot_anonymise.jsonl`, le pivot original n'est jamais modifié) ; 129 883 exemples restants prêts pour des vagues ultérieures (voir section dédiée) |
 | Schéma des métadonnées | [FAIT] Livré (voir ci-dessus) ; `identifiant` déterministe + `identifiant_source_brute` (traçabilité) ajoutés le 08/09/2026 |
-| Justification du processus RGPD suivi | [FAIT] Génération **automatique et reproductible** à chaque exécution (08/09/2026) : rapport RGPD cumulé (`data/processed/rapport_anonymisation_rgpd.{json,md}`, 64 667 entités détectées sur les 5 000 premiers exemples de la vague en cours, 90,6 % de taux de détection ≥1 entité) et contrôle qualité automatisé par comparaison de fichiers (`rapport_controle_qualite_anonymisation.{json,md}`, regex + seconde opinion spaCy, 200 exemples comparés, 0 PII résiduelle confirmée, 35 candidats en attente de révision humaine explicitement marqués comme tels) — voir section dédiée ci-dessous et `01_rapport_rgpd.md` pour le contexte historique (revue manuelle ponctuelle sur l'ancien pivot, non remplacée rétroactivement) |
+| Justification du processus RGPD suivi | [FAIT] Génération **automatique et reproductible** à chaque exécution (08/09/2026) : rapport RGPD cumulé (`data/processed/rapport_anonymisation_rgpd.{json,md}`, 64 667 entités détectées sur les 5 000 premiers exemples de la vague en cours, 90,6 % de taux de détection ≥1 entité) et contrôle qualité automatisé par comparaison de fichiers (`rapport_controle_qualite_anonymisation.{json,md}`, regex + seconde opinion spaCy, 200 exemples comparés, 0 PII résiduelle confirmée, 35 candidats en attente de révision humaine explicitement marqués comme tels); voir section dédiée ci-dessous et `01_rapport_rgpd.md` pour le contexte historique (revue manuelle ponctuelle sur l'ancien pivot, non remplacée rétroactivement) |
 
 ## Validation technique effectuée (smoke test d'intégration, 02/09/2026)
 
 > Contrairement au reste de ce document qui distingue « outillage
 > prêt » de « exécuté sur données réelles », cette section documente
-> une **exécution réelle** du pipeline complet — sur des données
+> une **exécution réelle** du pipeline complet; sur des données
 > **synthétiques** représentatives du schéma des 4 corpus (`data/raw`
 > n'étant pas accessible depuis cet environnement, cf. contrainte
 > réseau), mais avec les **vraies bibliothèques** (Presidio,
@@ -91,7 +91,7 @@ fusionnés) → `anonymiser_dataset.py` → `decouper_splits.py`.
 ### Limite réelle observée (pas un bug, une confirmation)
 
 Sur le texte anglais synthétique contenant le numéro `555-0142`
-(format court, sans indicatif), **Presidio ne l'a pas détecté** —
+(format court, sans indicatif), **Presidio ne l'a pas détecté**,
 alors que `Jean Dupont`, `Marie Lefevre`, `John Smith` et le numéro
 français `01 23 45 67 89` ont bien été masqués. Ceci confirme
 concrètement (et non plus seulement en théorie) l'exigence NF2 du
@@ -118,7 +118,7 @@ structurellement proche de FrenchMedMCQA mais pas identique.
 pour `mcqu`/`mcqm`, routé via deux nouvelles clés `--corpus`
 (`mediqal_mcqu`, `mediqal_mcqm` ; `mediqal_oeq` ajoutée en alias
 explicite de `mediqal`). Traitement simple sans liste d'options dans le prompt
-(comme `mapper_medquad`) — prompt = `clinical_case` (si non nul)
+(comme `mapper_medquad`); prompt = `clinical_case` (si non nul)
 concaténé avec `question`, completion = texte(s) de la (des)
 réponse(s) correcte(s) résolu(s) via `correct_answers`, concaténés
 avec un espace pour le cas `mcqm` multi-réponses. Exécuté sur les
@@ -163,16 +163,16 @@ enregistrements : toujours 2 messages, le dernier toujours
 `role=assistant`), au lieu d'extraire le texte de la reponse. Consequence
 reelle : le prompt duplique (message `role=user`) et la syntaxe de
 dict Python se seraient retrouves dans le contenu du `Message` pivot,
-au lieu du texte de reponse — aurait corrompu silencieusement les
+au lieu du texte de reponse; aurait corrompu silencieusement les
 paires DPO. Corrige par `_extraire_reponse_assistant()`, qui prend le
 dernier message de la liste.
 
 ### Nouveaux tests ajoutés
 
-- `tests/interfaces/test_mappers_corpus.py` — 8 tests suite au smoke
+- `tests/interfaces/test_mappers_corpus.py` : 8 tests suite au smoke
   test synthetique du 02/09, +1 test (`..._format_chat_reel`) suite a
   la validation reelle du 03/09 ci-dessus.
-- `tests/infrastructure/test_presidio_anonymiseur.py` — test
+- `tests/infrastructure/test_presidio_anonymiseur.py` : test
   d'intégration **réel** (pas mocké) qui aurait détecté immédiatement
   le bug de langue ci-dessus ; s'auto-ignore proprement si
   Presidio/spaCy ne sont pas installés.
@@ -189,7 +189,7 @@ dernier message de la liste.
    ci-dessus et ci-dessous).
 4. ~~Construire le dataset pivot fusionné sur les 6 fichiers réels.~~
    Fait le 07/09/2026 : 147 204 exemples, 0 rejet (voir section
-   dédiée ci-dessous) — **régénéré depuis le 08/09/2026 avec
+   dédiée ci-dessous); **régénéré depuis le 08/09/2026 avec
    identifiants déterministes et dédoublonnage réel, nouveau total
    134 883 exemples, voir point 7**.
 5. ~~Anonymiser le dataset pivot réel et le découper en splits.~~
@@ -197,19 +197,19 @@ dernier message de la liste.
    via `--limite` (échantillonnage stratifié). Première vague initiale
    (5 000 exemples sur l'ancien pivot à identifiants aléatoires)
    **remplacée par une nouvelle première vague sur le pivot régénéré**
-   (voir point 7) — l'anonymisation écrit désormais dans un fichier
+   (voir point 7); l'anonymisation écrit désormais dans un fichier
    séparé, le pivot original n'est plus jamais modifié.
 6. ~~Rédiger le rapport de justification RGPD à partir des résultats
    réels d'anonymisation.~~ Fait le 09/09/2026 (voir `01_rapport_rgpd.md`
    et la section dédiée ci-dessus) : résultats quantitatifs réels par
    corpus (nouvelle instrumentation `AnonymiserDatasetUseCase.statistiques`)
-   et contrôle qualité manuel assisté sur 170 enregistrements —
+   et contrôle qualité manuel assisté sur 170 enregistrements ;
    **remplacé le 08/09/2026 par une génération automatique reproductible
    à chaque exécution, voir point 7**.
 7. ~~Rendre le pipeline reproductible : identifiants déterministes,
    pivot régénéré, anonymisation vers un fichier séparé, rapport RGPD
    et contrôle qualité générés automatiquement.~~ Fait le 08/09/2026
-   — voir les sections dédiées ci-dessus et
+  ; voir les sections dédiées ci-dessus et
    ci-dessous, `01_rapport_rgpd.md`, et le README.
 
 ## FrenchMedMCQA : bug de mapper corrigé contre le schéma réel (07/09/2026)
@@ -221,25 +221,25 @@ directement comme texte de réponse. Sur le fichier réel téléchargé
 (`nthngdy/frenchmedmcqa`, 1080 enregistrements sur les 3 splits), ce
 champ `options` **n'existe pas** (les options sont des champs plats
 `answer_a`..`answer_e`) et `correct_answers` est un **entier**, pas
-une lettre — le mapper produisait donc un prompt sans aucune option et
+une lettre; le mapper produisait donc un prompt sans aucune option et
 une completion litéralement égale au chiffre (ex. `"4"`).
 
 Codification réelle confirmée via `datasets.load_dataset(...).features`
 (pas seulement la fiche Hugging Face) :
 - `correct_answers` : `Value("int64")`, un index **0-based** dans
   `a`..`e` (confirmé aussi manuellement sur plusieurs enregistrements
-  réels — ex. `correct_answers=4` → "e" pour une question sur les
+  réels; ex. `correct_answers=4` → "e" pour une question sur les
   particules alpha, `correct_answers=0` → "a" pour une question sur la
   progestérone).
-- `number_correct_answers` : `ClassLabel(names=["1","2","3","4","5"])`
-  — l'index `0` signifie "1 réponse correcte".
+- `number_correct_answers` : `ClassLabel(names=["1","2","3","4","5"])`;
+  l'index `0` signifie "1 réponse correcte".
 - Sur les **1080 enregistrements réels** (train+validation+test),
   `number_correct_answers` vaut **toujours 0** (= 1 seule réponse
   correcte) : le cas multi-réponses suggéré par ce champ n'existe pas
   dans ce miroir Hugging Face du dataset, et `correct_answers` étant
   un entier unique, il ne pourrait de toute façon pas encoder
   plusieurs index simultanément. Pas de gestion multi-réponses ajoutée
-  en conséquence — non observable, non representable par ce schéma.
+  en conséquence; non observable, non representable par ce schéma.
 
 Mapper corrigé pour résoudre l'index vers `answer_a`..`answer_e` et
 appliquer le même traitement simple que les autres sources QCM
@@ -266,14 +266,14 @@ identiques à ceux déjà documentés) :
 | **Total** | | **147 204** | **0** |
 
 Soit **37 851 exemples SFT** (MediQAl×3 + FrenchMedMCQA + MedQuAD) et
-**109 353 paires DPO** (UltraMedical-Preference) — largement au-dessus
+**109 353 paires DPO** (UltraMedical-Preference); largement au-dessus
 des ≈5 000 paires SFT attendues par la mission. Aucun enregistrement
 rejeté sur aucune des 6 sources : chaque mapper a reconnu 100% des
 enregistrements de son fichier.
 
 **Bug d'infrastructure réel découvert et corrigé au passage** : sans
 lecture par blocs, `LecteurCorpusFichierLocal` charge tout le fichier
-source en DataFrame pandas d'un coup — sur `ultramedical_preference.jsonl`
+source en DataFrame pandas d'un coup; sur `ultramedical_preference.jsonl`
 (966 Mo, 109 353 enregistrements), ceci a provoqué un épuisement
 mémoire réel sur l'environnement de 5.8 Go de RAM disponible (déjà
 documenté côté `profiler_corpus.py --bloque`, mais pas encore côté
@@ -295,7 +295,7 @@ produire les 109 353 exemples DPO ci-dessus sans OOM.
 
 **Contexte** : l'anonymisation
 écrit dans un fichier **séparé**, sans jamais modifier le pivot
-original — nécessaire pour (a) pouvoir régénérer le pivot sans perdre
+original; nécessaire pour (a) pouvoir régénérer le pivot sans perdre
 le texte original d'exemples déjà anonymisés, et (b) un contrôle
 qualité a posteriori par simple comparaison de fichiers. Ce design
 exige de croiser les enregistrements entre fichiers régénérés par un
@@ -304,8 +304,8 @@ jusqu'ici un UUID aléatoire à chaque appel.
 
 ### Identifiant déterministe (`ExemplePivot.nouvel_identifiant`)
 
-Remplacé par un hash SHA-256 tronqué de `(espace_noms, cle_naturelle)`
-— même entrée, toujours le même identifiant. `espace_noms` n'est **pas**
+Remplacé par un hash SHA-256 tronqué de `(espace_noms, cle_naturelle)`,
+même entrée, toujours le même identifiant. `espace_noms` n'est **pas**
 toujours égal au champ `source` de l'exemple : il doit être assez fin
 pour éviter toute collision entre fichiers qui partagent le même
 espace de clés naturelles. Vérifié sur les données réelles (pas
@@ -313,17 +313,17 @@ supposé) :
 
 | Source | Clé naturelle | Espace de noms | Particularité découverte |
 |---|---|---|---|
-| MediQAl-oeq | champ `id` | `mediqal_oeq` | — |
+| MediQAl-oeq | champ `id` | `mediqal_oeq` | N/A |
 | MediQAl-mcqu | champ `id` | `mediqal_mcqu` (via `task="QCU"`) | Partage 1 492 valeurs de `id` avec oeq |
 | MediQAl-mcqm | champ `id` | `mediqal_mcqm` (via `task="QCM"`) | Partage 1 280 valeurs de `id` avec oeq |
-| FrenchMedMCQA | champ `id` | `frenchmedmcqa` | — |
+| FrenchMedMCQA | champ `id` | `frenchmedmcqa` | N/A |
 | MedQuAD | hash(`Question`+`Answer`) | `medquad` | Aucun champ `id` brut |
 | UltraMedical-Preference | `prompt_id`+`label_type`+`chosen`+`rejected` | `ultramedical_preference` | `prompt_id` seul n'est PAS unique |
 
 Sans cette vérification sur les fichiers réels, un espace de noms
 unique `"mediqal"` pour les 3 configurations MediQAl aurait produit
 des collisions d'identifiant entre des registres **différents**
-(1 492 + 1 280 cas réels) — testé explicitement
+(1 492 + 1 280 cas réels); testé explicitement
 (`tests/interfaces/test_mappers_corpus.py::test_mapper_mediqal_oeq_meme_id_que_mcqu_ne_collisionne_pas`
 et l'équivalent mcqu/mcqm).
 
@@ -331,7 +331,7 @@ Le champ `ExemplePivot.identifiant_source_brute` a été ajouté en plus
 (traçabilité) : il conserve la clé
 naturelle "brute" telle qu'exposée par le mapper (le `id` d'origine
 pour MediQAl/FrenchMedMCQA, le `prompt_id` pour UltraMedical-Preference,
-le hash Question+Answer pour MedQuAD) — utile pour retrouver le
+le hash Question+Answer pour MedQuAD); utile pour retrouver le
 registre brut d'origine dans `data/raw/*.jsonl` sans avoir à
 recalculer `identifiant`. Il se propage automatiquement aux fichiers
 dérivés (anonymisé, splits) puisque `dataclasses.replace(...)` ne
@@ -352,7 +352,7 @@ fichiers réels (pas supposé) :
 | **Total doublons** | | | **12 321** |
 
 **`ConstruireDatasetPivotUseCase` dédoublonne réellement** (décision
-prise le 08/09/2026, après évaluation — l'alternative
+prise le 08/09/2026, après évaluation; l'alternative
 "index d'occurrence artificiel pour préserver le total 147 204" a été
 écartée) : seul le premier exemple rencontré pour un identifiant donné
 est conservé dans le pivot ; les registres écartés sont archivés (pas
@@ -363,11 +363,11 @@ exécutions de `construire_dataset_pivot.py`, mode ajout).
 **Investigation légère sur la cause des doublons UltraMedical-Preference**
 (hypothèse retenue : chevauchement entre/dans les datasets
 source) : la distribution de multiplicité des clés dupliquées est
-`{1: 84 809, 2: 12 272}` — **aucune clé n'apparaît plus de 2 fois**,
+`{1: 84 809, 2: 12 272}`; **aucune clé n'apparaît plus de 2 fois**,
 et le taux de duplication est réparti proportionnellement à travers
 tous les préfixes de source visibles dans `prompt_id` (WikiInstruct,
 MedMCQA, TextBookQA, ChatDoctor, MedQA, MedQA-Evol, MedQuad,
-Medical-Instruct-120k, PubMedQA, MedInstruct-52k — tous représentés
+Medical-Instruct-120k, PubMedQA, MedInstruct-52k; tous représentés
 dans les doublons à peu près à hauteur de leur poids réel dans le
 corpus). Ce profil (toujours exactement 2 copies, proportionnel à
 toutes les sources) est plus cohérent avec un **artefact d'export en
@@ -378,7 +378,7 @@ questions **entre** sous-corpus différents (ce qui produirait des
 `prompt_id` différents pour un contenu similaire, pas des quadruplets
 `prompt_id`+`label_type`+`chosen`+`rejected` strictement identiques).
 Investigation volontairement limitée à ce constat (pas de fouille plus
-poussée dans la provenance du miroir Hugging Face) — hors du périmètre
+poussée dans la provenance du miroir Hugging Face); hors du périmètre
 de cette tâche (identifiant + anonymisation + splits + contrôle
 qualité), pas nécessaire pour trancher la décision de dédoublonnage.
 
@@ -422,7 +422,7 @@ uv run python interfaces/cli/verifier_repartition_splits.py --dataset data/proce
 
 **Anonymisation** (durée réelle mesurée : 57 min 48 s pour 5 000
 exemples, cohérente avec les temps par source mesurés en 07-08/09,
-voir § dédiée ci-dessous) — rapport RGPD cumulé généré automatiquement
+voir § dédiée ci-dessous); rapport RGPD cumulé généré automatiquement
 dans `data/processed/rapport_anonymisation_rgpd.{json,md}` :
 
 | Source | Traités (cette vague) | Avec ≥1 entité | Taux |
@@ -437,11 +437,11 @@ Soit **5 000/134 883 exemples anonymisés (3,7 % du dataset pivot,
 compté réellement dans le fichier à l'exécution)**, **64 667 entités
 détectées** au total. Portée explicitement indiquée dans le rapport
 (cumulé sur 1 exécution à ce stade, tracé avec horodatage/stratégie/
-limite/graine — voir `data/processed/rapport_anonymisation_rgpd.md`
+limite/graine; voir `data/processed/rapport_anonymisation_rgpd.md`
 § « Executions ayant contribué »).
 
 **Contrôle qualité automatique** (200 exemples comparés, échantillon
-stratifié parmi les 5 000 disponibles, regex + seconde opinion spaCy —
+stratifié parmi les 5 000 disponibles, regex + seconde opinion spaCy,
 rapport dans `data/processed/rapport_controle_qualite_anonymisation.{json,md}`) :
 
 - **631 candidats de PII résiduelle** détectés par regex sur le texte
@@ -449,7 +449,7 @@ rapport dans `data/processed/rapport_controle_qualite_anonymisation.{json,md}`) 
   téléphone/URL/date non masqué, et aucun bigramme capitalisé confirmé
   entité nommée par spaCy), **596 écartés** par spaCy (bigrammes
   capitalisés type titres de section markdown `### Conclusion`,
-  vocabulaire scientifique — cohérent avec les faux positifs déjà
+  vocabulaire scientifique; cohérent avec les faux positifs déjà
   documentés dans la revue manuelle historique), **35 en attente de
   revision humaine** explicitement marqués comme tels (jamais une
   confirmation inventée).
@@ -458,7 +458,7 @@ rapport dans `data/processed/rapport_controle_qualite_anonymisation.{json,md}`) 
   nommée) : 2 sans aucune entité détectée, 16 avec une entité d'un
   type non tranchant (ex. plages temporelles `"30 minutes"`,
   `"hours to days"` masquées à tort comme `DATE_TIME`, âges
-  `"30-year-old"` — sur-masquage inoffensif RGPD-wise mais qui dégrade
+  `"30-year-old"`; sur-masquage inoffensif RGPD-wise mais qui dégrade
   la lisibilité, cohérent avec le phénomène déjà documenté dans la
   revue manuelle historique §4 de `01_rapport_rgpd.md`).
 - Exemples réels (original → anonymisé) inspectables dans le rapport
@@ -481,12 +481,12 @@ grand, ou `full`).
 > **SUPERSEDÉ le 08/09/2026** par le design source/sortie séparés (cf.
 > section dédiée plus bas) : la « première vague » décrite ci-dessous
 > anonymisait le pivot **en place** (identifiants aléatoires, champ
-> `anonymise` muté sur le fichier source lui-même) — ce fichier n'existe
+> `anonymise` muté sur le fichier source lui-même); ce fichier n'existe
 > plus, remplacé par le pivot régénéré (134 883 exemples,
 > identifiants déterministes, jamais modifié) et une nouvelle première
 > vague écrite dans `dataset_pivot_anonymise.jsonl` (fichier séparé).
 > Les mesures de temps ci-dessous (durée par source, bug O(n²)
-> corrigé) restent valables techniquement — le mécanisme
+> corrigé) restent valables techniquement; le mécanisme
 > d'anonymisation Presidio lui-même n'a pas changé, seul l'emplacement
 > d'écriture du résultat a changé.
 
@@ -495,7 +495,7 @@ pivot réel (147 204 exemples, 624 Mo), un second bug d'infrastructure
 réel a été découvert : `AnonymiserDatasetUseCase.executer()` appelait
 `self.repository.sauvegarder(exemple)` **à chaque itération** de la
 boucle sur les 147 204 exemples. Or `JsonlDatasetRepository.sauvegarder`
-relit et réécrit **tout le fichier JSONL** à chaque appel — sur 147 204
+relit et réécrit **tout le fichier JSONL** à chaque appel; sur 147 204
 exemples cela revient à relire/réécrire un fichier de 624 Mo 147 204
 fois, un O(n²) totalement infaisable (des heures rien que pour l'I/O
 disque). Corrigé : la boucle accumule désormais les exemples
@@ -561,7 +561,7 @@ dataset (ex. MediQAl : 20 849/147 204 × 5 000 ≈ 708 ✓), et chaque
 exemples anonymisés). Le reste du dataset (142 204 exemples,
 `anonymise=False`) est prêt à être traité par vagues ultérieures
 (`--limite` plus grand, ou `full`) sans jamais retraiter ce qui est
-déjà fait — décision explicitement laissée ouverte sur *quand* et
+déjà fait; décision explicitement laissée ouverte sur *quand* et
 *avec quel N* lancer la vague suivante (à réévaluer avant le SFT/DPO
 en fonction du risque de saturation/surapprentissage sur un
 sous-échantillon trop petit, cf. § dédiée dans le README).
@@ -590,7 +590,7 @@ chaque strate `(type_exemple, source)` respecte bien les proportions
 > corrects comme description de principe, mais les chiffres exacts
 > (5 000/147 204, 708/20/557/3 715 par source) portaient sur l'ANCIEN
 > pivot (identifiants aléatoires, depuis régénéré) et ne reflètent
-> plus l'état courant — voir `01_rapport_rgpd.md` pour la note de tête
+> plus l'état courant; voir `01_rapport_rgpd.md` pour la note de tête
 > à jour.
 
 `docs/02_etape1_donnees/01_rapport_rgpd.md` (auparavant un gabarit
@@ -605,25 +605,25 @@ réels, pas des estimations :
   (auparavant calculé puis jeté à chaque champ anonymisé).
 - **Section 3 (résultats quantitatifs)** : la stratégie `replace`
   utilisée pour la vague déjà fusionnée remplace toute entité par un
-  jeton générique unique — le détail par type n'est donc pas
+  jeton générique unique; le détail par type n'est donc pas
   récupérable a posteriori sur ce texte déjà anonymisé. Un nouvel
   échantillon stratifié de 5 000 exemples a été prélevé avec le même
   algorithme/graine/corpus (`echantillon_stratifie`, factorisé dans
-  `chsa_triage.application.echantillonnage`) — répartition par source
-  vérifiée identique à celle de la vague déjà fusionnée (708/20/557/3 715) —
+  `chsa_triage.application.echantillonnage`); répartition par source
+  vérifiée identique à celle de la vague déjà fusionnée (708/20/557/3 715) ;
   puis anonymisé pour de vrai (Presidio réel) avec l'instrumentation
   ci-dessus. Résultat : 65 914 entités détectées, 92,0 % des 5 000
   enregistrements avec ≥1 entité (détail par type et par corpus dans
   le rapport).
 - **Section 4 (contrôle qualité manuel)** : 170 enregistrements relus
-  (50 par source, ou tous les disponibles si moins de 50 — 20 pour
+  (50 par source, ou tous les disponibles si moins de 50; 20 pour
   FrenchMedMCQA), avec comparaison texte original/texte anonymisé.
   **1 PII résiduelle réelle trouvée** (un prénom, `chsa-ultramedical-f87736240ce5`)
   et des faux positifs fréquents documentés (vocabulaire médical/
   scientifique capitalisé pris pour des entités nommées, sur-masquage
   systématique des sections bibliographiques d'UltraMedical-Preference).
   Cette revue constitue une **première passe de contrôle, pas une revue
-  humaine indépendante** — le rapport recommande explicitement qu'un réviseur
+  humaine indépendante**; le rapport recommande explicitement qu'un réviseur
   du domaine confirme avant tout usage clinique réel ;
   verdict retenu pour l'usage actuel (POC, fine-tuning
   expérimental) : dataset accepté en l'état, avec réserve sur le
@@ -638,7 +638,7 @@ d'abord un échantillon stratifié de taille N parmi les exemples
 anonymisés (même algorithme du plus grand reste que `--limite`),
 avant de répartir train/val/test dessus. Si N est omis ou ≥ au nombre
 d'exemples anonymisés disponibles, comportement inchangé (tout est
-reparti) — un avertissement est tracé via LogTool, sans erreur, comme
+reparti); un avertissement est tracé via LogTool, sans erreur, comme
 pour les autres scripts Étape 1.
 
 L'algorithme d'échantillonnage stratifié (méthode du plus grand reste),
@@ -649,12 +649,12 @@ auparavant privé à `AnonymiserDatasetUseCase`, a été extrait dans
 Un nouveau script `verifier_repartition_splits.py` (et son cas d'usage
 `VerifierRepartitionSplitsUseCase`) relit le dataset pivot déjà reparti
 et affiche, par strate `(type_exemple, source)`, le décompte ET le
-pourcentage par split — `decouper_splits.py` n'affichait que le total
+pourcentage par split; `decouper_splits.py` n'affichait que le total
 global, ce qui ne permettait pas de vérifier visuellement que la
 stratification restait représentative dans **chaque** split (voir
 tableau ci-dessus).
 
-## Croissance stable de `decouper_splits.py` — protection contre la fuite train/test à l'agrandissement (10/09/2026)
+## Croissance stable de `decouper_splits.py` : protection contre la fuite train/test à l'agrandissement (10/09/2026)
 
 **Décision**, prise explicitement après comparaison de
 deux alternatives. Constat : dans le comportement décrit à la section
@@ -663,14 +663,14 @@ et **réassignait le split de TOUS les exemples considérés** (que ce
 soit le sous-ensemble `--n` ou le dataset anonymisé entier). Relancer
 `decouper_splits.py` avec un `--n` différent (par exemple élargir de
 5 000 à 10 000, ou omettre `--n` pour tout répartir) pouvait donc faire
-passer un exemple déjà vu de `train` à `test` — ou l'inverse — d'une
+passer un exemple déjà vu de `train` à `test`; ou l'inverse; d'une
 exécution à l'autre. C'est une **fuite silencieuse** de données
 d'entraînement dans le jeu d'évaluation, exactement le point de
 vigilance explicite du cahier des charges de la mission : *« le jeu de
 test ne doit jamais être réutilisé en entraînement »*. Un modèle évalué
 sur un exemple qu'il a vu en entraînement lors d'une vague antérieure
 donnerait des métriques de test artificiellement optimistes, sans
-qu'aucune erreur ne le signale — le bug n'aurait été visible qu'en
+qu'aucune erreur ne le signale; le bug n'aurait été visible qu'en
 comparant manuellement les identifiants de deux exécutions successives.
 
 **Alternatives comparées** : (a) recalculer tout le découpage à chaque
@@ -687,11 +687,11 @@ un exemple qui a déjà un `split` non nul (exécution antérieure) n'est
 `N - (nombre déjà assigné)` exemples **nouveaux** (choisis parmi ceux
 sans split, par le même échantillonnage stratifié qu'avant) reçoivent
 un split lors de cette exécution. Omettre `--n` bascule le mode
-« tout répartir » en mode « compléter ce qui manque » — changement de
+« tout répartir » en mode « compléter ce qui manque »; changement de
 comportement réel par rapport à la section précédente, documenté aussi
 dans le README (§6/§7) et le docstring du module. Réduire un découpage
 déjà fait (`--n` ≤ au nombre déjà assigné) n'est **pas supporté** : le
-jeu ne peut que grandir, jamais rétrécir — un avertissement est tracé
+jeu ne peut que grandir, jamais rétrécir; un avertissement est tracé
 via LogTool (pas une erreur) dans ce cas, la décision explicite étant
 qu'encoger n'a pas de cas d'usage légitime ici (contrairement à
 agrandir, qui correspond au besoin produit réel de vagues successives
@@ -699,13 +699,13 @@ d'anonymisation).
 
 `verifier_repartition_splits.py` n'a nécessité **aucune modification** :
 il relit simplement les splits déjà présents dans le fichier de sortie,
-quelle que soit la séquence d'exécutions `--n` qui les a produits — la
+quelle que soit la séquence d'exécutions `--n` qui les a produits; la
 garantie de stabilité vit entièrement côté écriture
 (`DecouperSplitsUseCase`), pas côté lecture.
 
 Couvert par un test dédié
 (`tests/application/test_decouper_splits.py`) : découpage avec `--n
 5000`, relevé des identifiants et de leur split par identifiant, puis
-second découpage avec `--n 10000` sur le même repository — vérification
+second découpage avec `--n 10000` sur le même repository; vérification
 que les 5 000 premiers identifiants conservent **exactement** le même
 split qu'à la première exécution.

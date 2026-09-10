@@ -40,15 +40,15 @@ skinparam arrow {
 }
 skinparam ArrowThickness 1.2
 
-title Agent IA de Triage Médical — CHSA\nArchitecture complète : services Docker, volumes et services externes par phase
+title Agent IA de Triage Médical : CHSA\nArchitecture complète : services Docker, volumes et services externes par phase
 
 ' ===================== SERVICES EXTERNES (transverses) =====================
 cloud "Hugging Face Hub\n(corpus + modèle base\nQwen3-1.7B-Base)" as HFHUB
 cloud "GitHub\n(repo + GitHub Actions)" as GH
 cloud "Container Registry\n(GHCR / Docker Hub)" as REGISTRY
 cloud "MLflow / Weights & Biases\n(tracking expériences)" as TRACK
-cloud "Cloud Provider\n(GPU instances — entraînement\n+ hébergement endpoint)" as CLOUDPROV
-cloud "SIH — Système d'Information\nHospitalier (existant, externe)" as SIH
+cloud "Cloud Provider\n(GPU instances, entraînement\n+ hébergement endpoint)" as CLOUDPROV
+cloud "SIH : Système d'Information\nHospitalier (existant, externe)" as SIH
 
 ' ===================== PHASE 1 =====================
 package "PHASE 1 · Semaine 1\nPréparation et structuration des données" as P1 {
@@ -99,7 +99,7 @@ package "PHASE 4 · Semaine 4\nDéploiement et validation (docker-compose prod)"
   node "container: api-gateway\n(FastAPI)" as C4b
   node "container: vllm-inference\n(vLLM serving engine)" as C4c
   database "vol: model-weights\n(modèle final servi,\nread-only)" as V4a
-  database "vol: audit-db\n(PostgreSQL — logs\ntraçabilité / audit RGPD)" as V4b
+  database "vol: audit-db\n(PostgreSQL, logs\ntraçabilité / audit RGPD)" as V4b
   node "container: audit-db\n(PostgreSQL)" as C4d
   node "container: reverse-proxy\n(nginx / TLS)" as C4e
 

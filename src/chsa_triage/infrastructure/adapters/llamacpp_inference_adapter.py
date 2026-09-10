@@ -1,5 +1,5 @@
 """
-Adaptateur secondaire (SQUELETTE — branche a l'Etape 4) : inference
+Adaptateur secondaire (SQUELETTE, branche a l'Etape 4) : inference
 locale via llama.cpp / GGUF, conformement a la strategie de cout
 minimal (cf. echange sur l'inference locale).
 

@@ -16,7 +16,7 @@ skinparam noteBorderColor #999966
 
 start
 
-partition "ETAPE 0 — Cadrage & Environnement" #E8E8F5 {
+partition "ETAPE 0 : Cadrage & Environnement" #E8E8F5 {
   :Definir cahier des charges\n(classes: ExigenceFonctionnelle,\nExigenceNonFonctionnelle);
   note right
     Entree : mail de mission (Dr. Dubois)
@@ -31,7 +31,7 @@ partition "ETAPE 0 — Cadrage & Environnement" #E8E8F5 {
   :Executer check_env_local.py / check_env_gpu.py;
 }
 
-partition "ETAPE 1 — Semaine 1 : Donnees" #E8F5EA {
+partition "ETAPE 1 : Semaine 1 : Donnees" #E8F5EA {
   :Collecter les 4 corpus bruts\n(classe: CorpusSource);
   note right
     Entrees : MediQAl, FrenchMedMCQA,
@@ -84,7 +84,7 @@ partition "ETAPE 1 — Semaine 1 : Donnees" #E8F5EA {
   :Verser le dataset versionne sur HF Hub\n(Livrable 1);
 }
 
-partition "ETAPE 1bis — Baseline (Phase 1 mission)" #FFF0E0 {
+partition "ETAPE 1bis : Baseline (Phase 1 mission)" #FFF0E0 {
   :Evaluer Qwen3-1.7B-Base en zero/few-shot\nsur le jeu de test clinique;
   note right
     Sortie : metriques de reference
@@ -92,7 +92,7 @@ partition "ETAPE 1bis — Baseline (Phase 1 mission)" #FFF0E0 {
   end note
 }
 
-partition "ETAPE 2 — Semaine 2 : SFT + LoRA" #E8F0F5 {
+partition "ETAPE 2 : Semaine 2 : SFT + LoRA" #E8F0F5 {
   :Charger Qwen3-1.7B-Base en 4-bit NF4\n(classe: BitsAndBytesConfig);
   note right
     Entree : poids Qwen3-1.7B-Base (HF Hub)
@@ -117,7 +117,7 @@ partition "ETAPE 2 — Semaine 2 : SFT + LoRA" #E8F0F5 {
 
   :Evaluer sur jeu de validation intermediaire;
 
-  if (Convergence saine ?) then (non — overfit/underfit)
+  if (Convergence saine ?) then (non, overfit/underfit)
     :Ajuster hyperparametres\n(grid restreint : lr, r, alpha);
     note right: Optuna ecarte du POC (Phase 3)
     -> Relancer SFTTrainer;
@@ -128,7 +128,7 @@ partition "ETAPE 2 — Semaine 2 : SFT + LoRA" #E8F0F5 {
   :Sauvegarder checkpoint SFT-LoRA;
 }
 
-partition "ETAPE 3 — Semaine 3 : Alignement DPO" #F5E8F0 {
+partition "ETAPE 3 : Semaine 3 : Alignement DPO" #F5E8F0 {
   :Charger checkpoint SFT-LoRA\ncomme politique de reference;
   note right
     Entree : checkpoint SFT + dataset DPO
@@ -153,7 +153,7 @@ partition "ETAPE 3 — Semaine 3 : Alignement DPO" #F5E8F0 {
   :Sauvegarder checkpoint SFT+DPO final\n(Livrable 2);
 }
 
-partition "ETAPE 4 — Semaine 4 : Deploiement & Evaluation" #FDEBEB {
+partition "ETAPE 4 : Semaine 4 : Deploiement & Evaluation" #FDEBEB {
   fork
     :Fusionner adaptateurs LoRA\n(merge_and_unload);
     :Construire image Docker + FastAPI;

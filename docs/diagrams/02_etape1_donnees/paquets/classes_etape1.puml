@@ -1,7 +1,7 @@
 @startuml classes_etape1
 !include ../../_common/estilo.iuml
 
-title Étape 1 — Diagramme de paquets\nClasses impliquées dans la préparation des données
+title Étape 1 : Diagramme de paquets\nClasses impliquées dans la préparation des données
 
 package "domain.model" as MODEL {
   class ExemplePivot {

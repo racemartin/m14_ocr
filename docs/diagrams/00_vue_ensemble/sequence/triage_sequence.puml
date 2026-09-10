@@ -17,7 +17,7 @@ skinparam sequenceMessageAlign center
 skinparam maxMessageSize 160
 skinparam responseMessageBelowArrow true
 
-title Agent IA de Triage Médical — CHSA\nCas d'usage type en production
+title Agent IA de Triage Médical : CHSA\nCas d'usage type en production
 
 actor "Patient" as P
 participant "Frontend\n(tablette / web accueil)" as FE

@@ -1,7 +1,7 @@
 @startuml decouper_splits
 !include ../../_common/estilo.iuml
 
-title Étape 1 — Diagramme de séquence\nDécoupage train/val/test clinique (cas d'usage réel, classes du code)
+title Étape 1 : Diagramme de séquence\nDécoupage train/val/test clinique (cas d'usage réel, classes du code)
 
 actor "Développeur\n(ligne de commande)" as Dev
 

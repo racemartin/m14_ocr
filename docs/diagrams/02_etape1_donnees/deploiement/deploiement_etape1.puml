@@ -1,7 +1,7 @@
 @startuml deploiement_etape1
 !include ../../_common/estilo.iuml
 
-title Étape 1 — Diagramme de déploiement\nEnvironnement A (local, WSL2) — préparation des données
+title Étape 1 : Diagramme de déploiement\nEnvironnement A (local, WSL2), préparation des données
 
 cloud "Hugging Face Hub" as HFHUB {
   artifact "MediQAl" as C1
@@ -40,7 +40,7 @@ INFRA --> RAW : lecture
 INFRA --> PROCESSED : lecture/écriture
 YDATA --> RAPPORTS : génère
 INFRA ..> MLFLOW : (optionnel) log de statistiques
-PROCESSED --> HFHUB : push_to_hub()\n(Livrable 1, hors périmètre\nde ce diagramme — Étape 4)
+PROCESSED --> HFHUB : push_to_hub()\n(Livrable 1, hors périmètre\nde ce diagramme, Étape 4)
 
 note bottom of LOCAL
   Aucune dépendance GPU dans cet

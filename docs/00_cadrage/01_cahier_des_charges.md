@@ -1,4 +1,4 @@
-# Cahier des charges — Agent IA de Triage Médical (CHSA)
+# Cahier des charges : Agent IA de Triage Médical (CHSA)
 
 Référence : Mission OpenClassrooms *« Développez le POC d'un agent de
 triage médical »*, Dr. Marie Dubois. Voir `00_objectifs_du_projet.md` (meme dossier)
@@ -20,20 +20,20 @@ protocole MCP.
 
 | Rôle | Personne | Responsabilité |
 |---|---|---|
-| Commanditaire / évaluatrice | Dr. Marie Dubois — Directrice Innovation Médicale | Validation clinique, soutenance |
+| Commanditaire / évaluatrice | Dr. Marie Dubois, Directrice Innovation Médicale | Validation clinique, soutenance |
 | IA Engineer junior | Rafael Cerezo Martín | Conception, développement, livraison |
 
 ## 3. Exigences fonctionnelles
 
 | ID | Exigence | Source |
 |---|---|---|
-| F1 | Collecter les symptômes du patient via un dialogue structuré | Mission — brief Dr. Dubois |
+| F1 | Collecter les symptômes du patient via un dialogue structuré | Mission : brief Dr. Dubois |
 | F2 | Classer la priorité clinique selon l'échelle ESI (Niveaux 1-5) | Manuel SFT §7.1 |
 | F3 | Produire une sortie JSON strict (niveau, catégorie, ressources estimées) | Manuel SFT §7.1 |
-| F4 | Exposer un raisonnement clinique explicite (bloc `<think>`) | Mission — « explications claires » |
-| F5 | Répondre en français et en anglais | Mission — dataset bilingue |
-| F6 | Tracer chaque interaction (horodatage, entrée, sortie, version modèle) | Mission — « auditabilité » |
-| F7 | Exposer le modèle via une API de démonstration | Mission — Livrable 4 |
+| F4 | Exposer un raisonnement clinique explicite (bloc `<think>`) | Mission : « explications claires » |
+| F5 | Répondre en français et en anglais | Mission : dataset bilingue |
+| F6 | Tracer chaque interaction (horodatage, entrée, sortie, version modèle) | Mission : « auditabilité » |
+| F7 | Exposer le modèle via une API de démonstration | Mission : Livrable 4 |
 
 ## 4. Exigences non fonctionnelles
 
@@ -81,7 +81,7 @@ protocole MCP.
 
 > **Note (implémentation, 08/09/2026)** : les noms de champ ci-dessus
 > sont ceux **réellement implémentés** (`ExemplePivot`,
-> `ConstantesVitales` — `src/chsa_triage/domain/model/exemple_pivot.py`),
+> `ConstantesVitales`, `src/chsa_triage/domain/model/exemple_pivot.py`),
 > pas ceux de l'énoncé initial de la mission. Ils ont été adaptés au
 > français/vocabulaire du domaine pendant l'implémentation, pour
 > rester cohérents avec le reste du code (100 % en français) : `id` →

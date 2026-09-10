@@ -1,4 +1,4 @@
-"""Test de l'adaptateur JsonlDatasetRepository — round-trip sur disque."""
+"""Test de l'adaptateur JsonlDatasetRepository : round-trip sur disque."""
 
 from __future__ import annotations
 

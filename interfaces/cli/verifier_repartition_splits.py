@@ -1,6 +1,6 @@
 """
 STEP 04.1
-Point d'entree CLI — Etape 1, action "verifier la repartition des
+Point d'entree CLI, Etape 1, action "verifier la repartition des
 splits".
 
 `decouper_splits.py` n'affiche que le total global par split

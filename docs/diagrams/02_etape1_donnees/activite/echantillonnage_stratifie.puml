@@ -1,7 +1,7 @@
 @startuml echantillonnage_stratifie
 !include ../../_common/estilo.iuml
 
-title échantillon_stratifie() — méthode du plus grand reste\nDiagramme d'activité
+title échantillon_stratifie() : méthode du plus grand reste\nDiagramme d'activité
 
 start
 

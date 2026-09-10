@@ -1,5 +1,5 @@
 """
-Port generique du moteur d'inference — prepare des l'Etape 1 pour
+Port generique du moteur d'inference, prepare des l'Etape 1 pour
 que le futur chat (Etape 4) puisse brancher indifferemment un
 adaptateur local (llama.cpp / GGUF) ou distant (endpoint vLLM payant)
 sans que l'application ni l'interface ne connaissent la difference.

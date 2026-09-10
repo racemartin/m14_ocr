@@ -1,6 +1,6 @@
 """
 STEP 03.2
-Point d'entree CLI — Etape 1, action "reviser humainement les
+Point d'entree CLI, Etape 1, action "reviser humainement les
 candidats de PII residuelle en attente" (exigence NF2 du cahier des
 charges : anonymisation validee MANUELLEMENT, 0 PII residuelle sur
 echantillon de controle).

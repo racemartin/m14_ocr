@@ -1,6 +1,6 @@
 """
 STEP 03
-Point d'entree CLI — Etape 1, action "anonymiser".
+Point d'entree CLI, Etape 1, action "anonymiser".
 
 Usage :
     uv run python interfaces/cli/anonymiser_dataset.py \

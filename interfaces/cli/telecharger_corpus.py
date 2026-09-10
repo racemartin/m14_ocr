@@ -1,6 +1,6 @@
 """
 STEP 00 
-Point d'entree CLI — telecharger un corpus brut depuis Hugging Face
+Point d'entree CLI, telecharger un corpus brut depuis Hugging Face
 Hub et l'exporter en JSONL local (data/raw/).
 
 Ferme le vide identifie le 03/09/2026 : l'adaptateur

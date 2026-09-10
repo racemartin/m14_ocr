@@ -1,7 +1,7 @@
 @startuml construction_dataset_pivot_frontiere_generique
 !include ../../_common/estilo.iuml
 
-title Étape 1 — Diagramme de séquence\nConstruction du dataset pivot — frontière code générique / code spécifique au corpus
+title Étape 1 : Diagramme de séquence\nConstruction du dataset pivot, frontière code générique / code spécifique au corpus
 
 actor "Développeur\n(ligne de commande)" as Dev
 
@@ -9,7 +9,7 @@ box "interfaces/cli" #F0EEE7
   participant "construire_dataset_pivot.py" as CLI
 end box
 
-box "interfaces/cli — specifique corpus" #FCEBE6
+box "interfaces/cli : specifique corpus" #FCEBE6
   participant "mappers_corpus.py\n(MAPPERS_PAR_CORPUS)" as Mappers
 end box
 
@@ -48,7 +48,7 @@ note right of Mappers
   ce pipeline vers un domaine non médical,
   il suffirait d'écrire une nouvelle
   fonction mapper_nouveau_corpus et de
-  l'enregistrer dans MAPPERS_PAR_CORPUS —
+  l'enregistrer dans MAPPERS_PAR_CORPUS ;
   rien d'autre ne changerait.
 end note
 Mappers --> CLI : référence à la fonction mapper_mediqal

@@ -2,7 +2,7 @@
 
 Documentation minimale exigée par la mission comme alternative à la
 publication du dataset sur Hugging Face Hub (cf. §7 « Livrables »,
-`01_cahier_des_charges.md` — Livrable 1 : « Dataset ... versionné »).
+`01_cahier_des_charges.md`, Livrable 1 : « Dataset ... versionné »).
 La publication (même privée) sur HF
 Hub est différée jusqu'à ce que le contrôle qualité PII soit intégralement clos
 (voir `data/README.md` et
@@ -18,7 +18,7 @@ déclare pas de licence, c'est dit explicitement plutôt que de deviner.
 ## MediQAl
 
 - **Origine** : https://huggingface.co/datasets/ANR-MALADES/MediQAl
-- **Licence** : **CC-BY-4.0** — déclarée explicitement dans les
+- **Licence** : **CC-BY-4.0**, déclarée explicitement dans les
   métadonnées de la fiche HF.
 - **Citation demandée** :
   ```bibtex
@@ -44,7 +44,7 @@ déclare pas de licence, c'est dit explicitement plutôt que de deviner.
   pivot dérivé.
 - **Citation** : publication associée à `qanastek/FrenchMedMCQA`
   (Labrak et al., FrenchMedMCQA : *A French Multiple-Choice Question
-  Answering Dataset for Medical domain*) — à citer par prudence même
+  Answering Dataset for Medical domain*), à citer par prudence même
   si la fiche HF ne l'exige pas explicitement.
 
 ## MedQuAD
@@ -62,7 +62,7 @@ déclare pas de licence, c'est dit explicitement plutôt que de deviner.
   des droits d'auteur tiers (seules les métadonnées/URLs sont
   conservées pour ces 3 sous-sources). Comme le fichier utilisé ici
   provient d'un miroir HF tiers, il n'est pas garanti que cette
-  exclusion ait été respectée dans le fichier réellement téléchargé —
+  exclusion ait été respectée dans le fichier réellement téléchargé ;
   **à vérifier avant publication**.
 - **Citation demandée** (papier source) : Asma Ben Abacha, Dina
   Demner-Fushman, *« A Question-Entailment Approach to Question
@@ -71,7 +71,7 @@ déclare pas de licence, c'est dit explicitement plutôt que de deviner.
 ## UltraMedical-Preference
 
 - **Origine** : https://huggingface.co/datasets/TsinghuaC3I/UltraMedical-Preference
-- **Licence** : **MIT** — déclarée explicitement dans les métadonnées
+- **Licence** : **MIT**, déclarée explicitement dans les métadonnées
   de la fiche HF.
 - **Citation demandée** :
   ```bibtex

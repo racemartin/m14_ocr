@@ -39,12 +39,12 @@ docs/diagrams/
 
 | Étape | Activité | Séquence | Paquets | Déploiement |
 |---|---|---|---|---|
-| 00 — Vue d'ensemble | [FAIT] | — | — | — |
-| 01 — Environnement | — | — | [FAIT] (réel) | — |
-| 02 — Étape 1 (données) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel) |
-| 03 — Étape 2 (SFT) | [FAIT] (conceptuel) | [A FAIRE] | [A FAIRE] | [FAIT] (conceptuel) |
-| 04 — Étape 3 (DPO) | [FAIT] (conceptuel) | [A FAIRE] | [A FAIRE] | [FAIT] (conceptuel) |
-| 05 — Étape 4 (déploiement) | [FAIT] (conceptuel) | [FAIT] (conceptuel) | [A FAIRE] | [FAIT] (conceptuel) |
+| 00 : Vue d'ensemble | [FAIT] | N/A | N/A | N/A |
+| 01 : Environnement | N/A | N/A | [FAIT] (réel) | N/A |
+| 02 : Étape 1 (données) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel) |
+| 03 : Étape 2 (SFT) | [FAIT] (conceptuel) | [A FAIRE] | [A FAIRE] | [FAIT] (conceptuel) |
+| 04 : Étape 3 (DPO) | [FAIT] (conceptuel) | [A FAIRE] | [A FAIRE] | [FAIT] (conceptuel) |
+| 05 : Étape 4 (déploiement) | [FAIT] (conceptuel) | [FAIT] (conceptuel) | [A FAIRE] | [FAIT] (conceptuel) |
 
 **« réel »** = généré à partir du code effectivement écrit
 (`src/chsa_triage/`, `interfaces/cli/`).

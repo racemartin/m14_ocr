@@ -1,4 +1,4 @@
-# Architecture hexagonale — Agent IA de Triage Médical (CHSA)
+# Architecture hexagonale : Agent IA de Triage Médical (CHSA)
 
 ## 1. Pourquoi hexagonal ici
 
@@ -14,43 +14,43 @@ semaines :
 L'architecture hexagonale (ports & adaptateurs) isole le **domaine**
 et l'**application** de ces choix d'infrastructure, afin qu'un
 changement d'infrastructure (passer de JSONL local à HF Datasets, ou
-de `llama.cpp` à vLLM) ne touche **aucune** ligne de code métier —
+de `llama.cpp` à vLLM) ne touche **aucune** ligne de code métier ;
 seul un nouvel adaptateur est écrit.
 
 ## 2. Les couches
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  interfaces/  (adaptateurs PRIMAIRES — pilotent l'application)   │
+│  interfaces/  (adaptateurs PRIMAIRES : pilotent l'application)   │
 │  cli/   api/ (FastAPI)   web/ (Streamlit)                        │
 └───────────────────────────┬───────────────────────────────────────┘
                              │ appelle
 ┌───────────────────────────▼───────────────────────────────────────┐
-│  application/  (cas d'usage — orchestrent les ports)               │
+│  application/  (cas d'usage : orchestrent les ports)               │
 │  use_cases/ : ImporterCorpusUseCase, ProfilerCorpusUseCase, ...    │
 └───────────────────────────┬───────────────────────────────────────┘
                              │ dépend de (interfaces uniquement)
 ┌───────────────────────────▼───────────────────────────────────────┐
-│  domain/  (coeur métier — ZÉRO dépendance externe)                 │
+│  domain/  (coeur métier : ZÉRO dépendance externe)                 │
 │  model/ : ExemplePivot, CorpusSource, NiveauConfiance, ...         │
 │  ports/  : DatasetRepository, CorpusReader, Anonymiseur, ...       │
 └───────────────────────────▲───────────────────────────────────────┘
                              │ implémente
 ┌───────────────────────────┴───────────────────────────────────────┐
-│  infrastructure/  (adaptateurs SECONDAIRES — implémentent les ports)│
+│  infrastructure/  (adaptateurs SECONDAIRES : implémentent les ports)│
 │  adapters/ : JsonlDatasetRepository, PresidioAnonymiseur, ...       │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 - **`domain/model`** : les entités métier. Ici, oui, le vocabulaire
   **est** médical (`ExemplePivot` a des champs `symptomes`,
-  `antecedents`, `constantes_vitales`...) — c'est le rôle du domaine
+  `antecedents`, `constantes_vitales`...), c'est le rôle du domaine
   de modéliser le métier. Zéro import de `pandas`, `presidio`,
   `datasets` ou quoi que ce soit d'externe : uniquement des
   `dataclasses`/`Enum` Python purs.
 - **`domain/ports`** : les interfaces (contrats) que l'infrastructure
   doit respecter. **Ici, les noms de méthode restent génériques**
-  (`save`, `find_by_id`, `list`, `read_raw_records`) — jamais
+  (`save`, `find_by_id`, `list`, `read_raw_records`) ; jamais
   `get_symptomes_patient()` ou `charger_corpus_mediqa()`. Un port
   générique peut ainsi servir à n'importe quel type d'entité
   (`Repository[ExemplePivot]` aujourd'hui, `Repository[AutreChose]`
@@ -60,13 +60,13 @@ seul un nouvel adaptateur est écrit.
   (« importer un corpus, le profiler, le convertir en schéma pivot,
   l'anonymiser, le découper en splits »). Cette couche **connaît** le
   domaine (elle manipule des `ExemplePivot`), mais ne connaît
-  **aucune** techno d'infrastructure — elle appelle des ports, jamais
+  **aucune** techno d'infrastructure ; elle appelle des ports, jamais
   directement `ydata_profiling` ou `presidio_analyzer`.
 - **`infrastructure/adapters`** : implémentations concrètes des ports.
   C'est la **seule** couche qui importe des bibliothèques externes
   (pandas, Presidio, `datasets`, `llama-cpp-python`, client HTTP
   vLLM...).
-- **`interfaces/`** : adaptateurs primaires — ce qui *déclenche*
+- **`interfaces/`** : adaptateurs primaires, ce qui *déclenche*
   l'application (CLI pour les scripts d'Étape 1, API FastAPI et UI
   Streamlit pour le chat de l'Étape 4).
 
@@ -80,7 +80,7 @@ Les flèches vont **toutes vers `domain`**, jamais depuis `domain` vers
 l'extérieur. `domain` ne dépend de rien ; tout le reste dépend de
 `domain`.
 
-## 4. Exemple concret — port générique vs. adaptateur spécifique
+## 4. Exemple concret : port générique vs. adaptateur spécifique
 
 Port (générique, dans `domain/ports/dataset_repository.py`) :
 
@@ -99,7 +99,7 @@ Adaptateur distant (à écrire plus tard) : implémenterait le **même**
 port en s'appuyant sur `datasets.load_dataset` / `push_to_hub`.
 
 `application/use_cases/uc_02_construire_dataset_pivot.py` ne sait *jamais*
-lequel des deux est branché — il appelle `repository.sauvegarder(...)`.
+lequel des deux est branché ; il appelle `repository.sauvegarder(...)`.
 L'injection de l'adaptateur concret se fait dans `interfaces/cli/`
 (le point d'entrée), pas dans le domaine ni l'application.
 
@@ -107,8 +107,8 @@ L'injection de l'adaptateur concret se fait dans `interfaces/cli/`
 
 Même logique pour le futur chat Streamlit/FastAPI :
 
-- Port `domain/ports/moteur_inference.py` : `generer(prompt: str) -> ReponseModele`
-  — générique, ne sait pas si le moteur est local ou distant.
+- Port `domain/ports/moteur_inference.py` : `generer(prompt: str) -> ReponseModele`,
+  générique, ne sait pas si le moteur est local ou distant.
 - Adaptateur `infrastructure/adapters/llamacpp_inference_adapter.py`
   (local, GGUF, gratuit).
 - Adaptateur `infrastructure/adapters/vllm_endpoint_inference_adapter.py`

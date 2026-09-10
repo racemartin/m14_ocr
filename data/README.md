@@ -1,4 +1,4 @@
-# data/ — Organisation et schéma
+# data/ : Organisation et schéma
 
 Ce dossier est volontairement **vide dans le dépôt versionné**
 (`.gitkeep` uniquement, `.gitignore` exclut le contenu réel). Cible
@@ -6,7 +6,7 @@ long terme (Livrable 1) : versionner le dataset anonymisé sur Hugging
 Face Hub. **Pas encore fait** : attendre que
 le contrôle qualité PII (§ ci-dessous) soit intégralement clos avant
 toute publication, même privée. En attendant, origine et licence des
-4 sources sont documentées dans le dépôt — voir
+4 sources sont documentées dans le dépôt ; voir
 `docs/00_cadrage/02_sources_donnees_licences.md`.
 
 ## Structure
@@ -15,12 +15,12 @@ toute publication, même privée. En attendant, origine et licence des
 data/
 ├── raw/          corpus bruts tels que téléchargés (JSONL)
 ├── processed/    dataset pivot, dataset anonymisé, doublons écartés, rapports
-└── splits/       (réservé — les splits sont actuellement stockés
+└── splits/       (réservé : les splits sont actuellement stockés
                    comme un champ `split` sur chaque ExemplePivot
                    dans processed/, pas des fichiers séparés)
 ```
 
-## `data/raw/` — corpus bruts attendus
+## `data/raw/` : corpus bruts attendus
 
 | Fichier attendu | Corpus source | Format |
 |---|---|---|
@@ -33,7 +33,7 @@ Noms de colonnes vérifiés contre le contenu réel téléchargé et
 implémentés dans `interfaces/cli/mappers_corpus.py`. Détail par
 source (schéma, config Hub) : `docs/02_etape1_donnees/00_couverture_exigences_officielles.md`.
 
-## `data/processed/` — schéma pivot (`ExemplePivot`)
+## `data/processed/` : schéma pivot (`ExemplePivot`)
 
 Chaque ligne de `dataset_pivot.jsonl` correspond à l'entité de domaine
 `ExemplePivot` (`src/chsa_triage/domain/model/exemple_pivot.py`) :
@@ -67,7 +67,7 @@ initial de la mission : cahier des charges §5.2
 | Fichier | Contenu |
 |---|---|
 | `dataset_pivot.jsonl` | Pivot consolidé, **jamais modifié** une fois construit (source de vérité immuable) |
-| `dataset_pivot_anonymise.jsonl` | Sortie **séparée** de l'anonymisation — mêmes identifiants que le pivot, champs texte masqués, `anonymise=true` |
+| `dataset_pivot_anonymise.jsonl` | Sortie **séparée** de l'anonymisation : mêmes identifiants que le pivot, champs texte masqués, `anonymise=true` |
 | `doublons_supprimes.jsonl` | Doublons exacts écartés à la construction du pivot (même `identifiant`), archivés, jamais perdus |
 | `rapport_anonymisation_rgpd.{json,md}` | Rapport RGPD cumulé (registres traités, entités détectées par type, historique des exécutions) |
 | `rapport_controle_qualite_anonymisation.{json,md}` | Contrôle qualité par comparaison pivot original / anonymisé (PII résiduelle, sur-masquage) |
@@ -76,13 +76,13 @@ initial de la mission : cahier des charges §5.2
 Le dataset pivot n'est **jamais modifié en place** par l'anonymisation :
 `anonymiser_dataset.py` lit `dataset_pivot.jsonl` et écrit dans
 `dataset_pivot_anonymise.jsonl` (fichiers séparés depuis le
-08/09/2026 — permet de relancer le contrôle qualité ou
+08/09/2026 ; permet de relancer le contrôle qualité ou
 une nouvelle vague d'anonymisation sans jamais perdre l'original). La
 déduplication est réelle (pas seulement documentée) : `identifiant`
 est déterministe (hash de `espace_noms:cle_naturelle`), donc un même
 registre brut produit toujours le même identifiant, et
 `ConstruireDatasetPivotUseCase` n'en garde qu'un seul exemplaire par
-identifiant — les doublons écartés atterrissent dans
+identifiant ; les doublons écartés atterrissent dans
 `doublons_supprimes.jsonl`.
 
 ## Pipeline de génération

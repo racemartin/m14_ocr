@@ -1,6 +1,6 @@
 """
 STEP 01
-Point d'entree CLI — Etape 1, action "profiler".
+Point d'entree CLI, Etape 1, action "profiler".
 
 Injecte les adaptateurs concrets (lecteur + profileur) dans le cas
 d'usage `ProfilerCorpusUseCase`. Aucune logique metier ici : ce
@@ -41,7 +41,7 @@ log = LogTool(origin="profiler_corpus")
 
 def _afficher_rapport(nom: str, rapport) -> None:
     print("=" * 80)
-    print(f"RAPPORT DE PROFILAGE — {nom}")
+    print(f"RAPPORT DE PROFILAGE : {nom}")
     print("=" * 80)
     print(f"  Enregistrements.......: {rapport.nombre_enregistrements}")
     print(f"  Taux de doublons......: {rapport.taux_doublons:.2%}")

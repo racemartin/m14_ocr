@@ -1,6 +1,6 @@
 """
 STEP 02
-Point d'entree CLI — Etape 1, action "construire le dataset pivot".
+Point d'entree CLI, Etape 1, action "construire le dataset pivot".
 
 Usage :
     uv run python interfaces/cli/construire_dataset_pivot.py \

@@ -1,4 +1,4 @@
-"""Tests du domaine — aucune dependance externe, s'executent partout."""
+"""Tests du domaine : aucune dependance externe, s'executent partout."""
 
 from chsa_triage.domain.model import (
     ExemplePivot,

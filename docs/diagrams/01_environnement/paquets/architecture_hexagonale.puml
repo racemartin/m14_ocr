@@ -1,7 +1,7 @@
 @startuml architecture_hexagonale
 !include ../../_common/estilo.iuml
 
-title Agent IA de Triage Médical — CHSA\nDiagramme de paquets : architecture hexagonale (état réel du code)
+title Agent IA de Triage Médical : CHSA\nDiagramme de paquets : architecture hexagonale (état réel du code)
 
 package "interfaces\n(adaptateurs primaires)" as INTERFACES {
   package "cli" {
@@ -11,10 +11,10 @@ package "interfaces\n(adaptateurs primaires)" as INTERFACES {
     class decouper_splits
     class mappers_corpus
   }
-  package "api\n(squelette — Étape 4)" as API_PKG {
+  package "api\n(squelette, Étape 4)" as API_PKG {
     class "main.py (à écrire)" as ApiMain
   }
-  package "web\n(squelette — Étape 4)" as WEB_PKG {
+  package "web\n(squelette, Étape 4)" as WEB_PKG {
     class "app.py (à écrire)" as WebApp
   }
 }

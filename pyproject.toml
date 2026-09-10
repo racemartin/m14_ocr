@@ -1,7 +1,7 @@
 [project]
 name = "chsa-triage"
 version = "0.1.0"
-description = "POC d'agent IA de triage medical pour le CHSA — architecture hexagonale"
+description = "POC d'agent IA de triage medical pour le CHSA, architecture hexagonale"
 requires-python = ">=3.11,<3.12"
 dependencies = [
     "pydantic>=2.7",
@@ -11,7 +11,7 @@ dependencies = [
 
 [project.optional-dependencies]
 # ----------------------------------------------------------------------
-# Environnement A (local, WSL2, 5 Go RAM, sans GPU) — Etape 1
+# Environnement A (local, WSL2, 5 Go RAM, sans GPU) : Etape 1
 # ----------------------------------------------------------------------
 local = [
     "setuptools<81",  # requis par ydata-profiling (dependance pkg_resources
@@ -31,7 +31,7 @@ local = [
 ]
 
 # ----------------------------------------------------------------------
-# Environnement B (distant, HF Jobs / Spaces Dev Mode, GPU) — Etapes 2-3
+# Environnement B (distant, HF Jobs / Spaces Dev Mode, GPU) : Etapes 2-3
 # ----------------------------------------------------------------------
 remote = [
     "torch>=2.3",

@@ -1,6 +1,6 @@
 """
 STEP 03.1
-Point d'entree CLI — Etape 1, action "controler la qualite de
+Point d'entree CLI, Etape 1, action "controler la qualite de
 l'anonymisation".
 
 Design fichier-a-fichier (08/09/2026 ; remplace un enganche en direct

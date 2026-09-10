@@ -1,6 +1,6 @@
 """
 STEP 04
-Point d'entree CLI — Etape 1, action "decouper en splits".
+Point d'entree CLI, Etape 1, action "decouper en splits".
 
 Usage :
     uv run python interfaces/cli/decouper_splits.py \

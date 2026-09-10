@@ -2,7 +2,7 @@
 !pragma layout smetana
 !include ../../_common/estilo.iuml
 
-title Étape 1 — Diagramme de paquets\nCe qui est en jeu au lancement des 2 commandes decouper_splits / verifier_repartition_splits
+title Étape 1 : Diagramme de paquets\nCe qui est en jeu au lancement des 2 commandes decouper_splits / verifier_repartition_splits
 
 package "interfaces\n(adaptateurs primaires)" as INTERFACES {
   package "cli" {

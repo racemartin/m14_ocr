@@ -1,4 +1,4 @@
-# CHSA Triage — Agent IA de Triage Médical (POC)
+# CHSA Triage : Agent IA de Triage Médical (POC)
 
 POC d'agent IA de triage médical pour le Centre Hospitalier
 Saint-Aurélien, développé sous architecture hexagonale (ports &
@@ -13,13 +13,13 @@ sous-dossiers numérotés selon les étapes du projet :
 | `docs/03_etape2_sft/` | Documentation SFT + LoRA (à venir) |
 | `docs/04_etape3_dpo/` | Documentation alignement DPO (à venir) |
 | `docs/05_etape4_deploiement/` | Documentation déploiement/évaluation (à venir) |
-| `docs/diagrams/` | Diagrammes UML (activité, séquence, paquets, déploiement) par étape — `.puml`+`.png`+`.svg`+`.pdf`, voir `docs/diagrams/README.md` |
+| `docs/diagrams/` | Diagrammes UML (activité, séquence, paquets, déploiement) par étape : `.puml`+`.png`+`.svg`+`.pdf`, voir `docs/diagrams/README.md` |
 
 Chaque document se termine par un renvoi vers le suivant, pour lire
 la documentation dans l'ordre du projet en partant de
 `docs/00_cadrage/00_objectifs_du_projet.md`.
 
-## Démarrage rapide (Étape 1 — données)
+## Démarrage rapide (Étape 1 : données)
 
 ```bash
 # Installation
@@ -96,7 +96,7 @@ remplace l'execution du 07/09/2026 dont les identifiants etaient aleatoires) :
 | `data/raw/frenchmedmcqa.jsonl` | `frenchmedmcqa` | 595 | 594 | 1 |
 | `data/raw/medquad.jsonl` | `medquad` | 16 407 | 16 359 | 48 |
 | `data/raw/ultramedical_preference.jsonl` | `ultramedical_preference` | 109 353 | 97 081 | 12 272 |
-| **TOTAL** | — | **147 204** | **134 883** | **12 321** |
+| **TOTAL** | N/A | **147 204** | **134 883** | **12 321** |
 
 L'identifiant deterministe (`ExemplePivot.nouvel_identifiant`, hash
 stable derive d'une cle naturelle propre a chaque source : champ
@@ -308,22 +308,22 @@ uv run python interfaces/cli/verifier_repartition_splits.py --dataset data/proce
 
 ```
 src/chsa_triage/
-├── domain/            # entités + ports — zéro dépendance externe
-├── application/       # cas d'usage — orchestrent les ports
+├── domain/            # entités + ports, zéro dépendance externe
+├── application/       # cas d'usage : orchestrent les ports
 └── infrastructure/    # adaptateurs concrets (JSONL, HF, Presidio, ydata-profiling, ...)
 interfaces/            # adaptateurs primaires : cli/ (Étape 1), api/ et web/ (Étape 4)
-training/              # scripts exécutés via HF Jobs (SFT, DPO) — Étapes 2-3
-docker/                # Dockerfiles + docker-compose (frontend/backend) — Étape 4
+training/              # scripts exécutés via HF Jobs (SFT, DPO) : Étapes 2-3
+docker/                # Dockerfiles + docker-compose (frontend/backend) : Étape 4
 ```
 
 Détail complet : `docs/01_environnement/01_architecture_hexagonale.md`.
 
 ## État d'avancement
 
-- [x] Étape 0 — Cadrage, environnement, architecture
-- [ ] Étape 1 — Préparation des données : dataset pivot **régénéré**
+- [x] Étape 0 : Cadrage, environnement, architecture
+- [ ] Étape 1 : Préparation des données : dataset pivot **régénéré**
       (08/09/2026) avec identifiants **déterministes** sur les 6
-      fichiers réels — **134 883 exemples** (147 204 registres bruts,
+      fichiers réels : **134 883 exemples** (147 204 registres bruts,
       **12 321 doublons exacts dédoublonnés réellement**, archivés
       dans `data/processed/doublons_supprimes.jsonl`, jamais perdus) ;
       anonymisation écrit désormais dans un fichier **séparé**
@@ -337,21 +337,21 @@ Détail complet : `docs/01_environnement/01_architecture_hexagonale.md`.
       `controler_qualite_anonymisation.py`) ; **première vague
       exécutée sur le pivot régénéré (5 000/134 883 exemples, 90,6 %
       avec ≥1 entité détectée, 64 667 entités) et découpée en splits
-      (4 004/498/498, vérifiée représentative par strate)** — 200
+      (4 004/498/498, vérifiée représentative par strate)** ; 200
       exemples contrôlés automatiquement (0 PII résiduelle confirmée,
-      35 candidats explicitement en attente de révision humaine) —
+      35 candidats explicitement en attente de révision humaine) ;
       voir `docs/02_etape1_donnees/00_couverture_exigences_officielles.md`.
       Muestreo du contrôle qualité rendu **incrémental** (09/09/2026,
       `--registre-echantillons`) et les 35 candidats en attente
       peuvent désormais être tranchés avec une décision humaine
       **persistée** (`reviser_pii_residuelle.py`,
-      `data/processed/decisions_revision_humaine.jsonl`) — voir §6
+      `data/processed/decisions_revision_humaine.jsonl`) ; voir §6
       ci-dessus et `docs/02_etape1_donnees/01_rapport_rgpd.md` §7.5.
       **Vagues ultérieures** : à relancer avec `--limite` plus grand
       (ou `full`) avant le SFT/DPO ; réévaluer d'abord le risque de
       saturation/surapprentissage d'un entraînement sur un
       sous-échantillon trop petit face au dataset complet (à étudier
       à ce moment-là, pas tranché ici)
-- [ ] Étape 2 — SFT + LoRA
-- [ ] Étape 3 — DPO
-- [ ] Étape 4 — Déploiement (FastAPI + Streamlit + vLLM + CI/CD)
+- [ ] Étape 2 : SFT + LoRA
+- [ ] Étape 3 : DPO
+- [ ] Étape 4 : Déploiement (FastAPI + Streamlit + vLLM + CI/CD)

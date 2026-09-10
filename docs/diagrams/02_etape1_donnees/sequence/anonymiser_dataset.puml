@@ -1,7 +1,7 @@
 @startuml anonymiser_dataset
 !include ../../_common/estilo.iuml
 
-title Étape 1 — Diagramme de séquence\nAnonymisation RGPD du dataset pivot (cas d'usage réel, classes du code)
+title Étape 1 : Diagramme de séquence\nAnonymisation RGPD du dataset pivot (cas d'usage réel, classes du code)
 
 actor "Développeur\n(ligne de commande)" as Dev
 

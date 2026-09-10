@@ -658,7 +658,7 @@ def formater_rapport_markdown(
         ) or "(aucune)"
         lignes.append(f"| {source} | {stats.registres_traites} | {stats.registres_avec_entite} | {detail} |")
     if not statistiques_cumulees:
-        lignes.append("| (rapport RGPD cumule introuvable ou vide) | — | — | — |")
+        lignes.append("| (rapport RGPD cumule introuvable ou vide) | N/A | N/A | N/A |")
 
     # ----------------------------------------------------------------------
     # PII residuelle detectee dans le texte anonymise

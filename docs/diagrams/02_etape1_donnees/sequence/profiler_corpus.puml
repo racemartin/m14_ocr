@@ -1,7 +1,7 @@
 @startuml profiler_corpus
 !include ../../_common/estilo.iuml
 
-title Étape 1 — Diagramme de séquence\nProfilage d'un corpus (cas d'usage réel, classes du code)
+title Étape 1 : Diagramme de séquence\nProfilage d'un corpus (cas d'usage réel, classes du code)
 
 actor "Développeur\n(ligne de commande)" as Dev
 
@@ -34,7 +34,7 @@ alt ~-~-bloque N fourni (evite l'OOM sur un gros corpus, cf. ultramedical_prefer
   activate Lecteur
   note right of Lecteur
     pandas(chunksize=N) : un DataFrame
-    par bloc, libere avant le suivant —
+    par bloc, libere avant le suivant ;
     memoire de pointe bornee par N
   end note
 

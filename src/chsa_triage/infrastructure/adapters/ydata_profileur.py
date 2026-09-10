@@ -29,7 +29,7 @@ class YdataProfileur:
 
         rapport = ProfileReport(
             dataframe,
-            title=f"Profilage — {nom_corpus}",
+            title=f"Profilage : {nom_corpus}",
             minimal=True,  # rapport allege : suffisant pour decider nettoyer ou non
         )
 

@@ -1,11 +1,11 @@
 # Guide d'installation de l'environnement de développement
 
 > Ce guide remplace la version précédente. Deux changements majeurs :
-> 1. Le projet suit une **architecture hexagonale** (ports & adaptateurs) —
+> 1. Le projet suit une **architecture hexagonale** (ports & adaptateurs) ;
 >    voir `01_architecture_hexagonale.md` (meme dossier) pour le détail des couches.
 > 2. **Environnement A (local)** utilise **`uv`** (et non plus
 >    `venv`/`pip` bruts). **Environnement B (distant)** utilise
->    **Hugging Face en compte payant** — `HF Jobs` pour l'entraînement
+>    **Hugging Face en compte payant** : `HF Jobs` pour l'entraînement
 >    batch, `HF Spaces Dev Mode` pour le développement interactif en
 >    SSH/VSCode.
 
@@ -13,17 +13,17 @@
 
 ## 0. Vue d'ensemble des deux environnements
 
-| | Environnement A — Local | Environnement B — Distant (HF payant) |
+| | Environnement A : Local | Environnement B : Distant (HF payant) |
 |---|---|---|
 | Machine | WSL2, 5 Go RAM, pas de GPU | Infrastructure Hugging Face (GPU à la demande) |
 | Gestionnaire de paquets | `uv` | `uv` (le même, exécuté à distance) |
 | Rôle | Domaine, application, adaptateurs testables sans GPU (JSONL, profiling, anonymisation), inférence locale GGUF | Entraînement SFT/DPO, développement interactif nécessitant GPU |
 | Outils HF | `huggingface-cli` (auth, download) | `hf jobs` (batch), `hf` Dev Mode (interactif, SSH/VSCode) |
-| Coût | 0 € | Pay-as-you-go — voir §3.4 pour limiter la facture |
+| Coût | 0 € | Pay-as-you-go, voir §3.4 pour limiter la facture |
 
 ---
 
-## 1. Environnement A — Local (WSL2 + `uv`)
+## 1. Environnement A : Local (WSL2 + `uv`)
 
 ### 1.1 Installer `uv`
 
@@ -49,7 +49,7 @@ uv sync --extra local
 `datasets`, `ydata-profiling`, `presidio-analyzer/anonymizer`, `spacy`,
 `pydantic`, `transformers` (CPU), `huggingface_hub`, `pytest`, `ruff`,
 `mlflow`. **Aucune dépendance GPU** (pas de `torch` CUDA, pas
-`unsloth`) — cohérent avec la contrainte des 5 Go RAM.
+`unsloth`), cohérent avec la contrainte des 5 Go RAM.
 
 ```bash
 # Activer l'environnement pour une session shell interactive
@@ -95,12 +95,12 @@ uv run python scripts/check_env_local.py
 Le choix retenu (cf. échange précédent) : **HF plutôt que Kaggle/Colab
 pour les runs qui comptent**, car l'intégration avec le Hub où sont
 déjà versionnés le dataset et le modèle est native, et parce que tout
-le pipeline est écrit en `.py` — HF Jobs exécute des scripts sans
+le pipeline est écrit en `.py` : HF Jobs exécute des scripts sans
 aucun notebook. Le compte payant (crédits pay-as-you-go) débloque :
 - **HF Jobs** : exécution facturée à la seconde, GPU à la demande,
   aucune machine à gérer.
 - **Spaces Dev Mode** : SSH + VSCode Remote sur un Space avec GPU,
-  pour le développement interactif (débogage, itération rapide) —
+  pour le développement interactif (débogage, itération rapide) ;
   fonctionnalité réservée aux comptes PRO/Team/Enterprise.
 
 **Règle de discipline pour limiter la facture (cf. §3.4) : Dev Mode
@@ -109,7 +109,7 @@ entraînement complet en arrière-plan sans surveillance.**
 
 ---
 
-## 3. Environnement B — Distant (HF payant)
+## 3. Environnement B : Distant (HF payant)
 
 ### 3.1 Installer le CLI `hf` en local
 
@@ -118,7 +118,7 @@ uv tool install huggingface_hub[cli]
 hf auth login
 ```
 
-### 3.2 HF Jobs — entraînement batch (SFT, DPO)
+### 3.2 HF Jobs : entraînement batch (SFT, DPO)
 
 Aucune installation côté "serveur" : le script `.py` (avec ses
 dépendances déclarées en en-tête façon `uv script`, ou via
@@ -143,15 +143,15 @@ hf jobs stats <job_id>
 hf jobs logs <job_id>
 ```
 
-### 3.3 Spaces Dev Mode — développement interactif SSH/VSCode
+### 3.3 Spaces Dev Mode : développement interactif SSH/VSCode
 
-**Étape 1 — Créer le Space :**
+**Étape 1 : Créer le Space :**
 
 ```bash
 hf repo create chsa-triage-dev --type space --space_sdk docker
 ```
 
-**Étape 2 — Activer Dev Mode et choisir le matériel :**
+**Étape 2 : Activer Dev Mode et choisir le matériel :**
 
 Dans Settings du Space (interface web) :
 1. Sélectionner un hardware GPU (ex. `T4 small` pour du débogage léger,
@@ -160,7 +160,7 @@ Dans Settings du Space (interface web) :
    développement : un serveur SSH et un serveur VSCode démarrent en
    tâche de fond à l'intérieur du conteneur.
 
-**Étape 3 — Récupérer les instructions de connexion :**
+**Étape 3 : Récupérer les instructions de connexion :**
 
 La modale "Dev Mode" du Space affiche une commande SSH prête à copier,
 du type :
@@ -184,17 +184,17 @@ Puis simplement :
 ssh chsa-dev
 ```
 
-**Étape 4 — VSCode Remote :**
+**Étape 4 : VSCode Remote :**
 
 1. Installer l'extension **Remote - SSH** dans VSCode.
 2. `Cmd/Ctrl+Shift+P` → *Remote-SSH: Connect to Host* → choisir `chsa-dev`.
 3. Ouvrir le dossier du Space (`/app` ou équivalent selon l'image).
 4. Le terminal intégré VSCode est alors un terminal **sur la machine
-   GPU distante** — installer `uv` comme en local (§1.1) et faire
+   GPU distante** : installer `uv` comme en local (§1.1) et faire
    `uv sync --extra remote` pour installer torch/CUDA, `trl`, `peft`,
    `unsloth`, `vllm`, etc.
 
-**Étape 5 — Persister le travail :**
+**Étape 5 : Persister le travail :**
 
 Le conteneur Dev Mode n'est pas permanent : committer régulièrement
 (`git add . && git commit && git push`) vers le dépôt du Space, ou
@@ -202,7 +202,7 @@ pousser directement les checkpoints vers un autre repo HF (`datasets`
 ou `models`) avec `huggingface_hub.upload_folder`.
 
 > Les requirements sont **volontairement absents de l'image Docker
-> de base** — comme documenté par Hugging Face, il faut les installer
+> de base**, comme documenté par Hugging Face, il faut les installer
 > manuellement (`uv sync`) à chaque nouvelle session Dev Mode, sauf
 > si tu construis une image Docker custom pour le Space qui les
 > embarque déjà (recommandé une fois la liste stabilisée, pour éviter
@@ -210,7 +210,7 @@ ou `models`) avec `huggingface_hub.upload_folder`.
 
 ### 3.4 Discipline de facturation
 
-- **Jamais de Dev Mode GPU ouvert sans surveillance** — désactiver
+- **Jamais de Dev Mode GPU ouvert sans surveillance** : désactiver
   (Settings → Disable Dev Mode) ou changer le hardware vers CPU dès
   la session de débogage terminée.
 - Utiliser **HF Jobs** (facturé à la seconde, pas d'oubli possible
@@ -231,7 +231,7 @@ chsa-triage/
 ├── docs/                          # toute la documentation du projet
 ├── scripts/                       # scripts opérationnels (vérif. env, CLI ad hoc)
 ├── src/chsa_triage/
-│   ├── domain/                    # coeur métier — aucune dépendance externe
+│   ├── domain/                    # coeur métier, aucune dépendance externe
 │   │   ├── model/                 # entités (ExemplePivot, CorpusSource, ...)
 │   │   └── ports/                 # interfaces génériques (Protocol)
 │   ├── application/               # cas d'usage, orchestrent les ports
