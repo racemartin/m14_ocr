@@ -48,7 +48,7 @@ class YdataProfileur:
     def _taux_doublons(dataframe: pd.DataFrame) -> float:
         """
         dataframe.duplicated() leve TypeError("unhashable type: 'list'")
-        des qu'une colonne contient des valeurs non hachables -- ex.
+        des qu'une colonne contient des valeurs non hachables, ex.
         `chosen`/`rejected` d'UltraMedical-Preference, qui sont des
         listes de messages (format chat), et `metadata`, un dict
         (decouvert le 03/09/2026 sur le corpus reel). On stringifie

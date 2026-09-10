@@ -51,7 +51,7 @@ alt n is not None and n < len(exemples)
   UC -> UC : echantillon_stratifie(exemples, n, graine)
   note right of UC
     Sous-echantillonnage stratifie (type_exemple,
-    source) avant repartition -- meme algorithme
+    source) avant repartition, meme algorithme
     (methode du plus grand reste) que dans
     anonymiser_dataset.puml, factorise dans
     chsa_triage.application.echantillonnage
@@ -67,7 +67,7 @@ note right of UC
   sous-representerait les petites sources
   (ex. FrenchMedMCQA) dans test/val face
   aux grandes (ex. UltraMedical-Preference,
-  ~180x plus grande) -- chaque strate est
+  ~180x plus grande), chaque strate est
   decoupee independamment selon les memes
   proportions, garantissant train/val/test
   representatifs de toutes les (type_exemple,

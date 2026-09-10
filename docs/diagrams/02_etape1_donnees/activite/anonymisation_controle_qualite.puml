@@ -11,7 +11,7 @@ partition "Étape 4 — Anonymisation (Presidio)" #FCEBE6 {
   :_anonymiser_exemple(exemple);
   :_anonymiser_messages\n(prompt / completion / chosen / rejected);
   :PresidioAnonymiseur.anonymiser(texte, langue);
-  :_normaliser_ages(texte, code_langue)\nremplace "X ans" par une tranche\nclinique (pédiatrique / adolescent /\nadulte / personne âgée) via\n_tranche_pour_age() -- AVANT analyse,\npour que DATE_TIME ne voie jamais\nl'âge exact;
+  :_normaliser_ages(texte, code_langue)\nremplace "X ans" par une tranche\nclinique (pédiatrique / adolescent /\nadulte / personne âgée) via\n_tranche_pour_age(), AVANT analyse,\npour que DATE_TIME ne voie jamais\nl'âge exact;
   :NlpEngineProvider\n(fr_core_news_md / en_core_web_sm);
   :AnalyzerEngine.analyze()\ndétecte les entités;
   note right
@@ -28,9 +28,9 @@ partition "Étape 4 — Anonymisation (Presidio)" #FCEBE6 {
   :AnonymizerEngine.anonymize()\napplique un opérateur par type\nd'entité (DEFAULT + DATE_TIME dédié);
   if (Entité DATE_TIME ?\n(_construire_operateur_date_time)) then (oui)
     if (_est_date_absolue\n(texte_capture) ?) then (oui)
-      :Masque -- date calendaire\nidentifiante;
+      :Masque : date calendaire\nidentifiante;
     elseif (_est_duree_relative\n(texte_capture) ?) then (oui)
-      :Conserve intacte -- durée\nclinique non identifiante\n("il y a 3 semaines", etc.);
+      :Conserve intacte : durée\nclinique non identifiante\n("il y a 3 semaines", etc.);
     else (ni l'un ni l'autre)
       :Masque (comportement\nDEFAULT par défaut);
     endif
@@ -85,7 +85,7 @@ partition "Étape 5 — Contrôle qualité (comparaison de 2 fichiers)" #F0EEE7 
       échantillonné indépendamment
       (graine_aleatoire_sans_entite),
       pas tiré du même échantillon
-      stratifié (type_exemple, source) --
+      stratifié (type_exemple, source) ;
       distingue explicitement "Presidio
       n'a RIEN détecté" du reste
     end note

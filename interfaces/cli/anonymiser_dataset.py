@@ -9,9 +9,9 @@ Usage :
         --strategie replace \
         --limite 5000
 
-Design source/sortie separes (08/09/2026, decision du capitaine --
-remplace un design precedent qui mutait le pivot en place) :
---dataset (le pivot original) n'est JAMAIS modifie par ce script --
+Design source/sortie separes (08/09/2026 ; remplace un design precedent
+qui mutait le pivot en place) :
+--dataset (le pivot original) n'est JAMAIS modifie par ce script,
 lu seul. Le resultat anonymise est ecrit dans --sortie, un fichier
 SEPARE (defaut data/processed/dataset_pivot_anonymise.jsonl). "Deja
 anonymise" se determine desormais par la presence de l'identifiant
@@ -24,17 +24,17 @@ posteriori par simple comparaison --dataset vs --sortie (cf.
 boucle d'anonymisation.
 
 Option --limite (08/09/2026, decision produit suite a la mesure reelle
-d'un temps d'anonymisation complet de ~19h sur le dataset pivot --
+d'un temps d'anonymisation complet de ~19h sur le dataset pivot ;
 cf. docs/02_etape1_donnees/00_couverture_exigences_officielles.md) :
 `--limite N` (defaut 5000, l'objectif de la mission) anonymise une
 SOUS-ECHANTILLON stratifie par (type_exemple, source) de taille N
 parmi les exemples du pivot source dont l'identifiant n'est pas encore
-dans --sortie -- le reste attend un appel ulterieur avec un N plus
+dans --sortie ; le reste attend un appel ulterieur avec un N plus
 grand (les exemples deja presents dans --sortie ne sont jamais
 retraites). `--limite full` (ou toute valeur >= au nombre restant)
 traite tout ce qui reste en une seule fois.
 
-Rapport RGPD automatique (demande du capitaine : que le pipeline
+Rapport RGPD automatique (le pipeline
 genere lui-meme ses indicateurs RGPD, de facon reproductible, plutot
 qu'un calcul manuel ponctuel) : CHAQUE execution ecrit un rapport RGPD
 CUMULE (JSON + Markdown, cf. `application/use_cases/uc_03_01_rapport_anonymisation.py`)
@@ -184,7 +184,7 @@ def main() -> None:
     print(f"Resultat ecrit dans {arguments.sortie} (le pivot original {arguments.dataset} n'a pas ete modifie).")
 
     # Rapport RGPD cumule (indicateurs generes automatiquement, pas
-    # calcules a la main -- fusionne avec les executions precedentes).
+    # calcules a la main, fusionne avec les executions precedentes).
     horodatage = datetime.now(timezone.utc).isoformat(timespec="seconds")
     limite_affichee = str(arguments.limite) if arguments.limite is not None else "full"
 

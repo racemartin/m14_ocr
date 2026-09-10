@@ -48,7 +48,7 @@ note right of CLI
   optionnel : la CLI passe un lambda qui enveloppe
   l'iterable avec tqdm(..., desc="Anonymisation
   Presidio", total=len(a_traiter)) pour afficher une
-  barre de progression -- sans que le cas d'usage
+  barre de progression, sans que le cas d'usage
   (application/) depende d'une librairie de
   presentation (tqdm), conformement a l'architecture
   hexagonale.
@@ -83,7 +83,7 @@ UC -> UC : iterable = envelopper_iterable(a_traiter)
 note right of UC
   Si un wrapper a ete passe, ceci active
   la barre de progression tqdm visible dans
-  le terminal sur a_traiter -- que ce soit
+  le terminal sur a_traiter, que ce soit
   la liste complete ou le sous-echantillon
   stratifie. Sans wrapper, c'est une identite
   (aucun effet).

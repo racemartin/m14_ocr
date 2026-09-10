@@ -1,6 +1,6 @@
 """
 Tests de la detection heuristique par regex de candidats de PII
-residuelle (aucune dependance NLP ici -- le tri confirme/faux positif
+residuelle (aucune dependance NLP ici ; le tri confirme/faux positif
 est fait ailleurs par la seconde opinion spaCy, cf.
 `test_controler_qualite_anonymisation.py`).
 """

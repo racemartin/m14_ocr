@@ -3,7 +3,7 @@ Adaptateur secondaire : lecture d'un corpus brut directement depuis
 le Hugging Face Hub (`datasets.load_dataset`).
 
 Implemente le meme port `LecteurCorpus` que l'adaptateur fichier
-local -- l'application ne voit aucune difference entre les deux.
+local ; l'application ne voit aucune difference entre les deux.
 """
 
 from __future__ import annotations

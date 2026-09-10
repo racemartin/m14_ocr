@@ -43,7 +43,7 @@ uv run pytest tests/ -v
 ### 1. Telechargement (Hugging Face Hub -> data/raw/)
 
 ```bash
-# NB : la configuration "oeq" de MediQAl n'a qu'un split "test" (pas de "train") -- --split explicite requis
+# NB : la configuration "oeq" de MediQAl n'a qu'un split "test" (pas de "train") ; --split explicite requis
 uv run python interfaces/cli/telecharger_corpus.py --identifiant-hub ANR-MALADES/MediQAl --configuration oeq --split test --sortie data/raw/mediqal_oeq.jsonl
 uv run python interfaces/cli/telecharger_corpus.py --identifiant-hub ANR-MALADES/MediQAl --configuration mcqu --sortie data/raw/mediqal_mcqu.jsonl
 uv run python interfaces/cli/telecharger_corpus.py --identifiant-hub ANR-MALADES/MediQAl --configuration mcqm --sortie data/raw/mediqal_mcqm.jsonl
@@ -68,13 +68,13 @@ uv run python interfaces/cli/profiler_corpus.py --source data/raw/ultramedical_p
 ### 3. Construction du dataset pivot (meme --sortie : fusionne les corpus par identifiant)
 
 ```bash
-# NB : MediQAl a 3 configurations, avec 2 schemas differents -- le
+# NB : MediQAl a 3 configurations, avec 2 schemas differents : le
 # mapper (donc la valeur --corpus) depend du schema, pas seulement de
 # la source Hub. "oeq" (question/answer) -> mapper_mediqal ;
 # "mcqu"/"mcqm" (QCM, answer_a..answer_e + correct_answers) ->
 # mapper_mediqal_qcm. Voir interfaces/cli/mappers_corpus.py.
 # NB : --taille-bloc requis sur ultramedical_preference.jsonl (966 Mo,
-# 109353 enregistrements) -- sans lecture par blocs, OOM reel confirme
+# 109353 enregistrements) ; sans lecture par blocs, OOM reel confirme
 # sur 5.8 Go de RAM disponibles. Voir --taille-bloc dans
 # interfaces/cli/construire_dataset_pivot.py.
 uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/mediqal_oeq.jsonl --corpus mediqal_oeq --sortie data/processed/dataset_pivot.jsonl
@@ -99,7 +99,7 @@ remplace l'execution du 07/09/2026 dont les identifiants etaient aleatoires) :
 | **TOTAL** | — | **147 204** | **134 883** | **12 321** |
 
 L'identifiant deterministe (`ExemplePivot.nouvel_identifiant`, hash
-stable derive d'une cle naturelle propre a chaque source -- champ
+stable derive d'une cle naturelle propre a chaque source : champ
 `id` brut pour MediQAl/FrenchMedMCQA, hash Question+Answer pour
 MedQuAD, `prompt_id`+`label_type`+chosen+rejected pour
 UltraMedical-Preference) a mis au jour de VRAIS doublons exacts dans
@@ -109,24 +109,22 @@ determine desormais un **espace de noms** plus fin que la simple
 `source` du pivot : verifie sur les fichiers reels, `mediqal_oeq.jsonl`
 et `mediqal_mcqu.jsonl` partagent 1 492 valeurs de champ `id`
 identiques bien que decrivant des registres differents.
-`ConstruireDatasetPivotUseCase` dedoublonne reellement (decision du
-capitaine) : un seul exemplaire par identifiant atterrit dans le
+`ConstruireDatasetPivotUseCase` dedoublonne reellement : un seul exemplaire par identifiant atterrit dans le
 pivot, les doublons ecartes sont archives (jamais perdus) dans
 `data/processed/doublons_supprimes.jsonl`. Detail complet (methodologie,
 cle naturelle par source, investigation legere sur la cause probable
 des doublons UltraMedical-Preference) dans
 `docs/02_etape1_donnees/00_couverture_exigences_officielles.md`.
 
-### 4. Anonymisation (incrementale/reprenable, cf. --limite) -- ecrit dans un fichier SEPARE
+### 4. Anonymisation (incrementale/reprenable, cf. --limite), ecrit dans un fichier SEPARE
 
 ```bash
-# IMPORTANT (08/09/2026, design source/sortie separes, decision du
-# capitaine) : --dataset (le pivot original) n'est JAMAIS modifie --
+# IMPORTANT (08/09/2026, design source/sortie separes) : --dataset (le pivot original) n'est JAMAIS modifie ;
 # le resultat est ecrit dans --sortie, un fichier separe (defaut
 # data/processed/dataset_pivot_anonymise.jsonl). "Deja anonymise" se
 # determine par la presence de l'identifiant dans --sortie, pas par un
 # champ mute sur le pivot source. Anonymisation complete du dataset
-# (134883 exemples) mesuree a ~19h (cout NLP Presidio/spaCy) --
+# (134883 exemples) mesuree a ~19h (cout NLP Presidio/spaCy) ;
 # --limite (defaut 5000, l'objectif chiffre de la mission) anonymise
 # un echantillon stratifie par (type_exemple, source) parmi les
 # exemples du pivot pas encore presents dans --sortie ; le reste
@@ -156,7 +154,7 @@ avec >=1 entite detectee, entites par type, et la liste tracable des
 executions ayant contribue (horodatage, strategie, limite, graine).
 Voir `application/use_cases/uc_03_01_rapport_anonymisation.py`.
 
-`PresidioAnonymiseur` (08/09/2026, ameliorations avancees -- voir
+`PresidioAnonymiseur` (08/09/2026, ameliorations avancees, voir
 `docs/02_etape1_donnees/01_rapport_rgpd.md` §7 pour la justification
 complete) ajoute un recognizer NIR francais (numero de securite
 sociale, valide par cle de controle modulo 97, pas juste un motif "15
@@ -164,25 +162,25 @@ chiffres") et normalise les mentions explicites d'age
 ("age de X ans"/"X-year-old"/"aged X") en tranche clinique
 (pediatrique/adolescent/adulte/personne agee) AVANT que Presidio ne
 les analyse, pour que `DATE_TIME` ne les elimine pas comme une date de
-naissance -- l'operateur `DATE_TIME` distingue en plus une date
+naissance ; l'operateur `DATE_TIME` distingue en plus une date
 calendaire absolue (masquee) d'une duree relative ("il y a 3
-semaines", "depuis 2 mois" -- laissee intacte, signal clinique pas
-identifiant).
+semaines", "depuis 2 mois"), laissee intacte, signal clinique pas
+identifiant.
 
 ### 5. Controle qualite de l'anonymisation (comparaison de fichiers)
 
 ```bash
 # Compare le pivot ORIGINAL (jamais modifie) au fichier ANONYMISE,
-# croises par identifiant, sur un echantillon stratifie -- peut se
+# croises par identifiant, sur un echantillon stratifie ; peut se
 # relancer a tout moment, y compris retroactivement sur une vague
 # anonymisee il y a longtemps (le pivot original existe toujours).
 uv run python interfaces/cli/controler_qualite_anonymisation.py --dataset data/processed/dataset_pivot.jsonl --anonymise data/processed/dataset_pivot_anonymise.jsonl --taille-echantillon 200
 ```
 
-Detecte les candidats de PII residuelle (regex sans modele -- emails,
-telephones, URLs, dates, bigrammes capitalises -- sur le texte
-anonymise) et les tranche avec une seconde opinion spaCy (memes
-modeles que `PresidioAnonymiseur`, `fr_core_news_md`/`en_core_web_sm` --
+Detecte les candidats de PII residuelle sur le texte anonymise (regex
+sans modele : emails, telephones, URLs, dates, bigrammes capitalises)
+et les tranche avec une seconde opinion spaCy (memes
+modeles que `PresidioAnonymiseur`, `fr_core_news_md`/`en_core_web_sm`,
 jamais de LLM) : confirme, ecarte comme faux positif du regex, ou
 marque explicitement "pendant_revision_humaine" si ni le regex ni
 spaCy ne tranchent. Detecte aussi les candidats de sur-masquage
@@ -190,7 +188,7 @@ spaCy ne tranchent. Detecte aussi les candidats de sur-masquage
 nommee) par diff texte original/anonymise. Tire en plus un stratum
 DEDIE et independant (`--taille-echantillon-sans-entite`, 40 par
 defaut) parmi les exemples ou Presidio n'a RIEN detecte du tout
-(texte_original == texte_anonymise) -- distingue explicitement "rien
+(texte_original == texte_anonymise), ce qui distingue explicitement "rien
 detecte" de "quelque chose detecte" pour la relecture manuelle,
 plutot que de presumer ces cas corrects par defaut. Ecrit son propre
 rapport (`data/processed/rapport_controle_qualite_anonymisation.{json,md}`),
@@ -198,11 +196,11 @@ avec des exemples reels inspectables par source et les compteurs
 d'entites par type repris du rapport RGPD cumule (§4 ci-dessus, pas
 recalcules). Voir `application/use_cases/uc_03_02_controler_qualite_anonymisation.py`.
 
-**Muestreo INCREMENTAL** (09/09/2026, decision du capitaine -- meme
+**Muestreo INCREMENTAL** (09/09/2026, meme
 patron que `--limite` ci-dessus) : `--registre-echantillons` (defaut
 `data/processed/controle_qualite_identifiants_echantillonnes.jsonl`)
 exclut du tirage les identifiants deja echantillonnes lors d'une
-execution precedente, sur les deux strates -- chaque execution ne
+execution precedente, sur les deux strates ; chaque execution ne
 compare que des identifiants NOUVEAUX. C'est ce qui rend les
 decisions humaines de la section suivante cumulables entre
 executions, au lieu d'un echantillon jete a chaque fois.
@@ -223,7 +221,7 @@ uv run python interfaces/cli/reviser_pii_residuelle.py modify --identifiant chsa
 Ferme l'ecart identifie sur l'exigence NF2 du cahier des charges
 ("anonymisation validee **manuellement**") : avant ce script, le
 verdict `pendant_revision_humaine` du controle qualite (§5) etait un
-cul-de-sac -- aucune decision de personne n'etait jamais persistee.
+cul-de-sac ; aucune decision de personne n'etait jamais persistee.
 Chaque decision (`accepte` = confirme non-PII, `rejete` = PII reelle
 confirmee) est identifiee par une cle stable
 `(source_liste, identifiant, champ, type_motif, debut, fin)` et
@@ -239,7 +237,7 @@ complete.
 
 ```bash
 # decouper_splits.py opere sur le fichier ANONYMISE (dataset_pivot_anonymise.jsonl),
-# PAS sur le pivot original -- le relancer apres chaque nouvelle vague
+# PAS sur le pivot original ; le relancer apres chaque nouvelle vague
 # d'anonymisation.
 uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset_pivot_anonymise.jsonl
 
@@ -247,21 +245,21 @@ uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset
 uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset_pivot_anonymise.jsonl --n 5000
 ```
 
-**Croissance stable, jamais de reordonnancement (10/09/2026, decision
-du capitaine, CHANGEMENT DE COMPORTEMENT reel).** Un exemple qui a
+**Croissance stable, jamais de reordonnancement (10/09/2026,
+CHANGEMENT DE COMPORTEMENT reel).** Un exemple qui a
 deja un `split` (execution anterieure) n'est JAMAIS reassigne, quel
-que soit le `--n` demande ensuite -- agrandir le dataset ne fait QUE
+que soit le `--n` demande ensuite ; agrandir le dataset ne fait QUE
 completer ce qui manque, il ne recalcule plus jamais le decoupage
 entier. Avant ce changement, relancer avec un `--n` different (ou sans
 `--n`) pouvait deplacer un exemple deja vu de `train` vers `test` (ou
 l'inverse), une fuite silencieuse d'exemples d'entrainement dans le
-jeu de test -- ce que le cahier des charges interdit explicitement
+jeu de test ; ce que le cahier des charges interdit explicitement
 ("le jeu de test ne doit jamais etre reutilise en entrainement").
 
 Exemple concret :
 
 ```bash
-# Premiere execution : 5000 exemples, aucun split existant -- les 5000
+# Premiere execution : 5000 exemples, aucun split existant ; les 5000
 # sont repartis stratifie (type_exemple, source) selon les proportions
 # habituelles.
 uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset_pivot_anonymise.jsonl --n 5000
@@ -270,7 +268,7 @@ uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset
 # = 10000 - 5000 = 5000 NOUVEAUX exemples (echantillon stratifie parmi
 # ceux qui n'ont pas encore de split) et leur assigne un split. Les
 # 5000 PREMIERS exemples GARDENT exactement le split qui leur a ete
-# assigne lors de la premiere execution -- aucun n'est deplace entre
+# assigne lors de la premiere execution ; aucun n'est deplace entre
 # train/val/test.
 uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset_pivot_anonymise.jsonl --n 10000
 ```
@@ -280,7 +278,7 @@ assignes, il n'y a rien de nouveau a faire : **reduire un decoupage
 deja fait n'est pas supporte** (le jeu ne peut que grandir), un
 avertissement est trace via LogTool (pas une erreur). Si `--n` est
 omis, TOUS les exemples anonymises qui n'ont pas encore de split en
-recoivent un (mode "completer ce qui manque" -- avant ce changement,
+recoivent un (mode "completer ce qui manque", avant ce changement,
 le mode sans `--n` recalculait le decoupage de tout le dataset anonymise
 depuis zero). Le decompte affiche en sortie est le TOTAL cumule
 (deja assignes + nouveaux de cette execution), distinct du nombre de
@@ -293,7 +291,7 @@ separement).
 # decouper_splits.py n'affiche que le total global (train/val/test).
 # verifier_repartition_splits.py relit le fichier anonymise deja
 # reparti et affiche, pour chaque strate (type_exemple, source), le
-# decompte ET le pourcentage par split -- pour verifier visuellement
+# decompte ET le pourcentage par split, pour verifier visuellement
 # que l'echantillonnage stratifie reste representatif DANS CHAQUE
 # split (ex. une petite source comme FrenchMedMCQA doit rester
 # ~80/10/10 comme les grosses sources, pas disparaitre de train ou de
@@ -331,7 +329,7 @@ Détail complet : `docs/01_environnement/01_architecture_hexagonale.md`.
       anonymisation écrit désormais dans un fichier **séparé**
       (`dataset_pivot_anonymise.jsonl`, le pivot original n'est plus
       jamais modifié), complète mesurée à ~19h (coût NLP
-      Presidio/spaCy) -- rendue incrémentale/reprenable via `--limite`
+      Presidio/spaCy), rendue incrémentale/reprenable via `--limite`
       (échantillonnage stratifié par type_exemple+source) ; chaque
       exécution génère/fusionne automatiquement un **rapport RGPD
       cumulé** (JSON + Markdown) ; contrôle qualité **automatisé** par

@@ -1,6 +1,6 @@
 """
 Rapport RGPD cumule genere automatiquement a chaque execution de
-`anonymiser_dataset.py` -- remplace le calcul manuel ponctuel fait
+`anonymiser_dataset.py` ; remplace le calcul manuel ponctuel fait
 pour `docs/02_etape1_donnees/01_rapport_rgpd.md`.
 
 Le processus d'anonymisation est incremental (`--limite`, plusieurs
@@ -35,7 +35,7 @@ class ExecutionAnonymisation:
     limite                   : str  # valeur de --limite telle qu'affichee ("5000", "full", ...)
     graine_aleatoire         : int
     nombre_traites            : int
-    # Contribution de CETTE execution uniquement (pas cumulee) -- c'est
+    # Contribution de CETTE execution uniquement (pas cumulee) ; c'est
     # ce qui permet de reconstituer "qui a apporte quoi" a la lecture.
     statistiques_par_source     : dict[str, StatistiquesSource]
 
@@ -155,7 +155,7 @@ def fusionner_execution(
 
 
 # ----------------------------------------------------------------------
-# Presentation (console + Markdown) -- purement derivee du rapport,
+# Presentation (console + Markdown) ; purement derivee du rapport,
 # jamais la source de verite (le JSON cumule l'est).
 # ----------------------------------------------------------------------
 
@@ -200,9 +200,9 @@ def formater_rapport_markdown(rapport: RapportAnonymisationCumule, total_dataset
     taux_entite = (total_avec_entite / total_traites * 100) if total_traites else 0.0
 
     lignes = [
-        "# Rapport d'anonymisation RGPD -- genere automatiquement",
+        "# Rapport d'anonymisation RGPD : genere automatiquement",
         "",
-        "> Genere par `interfaces/cli/anonymiser_dataset.py` a chaque execution -- "
+        "> Genere par `interfaces/cli/anonymiser_dataset.py` a chaque execution ; "
         "ne pas editer a la main, ce fichier est entierement regenere depuis le "
         "rapport JSON cumule (`rapport_anonymisation_rgpd.json`) a chaque appel.",
         ">",
@@ -249,7 +249,7 @@ def formater_rapport_markdown(rapport: RapportAnonymisationCumule, total_dataset
         "",
         "## Executions ayant contribue (tracabilite)",
         "",
-        "Chaque ligne correspond a UN appel de `anonymiser_dataset.py` -- "
+        "Chaque ligne correspond a UN appel de `anonymiser_dataset.py` ; "
         "`traites` est le nombre d'exemples apportes PAR CETTE EXECUTION "
         "uniquement (pas cumule), pour retracer qui a produit quels chiffres.",
         "",

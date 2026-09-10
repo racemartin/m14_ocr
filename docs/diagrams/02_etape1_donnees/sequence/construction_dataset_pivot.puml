@@ -31,7 +31,7 @@ note right of CLI
   clinical_case + answer_a..e +
   correct_answers), "frenchmedmcqa" ->
   mapper_frenchmedmcqa, etc. MediQAl a
-  3 fichiers/schemas -- une seule cle
+  3 fichiers/schemas ; une seule cle
   "mediqal" ne suffit plus.
 end note
 CLI -> CLI : mapper = MAPPERS_PAR_CORPUS[corpus]

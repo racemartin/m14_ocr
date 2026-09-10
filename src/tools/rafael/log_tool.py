@@ -59,7 +59,7 @@ class LogTool:
         Niveau de log actif (1–8). Lu depuis LOG_LEVEL dans l'environnement.
     """
 
-    # -- Codes de couleur ANSI ------------------------------------------------
+    # Codes de couleur ANSI ------------------------------------------------
     _COLOR_WHITE                = "\033[97m"
     _COLOR_BOLD                 = "\033[1m"
     _COLOR_0_BRIGHT_RED         = "\033[1;31m"
@@ -92,7 +92,7 @@ class LogTool:
             Préfixe affiché entre crochets dans chaque ligne de log.
             Ex. : "command", "api", "worker".
         """
-        # -- Lecture du niveau de log depuis l'environnement -----------------
+        # Lecture du niveau de log depuis l'environnement -----------------
         env_level = os.environ.get("LOG_LEVEL")
         if env_level is not None:
             try:
@@ -139,7 +139,7 @@ class LogTool:
         IOError
             Si le fichier .env ne peut pas être lu ou écrit.
         """
-        # -- Correspondance nom → valeur numérique RFC 5424 ------------------
+        # Correspondance nom → valeur numérique RFC 5424 ------------------
         log_levels = {
             "EMERGENCY" : 1,
             "ALERT"     : 2,
@@ -151,7 +151,7 @@ class LogTool:
             "DEBUG"     : 8,
         }
 
-        # -- Validation de la valeur fournie ---------------------------------
+        # Validation de la valeur fournie ---------------------------------
         if input_value not in log_levels:
             self.STEP(1, "Valeurs possibles de LOG_LEVEL :")
             for level, code in log_levels.items():
@@ -165,13 +165,13 @@ class LogTool:
         key        = "LOG_LEVEL"
         env_file   = Path(project_dir) / ".env"
 
-        # -- Lecture du fichier .env -----------------------------------------
+        # Lecture du fichier .env -----------------------------------------
         try:
             content = env_file.read_text(encoding="utf-8")
         except OSError as e:
             raise IOError(f"Impossible de lire le fichier .env : {e}") from e
 
-        # -- Remplacement ou ajout de la ligne LOG_LEVEL ---------------------
+        # Remplacement ou ajout de la ligne LOG_LEVEL ---------------------
         lines   = content.splitlines()
         updated = False
 
@@ -184,13 +184,13 @@ class LogTool:
         if not updated:
             lines.append(f"{key}={new_value}")   # Ajout si absent
 
-        # -- Sauvegarde du fichier .env --------------------------------------
+        # Sauvegarde du fichier .env --------------------------------------
         try:
             env_file.write_text("\n".join(lines), encoding="utf-8")
         except OSError as e:
             raise IOError(f"Impossible d'écrire dans le fichier .env : {e}") from e
 
-        # -- Affichage du résultat -------------------------------------------
+        # Affichage du résultat -------------------------------------------
         self.STEP(1, "Valeurs possibles de LOG_LEVEL :")
         for level, code in log_levels.items():
             self.PARAMETER_VALUE(str(code), level)
@@ -793,14 +793,14 @@ class LogTool:
         message  : str  Message pouvant contenir des retours à la ligne.
         color    : str  Code couleur ANSI à appliquer.
         """
-        # -- Normalisation des fins de ligne ---------------------------------
+        # Normalisation des fins de ligne ---------------------------------
         message = message.replace("\r\n", "\n").replace("\n\r", "\n").replace("\r", "\n")
         lines = [line for line in message.split("\n") if line.strip()]
 
         if not lines:
             return
 
-        # -- Alignement sur la ligne la plus longue --------------------------
+        # Alignement sur la ligne la plus longue --------------------------
         max_len = max(len(line.strip()) for line in lines)
         for line in lines:
             self._log(line.strip().ljust(max_len), color)

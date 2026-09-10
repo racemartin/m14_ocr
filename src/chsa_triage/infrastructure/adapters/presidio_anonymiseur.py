@@ -9,26 +9,26 @@ NOTE IMPORTANTE (bug reel decouvert lors du smoke test d'integration) :
 `AnalyzerEngine()` construit SANS configuration explicite ne supporte
 que l'anglais par defaut et peut declencher le telechargement
 automatique d'un modele spaCy volumineux (`en_core_web_lg`, ~400 Mo)
-non desire. Ce projet exige un dataset BILINGUE (FR/EN) -- il faut
+non desire. Ce projet exige un dataset BILINGUE (FR/EN) ; il faut
 donc configurer explicitement un `NlpEngineProvider` multi-langue,
 pointant vers les modeles deja installes localement
 (`fr_core_news_md`, `en_core_web_sm`), cf.
 docs/01_environnement/00_guide_installation_environnement.md.
 
-RISQUES RGPD REELS TRAITES ICI (analyse du capitaine, 08/09/2026) --
-voir la justification methodologique complete dans
+RISQUES RGPD REELS TRAITES ICI (analyse technique, 08/09/2026), voir
+la justification methodologique complete dans
 docs/02_etape1_donnees/01_rapport_rgpd.md §7 :
 
 1. Faux negatifs connus des recognizers par defaut de Presidio pour
-   des identifiants francais/internes au domaine -- cf.
+   des identifiants francais/internes au domaine ; cf.
    `RecognizeurNirFrance` ci-dessous (NIR reel investigue, pas
    invente ; aucun identifiant "dossier patient"/"numero de dossier"
    trouve dans une inspection reelle d'un echantillon de
-   data/processed/dataset_pivot.jsonl -- pas de recognizer ajoute
+   data/processed/dataset_pivot.jsonl ; pas de recognizer ajoute
    pour un motif qui n'a pas ete confirme dans les donnees reelles).
 2. Sur-anonymisation de l'age clinique (DATE_TIME ne distingue pas
-   une date de naissance exacte -- identifiante -- d'un age/une duree
-   relative -- signal clinique reel, pas identifiant en soi) -- cf.
+   une date de naissance exacte, identifiante, d'un age/une duree
+   relative, signal clinique reel, pas identifiant en soi) ; cf.
    `_normaliser_ages` (avant analyse) et `_operateur_date_time`
    (a l'anonymisation) ci-dessous.
 """
@@ -69,17 +69,17 @@ _CONFIGURATION_NLP_MULTILANGUE = {
 #
 # Absent des recognizers par defaut de Presidio (ni
 # `predefined_recognizers/generic` ni le modele spaCy fr_core_news_md
-# ne le couvrent -- verifie par inspection du code source de la
+# ne le couvrent ; verifie par inspection du code source de la
 # version de presidio-analyzer installee, pas suppose).
 #
 # Structure reelle du NIR (verifiee : decret n°82-103, corrobore par
 # xml.insee.fr/schema/nir.html et fr.wikipedia.org/wiki/Numero_de_
-# securite_sociale_en_France -- PAS reconstituee de memoire) : 15
+# securite_sociale_en_France, PAS reconstituee de memoire) : 15
 # chiffres = sexe(1, 1 ou 2) + annee de naissance(2) + mois de
 # naissance(2, 01-12) + departement de naissance(2, ou 2A/2B pour la
 # Corse) + code commune de naissance(3) + numero d'ordre(3) + cle de
 # controle(2). La cle se calcule par modulo 97 sur les 13 premiers
-# chiffres : cle = 97 - (nombre mod 97) -- avec, pour la Corse, la
+# chiffres : cle = 97 - (nombre mod 97) ; avec, pour la Corse, la
 # substitution standard A->0/-1 000 000, B->0/-2 000 000 avant le
 # calcul (cf. `RecognizeurNirFrance.validate_result`).
 _MOTIF_NIR = (
@@ -97,7 +97,7 @@ class RecognizeurNirFrance(PatternRecognizer):
     """
     Reconnaisseur du NIR francais (numero de securite sociale, carte
     Vitale). Le regex seul sur "15 chiffres" produirait beaucoup de
-    faux positifs (n'importe quel nombre a 15 chiffres) -- `validate_result`
+    faux positifs (n'importe quel nombre a 15 chiffres) ; `validate_result`
     verifie la cle de controle reelle (modulo 97) et rejette tout
     match dont la cle ne correspond pas, ce qui ramene le score a 0
     (cf. `PatternRecognizer.__analyze_patterns` : un `validate_result`
@@ -106,7 +106,7 @@ class RecognizeurNirFrance(PatternRecognizer):
     Limite connue documentee (dans le meme esprit que les limites
     Presidio deja documentees en §5 du rapport RGPD) : ne couvre pas
     les codes mois speciaux (naissance a l'etranger/mois inconnu) ni
-    les departements d'outre-mer (3 chiffres au lieu de 2) -- non
+    les departements d'outre-mer (3 chiffres au lieu de 2) ; non
     rencontres dans les donnees reelles du projet (corpus publics/
     academiques), ajoute par precaution pour tout texte qui
     contiendrait malgre tout un NIR reel.
@@ -154,7 +154,7 @@ class RecognizeurNirFrance(PatternRecognizer):
 
 
 # ----------------------------------------------------------------------
-# Normalisation de l'age AVANT l'analyse Presidio -- minimisation
+# Normalisation de l'age AVANT l'analyse Presidio ; minimisation
 # proportionnee (generaliser ce qui est cliniquement necessaire,
 # supprimer ce qui est identifiant), pas une suppression indiscriminee.
 # cf. justification methodologique complete dans
@@ -167,8 +167,8 @@ class RecognizeurNirFrance(PatternRecognizer):
 # DATE_TIME (bug reel confirme cote anglais) ; `fr_core_news_md`, sur
 # les memes types de constructions francaises ("âgé (60 ans)",
 # "enfant de 2 ans", "patiente de 70 ans", etc.), n'a declenche AUCUNE
-# detection DATE_TIME dans les cas testes. Le risque documente par le
-# capitaine est donc confirme cote anglais ; la normalisation cote
+# detection DATE_TIME dans les cas testes. Le risque documente est
+# donc confirme cote anglais ; la normalisation cote
 # francais est appliquee par coherence de conception et par prudence
 # (une evolution future du modele spaCy fr pourrait changer ce
 # comportement), pas parce qu'un bug francais actuel a ete observe.
@@ -179,7 +179,7 @@ _TRANCHE_ADOLESCENT    = "adolescent"
 _TRANCHE_ADULTE        = "adulte"
 _TRANCHE_PERSONNE_AGEE = "personne_agee"
 
-# Tranches suggerees par le capitaine (0-12 / 13-17 / 18-64 / 65+) --
+# Tranches retenues (0-12 / 13-17 / 18-64 / 65+) ;
 # aucune autre coupure d'age n'est definie ailleurs dans le projet
 # (cahier des charges, ESI) qui primerait sur celle-ci.
 _JETONS_TRANCHE_AGE = {
@@ -230,7 +230,7 @@ def _normaliser_ages(texte: str, code_langue: str) -> str:
     """
     Remplace toute mention explicite d'age (FR "âgé(e) de X ans"/"X
     ans" en contexte patient, EN "X-year-old"/"aged X") par un jeton
-    de tranche clinique AVANT l'analyse Presidio -- pour que le
+    de tranche clinique AVANT l'analyse Presidio, pour que le
     recognizer DATE_TIME ne voie jamais le nombre exact et ne
     l'elimine pas : l'age (pediatrique/adolescent/adulte/personne
     agee) est un signal clinique reel, pas une PII a supprimer sans
@@ -249,9 +249,9 @@ def _normaliser_ages(texte: str, code_langue: str) -> str:
 
 
 # ----------------------------------------------------------------------
-# Operateur DATE_TIME personnalise -- distingue une date calendaire
+# Operateur DATE_TIME personnalise ; distingue une date calendaire
 # absolue (identifiante -> masquee) d'une duree relative (jours/
-# semaines/mois/ans ecoules ou de traitement -- clinique, pas
+# semaines/mois/ans ecoules ou de traitement, clinique, pas
 # identifiante -> laissee intacte). Complementaire de
 # `_normaliser_ages` ci-dessus : celui-ci traite l'age du patient,
 # celui-la traite les durees ("il y a 3 semaines", "depuis 2 mois",
@@ -289,7 +289,7 @@ def _construire_operateur_date_time(jeton_pour_date: Callable[[str], str]) -> Op
     """
     `jeton_pour_date` applique le MEME comportement de masquage que la
     strategie courante (replace/mask/redact) pour rester coherent avec
-    l'operateur DEFAULT -- seule la decision "masquer ou conserver"
+    l'operateur DEFAULT ; seule la decision "masquer ou conserver"
     change pour DATE_TIME.
     """
 
@@ -320,7 +320,7 @@ class PresidioAnonymiseur:
 
     def __init__(self, strategie: str = "replace") -> None:
         """
-        strategie : "replace" | "mask" | "redact" -- cf. recommandation
+        strategie : "replace" | "mask" | "redact" ; cf. recommandation
         de la mission de tester plusieurs strategies de masquage.
         """
         self._analyzer = _construire_analyzer_multilangue()

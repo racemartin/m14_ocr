@@ -33,7 +33,7 @@ class DecouperSplitsUseCase:
         encore, et persiste UNIQUEMENT ces nouveaux exemples en une
         seule operation. Retourne le decompte TOTAL par split (exemples
         deja assignes lors d'executions anterieures + nouveaux de
-        cette execution) -- c'est-a-dire la repartition complete
+        cette execution) ; c'est-a-dire la repartition complete
         actuelle du dataset, pas seulement ce qui vient d'etre ajoute
         (cf. `nombre_deja_assignes`/`nombre_nouveaux` pour distinguer
         les deux apres l'appel).
@@ -41,14 +41,14 @@ class DecouperSplitsUseCase:
         Decoupage stratifie par (type_exemple, source) (08/09/2026) :
         chaque strate est melangee et coupee selon les memes
         proportions test/val/train independamment des autres, plutot
-        qu'un shuffle global -- ce qui garantit que train/val/test
+        qu'un shuffle global ; ce qui garantit que train/val/test
         contiennent chacun une part de toutes les sources et des deux
         types d'exemple (SFT/DPO), meme quand certaines sources sont
         beaucoup plus petites que d'autres (ex. FrenchMedMCQA, 595
         exemples, face a UltraMedical-Preference, 109353).
 
         Croissance stable, jamais de reordonnancement (10/09/2026,
-        decision du capitaine -- remplace un comportement precedent
+        remplace un comportement precedent
         qui recalculait TOUT le decoupage depuis zero a chaque
         execution). Un exemple qui a deja recu un `split` lors d'une
         execution anterieure n'est JAMAIS reassigne, quel que soit le
@@ -56,24 +56,24 @@ class DecouperSplitsUseCase:
         d'entrainement (relancer avec un `--n` plus grand, ou sans
         `--n` pour tout repartir) pouvait faire passer un exemple deja
         vu comme `train` vers `test` (ou l'inverse) a chaque nouvelle
-        execution -- une fuite silencieuse de donnees d'entrainement
+        execution ; une fuite silencieuse de donnees d'entrainement
         dans l'evaluation, ce que le cahier des charges interdit
         explicitement ("le jeu de test ne doit jamais etre reutilise
         en entrainement").
 
         Algorithme : les exemples anonymises sont d'abord separes en
-        deux groupes -- ceux qui ont deja un `split` (executions
+        deux groupes : ceux qui ont deja un `split` (executions
         anterieures, jamais touches ici) et les candidats sans split.
         Seuls les candidats sans split peuvent devenir des "nouveaux"
         a repartir dans CETTE execution :
           - avec `n=N` : si `N` exemples sont deja assignes ou plus,
-            il n'y a rien de nouveau a faire -- REDUIRE un decoupage
+            il n'y a rien de nouveau a faire ; REDUIRE un decoupage
             deja fait n'est PAS supporte (le jeu ne peut que grandir,
             jamais retrecir : voir `nombre_nouveaux == 0` en sortie).
             Sinon, `N - nombre_deja_assignes` nouveaux exemples sont
             preleves parmi les candidats sans split par
-            `echantillon_stratifie` (meme algorithme -- methode du
-            plus grand reste -- que
+            `echantillon_stratifie` (meme algorithme, methode du
+            plus grand reste, que
             `AnonymiserDatasetUseCase._echantillon_stratifie`).
           - sans `n` (mode "tout") : TOUS les candidats sans split
             deviennent les "nouveaux" a repartir. Changement de
@@ -85,7 +85,7 @@ class DecouperSplitsUseCase:
         Les "nouveaux" de cette execution sont regroupes par
         (type_exemple, source), chaque groupe est melange et coupe
         selon `proportion_test`/`proportion_val`, exactement comme
-        avant -- seule la POPULATION consideree a change (candidats
+        avant ; seule la POPULATION consideree a change (candidats
         sans split de cette execution), pas l'algorithme de
         repartition au sein d'un groupe.
         """
@@ -142,7 +142,7 @@ class DecouperSplitsUseCase:
 
         # NOTE (08/09/2026, meme bug que celui corrige dans
         # AnonymiserDatasetUseCase) : `sauvegarder()` par iteration
-        # relit/reecrit tout le fichier JSONL a chaque exemple -- O(n^2)
+        # relit/reecrit tout le fichier JSONL a chaque exemple ; O(n^2)
         # infaisable a l'echelle reelle. `sauvegarder_plusieurs` fait
         # la meme fusion par identifiant en une seule lecture/ecriture.
         # N'est appele que s'il y a effectivement du nouveau : rien a

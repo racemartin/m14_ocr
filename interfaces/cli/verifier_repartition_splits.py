@@ -6,7 +6,7 @@ splits".
 `decouper_splits.py` n'affiche que le total global par split
 (train/val/test). Ce script relit le dataset pivot deja reparti et
 affiche, pour chaque strate `(type_exemple, source)`, le decompte ET
-le pourcentage par split -- pour verifier visuellement que
+le pourcentage par split, pour verifier visuellement que
 l'echantillonnage stratifie est bien reste representatif dans CHAQUE
 split, pas seulement au global (ex. une petite source comme
 FrenchMedMCQA ne doit pas se retrouver absente de train ou de test).
@@ -17,7 +17,7 @@ Usage :
 
 IMPORTANT (08/09/2026, design source/sortie separes) : --dataset doit
 pointer vers le fichier ANONYMISE (`dataset_pivot_anonymise.jsonl`),
-PAS vers le pivot original -- celui-ci n'est jamais anonymise/reparti
+PAS vers le pivot original ; celui-ci n'est jamais anonymise/reparti
 en place.
 """
 
@@ -67,7 +67,7 @@ def main() -> None:
     if not repartition:
         log.LEVEL_5_WARNING(
             "verifier_repartition_splits",
-            f"aucun exemple anonymise+reparti trouve dans {arguments.dataset} -- "
+            f"aucun exemple anonymise+reparti trouve dans {arguments.dataset} ; "
             "lancer anonymiser_dataset.py puis decouper_splits.py d'abord",
         )
 

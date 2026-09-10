@@ -3,7 +3,7 @@ Tests de la couche application pour AnonymiserDatasetUseCase, avec de
 faux adaptateurs en memoire (pas de Presidio, pas de fichier reel).
 
 Design source/sortie separes (08/09/2026) : `repository_source` n'est
-JAMAIS ecrit par le cas d'usage -- seul `repository_sortie` recoit les
+JAMAIS ecrit par le cas d'usage ; seul `repository_sortie` recoit les
 versions anonymisees. "Deja traite" se determine par la presence de
 l'identifiant dans `repository_sortie` (`identifiants_existants()`),
 pas par un booleen mute sur l'exemple source.
@@ -186,7 +186,7 @@ def test_anonymiser_dataset_accumule_les_statistiques_rgpd_par_source():
     Instrumentation minimale (section 3 du rapport RGPD) : le cas
     d'usage doit exposer, par source, le nombre de registres traites,
     le nombre de registres avec au moins une entite detectee, et le
-    detail des entites par type -- sans quoi ces chiffres devraient
+    detail des entites par type ; sans quoi ces chiffres devraient
     etre estimes a la main.
     """
     exemples = (

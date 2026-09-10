@@ -4,7 +4,7 @@ Adaptateur secondaire : verification d'entite nommee via spaCy pur
 qualite d'anonymisation.
 
 Reutilise EXACTEMENT les memes modeles deja installes localement que
-`PresidioAnonymiseur` (`fr_core_news_md`, `en_core_web_sm`) -- ce
+`PresidioAnonymiseur` (`fr_core_news_md`, `en_core_web_sm`) ; ce
 n'est pas un nouveau modele externe, seulement un second usage du
 meme moteur NLP deja present dans le projet, applique directement au
 texte (sans passer par Presidio) pour trancher les candidats de PII
@@ -23,7 +23,7 @@ from chsa_triage.domain.ports.verificateur_entites import VerdictEntiteNommee
 # deja installes localement, aucun telechargement supplementaire.
 _MODELES_SPACY = {"fr": "fr_core_news_md", "en": "en_core_web_sm"}
 
-# Labels spaCy consideres "pertinents PII" par langue -- les schemas
+# Labels spaCy consideres "pertinents PII" par langue ; les schemas
 # d'etiquettes different entre le modele francais (PER/ORG/LOC/MISC)
 # et le modele anglais (PERSON/ORG/GPE/LOC/NORP).
 _LABELS_PERTINENTS = {

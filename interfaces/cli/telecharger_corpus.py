@@ -1,11 +1,11 @@
 """
 STEP 00 
-Point d'entree CLI -- telecharger un corpus brut depuis Hugging Face
+Point d'entree CLI — telecharger un corpus brut depuis Hugging Face
 Hub et l'exporter en JSONL local (data/raw/).
 
 Ferme le vide identifie le 03/09/2026 : l'adaptateur
 `LecteurCorpusHuggingFace` existait deja et etait teste, mais aucun
-script ne l'invoquait -- tous les CLI de l'Etape 1 supposaient que
+script ne l'invoquait ; tous les CLI de l'Etape 1 supposaient que
 `data/raw/*.jsonl` existait deja.
 
 Usage :
@@ -85,7 +85,7 @@ def main() -> None:
     except ValueError as erreur:
         log.LEVEL_4_ERROR(
             "telecharger_corpus",
-            f"echec du telechargement -- split '{arguments.split}' invalide pour "
+            f"echec du telechargement ; split '{arguments.split}' invalide pour "
             f"'{arguments.identifiant_hub}' (configuration={arguments.configuration!r}) : {erreur}",
         )
         raise

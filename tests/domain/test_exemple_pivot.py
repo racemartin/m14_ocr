@@ -51,7 +51,7 @@ def test_identifiant_genere_differe_selon_l_espace_de_noms_meme_cle_naturelle():
     """
     Cas reel rencontre sur les donnees brutes : mediqal_oeq et
     mediqal_mcqu partagent des valeurs de champ `id` identiques bien
-    qu'ils decrivent des registres differents -- l'espace de noms doit
+    qu'ils decrivent des registres differents ; l'espace de noms doit
     donc suffire, a lui seul, a eviter la collision.
     """
     id_1 = ExemplePivot.nouvel_identifiant("mediqal_oeq", "1234")

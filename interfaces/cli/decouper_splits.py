@@ -10,31 +10,31 @@ Usage :
 IMPORTANT (08/09/2026, design source/sortie separes) : --dataset doit
 pointer vers le fichier ANONYMISE (`dataset_pivot_anonymise.jsonl`,
 sortie de `anonymiser_dataset.py`), PAS vers le pivot original
-`dataset_pivot.jsonl` -- celui-ci n'est jamais anonymise en place et
+`dataset_pivot.jsonl` ; celui-ci n'est jamais anonymise en place et
 ne contient donc jamais d'exemple avec `anonymise=True`. Ce script
 lit ET ecrit sur le meme fichier (le champ `split` est ajoute en
 place sur le fichier anonymise).
 
-CROISSANCE STABLE, JAMAIS DE REORDONNANCEMENT (10/09/2026, decision du
-capitaine -- CHANGEMENT DE COMPORTEMENT reel par rapport a avant).
+CROISSANCE STABLE, JAMAIS DE REORDONNANCEMENT (10/09/2026,
+CHANGEMENT DE COMPORTEMENT reel par rapport a avant).
 Un exemple qui a deja un `split` (execution anterieure) n'est JAMAIS
 reassigne, quel que soit le `--n` demande ensuite : agrandir le jeu de
 donnees en relancant avec un `--n` plus grand (ou sans `--n`) ne fait
 QUE completer ce qui manque, il ne recalcule plus jamais le decoupage
 en entier. Avant ce changement, relancer avec un `--n` different (ou
 sans `--n`) pouvait deplacer un exemple deja vu de `train` vers `test`
-(ou l'inverse) -- une fuite silencieuse d'exemples d'entrainement dans
+(ou l'inverse) ; une fuite silencieuse d'exemples d'entrainement dans
 le jeu de test, ce que le cahier des charges interdit explicitement.
-Exemple concret : `--n 5000` puis, plus tard, `--n 10000` -- les 5000
+Exemple concret : `--n 5000` puis, plus tard, `--n 10000` ; les 5000
 premiers exemples GARDENT exactement le split qui leur a ete assigne
 la premiere fois ; seuls 5000 exemples NOUVEAUX (jamais vus) recoivent
 un split lors de la seconde execution.
 
 Option --n (taille CIBLE cumulee, pas taille de cette seule execution)
-: `--n N` preleve `N - (nombre deja assigne)` nouveaux exemples --
+: `--n N` preleve `N - (nombre deja assigne)` nouveaux exemples,
 echantillon stratifie (type_exemple, source), methode du plus grand
-reste, cf. `chsa_triage.application.echantillonnage.echantillon_stratifie`
--- parmi les exemples `anonymise=True` qui n'ont PAS encore de split,
+reste, cf. `chsa_triage.application.echantillonnage.echantillon_stratifie`,
+parmi les exemples `anonymise=True` qui n'ont PAS encore de split,
 puis leur assigne train/val/test. Si `N` est <= au nombre d'exemples
 deja assignes, il n'y a rien de nouveau a faire : REDUIRE un decoupage
 deja fait n'est PAS supporte (le jeu ne peut que grandir), un
@@ -69,7 +69,7 @@ def main() -> None:
         default=None,
         help="Taille CIBLE cumulee (deja assignes + nouveaux) ; seuls les exemples sans split "
              "encore sont candidats aux N - (deja assignes) nouveaux prelevements (defaut : "
-             "completer -- tout exemple anonymise sans split recoit un split). N <= au nombre "
+             "completer, tout exemple anonymise sans split recoit un split). N <= au nombre "
              "deja assigne : rien de nouveau, non supporte de reduire un decoupage existant",
     )
     arguments = parser.parse_args()
@@ -79,7 +79,7 @@ def main() -> None:
     log.PARAMETER_VALUE("graine", arguments.graine)
     log.PARAMETER_VALUE("proportion-val", arguments.proportion_val)
     log.PARAMETER_VALUE("proportion-test", arguments.proportion_test)
-    log.PARAMETER_VALUE("n (taille cible cumulee)", arguments.n if arguments.n is not None else "(aucun -- completer tout)")
+    log.PARAMETER_VALUE("n (taille cible cumulee)", arguments.n if arguments.n is not None else "(aucun, completer tout)")
 
     # -------------------------------------------------------------------------
     # PREPARE ADAPTERS (Dependency Injection)
@@ -111,7 +111,7 @@ def main() -> None:
     if arguments.n is not None and cas_usage.nombre_nouveaux == 0:
         log.LEVEL_5_WARNING(
             "decouper_splits",
-            f"--n {arguments.n} <= {cas_usage.nombre_deja_assignes} exemples deja assignes -- rien de "
+            f"--n {arguments.n} <= {cas_usage.nombre_deja_assignes} exemples deja assignes ; rien de "
             "nouveau a repartir (reduire un decoupage deja fait n'est pas supporte, aucune erreur)",
         )
     for split, nombre in decompte.items():

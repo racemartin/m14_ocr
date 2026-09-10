@@ -78,7 +78,7 @@ def test_identifiants_existants_retourne_tous_les_ids(tmp_path: Path):
 def test_ajouter_exemples_jsonl_ne_fusionne_pas_par_identifiant(tmp_path: Path):
     """
     Contrairement a `sauvegarder_plusieurs` (fusion par id), `ajouter_exemples_jsonl`
-    ajoute en fin de fichier SANS dedoublonner -- necessaire pour un
+    ajoute en fin de fichier SANS dedoublonner ; necessaire pour un
     fichier d'audit ou plusieurs entrees peuvent legitimement partager
     le meme identifiant (doublons ecartes du pivot).
     """

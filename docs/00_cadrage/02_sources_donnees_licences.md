@@ -3,8 +3,8 @@
 Documentation minimale exigée par la mission comme alternative à la
 publication du dataset sur Hugging Face Hub (cf. §7 « Livrables »,
 `01_cahier_des_charges.md` — Livrable 1 : « Dataset ... versionné »).
-Le capitaine a décidé de différer la publication (même privée) sur HF
-Hub jusqu'à ce que le contrôle qualité PII soit intégralement clos
+La publication (même privée) sur HF
+Hub est différée jusqu'à ce que le contrôle qualité PII soit intégralement clos
 (voir `data/README.md` et
 `docs/02_etape1_donnees/01_rapport_rgpd.md`) ; en attendant, cette
 documentation tient lieu de traçabilité pour les 4 sources listées au

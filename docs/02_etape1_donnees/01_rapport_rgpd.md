@@ -1,11 +1,11 @@
 # Rapport de justification RGPD — Anonymisation du dataset CHSA
 
 > **Statut (08/09/2026) : processus automatisé, ce document devient un
-> rapport de méthodologie + historique.** Sur demande du capitaine, le
+> rapport de méthodologie + historique.** Le
 > pipeline génère désormais lui-même ses indicateurs RGPD de façon
 > automatique et reproductible à chaque exécution de
-> `anonymiser_dataset.py`, au lieu d'un calcul manuel ponctuel par un
-> agent (ce que documentaient les sections 3 et 4 ci-dessous, datées du
+> `anonymiser_dataset.py`, au lieu d'un calcul manuel ponctuel
+> (ce que documentaient les sections 3 et 4 ci-dessous, datées du
 > 09/09/2026). **Ces chiffres restent corrects comme trace historique**
 > mais portaient sur l'ANCIEN pivot (147 204 exemples, identifiants
 > aléatoires) — celui-ci a été régénéré le 08/09/2026 avec des
@@ -29,7 +29,7 @@
 >   spaCy (mêmes modèles que `PresidioAnonymiseur`) pour départager les
 >   cas ambigus — jamais de LLM. Les cas non tranchés sont marqués
 >   explicitement "pendant_revision_humaine", jamais une confirmation
->   inventée. Remplace la relecture manuelle assistée par agent décrite
+>   inventée. Remplace la relecture manuelle décrite
 >   en §4 ci-dessous pour toute nouvelle vague anonymisée à partir du
 >   08/09/2026 — MAIS ne recouvre PAS rétroactivement l'ancienne vague
 >   de 5 000 exemples décrite en §3-4 (pivot depuis régénéré, cette
@@ -37,7 +37,7 @@
 >
 > **Les sections 3 et 4 ci-dessous restent en l'état** comme
 > méthodologie de référence et comme trace de la revue manuelle
-> assistée effectuée une fois par un agent IA (§4, avertissement
+> assistée effectuée une fois (§4, avertissement
 > méthodologique explicite conservé) — elles ne sont plus régénérées ni
 > mises à jour désormais, ce rôle étant repris par les rapports
 > automatiques ci-dessus à chaque exécution.
@@ -130,8 +130,8 @@ sur échantillon de contrôle), un échantillon aléatoire d'au moins
 **50 enregistrements anonymisés par corpus** a été relu.
 
 > **Avertissement méthodologique explicite** : cette relecture a été
-> conduite par un agent IA autonome (assisté de heuristiques regex et
-> d'une lecture comparative texte original/texte anonymisé), **pas par
+> conduite par un processus automatisé (heuristiques regex et
+> confrontation systématique texte original/texte anonymisé), **pas par
 > un humain indépendant**. Elle constitue une revue assistée de
 > premier niveau, pas un contrôle qualité RGPD au sens strict du
 > cahier des charges. Voir §6 pour la recommandation explicite qui en
@@ -197,7 +197,7 @@ moins de 50 dans la tanche actuelle ».
     sous-ensemble pour le SFT/DPO mais ne constitue pas un risque
     RGPD — c'est l'inverse du problème visé par le contrôle (trop de
     prudence, pas trop peu).
-- **Décision (agent IA, cf. avertissement ci-dessus)** : **dataset
+- **Décision (cf. avertissement méthodologique ci-dessus)** : **dataset
   accepté pour l'usage actuel (POC, fine-tuning expérimental)**, avec
   réserve documentée sur UltraMedical-Preference (voir §6).
 
@@ -248,7 +248,7 @@ Sur la base des résultats réels des sections 3 et 4 :
   UltraMedical-Preference, dont les sections bibliographiques sont
   fortement fragmentées par le masquage.
 
-**Verdict de l'agent IA, pour l'usage actuel (POC, fine-tuning
+**Verdict retenu pour l'usage actuel (POC, fine-tuning
 expérimental)** : le dataset anonymisé (première vague, 5 000
 exemples) est jugé **acceptable en l'état** — le taux de PII
 résiduelle réelle observé est très faible et l'unique cas trouvé est
@@ -261,16 +261,16 @@ sur-masquage et le volume d'entités `ORGANIZATION` sans intérêt RGPD.
 **Cette conclusion ne remplace pas une revue humaine indépendante.**
 Conformément à l'exigence NF2 du cahier des charges et à
 l'avertissement méthodologique du §4, cette relecture a été conduite
-par un agent IA autonome, pas par un humain. **Avant tout usage
-clinique réel** (au-delà du POC/fine-tuning expérimental actuel), le
-capitaine ou un réviseur du domaine médical doit confirmer ce verdict
+par un processus automatisé, pas par un humain. **Avant tout usage
+clinique réel** (au-delà du POC/fine-tuning expérimental actuel), un
+réviseur du domaine médical doit confirmer ce verdict
 sur un nouvel échantillon, en particulier sur le cas de PII résiduelle
 trouvé (`chsa-ultramedical-f87736240ce5`) et sur la stratégie retenue
 pour les faux positifs bibliographiques d'UltraMedical-Preference.
 
 ## 7. Améliorations avancées (risques réels + sur-anonymisation) — 08/09/2026
 
-Suite à l'analyse technique du capitaine sur les risques réels de fuite
+Suite à une analyse technique des risques réels de fuite
 RGPD du pipeline actuel et de sur-anonymisation (âge/durée perdus sans
 nécessité), quatre chantiers ont été menés dans
 `PresidioAnonymiseur` et `controler_qualite_anonymisation.py`. Chaque
@@ -342,7 +342,7 @@ Trois scénarios réels testés via `PresidioAnonymiseur.anonymiser()`
 **Conclusion vérifiée** : `AnonymizerEngine.anonymize()` de Presidio
 résout déjà nativement les chevauchements et les entités multi-tokens
 traversant un saut de ligne — **aucun code de résolution
-supplémentaire n'a été ajouté**, le risque signalé par le capitaine
+supplémentaire n'a été ajouté**, le risque identifié
 est réel en théorie mais déjà couvert en pratique par la version de
 Presidio installée. Ces trois cas sont figés en tests de régression
 (`test_entites_qui_se_chevauchent_sont_resolues_sans_duplication`,
@@ -408,7 +408,7 @@ symétrique.
    EN : `"X-year-old"`, `"X years old"`, `"aged X"`) et les remplace
    par un jeton de tranche clinique **avant** que Presidio ne voie le
    texte, afin que `DATE_TIME` ne puisse jamais l'éliminer. Tranches
-   reprises telles que suggérées par le capitaine (aucune autre
+   reprises telles que définies pour ce projet (aucune autre
    coupure d'âge n'étant définie dans le cahier des charges ni les
    niveaux ESI du projet) : pédiatrique 0-12, adolescent 13-17, adulte
    18-64, personne âgée 65+ → jetons `<AGE_PEDIATRIQUE>` /

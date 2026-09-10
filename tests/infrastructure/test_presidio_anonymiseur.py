@@ -1,5 +1,5 @@
 """
-Test d'integration reel de l'adaptateur Presidio -- pas un mock.
+Test d'integration reel de l'adaptateur Presidio ; pas un mock.
 
 Ce test aurait detecte immediatement le bug decouvert lors du smoke
 test manuel du 02/09/2026 : `AnalyzerEngine()` construit sans
@@ -9,7 +9,7 @@ marque langue="fr". Corrige dans PresidioAnonymiseur via un
 NlpEngineProvider multi-langue explicite.
 
 Se saute automatiquement si presidio/spacy ne sont pas installes
-(cas de l'environnement minimal de developpement rapide) -- s'execute
+(cas de l'environnement minimal de developpement rapide) ; s'execute
 reellement des que `uv sync --extra local` a ete fait.
 """
 
@@ -77,7 +77,7 @@ def test_strategie_mask_produit_des_etoiles():
 
 
 # ----------------------------------------------------------------------
-# Recognizer NIR francais -- checksum modulo 97 (pur, pas de NLP).
+# Recognizer NIR francais : checksum modulo 97 (pur, pas de NLP).
 #
 # Fixtures calculees directement avec l'algorithme documente (decret
 # n°82-103, corrobore par xml.insee.fr/schema/nir.html et
@@ -133,7 +133,7 @@ def test_analyzer_ne_detecte_pas_un_nir_a_cle_invalide():
 
 
 # ----------------------------------------------------------------------
-# Normalisation de l'age avant analyse (item 4a) -- pur, pas de NLP.
+# Normalisation de l'age avant analyse (item 4a) : pur, pas de NLP.
 # ----------------------------------------------------------------------
 
 
@@ -149,7 +149,7 @@ def test_normaliser_ages_fr_age_avec_parentheses():
     resultat = _normaliser_ages("Homme âgé (60 ans), chronique (7 mois).", "fr")
     assert "<AGE_ADULTE>" in resultat
     assert "60 ans" not in resultat
-    # La duree de la maladie ("7 mois") n'est pas un age -- non touchee.
+    # La duree de la maladie ("7 mois") n'est pas un age, non touchee.
     assert "7 mois" in resultat
 
 
@@ -180,7 +180,7 @@ def test_normaliser_ages_en_aged():
 
 
 def test_pipeline_reel_age_normalise_avant_presidio():
-    """L'age explicite ne doit jamais apparaitre tel quel comme DATE_TIME masque -- il est remplace en amont."""
+    """L'age explicite ne doit jamais apparaitre tel quel comme DATE_TIME masque ; il est remplace en amont."""
     anonymiseur = PresidioAnonymiseur(strategie="replace")
     resultat = anonymiseur.anonymiser("The 7-year-old boy was seen 3 months ago.", langue="en")
     assert "<AGE_PEDIATRIC>" in resultat.texte_anonymise
@@ -189,7 +189,7 @@ def test_pipeline_reel_age_normalise_avant_presidio():
 
 # ----------------------------------------------------------------------
 # Operateur DATE_TIME : date absolue (masquee) vs duree relative
-# (conservee) -- item 4b.
+# (conservee) : item 4b.
 # ----------------------------------------------------------------------
 
 
@@ -238,7 +238,7 @@ def test_entites_qui_se_chevauchent_sont_resolues_sans_duplication():
     """
     'Jean.Dupont@example.com' est detecte a la fois comme EMAIL_ADDRESS
     et PERSON sur le meme span, et comme URL sur le sous-span
-    'example.com' -- trois entites de types differents qui se
+    'example.com' ; trois entites de types differents qui se
     chevauchent. Verifie qu'un seul jeton de masquage est produit (pas
     de doublon, pas de fragment residuel).
     """

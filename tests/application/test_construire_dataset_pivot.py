@@ -1,6 +1,6 @@
 """
 Tests de la couche application, avec des faux adaptateurs en memoire
-(pas de fichier, pas de reseau) -- c'est tout l'interet du decouplage
+(pas de fichier, pas de reseau) ; c'est tout l'interet du decouplage
 hexagonal : l'application se teste sans aucune infrastructure reelle.
 """
 
@@ -81,7 +81,7 @@ def test_construire_dataset_pivot_ignore_enregistrements_invalides():
 def test_construire_dataset_pivot_dedoublonne_les_registres_identiques():
     """
     Deux enregistrements bruts avec la meme cle naturelle (donc le
-    meme identifiant deterministe) sont de vrais doublons -- un seul
+    meme identifiant deterministe) sont de vrais doublons ; un seul
     doit atterrir dans le pivot, l'autre doit etre expose via
     `.doublons` (jamais silencieusement perdu).
     """

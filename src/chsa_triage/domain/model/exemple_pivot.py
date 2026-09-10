@@ -57,11 +57,11 @@ class ExemplePivot:
     langue                : Langue
 
     # Cle naturelle du registre brut d'origine (id/hash), telle
-    # qu'exposee par le mapper -- PAS l'entree exacte du hash de
+    # qu'exposee par le mapper ; PAS l'entree exacte du hash de
     # `identifiant` (qui peut inclure un espace de noms plus fin, cf.
     # `nouvel_identifiant`), mais la valeur la plus utile pour
     # retrouver le registre source dans data/raw/*.jsonl. Vide par
-    # defaut (ExemplePivot synthetiques de test) -- toujours renseignee
+    # defaut (ExemplePivot synthetiques de test) ; toujours renseignee
     # par les mappers reels (interfaces/cli/mappers_corpus.py).
     identifiant_source_brute: str = ""
 
@@ -88,7 +88,7 @@ class ExemplePivot:
         Deterministe (et non aleatoire, contrairement a l'ancien
         `uuid4()`) pour que le dataset pivot puisse etre regenere sans
         perdre la correspondance entre un ExemplePivot et son registre
-        brut d'origine -- necessaire pour croiser "cet exemple
+        brut d'origine ; necessaire pour croiser "cet exemple
         anonymise" avec "son original" entre le pivot immuable et le
         fichier de sortie anonymise (fichiers separes, cf.
         AnonymiserDatasetUseCase).
@@ -99,7 +99,7 @@ class ExemplePivot:
         partagent le meme espace de cles naturelles. Exemple reel
         rencontre sur les donnees brutes : les fichiers MediQAl "oeq"
         et "mcqu" partagent 1492 valeurs de champ `id` identiques bien
-        qu'ils decrivent des registres differents -- `espace_noms` doit
+        qu'ils decrivent des registres differents ; `espace_noms` doit
         donc valoir "mediqal_oeq"/"mediqal_mcqu"/"mediqal_mcqm"
         (distincts), meme si `source="MediQAl"` reste commun aux trois
         pour le reste du pipeline (stratification, rapports).

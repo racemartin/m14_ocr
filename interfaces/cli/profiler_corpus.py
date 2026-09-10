@@ -14,11 +14,11 @@ Usage :
 Option --bloque (03/09/2026, ajoutee suite a un OOM reel sur
 ultramedical_preference.jsonl, 966 Mo, 5.8 Go de RAM disponibles) :
 sans --bloque, tout le corpus est charge en memoire d'un coup (comme
-avant) -- inchange, c'est toujours le chemin par defaut. Avec
+avant), inchange, c'est toujours le chemin par defaut. Avec
 --bloque N, le corpus est lu par blocs de N enregistrements
 (LecteurCorpusFichierLocal(taille_bloc=N), lecture pandas chunksize)
 et CHAQUE bloc produit son propre rapport ydata-profiling complet
-(<nom>_blocNNN) -- aucun enregistrement n'est ignore ni echantillonne,
+(<nom>_blocNNN) ; aucun enregistrement n'est ignore ni echantillonne,
 seule la memoire de pointe est bornee. Contrepartie assumee : les
 correlations/doublons sont calcules par bloc, pas globalement sur tout
 le corpus (un doublon a cheval sur deux blocs n'est pas detecte).
@@ -107,7 +107,7 @@ def main() -> None:
     log.START_ACTION("profiler_corpus", "main", "profilage d'un corpus")
     log.PARAMETER_VALUE("source", arguments.source)
     log.PARAMETER_VALUE("nom", arguments.nom)
-    log.PARAMETER_VALUE("bloque", arguments.bloque or "(desactive -- lecture complete)")
+    log.PARAMETER_VALUE("bloque", arguments.bloque or "(desactive, lecture complete)")
 
     if arguments.bloque:
         _profiler_par_blocs(arguments.source, arguments.nom, arguments.bloque)

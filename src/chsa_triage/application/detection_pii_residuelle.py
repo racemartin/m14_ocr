@@ -1,6 +1,6 @@
 """
 Detection heuristique par expressions regulieres de candidats de PII
-residuelle sur un texte DEJA anonymise -- meme methode que celle
+residuelle sur un texte DEJA anonymise ; meme methode que celle
 utilisee pour la relecture manuelle assistee documentee dans
 `docs/02_etape1_donnees/01_rapport_rgpd.md` §4 (emails, telephones,
 URLs, dates completes, motifs "deux mots capitalises consecutifs").

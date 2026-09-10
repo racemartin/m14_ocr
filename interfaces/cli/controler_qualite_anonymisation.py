@@ -3,28 +3,28 @@ STEP 03.1
 Point d'entree CLI — Etape 1, action "controler la qualite de
 l'anonymisation".
 
-Design fichier-a-fichier (08/09/2026, decision du capitaine --
-remplace un enganche en direct dans la boucle d'anonymisation) :
+Design fichier-a-fichier (08/09/2026 ; remplace un enganche en direct
+dans la boucle d'anonymisation) :
 compare le pivot ORIGINAL (--dataset, jamais modifie) au fichier
 ANONYMISE (--anonymise, sortie separee de `anonymiser_dataset.py`),
 croises par `identifiant`. Puisque le pivot original n'est jamais
 mute, ce script peut se relancer a tout moment sur n'importe quelle
-tranche deja anonymisee -- y compris retroactivement sur une vague
+tranche deja anonymisee, y compris retroactivement sur une vague
 anonymisee il y a longtemps.
 
 Detection de PII residuelle : regex sans modele (emails, telephones,
 URLs, dates, bigrammes capitalises) sur le texte anonymise, puis
 seconde opinion spaCy (memes modeles que PresidioAnonymiseur,
 fr_core_news_md/en_core_web_sm) pour departager les bigrammes
-ambigus -- jamais de LLM/IA generative. Les cas ou ni le regex ni
+ambigus, jamais de LLM/IA generative. Les cas ou ni le regex ni
 spaCy ne tranchent sont explicitement marques "pendant_revision_humaine",
 jamais une confirmation inventee.
 
 Stratum dedie "sans entite detectee" (--taille-echantillon-sans-entite,
-08/09/2026, item explicite du capitaine) : independant du tirage
+08/09/2026) : independant du tirage
 stratifie (type_exemple, source) ci-dessus, tire un echantillon a part
 parmi les couples ou `texte_original == texte_anonymise` sur tous les
-champs -- c'est-a-dire ceux ou Presidio n'a RIEN detecte. "Rien
+champs, c'est-a-dire ceux ou Presidio n'a RIEN detecte. "Rien
 detecte" peut vouloir dire "vraiment aucune PII" ou "Presidio a rate
 une PII", d'ou la relecture dediee (30-50 cas par defaut) plutot que
 de les laisser se noyer dans le tirage general. Compteurs et section
@@ -104,8 +104,8 @@ def main() -> None:
         type=int,
         default=40,
         help="Taille du stratum DEDIE aux exemples ou aucune entite n'a ete detectee "
-             "(texte_original == texte_anonymise sur tous les champs) -- independant de "
-             "--taille-echantillon ci-dessus. Le capitaine demande explicitement 30-50 cas "
+             "(texte_original == texte_anonymise sur tous les champs), independant de "
+             "--taille-echantillon ci-dessus. L'exigence est de 30-50 cas "
              "relus a la main/seconde opinion spaCy (defaut 40)",
     )
     parser.add_argument("--graine-sans-entite", type=int, default=43)
@@ -194,13 +194,13 @@ def main() -> None:
         log.LEVEL_5_WARNING(
             "controler_qualite_anonymisation",
             f"{cas_usage.nombre_introuvables_dans_original} identifiant(s) present(s) dans "
-            f"{arguments.anonymise} introuvable(s) dans {arguments.dataset} -- fichiers incoherents ?",
+            f"{arguments.anonymise} introuvable(s) dans {arguments.dataset} ; fichiers incoherents ?",
         )
 
     total_disponible = repository_anonymise.compter()
 
     # Charge le rapport RGPD cumule (Partie 1) pour reutiliser les
-    # compteurs d'entites par type -- pas de recalcul ici.
+    # compteurs d'entites par type, pas de recalcul ici.
     chemin_rgpd = Path(arguments.rapport_rgpd_json)
     statistiques_cumulees = {}
     if chemin_rgpd.exists() and chemin_rgpd.stat().st_size > 0:
@@ -209,7 +209,7 @@ def main() -> None:
     else:
         log.LEVEL_5_WARNING(
             "controler_qualite_anonymisation",
-            f"rapport RGPD cumule introuvable ({arguments.rapport_rgpd_json}) -- section 1 du rapport "
+            f"rapport RGPD cumule introuvable ({arguments.rapport_rgpd_json}) ; section 1 du rapport "
             "de controle qualite restera vide, lancer anonymiser_dataset.py au moins une fois avant",
         )
 

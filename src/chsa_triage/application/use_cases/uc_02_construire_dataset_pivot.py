@@ -26,17 +26,17 @@ FonctionMapping = Callable[[dict], "ExemplePivot | None"]
 class ConstruireDatasetPivotUseCase:
     """Orchestre la conversion d'un corpus brut vers le schema pivot.
 
-    Dedoublonnage reel (08/09/2026, decision du capitaine) : depuis que
+    Dedoublonnage reel (08/09/2026) : depuis que
     `ExemplePivot.nouvel_identifiant` est deterministe (meme cle
     naturelle -> meme identifiant), deux enregistrements bruts qui
     produisent le meme identifiant sont, par construction, strictement
-    identiques sur tous les champs qui alimentent le pivot -- de vrais
+    identiques sur tous les champs qui alimentent le pivot ; de vrais
     doublons, pas une collision de cle insuffisante (verifie
     corpus par corpus sur les donnees reelles, cf.
     `interfaces/cli/mappers_corpus.py`). Seul le PREMIER exemple
     rencontre pour un identifiant donne est conserve dans le pivot ;
     les suivants sont ecartes et exposes via `self.doublons` pour que
-    l'appelant (CLI) puisse les archiver avant de les jeter -- jamais
+    l'appelant (CLI) puisse les archiver avant de les jeter ; jamais
     silencieusement perdus.
     """
 
@@ -51,7 +51,7 @@ class ConstruireDatasetPivotUseCase:
         ignores (ex. donnee incomplete ou hors perimetre).
 
         Retourne le nombre d'exemples pivot EFFECTIVEMENT persistes
-        (doublons exclus -- cf. `self.doublons` pour ce qui a ete
+        (doublons exclus ; cf. `self.doublons` pour ce qui a ete
         ecarte).
         """
         exemples_par_id: dict[str, ExemplePivot] = {}

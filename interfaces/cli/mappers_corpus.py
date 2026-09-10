@@ -10,7 +10,7 @@ Elles sont injectees dans `ConstruireDatasetPivotUseCase.executer()`.
 
 NOTE : le contenu exact des mappers ci-dessous sera affine une fois
 le profilage (Etape 1, ydata-profiling) execute sur chaque corpus
-reel -- les noms de colonnes ci-dessous sont ceux documentes par les
+reel ; les noms de colonnes ci-dessous sont ceux documentes par les
 fiches Hugging Face des datasets et pourront necessiter un ajustement
 mineur.
 
@@ -22,7 +22,7 @@ DEUX schemas differents, desormais toutes deux couvertes :
   - "mcqu" (QCM, 1 reponse) et "mcqm" (QCM, reponses multiples,
     ex. correct_answers="C,D") : champs `question` + `clinical_case`
     (peut etre `null`) + `answer_a` a `answer_e` + `correct_answers`
-    + `task` ("QCU"/"QCM") -- PAS de champ `answer`.
+    + `task` ("QCU"/"QCM"), PAS de champ `answer`.
     -> `mapper_mediqal_qcm` (cles `mediqal_mcqu` / `mediqal_mcqm`).
 
 NOTE (08/09/2026, identifiant deterministe, cf.
@@ -31,29 +31,29 @@ identifiant STABLE (pas aleatoire) a partir d'une cle naturelle propre
 a chaque registre brut, verifiee sur les fichiers reels de
 `data/raw/` (pas supposee depuis la fiche Hugging Face) :
   - mediqal_oeq/mcqu/mcqm, frenchmedmcqa : champ `id` du registre brut.
-    ATTENTION -- verifie sur les fichiers reels : `mediqal_oeq.jsonl`
+    ATTENTION, verifie sur les fichiers reels : `mediqal_oeq.jsonl`
     et `mediqal_mcqu.jsonl` partagent 1492 valeurs de `id` identiques
     bien qu'ils decrivent des registres differents (et 1280 avec
-    mediqal_mcqm) -- l'espace de noms passe a `nouvel_identifiant` doit
+    mediqal_mcqm) ; l'espace de noms passe a `nouvel_identifiant` doit
     donc etre plus fin que le simple `source="MediQAl"` commun aux
     trois (`mediqal_oeq`/`mediqal_mcqu`/`mediqal_mcqm`, distingues via
     le champ `task` pour le mapper QCM partage par les deux derniers).
-  - medquad : aucun champ `id` dans le registre brut -- cle naturelle
+  - medquad : aucun champ `id` dans le registre brut ; cle naturelle
     = `Question` + `Answer` concatenes (verifie : 16 359 valeurs
-    uniques sur 16 407 registres, 48 doublons EXACTS Question+Answer
-    -- `Question` seule n'aurait donne que 14 979 valeurs uniques,
+    uniques sur 16 407 registres, 48 doublons EXACTS Question+Answer ;
+    `Question` seule n'aurait donne que 14 979 valeurs uniques,
     beaucoup moins fiable).
   - ultramedical_preference : `prompt_id` seul n'est PAS unique
-    (verifie : 77 046 valeurs uniques sur 109 353 registres) --
+    (verifie : 77 046 valeurs uniques sur 109 353 registres) ;
     cle naturelle = `prompt_id` + `label_type` + reponse `chosen` +
     reponse `rejected` (verifie : 97 081 valeurs uniques, donc 12 272
-    registres strictement identiques sur ces 4 champs -- de vrais
+    registres strictement identiques sur ces 4 champs, de vrais
     doublons, pas une collision de cle insuffisante).
 
 Les registres dont la cle naturelle produit un identifiant deja vu
 sont de VRAIS doublons (contenu strictement identique sur les champs
-qui alimentent le pivot) -- `ConstruireDatasetPivotUseCase` les
-detecte et les ecarte (dedoublonnage reel, decision du capitaine
+qui alimentent le pivot) ; `ConstruireDatasetPivotUseCase` les
+detecte et les ecarte (dedoublonnage reel,
 08/09/2026), voir `doublons_supprimes.jsonl` et
 `docs/02_etape1_donnees/00_couverture_exigences_officielles.md` pour
 le detail par source.
@@ -88,7 +88,7 @@ def mapper_mediqal(enregistrement: dict) -> ExemplePivot | None:
     Ne couvre que la configuration "oeq" (question ouverte, champs
     `question`/`answer`). Les configurations "mcqu"/"mcqm" (QCM, champs
     `answer_a`..`answer_e` + `correct_answers`) n'ont PAS ce champ
-    `answer` -- utiliser `mapper_mediqal_qcm` pour celles-ci. Voir la
+    `answer` ; utiliser `mapper_mediqal_qcm` pour celles-ci. Voir la
     note de module ci-dessus.
     """
     question = enregistrement.get("question") or enregistrement.get("query")
@@ -148,8 +148,8 @@ def mapper_mediqal_qcm(enregistrement: dict) -> ExemplePivot | None:
     • medical_subject
     • question_type
 
-    Traitement simple decide par le capitaine (identique a
-    `mapper_medquad`) : pas de liste d'options dans le prompt.
+    Traitement simple, identique a
+    `mapper_medquad` : pas de liste d'options dans le prompt.
     - prompt = `clinical_case` (quand non vide/non nul) concatene avec
       `question` ; le cas clinique est necessaire car de nombreuses
       questions ("Au sujet des vaccinations :") n'ont pas de sens sans
@@ -185,7 +185,7 @@ def mapper_mediqal_qcm(enregistrement: dict) -> ExemplePivot | None:
 
     completion_texte = " ".join(textes_reponses)
 
-    # Distingue mcqu ("QCU") de mcqm ("QCM") -- verifie sur les fichiers
+    # Distingue mcqu ("QCU") de mcqm ("QCM") ; verifie sur les fichiers
     # reels : `task` vaut exclusivement "QCU" dans mediqal_mcqu.jsonl et
     # "QCM" dans mediqal_mcqm.jsonl, aucune valeur mixte. Necessaire car
     # les deux fichiers partagent des valeurs de `id` avec mediqal_oeq
@@ -225,19 +225,19 @@ def mapper_frenchmedmcqa(enregistrement: dict) -> ExemplePivot | None:
     Schema reel (confirme sur nthngdy/frenchmedmcqa, les 3 splits,
     1080 enregistrements, 07/09/2026) : champs plats `answer_a` a
     `answer_e` (PAS de champ `options`), `correct_answers` (entier,
-    index 0-based dans a..e -- confirme a la fois par
+    index 0-based dans a..e, confirme a la fois par
     `datasets.load_dataset(...).features["correct_answers"]`, qui est
     un simple `Value("int64")`, et manuellement sur plusieurs
     enregistrements reels, ex. correct_answers=4 -> "e" pour une
     question sur les particules alpha, correct_answers=0 -> "a" pour
     une question sur la progesterone), et `number_correct_answers`
-    (`ClassLabel(names=["1","2","3","4","5"])` -- index 0 signifie
+    (`ClassLabel(names=["1","2","3","4","5"])`, index 0 signifie
     "1 reponse correcte"). Sur les 1080 enregistrements reels
     (train+validation+test), `number_correct_answers` vaut toujours 0
     (= 1 seule reponse) : le champ `correct_answers` est un entier
     unique, il ne peut de toute facon pas encoder plusieurs index a la
     fois, donc le cas multi-reponse n'est ni observe ni representable
-    par ce schema sur ce miroir HF -- pas de gestion speciale requise.
+    par ce schema sur ce miroir HF ; pas de gestion speciale requise.
     """
     question = enregistrement.get("question")
     index_reponse = enregistrement.get("correct_answers")
@@ -288,7 +288,7 @@ def mapper_medquad(enregistrement: dict) -> ExemplePivot | None:
         return None
 
     # Aucun champ `id` dans le registre brut MedQuAD (verifie sur le
-    # fichier reel) -- cle naturelle = hash de Question+Answer, verifie
+    # fichier reel) ; cle naturelle = hash de Question+Answer, verifie
     # unique a 16 359/16 407 (48 doublons EXACTS Question+Answer ;
     # Question seule n'aurait donne que 14 979 valeurs uniques).
     cle_naturelle = hashlib.sha256(f"{question}||{reponse}".encode("utf-8")).hexdigest()
@@ -310,7 +310,7 @@ def _extraire_reponse_assistant(messages) -> str | None:
     """
     UltraMedical-Preference stocke chosen/rejected au format chat :
     liste de messages [{"content": ..., "role": "user"|"assistant"},
-    ...], PAS une chaine directe -- confirme sur les 109353
+    ...], PAS une chaine directe ; confirme sur les 109353
     enregistrements reels (03/09/2026) : toujours une liste de 2
     messages, le dernier toujours role="assistant". Ce mapper extrait
     ce dernier message ; sans cette extraction, `str(messages)`
@@ -364,12 +364,12 @@ def mapper_ultramedical_preference(enregistrement: dict) -> ExemplePivot | None:
     label_type = enregistrement.get("label_type", "")
 
     # `prompt_id` seul n'est PAS unique (verifie sur le fichier reel :
-    # 77 046 valeurs uniques sur 109 353 registres -- le meme prompt
+    # 77 046 valeurs uniques sur 109 353 registres ; le meme prompt
     # est annote plusieurs fois avec des criteres de preference
     # differents, ex. label_type "easy"/"hard"/"length"). Cle naturelle
     # = prompt_id + label_type + reponses chosen/rejected, verifiee
     # unique a 97 081/109 353 (12 272 registres strictement identiques
-    # sur ces 4 champs -- de vrais doublons, pas une collision de cle
+    # sur ces 4 champs, de vrais doublons, pas une collision de cle
     # insuffisante).
     cle_naturelle = f"{prompt_id}|{label_type}|{chosen}|{rejected}"
 

@@ -1,7 +1,7 @@
 """
 Tests du controle qualite d'anonymisation, design fichier-a-fichier
 (compare un ExemplePivot original a sa version anonymisee). Utilise un
-FAUX VerificateurEntitesNommees (pas de spaCy reel ici -- deterministe
+FAUX VerificateurEntitesNommees (pas de spaCy reel ici ; deterministe
 et rapide). L'integration reelle avec spaCy est couverte separement
 par `tests/infrastructure/test_spacy_verificateur_entites.py`.
 """
@@ -30,7 +30,7 @@ from chsa_triage.domain.ports.verificateur_entites import VerdictEntiteNommee
 
 
 class FauxVerificateurEntites:
-    """Verdict configure par passage exact -- pas de vraie NLP."""
+    """Verdict configure par passage exact ; pas de vraie NLP."""
 
     def __init__(self, verdicts_par_passage: dict[str, VerdictEntiteNommee]) -> None:
         self._verdicts = verdicts_par_passage
@@ -99,7 +99,7 @@ def _anonymiser(exemple: ExemplePivot, symptomes_anon: str) -> ExemplePivot:
 
 
 # ----------------------------------------------------------------------
-# ControleQualiteAnonymisation.observer() -- comparaison d'un couple
+# ControleQualiteAnonymisation.observer() : comparaison d'un couple
 # ----------------------------------------------------------------------
 
 
@@ -227,7 +227,7 @@ def test_rapport_markdown_indique_la_portee_echantillon():
 
 
 # ----------------------------------------------------------------------
-# ControlerQualiteAnonymisationUseCase -- orchestration fichier-a-fichier
+# ControlerQualiteAnonymisationUseCase : orchestration fichier-a-fichier
 # ----------------------------------------------------------------------
 
 
@@ -287,7 +287,7 @@ def test_use_case_signale_les_identifiants_introuvables_dans_l_original():
 
 
 # ----------------------------------------------------------------------
-# Item 3 : stratum dedie "sans entite detectee" -- independant du
+# Item 3 : stratum dedie "sans entite detectee" ; independant du
 # tirage stratifie (type_exemple, source) ci-dessus.
 # ----------------------------------------------------------------------
 
@@ -335,7 +335,7 @@ def test_use_case_isole_le_stratum_sans_entite_independamment_du_tirage_principa
     controle = cas_usage.executer()
 
     # Le tirage principal (§1-4) porte toujours sur TOUS les exemples,
-    # avec ou sans entite -- inchange par l'ajout du nouveau stratum.
+    # avec ou sans entite ; inchange par l'ajout du nouveau stratum.
     assert controle.nombre_exemples_observes == 10
     # Le nouveau stratum isole EXACTEMENT les 5 "sans entite".
     assert controle.nombre_disponibles_sans_entite == 5

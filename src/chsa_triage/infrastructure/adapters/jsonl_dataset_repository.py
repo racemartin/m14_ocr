@@ -4,7 +4,7 @@ JSONL local.
 
 Implemente le port `RepositoryLectureEcriture[ExemplePivot]`. C'est la
 seule couche qui sait qu'un ExemplePivot est, concretement, une ligne
-JSON dans un fichier -- ni le domaine ni l'application n'en ont
+JSON dans un fichier ; ni le domaine ni l'application n'en ont
 connaissance.
 """
 
@@ -70,7 +70,7 @@ def ajouter_exemples_jsonl(chemin_fichier: str | Path, exemples: Iterable[Exempl
     Utilise pour les fichiers d'AUDIT (ex. `doublons_supprimes.jsonl`)
     ou plusieurs entrees peuvent legitimement partager le meme
     `identifiant` (plusieurs registres bruts identiques ecartes lors du
-    dedoublonnage, cf. `ConstruireDatasetPivotUseCase.doublons`) -- un
+    dedoublonnage, cf. `ConstruireDatasetPivotUseCase.doublons`) ; un
     stockage indexe par identifiant en perdrait silencieusement une
     partie.
     """

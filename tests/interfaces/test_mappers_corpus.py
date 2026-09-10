@@ -2,7 +2,7 @@
 Tests des mappers specifiques par corpus (interfaces/cli/mappers_corpus.py).
 
 Ces mappers n'avaient aucun test avant le smoke test d'integration du
-02/09/2026 -- ajoutes a cette occasion. Utilisent des enregistrements
+02/09/2026 ; ajoutes a cette occasion. Utilisent des enregistrements
 synthetiques representatifs des schemas documentes par les fiches
 Hugging Face de chaque corpus (a confirmer/ajuster une fois les
 corpus reels profiles, cf. docs/02_etape1_donnees).
@@ -13,7 +13,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-# interfaces/cli n'est pas un package installe -- ajouter la racine
+# interfaces/cli n'est pas un package installe ; ajouter la racine
 # du depot au chemin de recherche pour importer mappers_corpus.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -79,7 +79,7 @@ def test_mapper_mediqal_qcm_mcqu_valide():
 
 
 def test_mapper_mediqal_qcm_sans_cas_clinique():
-    """`clinical_case` est `null` pour certains enregistrements -- le prompt doit alors etre juste la question."""
+    """`clinical_case` est `null` pour certains enregistrements ; le prompt doit alors etre juste la question."""
     enregistrement = {
         "clinical_case": None,
         "question": "Quel diagnostic evoquez-vous ?",
@@ -127,7 +127,7 @@ def test_mapper_mediqal_qcm_meme_id_mais_task_different_ne_collisionne_pas():
     """
     Cas reel verifie sur les fichiers bruts : mediqal_mcqu.jsonl et
     mediqal_mcqm.jsonl partagent des valeurs de `id` identiques (les
-    deux fichiers ont leur propre numerotation) -- l'identifiant
+    deux fichiers ont leur propre numerotation) ; l'identifiant
     deterministe doit rester distinct grace au `task` (QCU/QCM).
     """
     base = {
@@ -227,7 +227,7 @@ def test_mapper_frenchmedmcqa_identifiant_trace_le_champ_id():
 def test_mapper_frenchmedmcqa_deux_registres_identiques_produisent_le_meme_identifiant():
     """
     Cas reel verifie sur le fichier brut : un doublon EXACT existe
-    (meme `id`, meme contenu) -- l'identifiant deterministe doit
+    (meme `id`, meme contenu) ; l'identifiant deterministe doit
     permettre de le detecter (meme id -> meme identifiant), pour que
     `ConstruireDatasetPivotUseCase` puisse le dedoublonner.
     """
@@ -255,7 +255,7 @@ def test_mapper_medquad_accepte_cles_minuscules():
 
 
 def test_mapper_medquad_identifiant_deterministe_via_hash_question_reponse():
-    """Pas de champ `id` brut pour MedQuAD -- la cle naturelle est un hash de Question+Answer."""
+    """Pas de champ `id` brut pour MedQuAD ; la cle naturelle est un hash de Question+Answer."""
     enregistrement = {"Question": "What is diabetes?", "Answer": "A chronic condition."}
     exemple_1 = mapper_medquad(dict(enregistrement))
     exemple_2 = mapper_medquad(dict(enregistrement))
@@ -306,7 +306,7 @@ def test_mapper_ultramedical_preference_meme_prompt_id_mais_label_type_different
     """
     Cas reel verifie sur le fichier brut : `prompt_id` seul n'est PAS
     unique (annotations multiples par prompt, ex. label_type
-    "easy"/"length") -- des reponses differentes doivent produire des
+    "easy"/"length") ; des reponses differentes doivent produire des
     identifiants differents.
     """
     base = {"prompt_id": "MedMCQA,11404", "prompt": "Q"}

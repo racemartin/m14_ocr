@@ -2,7 +2,7 @@
 Cas d'usage : calculer la repartition REELLE des splits par strate
 (type_exemple, source), pour verifier apres coup que l'echantillonnage
 stratifie (`DecouperSplitsUseCase`) est bien reste representatif dans
-chaque split -- pas seulement au global (deja affiche par
+chaque split, pas seulement au global (deja affiche par
 `decouper_splits.py`), mais strate par strate.
 """
 

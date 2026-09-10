@@ -12,27 +12,27 @@ Option --taille-bloc (07/09/2026, ajoutee suite a un OOM reel sur
 ultramedical_preference.jsonl, 966 Mo, 5.8 Go de RAM disponibles) :
 sans lecture par blocs, `LecteurCorpusFichierLocal` charge tout le
 fichier source en DataFrame pandas d'un coup avant de le convertir en
-dicts -- meme probleme deja documente et corrige cote
+dicts, meme probleme deja documente et corrige cote
 `profiler_corpus.py --bloque`. Avec --taille-bloc N, la lecture du
 fichier source se fait par blocs de N lignes (pandas chunksize) :
 chaque bloc est converti puis mappe avant que le suivant soit charge,
 la memoire de pointe reste bornee par la taille du bloc. Les exemples
 pivot mappes restent, eux, accumules en memoire jusqu'a l'ecriture
-finale (comportement inchange de `ConstruireDatasetPivotUseCase`) --
+finale (comportement inchange de `ConstruireDatasetPivotUseCase`) ;
 --taille-bloc borne la lecture du fichier brut, pas la taille du
 dataset pivot en sortie.
 
-Dedoublonnage reel (08/09/2026, identifiant deterministe + decision du
-capitaine) : depuis que `ExemplePivot.nouvel_identifiant` est
+Dedoublonnage reel (08/09/2026, identifiant deterministe) : depuis que
+`ExemplePivot.nouvel_identifiant` est
 deterministe, deux enregistrements bruts strictement identiques sur
 les champs qui alimentent le pivot produisent desormais le MEME
-identifiant -- de vrais doublons trouves dans les donnees reelles
+identifiant ; de vrais doublons trouves dans les donnees reelles
 (FrenchMedMCQA 1, MedQuAD 48, UltraMedical-Preference 12272, cf.
 `docs/02_etape1_donnees/00_couverture_exigences_officielles.md`).
 `ConstruireDatasetPivotUseCase` n'en garde qu'un seul dans le pivot ;
 les doublons ecartes sont archives (jamais silencieusement perdus)
 dans --doublons (defaut `data/processed/doublons_supprimes.jsonl`,
-append -- un fichier partage entre les 6 executions de ce script).
+append), un fichier partage entre les 6 executions de ce script.
 """
 
 from __future__ import annotations
@@ -79,7 +79,7 @@ def main() -> None:
     log.PARAMETER_VALUE("source", arguments.source)
     log.PARAMETER_VALUE("corpus", arguments.corpus)
     log.PARAMETER_VALUE("sortie", arguments.sortie)
-    log.PARAMETER_VALUE("taille-bloc", arguments.taille_bloc or "(desactive -- lecture complete)")
+    log.PARAMETER_VALUE("taille-bloc", arguments.taille_bloc or "(desactive, lecture complete)")
 
     # -------------------------------------------------------------------------
     # PREPARE ADAPTERS (Dependency Injection)
@@ -105,7 +105,7 @@ def main() -> None:
     if nombre_exemples == 0:
         log.LEVEL_5_WARNING(
             "construire_dataset_pivot",
-            f"0 exemple pivot produit depuis {arguments.source} -- le mapper '{mapper.__name__}' "
+            f"0 exemple pivot produit depuis {arguments.source} ; le mapper '{mapper.__name__}' "
             "n'a reconnu aucun enregistrement (schema incompatible ?), verifier le mapper avant de continuer",
         )
 
@@ -114,7 +114,7 @@ def main() -> None:
         log.LEVEL_5_WARNING(
             "construire_dataset_pivot",
             f"{len(cas_usage.doublons)} enregistrement(s) strictement identique(s) ecarte(s) du pivot "
-            f"(meme identifiant deterministe) -- archives dans {arguments.doublons}",
+            f"(meme identifiant deterministe), archives dans {arguments.doublons}",
         )
 
     log.PARAMETER_VALUE("exemples pivot ecrits", nombre_exemples)

@@ -75,7 +75,7 @@ def test_decouper_splits_appelle_sauvegarder_plusieurs_une_seule_fois():
     cas_usage = DecouperSplitsUseCase(repository=repository)
     cas_usage.executer()
 
-    # sauvegarder() (par item) ne doit jamais etre appele -- seul
+    # sauvegarder() (par item) ne doit jamais etre appele ; seul
     # sauvegarder_plusieurs() doit l'etre (bug O(n^2) corrige).
     assert repository.appels_sauvegarder == 0
     assert all(e.split is not None for e in repository.items.values())
@@ -85,7 +85,7 @@ def test_decouper_splits_est_stratifie_par_type_exemple_et_source():
     """
     Une source tres petite (5 exemples) et une source tres grande
     (500 exemples) doivent chacune se retrouver representees dans
-    train/val/test -- pas juste la grande a cause d'un shuffle global.
+    train/val/test, pas juste la grande a cause d'un shuffle global.
     """
     exemples = (
         [_exemple_anonymise("FrenchMedMCQA", TypeExemple.SFT) for _ in range(5)]

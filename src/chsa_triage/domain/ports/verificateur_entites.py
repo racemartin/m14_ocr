@@ -7,7 +7,7 @@ Utilise par le controle qualite d'anonymisation (cf.
 PII residuelle trouves par une heuristique regex sur le texte deja
 anonymise : le regex seul confond frequemment un terme medical
 capitalise ("Polycystic", "Mitochondrial Myopathy") avec un nom
-propre. Ce port ne sait rien de spaCy -- il expose seulement un
+propre. Ce port ne sait rien de spaCy ; il expose seulement un
 verdict a 3 etats.
 """
 

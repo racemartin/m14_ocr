@@ -3,7 +3,7 @@
 Ce dossier est volontairement **vide dans le dépôt versionné**
 (`.gitkeep` uniquement, `.gitignore` exclut le contenu réel). Cible
 long terme (Livrable 1) : versionner le dataset anonymisé sur Hugging
-Face Hub. **Pas encore fait** : décision du capitaine d'attendre que
+Face Hub. **Pas encore fait** : attendre que
 le contrôle qualité PII (§ ci-dessous) soit intégralement clos avant
 toute publication, même privée. En attendant, origine et licence des
 4 sources sont documentées dans le dépôt — voir
@@ -75,8 +75,8 @@ initial de la mission : cahier des charges §5.2
 
 Le dataset pivot n'est **jamais modifié en place** par l'anonymisation :
 `anonymiser_dataset.py` lit `dataset_pivot.jsonl` et écrit dans
-`dataset_pivot_anonymise.jsonl` (fichiers séparés, décision du
-capitaine du 08/09/2026 — permet de relancer le contrôle qualité ou
+`dataset_pivot_anonymise.jsonl` (fichiers séparés depuis le
+08/09/2026 — permet de relancer le contrôle qualité ou
 une nouvelle vague d'anonymisation sans jamais perdre l'original). La
 déduplication est réelle (pas seulement documentée) : `identifiant`
 est déterministe (hash de `espace_noms:cle_naturelle`), donc un même

@@ -8,8 +8,8 @@
 # le pivot source : chaque appel ajoute au fichier --sortie (separe)
 # un echantillon stratifie (type_exemple, source) d'au plus --limite
 # nouveaux exemples parmi ceux du pivot pas encore presents dans
-# --sortie. Ce script rappelle la meme commande en boucle -- un
-# exemple deja present dans --sortie n'est jamais retraite -- jusqu'a
+# --sortie. Ce script rappelle la meme commande en boucle ; un
+# exemple deja present dans --sortie n'est jamais retraite ; jusqu'a
 # ce que --sortie contienne autant d'exemples que le pivot source, ou
 # qu'une vague ne fasse plus progresser --sortie (protection
 # anti-boucle infinie ci-dessous).

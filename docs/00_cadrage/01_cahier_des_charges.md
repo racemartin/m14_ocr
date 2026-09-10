@@ -91,7 +91,7 @@ protocole MCP.
 > `contenu`. `chosen`/`rejected` valent un tuple vide `()` (`[]` en
 > JSON) quand ils ne s'appliquent pas, jamais `null`. Le champ
 > `identifiant_source_brute` a été ajouté a posteriori (08/09/2026,
-> décision du capitaine) — il ne figurait pas dans l'énoncé — pour
+> il ne figurait pas dans l'énoncé initial) pour
 > tracer chaque `ExemplePivot` jusqu'au registre brut d'origine dans
 > `data/raw/*.jsonl` (exigence RGPD d'auditabilité, cf. NF6). Les
 > valeurs des énumérations (`fr`/`en`, `sft`/`dpo`,

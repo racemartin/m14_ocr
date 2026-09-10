@@ -4,7 +4,7 @@ antecedents, messages) d'un ensemble d'ExemplePivot, en LISANT le
 pivot original (jamais modifie) et en ECRIVANT le resultat dans un
 fichier de SORTIE separe.
 
-Design (08/09/2026, decision du capitaine -- remplace un design
+Design (08/09/2026 ; remplace un design
 precedent qui mutait le pivot en place) : le pivot original reste
 intact pour toujours, ce qui permet (a) de regenerer/reutiliser le
 pivot source sans jamais perdre le texte original d'un exemple deja
@@ -28,7 +28,7 @@ from chsa_triage.domain.ports.anonymiseur import ResultatAnonymisation
 class StatistiquesSource:
     """
     Compteurs RGPD accumules pendant une passe d'anonymisation, par
-    source (cf. section 3 -- resultats quantitatifs -- du rapport de
+    source (cf. section 3, resultats quantitatifs, du rapport de
     justification RGPD). Auparavant, `ResultatAnonymisation` etait
     calcule puis jete a chaque champ anonymise : ces compteurs sont
     l'instrumentation minimale necessaire pour produire des chiffres
@@ -44,7 +44,7 @@ class StatistiquesSource:
 class AnonymiserDatasetUseCase:
     """Orchestre l'anonymisation RGPD d'un dataset pivot.
 
-    `repository_source` est LU SEUL, jamais ecrit -- c'est le pivot
+    `repository_source` est LU SEUL, jamais ecrit ; c'est le pivot
     original, immuable. `repository_sortie` est le fichier separe ou
     sont persistes les exemples anonymises (`anonymise=True`).
 
@@ -91,7 +91,7 @@ class AnonymiserDatasetUseCase:
         dataset pivot reel, 147204 exemples/624 Mo) : appeler
         `self.repository_sortie.sauvegarder(...)` a chaque iteration
         relit et reecrit tout le fichier JSONL a CHAQUE exemple (cf.
-        `JsonlDatasetRepository.sauvegarder`) -- sur un dataset de
+        `JsonlDatasetRepository.sauvegarder`) ; sur un dataset de
         cette taille c'est un O(n^2) totalement infaisable (des
         heures, voire des jours). `sauvegarder_plusieurs` fait le meme
         travail de fusion par identifiant mais en une seule
@@ -99,9 +99,9 @@ class AnonymiserDatasetUseCase:
         d'exemples traites.
 
         NOTE (08/09/2026, decision produit) : mesure reelle sur le
-        dataset pivot complet (147204 exemples) -- l'anonymisation
+        dataset pivot complet (147204 exemples) ; l'anonymisation
         Presidio/spaCy complete prendrait ~19h (cout NLP, pas I/O).
-        Decision du capitaine : ne pas trancher entre "echantillon" et
+        Decision : ne pas trancher entre "echantillon" et
         "complet", mais rendre le processus incremental. `--limite`
         (cf. `interfaces/cli/anonymiser_dataset.py`) permet de traiter
         le dataset par vagues successives, chacune stratifiee pour

@@ -6,11 +6,11 @@ Implemente le port `LecteurCorpus`.
 
 NOTE (03/09/2026, decouvert sur ultramedical_preference.jsonl, 966 Mo) :
 sans `taille_bloc`, tout le fichier est charge d'un coup en DataFrame
-puis converti en liste de dictionnaires -- sur un gros corpus, ca peut
+puis converti en liste de dictionnaires ; sur un gros corpus, ca peut
 depasser la RAM disponible (OOM killer Linux, processus tue sans
 traceback Python). Passer `taille_bloc` fait lire le fichier par
 morceaux via `pandas(chunksize=...)` : chaque bloc est charge, cede,
-puis libere avant de lire le suivant -- la memoire de pointe reste
+puis libere avant de lire le suivant ; la memoire de pointe reste
 bornee par la taille du bloc, pas par la taille du fichier entier.
 Uniquement supporte pour CSV et JSONL (pas le JSON tableau unique,
 `lines=False`, que pandas ne sait pas decouper par blocs) ; sans objet
