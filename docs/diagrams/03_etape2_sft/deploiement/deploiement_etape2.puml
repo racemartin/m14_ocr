@@ -1,0 +1,70 @@
+@startuml deploiement_etape2
+!pragma layout smetana
+!include ../../_common/estilo.iuml
+
+title Étape 2 : Diagramme de déploiement (proposition de conception)\nEnvironnement B (distant, GPU), entraînement SFT-LoRA
+
+cloud "Hugging Face Hub" as HFHUB {
+  artifact "Qwen3-1.7B-Base\n(poids publics)" as MODELE
+  artifact "Dataset CHSA versionné\n(Livrable 1, pas encore poussé)" as DATASET_HUB
+  database "Repo modeles\nchsa-triage-sft-checkpoints\n(a creer)" as REPO_CHECKPOINTS
+}
+
+node "Spaces Dev Mode / HF Jobs (GPU A10G ou T4)\nEnvironnement B" as REMOTE {
+
+  node "Environnement uv (--extra remote)" as VENV {
+    component "training/sft_train.py\n(point d'entree)" as CLI
+    component "chsa_triage.application" as APP
+    component "chsa_triage.domain" as DOM
+    component "chsa_triage.infrastructure.adapters" as INFRA
+    component "transformers + bitsandbytes\n(BitsAndBytesConfig 4-bit NF4)" as HF
+    component "peft (LoraConfig)" as PEFT
+    component "trl (SFTTrainer)" as TRL
+    component "Unsloth / Liger Kernel /\nFlashAttention-2 (optionnels)" as OPT
+  }
+
+  database "data/splits/*.jsonl\n(ou dataset HF Hub une fois versionne)" as SPLITS
+  database "recipes/sft_qwen3_lora.yaml" as RECIPE
+  database "checkpoints/sft-lora/\n(poids LoRA locaux au Space)" as CKPT_LOCAL
+  database "data/processed/\ncheckpoints_sft.jsonl\n(metadonnees)" as CKPT_META
+}
+
+node "MLflow (partage avec Environnement A,\nMLFLOW_TRACKING_URI)" as MLFLOW
+database "TensorBoard logs\n(local au Space, alternative/complement)" as TB
+
+HFHUB --> VENV : huggingface_hub.from_pretrained()\n(HF_TOKEN)
+DATASET_HUB ..> SPLITS : datasets.load_dataset()\n(une fois le Livrable 1 pousse ;\nsinon, transfert manuel des\nsplits locaux aujourd'hui)
+
+CLI --> APP
+APP --> DOM
+APP --> INFRA
+INFRA --> HF
+INFRA --> PEFT
+INFRA --> TRL
+TRL ..> OPT : optimisations optionnelles
+CLI --> RECIPE : lit la configuration\n(quantification, LoRA,\nhyperparametres, grille)
+INFRA --> SPLITS : lecture (train/val)
+INFRA --> CKPT_LOCAL : ecriture (poids LoRA,\nvia peft/trl)
+INFRA --> CKPT_META : ecriture (CheckpointEntraine,\nvia RepositoryLectureEcriture)
+INFRA ..> MLFLOW : log metriques\n(loss, grad norm)
+INFRA ..> TB : log metriques\n(alternative)
+CKPT_LOCAL --> REPO_CHECKPOINTS : push_to_hub()\n(Etape 3 : charge ce checkpoint\ncomme politique de reference)
+
+note bottom of REMOTE
+  Session GPU facturee a l'usage (cf.
+  docs/01_environnement §3.4 discipline
+  de facturation), jamais laissee ouverte
+  sans surveillance en dehors d'un run
+  HF Jobs (qui se termine seul).
+end note
+
+note bottom of VENV
+  torch / trl / peft / bitsandbytes /
+  unsloth / liger-kernel : groupe --extra
+  remote de pyproject.toml, DEJA declare
+  (pas encore installe dans cet
+  environnement au moment de l'ecriture
+  de ce diagramme).
+end note
+
+@enduml

@@ -1,0 +1,78 @@
+@startuml pipeline_sft_lora
+!include ../../_common/estilo.iuml
+
+title Étape 2 : Pipeline SFT + LoRA (proposition de conception)\nDiagramme d'activité, aucun code encore écrit, cf. docs/03_etape2_sft/
+
+start
+
+:Étape 1bis (baseline) zéro/few-shot\nde Qwen3-1.7B-Base (hors périmètre\nde ce diagramme);
+note right
+  Contexte, pas construit ici : fournit
+  les métriques de référence auxquelles
+  comparer le checkpoint SFT en fin de
+  pipeline.
+end note
+
+:Charger dataset SFT anonymisé + réparti\n(train/val);
+note right
+  Source : dataset HF Hub (Livrable 1,
+  pas encore poussé) ou
+  data/splits/*.jsonl transférés
+  manuellement, cf.
+  01_installation_configuration.md §4
+end note
+
+partition "training/sft_train.py (Environnement B, GPU)" #E8F0F5 {
+
+  :uc_05_00_formater_dataset_chatml.py\n(FormaterDatasetChatMLUseCase);
+  note right
+    Port : FormateurConversation
+    Adaptateur proposé : ChatMLFormateurAdapter
+    (apply_chat_template,
+    add_generation_prompt=False)
+  end note
+
+  :Charger Qwen3-1.7B-Base en 4-bit NF4\n+ configurer LoraConfig;
+  note right
+    Pas de cas d'usage dédié : responsabilité
+    interne de TrlSftEntraineurAdapter
+    (constructeur) + assemblage de
+    recipes/sft_qwen3_lora.yaml. Voir
+    02_etapes_cas_usage.md §1 (décision).
+  end note
+
+  :uc_05_01_entrainer_sft.py\n(EntrainerSftUseCase);
+  note right
+    Port : EntraineurSupervise
+    (packing=True, loss_type=chunked_nll)
+    Suivi : SuiviExperimentation
+    (MLflow / TensorBoard : loss, grad norm)
+  end note
+
+  :evaluer_convergence(courbe_metriques)\n(application/verdict_convergence.py);
+  note right
+    Fonction pure, aucun port : lit la
+    courbe déjà produite par entrainer()
+  end note
+
+  if (Convergence saine ?) then (non : surapprentissage / sous-apprentissage / instable)
+    :uc_05_02_ajuster_boucle_hyperparametres_sft.py\n(grille restreinte : lr, r, alpha);
+    note right: Optuna écarté pour ce POC (roadmap, Phase 3)
+    -> Relancer l'entraînement;
+    :uc_05_01_entrainer_sft.py\n(EntrainerSftUseCase);
+  else (oui)
+  endif
+
+  :uc_05_03_sauvegarder_checkpoint_sft.py\n(SauvegarderCheckpointSftUseCase);
+  note right
+    Persiste CheckpointEntraine (métadonnées)
+    via RepositoryLectureEcriture : les poids
+    LoRA eux-mêmes sont écrits par trl/peft
+  end note
+}
+
+:Checkpoint SFT-LoRA disponible\npour l'Étape 3 (DPO);
+
+stop
+
+@enduml

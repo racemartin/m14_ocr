@@ -10,7 +10,7 @@ sous-dossiers numérotés selon les étapes du projet :
 | `docs/00_cadrage/` | Objectifs séquencés + décisions justifiées, cahier des charges |
 | `docs/01_environnement/` | Installation (`uv` local, HF payant distant) + architecture hexagonale |
 | `docs/02_etape1_donnees/` | Documentation spécifique à la préparation des données (à venir) |
-| `docs/03_etape2_sft/` | Documentation SFT + LoRA (à venir) |
+| `docs/03_etape2_sft/` | Planification de l'entraînement SFT + LoRA (concepts, installation Environnement B, cas d'usage proposés, guide d'implémentation), écrite avant tout code d'entraînement |
 | `docs/04_etape3_dpo/` | Documentation alignement DPO (à venir) |
 | `docs/05_etape4_deploiement/` | Documentation déploiement/évaluation (à venir) |
 | `docs/diagrams/` | Diagrammes UML (activité, séquence, paquets, déploiement) par étape : `.puml`+`.png`+`.svg`+`.pdf`, voir `docs/diagrams/README.md` |
