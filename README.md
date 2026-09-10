@@ -134,7 +134,18 @@ des doublons UltraMedical-Preference) dans
 uv run python interfaces/cli/anonymiser_dataset.py --dataset data/processed/dataset_pivot.jsonl --sortie data/processed/dataset_pivot_anonymise.jsonl --strategie replace --limite 5000
 ```
 
-Pour enchainer les vagues successives sans relancer la commande a la main a chaque fois, `scripts/anonymiser_par_lots.sh` la rappelle en boucle jusqu'a couverture complete du pivot.
+```bash
+# Pour enchainer les vagues successives sans relancer la commande a
+# la main a chaque fois : scripts/anonymiser_par_lots.sh rappelle
+# anonymiser_dataset.py en boucle jusqu'a couverture complete du
+# pivot, sans jamais retraiter les exemples deja presents dans
+# --sortie, avec protection anti-boucle-infinie si une vague
+# n'avance plus. Les 4 arguments positionnels sont optionnels
+# (valeurs par defaut identiques a celles de la commande ci-dessus).
+# Logs par iteration dans logs/anonymisation/. Detail complet dans
+# l'entete du script lui-meme.
+scripts/anonymiser_par_lots.sh data/processed/dataset_pivot.jsonl data/processed/dataset_pivot_anonymise.jsonl replace 5000
+```
 
 Chaque execution genere/fusionne automatiquement un **rapport RGPD
 cumule** (JSON + Markdown, `data/processed/rapport_anonymisation_rgpd.{json,md}`)
