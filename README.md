@@ -198,7 +198,44 @@ avec des exemples reels inspectables par source et les compteurs
 d'entites par type repris du rapport RGPD cumule (§4 ci-dessus, pas
 recalcules). Voir `application/use_cases/uc_03_02_controler_qualite_anonymisation.py`.
 
-### 6. Decoupage en splits (train / val / test, stratifie)
+**Muestreo INCREMENTAL** (09/09/2026, decision du capitaine -- meme
+patron que `--limite` ci-dessus) : `--registre-echantillons` (defaut
+`data/processed/controle_qualite_identifiants_echantillonnes.jsonl`)
+exclut du tirage les identifiants deja echantillonnes lors d'une
+execution precedente, sur les deux strates -- chaque execution ne
+compare que des identifiants NOUVEAUX. C'est ce qui rend les
+decisions humaines de la section suivante cumulables entre
+executions, au lieu d'un echantillon jete a chaque fois.
+
+### 6. Revision humaine persistee des candidats de PII residuelle (NF2)
+
+```bash
+# Revue interactive : recalcule TOUS les candidats "pendant_revision_humaine"
+# deja echantillonnes (les deux strates, toutes executions confondues),
+# exclut ceux ayant deja une decision, et persiste chaque reponse
+# IMMEDIATEMENT (fermer le terminal a mi-parcours ne perd rien).
+uv run python interfaces/cli/reviser_pii_residuelle.py verify --dataset data/processed/dataset_pivot.jsonl --anonymise data/processed/dataset_pivot_anonymise.jsonl
+
+# Corriger une decision deja prise (sans repasser par toute la liste) :
+uv run python interfaces/cli/reviser_pii_residuelle.py modify --identifiant chsa-xxxxxxxx
+```
+
+Ferme l'ecart identifie sur l'exigence NF2 du cahier des charges
+("anonymisation validee **manuellement**") : avant ce script, le
+verdict `pendant_revision_humaine` du controle qualite (§5) etait un
+cul-de-sac -- aucune decision de personne n'etait jamais persistee.
+Chaque decision (`accepte` = confirme non-PII, `rejete` = PII reelle
+confirmee) est identifiee par une cle stable
+`(source_liste, identifiant, champ, type_motif, debut, fin)` et
+persistee dans `data/processed/decisions_revision_humaine.jsonl`. Le
+rapport de `controler_qualite_anonymisation.py` (§5) relit ce fichier
+pour annoter chaque candidat en attente de son statut de decision
+(accepte/rejete/encore en attente). Voir
+`application/use_cases/uc_03_03_reviser_pii_residuelle.py` et
+`docs/02_etape1_donnees/01_rapport_rgpd.md` §7.5 pour la methodologie
+complete.
+
+### 7. Decoupage en splits (train / val / test, stratifie)
 
 ```bash
 # decouper_splits.py opere sur le fichier ANONYMISE (dataset_pivot_anonymise.jsonl),
@@ -218,7 +255,7 @@ uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset
 uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset_pivot_anonymise.jsonl --n 5000
 ```
 
-### 7. Verification de la repartition des splits par strate
+### 8. Verification de la repartition des splits par strate
 
 ```bash
 # decouper_splits.py n'affiche que le total global (train/val/test).
@@ -271,6 +308,12 @@ Détail complet : `docs/01_environnement/01_architecture_hexagonale.md`.
       exemples contrôlés automatiquement (0 PII résiduelle confirmée,
       35 candidats explicitement en attente de révision humaine) —
       voir `docs/02_etape1_donnees/00_couverture_exigences_officielles.md`.
+      Muestreo du contrôle qualité rendu **incrémental** (09/09/2026,
+      `--registre-echantillons`) et les 35 candidats en attente
+      peuvent désormais être tranchés avec une décision humaine
+      **persistée** (`reviser_pii_residuelle.py`,
+      `data/processed/decisions_revision_humaine.jsonl`) — voir §6
+      ci-dessus et `docs/02_etape1_donnees/01_rapport_rgpd.md` §7.5.
       **Vagues ultérieures** : à relancer avec `--limite` plus grand
       (ou `full`) avant le SFT/DPO ; réévaluer d'abord le risque de
       saturation/surapprentissage d'un entraînement sur un

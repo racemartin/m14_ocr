@@ -19,6 +19,12 @@ if TYPE_CHECKING:  # pragma: no cover - uniquement pour les outils de typage
     from chsa_triage.infrastructure.adapters.jsonl_dataset_repository import (
         JsonlDatasetRepository,
     )
+    from chsa_triage.infrastructure.adapters.jsonl_decisions_revision_humaine import (
+        JsonlDecisionsRevisionHumaine,
+    )
+    from chsa_triage.infrastructure.adapters.jsonl_registre_echantillons_controle_qualite import (
+        JsonlRegistreEchantillonsControleQualite,
+    )
     from chsa_triage.infrastructure.adapters.lecteur_corpus_fichier_local import (
         LecteurCorpusFichierLocal,
     )
@@ -43,6 +49,8 @@ if TYPE_CHECKING:  # pragma: no cover - uniquement pour les outils de typage
 
 __all__ = [
     "JsonlDatasetRepository",
+    "JsonlDecisionsRevisionHumaine",
+    "JsonlRegistreEchantillonsControleQualite",
     "LecteurCorpusFichierLocal",
     "LecteurCorpusHuggingFace",
     "LlamaCppInferenceAdapter",
@@ -57,6 +65,14 @@ _CARTE_IMPORTS_PARESSEUX = {
     "JsonlDatasetRepository": (
         "chsa_triage.infrastructure.adapters.jsonl_dataset_repository",
         "JsonlDatasetRepository",
+    ),
+    "JsonlDecisionsRevisionHumaine": (
+        "chsa_triage.infrastructure.adapters.jsonl_decisions_revision_humaine",
+        "JsonlDecisionsRevisionHumaine",
+    ),
+    "JsonlRegistreEchantillonsControleQualite": (
+        "chsa_triage.infrastructure.adapters.jsonl_registre_echantillons_controle_qualite",
+        "JsonlRegistreEchantillonsControleQualite",
     ),
     "LecteurCorpusFichierLocal": (
         "chsa_triage.infrastructure.adapters.lecteur_corpus_fichier_local",

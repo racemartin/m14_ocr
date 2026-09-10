@@ -30,6 +30,19 @@ une PII", d'ou la relecture dediee (30-50 cas par defaut) plutot que
 de les laisser se noyer dans le tirage general. Compteurs et section
 de rapport (§5) toujours SEPARES du reste.
 
+Muestreo INCREMENTAL (09/09/2026, decision du capitaine -- NF2 du
+cahier des charges exige une revision humaine PERSISTEE, pas un
+echantillon aleatoire jete a chaque execution) : --registre-echantillons
+(defaut `data/processed/controle_qualite_identifiants_echantillonnes.jsonl`)
+exclut du tirage les identifiants deja echantillonnes lors d'une
+execution precedente -- chaque execution ne compare que des
+identifiants NOUVEAUX, sur les deux strates. Les candidats
+"pendant_revision_humaine" qui en ressortent sont a trancher avec
+`reviser_pii_residuelle.py`, qui persiste la decision humaine dans
+--decisions (defaut `data/processed/decisions_revision_humaine.jsonl`) --
+ce script-ci relit ce fichier pour annoter le rapport du statut de
+decision deja pris, sans jamais le modifier.
+
 Usage :
     uv run python interfaces/cli/controler_qualite_anonymisation.py \
         --dataset data/processed/dataset_pivot.jsonl \
@@ -50,7 +63,11 @@ from chsa_triage.application.use_cases import (
     formater_rapport_controle_qualite_markdown,
 )
 from chsa_triage.application.use_cases.uc_03_01_rapport_anonymisation import rapport_depuis_dict
-from chsa_triage.infrastructure.adapters import JsonlDatasetRepository
+from chsa_triage.infrastructure.adapters import (
+    JsonlDatasetRepository,
+    JsonlDecisionsRevisionHumaine,
+    JsonlRegistreEchantillonsControleQualite,
+)
 from tools.rafael.log_tool import LogTool
 
 log = LogTool(origin="controler_qualite_anonymisation")
@@ -59,6 +76,8 @@ CHEMIN_ANONYMISE_DEFAUT                = "data/processed/dataset_pivot_anonymise
 CHEMIN_RAPPORT_RGPD_DEFAUT             = "data/processed/rapport_anonymisation_rgpd.json"
 CHEMIN_RAPPORT_QUALITE_JSON_DEFAUT     = "data/processed/rapport_controle_qualite_anonymisation.json"
 CHEMIN_RAPPORT_QUALITE_MARKDOWN_DEFAUT = "data/processed/rapport_controle_qualite_anonymisation.md"
+CHEMIN_REGISTRE_ECHANTILLONS_DEFAUT    = "data/processed/controle_qualite_identifiants_echantillonnes.jsonl"
+CHEMIN_DECISIONS_DEFAUT                = "data/processed/decisions_revision_humaine.jsonl"
 
 
 def main() -> None:
@@ -110,6 +129,19 @@ def main() -> None:
     )
     parser.add_argument("--rapport-json", default=CHEMIN_RAPPORT_QUALITE_JSON_DEFAUT)
     parser.add_argument("--rapport-markdown", default=CHEMIN_RAPPORT_QUALITE_MARKDOWN_DEFAUT)
+    parser.add_argument(
+        "--registre-echantillons",
+        default=CHEMIN_REGISTRE_ECHANTILLONS_DEFAUT,
+        help="Registre persiste des identifiants deja echantillonnes pour le controle qualite "
+             f"(muestreo incremental, defaut {CHEMIN_REGISTRE_ECHANTILLONS_DEFAUT})",
+    )
+    parser.add_argument(
+        "--decisions",
+        default=CHEMIN_DECISIONS_DEFAUT,
+        help="Fichier des decisions humaines persistees (cf. reviser_pii_residuelle.py) -- reutilise "
+             f"ici pour annoter le rapport du statut de decision des candidats REVISION_HUMAINE "
+             f"(defaut {CHEMIN_DECISIONS_DEFAUT})",
+    )
     arguments = parser.parse_args()
 
     log.START_ACTION("controler_qualite_anonymisation", "main", "controle qualite par comparaison de fichiers")
@@ -123,6 +155,8 @@ def main() -> None:
     # -------------------------------------------------------------------------
     repository_original   = JsonlDatasetRepository(arguments.dataset)
     repository_anonymise  = JsonlDatasetRepository(arguments.anonymise)
+    registre_echantillons = JsonlRegistreEchantillonsControleQualite(arguments.registre_echantillons)
+    decisions              = JsonlDecisionsRevisionHumaine(arguments.decisions)
 
     from chsa_triage.infrastructure.adapters import SpacyVerificateurEntitesNommees
 
@@ -131,12 +165,13 @@ def main() -> None:
     # -------------------------------------------------------------------------
     # USE CASE EXECUTE
     # -------------------------------------------------------------------------
-    log.STEP(1, "Comparaison original/anonymise", "regex + seconde opinion spaCy")
+    log.STEP(1, "Comparaison original/anonymise", "regex + seconde opinion spaCy, muestreo incremental")
     try:
         cas_usage = ControlerQualiteAnonymisationUseCase(
             repository_original            = repository_original,
             repository_anonymise           = repository_anonymise,
             verificateur_entites           = verificateur,
+            registre_echantillons          = registre_echantillons,
             taille_echantillon             = arguments.taille_echantillon,
             graine_aleatoire               = arguments.graine,
             taille_echantillon_sans_entite = arguments.taille_echantillon_sans_entite,
@@ -180,6 +215,11 @@ def main() -> None:
 
     horodatage = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
+    # Decisions humaines deja persistees (cf. reviser_pii_residuelle.py)
+    # -- reutilisees pour annoter, dans CE rapport, le statut de decision
+    # des candidats REVISION_HUMAINE deja tranches par une personne.
+    decisions_par_cle = {d.cle: d.decision for d in decisions.toutes()}
+
     chemin_json     = Path(arguments.rapport_json)
     chemin_markdown = Path(arguments.rapport_markdown)
     chemin_json.parent.mkdir(parents=True, exist_ok=True)
@@ -201,6 +241,7 @@ def main() -> None:
             arguments.taille_echantillon,
             total_disponible,
             statistiques_cumulees,
+            decisions_par_cle,
         ),
         encoding="utf-8",
     )

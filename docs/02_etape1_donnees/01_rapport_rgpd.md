@@ -440,3 +440,126 @@ ne permet pas de ré-identifier un patient mais reste indispensable au
 triage clinique (ESI), alors qu'une date de naissance exacte est un
 identifiant direct sans valeur clinique ajoutée par rapport à la
 tranche d'âge.
+
+### 7.5 Révision humaine persistée des candidats de PII résiduelle (09/09/2026)
+
+**Problème identifié** : le §4 documente une relecture manuelle
+réelle, mais conduite par un agent IA autonome, pas par une personne
+(avertissement méthodologique explicite dès le §4, rappelé au §6).
+Au-delà de ce POC initial, le mécanisme *lui-même* avait un défaut
+structurel indépendant de qui relit : `CandidatPiiResiduelle.verdict
+== "pendant_revision_humaine"` (cf. §2 méthode,
+`uc_03_02_controler_qualite_anonymisation.py`) était un **cul-de-sac**
+— ni le regex ni la seconde opinion spaCy ne tranchent seuls, et
+**aucune variable ni fichier ne persistait jamais la décision d'une
+personne**. Une revue humaine réelle, faite une fois, n'était nulle
+part enregistrée — impossible de démontrer, au moment de la
+soutenance, quels cas précis ont été validés par une personne et
+lesquels restent réellement ouverts. Deux chantiers ferment cet écart
+pour de bon, dans cet ordre (le second dépend du premier) :
+
+**1. Muestreo incrémental du contrôle qualité.** Avant ce chantier,
+chaque exécution de `controler_qualite_anonymisation.py` tirait un
+échantillon **aléatoire neuf** (`--taille-echantillon`, `--graine`) —
+confirmé dans le rapport généré lui-même, qui indiquait explicitement
+« pas un cumul persistant entre exécutions ». Deux exécutions
+successives pouvaient (re)relire des cas différents, sans jamais
+garantir une couverture croissante. Corrigé en reprenant EXACTEMENT le
+patron déjà établi par `AnonymiserDatasetUseCase`/`--limite` (fichier
+de sortie séparé + `identifiants_existants()` pour déterminer « déjà
+traité », cf. §1 de la Partie 1 de ce rapport) : un nouveau registre
+persisté, `data/processed/controle_qualite_identifiants_echantillonnes.jsonl`
+(`RegistreEchantillonsControleQualite` / `JsonlRegistreEchantillonsControleQualite`,
+un enregistrement `{identifiant, stratum, horodatage}` par identifiant
+échantillonné), exclut du tirage stratifié les identifiants déjà vus
+lors d'une exécution précédente — appliqué indépendamment aux deux
+strates (`principal` et `sans_entite`, cf. §7.3). Chaque exécution
+tire donc `--taille-echantillon` identifiants **nouveaux**, jamais
+revus, et le total échantillonné croît de façon monotone entre
+exécutions. Ce registre est volontairement **séparé** du fichier de
+décisions humaines ci-dessous (point 2) : il répond à une question
+différente (« quel exemple a déjà été comparé ? ») que « quelle
+décision a été prise sur tel candidat précis ? » — les deux
+granularités (par exemple vs par candidat) ne se recouvrent pas et
+fusionner les deux fichiers aurait mélangé deux schémas
+d'enregistrement différents sans gain réel.
+
+**2. Fichier persisté des décisions humaines + script de révision.**
+Un candidat de PII résiduelle peut apparaître plusieurs fois avec le
+même `type_motif` dans le même champ (confirmé en investigation :
+jusqu'à 17 matches de `bigramme_capitalise` dans un seul champ
+`chosen[0]` d'un exemple réel) — une clé stable ne peut donc pas se
+limiter à `(identifiant, champ, type_motif)`. Clé retenue,
+`CleCandidatRevision` (`domain.model.decision_revision_humaine`) :
+`(source_liste, identifiant, champ, type_motif, debut, fin)` —
+`source_liste` distingue les 3 origines possibles d'un candidat
+(`candidats_pii`, `candidats_faux_positifs`, `candidats_pii_sans_entite`,
+cf. §7.3) et `debut`/`fin` (position du match, jusque-là calculés par
+`detecter_candidats()`/`_extraire_fragments_masques()` mais jamais
+persistés sur `CandidatPiiResiduelle`/`CandidatFauxPositifAnonymisation`)
+désambiguïsent deux matches identiques du même type dans le même
+champ — le `passage` seul ne suffit pas si le motif se répète
+littéralement.
+
+Chaque décision (JSONL, `data/processed/decisions_revision_humaine.jsonl`,
+`JsonlDecisionsRevisionHumaine`) porte : la clé stable ci-dessus,
+`decision` (`"accepte"` = confirmé humainement que ce n'est PAS une
+PII réelle, `"rejete"` = confirmé qu'il s'agit d'une fuite réelle),
+un horodatage et une note libre optionnelle. Contrairement à un
+fichier d'audit purement append-only (`ajouter_exemples_jsonl`, réservé
+aux cas où plusieurs entrées peuvent légitimement partager le même
+identifiant), une décision peut être **corrigée** — le fichier est
+donc géré comme `JsonlDatasetRepository.sauvegarder` (relecture
+complète, fusion par clé, réécriture complète), un coût O(n) par
+écriture largement acceptable ici car le volume de décisions humaines
+est borné par la taille des échantillons de contrôle qualité (quelques
+centaines/milliers), pas par la taille du corpus (147k+) — la mise en
+garde de ce fichier sur le coût O(n²) de `sauvegarder()` en boucle
+concerne un tout autre ordre de grandeur.
+
+`interfaces/cli/reviser_pii_residuelle.py` expose deux modes :
+
+- **`verify`** : recalcule (*replay* déterministe — mêmes textes,
+  mêmes regex, même seconde opinion spaCy ⇒ mêmes candidats à chaque
+  appel) TOUS les candidats `pendant_revision_humaine` des 3 sources,
+  sur la **totalité** des identifiants déjà échantillonnés (les deux
+  strates, toutes exécutions confondues via le registre du point 1 —
+  pas seulement le dernier lot, à cause précisément du muestreo
+  incrémental), exclut ceux ayant déjà une décision, puis pour chacun
+  des candidats restants : affiche identifiant/source/champ/type de
+  motif et le passage (40 caractères de contexte de chaque côté, cf.
+  `CONTEXTE_CARACTERES`), avec une option `v` pour afficher le champ
+  **complet** (original et anonymisé) quand le contexte court ne
+  suffit pas à juger. La décision (accepter/rejeter/sauter/quitter)
+  est **persistée immédiatement** après chaque réponse — pas en fin de
+  lot — pour qu'une interruption du terminal ne perde jamais le
+  travail déjà fait.
+- **`modify --identifiant ... [--champ ...]`** : localise une ou
+  plusieurs décisions déjà prises et permet de corriger une erreur de
+  saisie sans repasser par toute la liste en attente.
+
+**Le rapport de `controler_qualite_anonymisation.py` (§2 de ce
+document, Markdown) relit ce fichier de décisions** pour annoter
+chaque candidat `pendant_revision_humaine` qu'il liste avec son statut
+réel : `accepte` / `rejete` / encore génuinement en attente — avec un
+avertissement explicite que ce rapport ne décrit que le lot de SON
+exécution (muestreo incrémental oblige), le statut **cumulé** vivant
+dans le fichier de décisions lui-même, tenu à jour par
+`reviser_pii_residuelle.py`.
+
+**Ce que ce mécanisme permet de dire en soutenance, et ce qu'il ne
+permet toujours pas de dire** : il rend l'exigence NF2
+(« anonymisation validée **manuellement**, 0 PII résiduelle sur
+échantillon de contrôle ») vérifiable et traçable — chaque décision
+humaine est horodatée, attribuable à un candidat précis, et
+non-destructive (`modify` corrige sans perdre l'historique implicite
+d'une exécution correcte : l'ancienne décision est simplement
+remplacée). Il **ne rend pas** automatiquement vraie l'affirmation
+« 0 PII résiduelle confirmée » tant que des candidats restent
+`en_attente` dans `decisions_revision_humaine.jsonl` — ce mécanisme
+fournit l'outil pour fermer cet écart, il ne le ferme pas tout seul :
+quelqu'un doit encore exécuter `reviser_pii_residuelle.py verify`
+jusqu'à ce que la liste des candidats en attente soit vide. C'est la
+même limite que celle déjà posée au §6 : ce document ne remplace pas
+une revue humaine indépendante, il lui donne enfin un endroit où
+laisser une trace.

@@ -14,6 +14,8 @@ from uuid import uuid4
 
 from chsa_triage.application.use_cases.uc_03_00_anonymiser_dataset import StatistiquesSource
 from chsa_triage.application.use_cases.uc_03_02_controler_qualite_anonymisation import (
+    STRATUM_PRINCIPAL,
+    STRATUM_SANS_ENTITE,
     VERDICT_CONFIRME,
     VERDICT_FAUX_POSITIF_REGEX,
     VERDICT_REVISION_HUMAINE,
@@ -63,6 +65,19 @@ class FauxRepository:
 
     def identifiants_existants(self) -> set[str]:
         return set(self.items.keys())
+
+
+class FauxRegistreEchantillons:
+    """Faux RegistreEchantillonsControleQualite, en memoire -- une instance par test = etat neuf."""
+
+    def __init__(self) -> None:
+        self._vus: dict[str, set[str]] = {}
+
+    def identifiants_vus(self, stratum: str) -> set[str]:
+        return set(self._vus.get(stratum, set()))
+
+    def marquer_vus(self, stratum: str, identifiants, horodatage: str) -> None:
+        self._vus.setdefault(stratum, set()).update(identifiants)
 
 
 def _exemple(source: str = "MediQAl", symptomes: str = "Fievre", identifiant: str | None = None) -> ExemplePivot:
@@ -227,6 +242,7 @@ def test_use_case_croise_par_identifiant_entre_original_et_anonymise():
         repository_original=repository_original,
         repository_anonymise=repository_anonymise,
         verificateur_entites=FauxVerificateurEntites({}),
+        registre_echantillons=FauxRegistreEchantillons(),
         taille_echantillon=None,
     )
     controle = cas_usage.executer()
@@ -243,6 +259,7 @@ def test_use_case_echantillonne_quand_taille_echantillon_est_plus_petite():
         repository_original=FauxRepository(originaux),
         repository_anonymise=FauxRepository(anonymises),
         verificateur_entites=FauxVerificateurEntites({}),
+        registre_echantillons=FauxRegistreEchantillons(),
         taille_echantillon=10,
         graine_aleatoire=42,
     )
@@ -260,6 +277,7 @@ def test_use_case_signale_les_identifiants_introuvables_dans_l_original():
         repository_original=FauxRepository([original]),
         repository_anonymise=FauxRepository([anonymise_orphelin]),
         verificateur_entites=FauxVerificateurEntites({}),
+        registre_echantillons=FauxRegistreEchantillons(),
         taille_echantillon=None,
     )
     controle = cas_usage.executer()
@@ -310,6 +328,7 @@ def test_use_case_isole_le_stratum_sans_entite_independamment_du_tirage_principa
         repository_original=FauxRepository(originaux_sans_entite + originaux_avec_entite),
         repository_anonymise=FauxRepository(anonymises_sans_entite + anonymises_avec_entite),
         verificateur_entites=FauxVerificateurEntites({}),
+        registre_echantillons=FauxRegistreEchantillons(),
         taille_echantillon=None,
         taille_echantillon_sans_entite=None,
     )
@@ -331,6 +350,7 @@ def test_use_case_echantillonne_le_stratum_sans_entite_independamment():
         repository_original=FauxRepository(originaux),
         repository_anonymise=FauxRepository(anonymises),
         verificateur_entites=FauxVerificateurEntites({}),
+        registre_echantillons=FauxRegistreEchantillons(),
         taille_echantillon=None,
         taille_echantillon_sans_entite=5,
         graine_aleatoire_sans_entite=7,
@@ -378,3 +398,138 @@ def test_rapport_markdown_inclut_la_section_stratum_sans_entite():
     assert "Stratum dedie" in markdown
     assert "**42**" in markdown
     assert "jean@example.com" in markdown
+
+
+# ----------------------------------------------------------------------
+# Muestreo incremental (09/09/2026) -- meme patron que --limite pour
+# AnonymiserDatasetUseCase : une deuxieme execution ne doit jamais
+# re-echantillonner un identifiant deja vu lors d'une execution
+# precedente, sur AUCUN des deux strates (principal / sans_entite).
+# ----------------------------------------------------------------------
+
+
+def test_pii_residuelle_conserve_debut_fin_du_match():
+    """`debut`/`fin` du match dans le texte anonymise, necessaires a la cle stable de revision humaine."""
+    controle = ControleQualiteAnonymisation(verificateur_entites=FauxVerificateurEntites({}))
+    original = _exemple(symptomes="contact: jean@example.com")
+    texte_anonymise = "contact: jean@example.com"
+    controle.observer(original, _anonymiser(original, texte_anonymise))
+
+    candidat = controle.candidats_pii[0]
+    assert texte_anonymise[candidat.debut:candidat.fin] == "jean@example.com"
+
+
+def test_candidat_faux_positif_conserve_debut_fin_du_fragment():
+    verificateur = FauxVerificateurEntites({"Polycystic": VerdictEntiteNommee.AUCUNE_ENTITE})
+    controle = ControleQualiteAnonymisation(verificateur_entites=verificateur)
+    texte_original = "Il souffre de Polycystic ovarian syndrome."
+    original = _exemple(symptomes=texte_original)
+    controle.observer(original, _anonymiser(original, "Il souffre de <INFO_MASQUEE> ovarian syndrome."))
+
+    candidat = controle.candidats_faux_positifs[0]
+    assert texte_original[candidat.debut:candidat.fin] == "Polycystic"
+
+
+def test_max_faux_positifs_par_source_none_ne_plafonne_pas():
+    verificateur = FauxVerificateurEntites({})  # AUCUNE_ENTITE par defaut -> faux positif
+    controle = ControleQualiteAnonymisation(verificateur_entites=verificateur, max_faux_positifs_par_source=None)
+
+    for i in range(15):
+        original = _exemple(symptomes=f"Terme{i} inhabituel present.")
+        controle.observer(original, _anonymiser(original, "<INFO_MASQUEE> inhabituel present."))
+
+    assert len(controle.candidats_faux_positifs) == 15
+
+
+def test_muestreo_incremental_exclut_les_identifiants_deja_echantillonnes():
+    originaux = [_exemple("MediQAl") for _ in range(20)]
+    anonymises = [_anonymiser(e, "[ANON]") for e in originaux]
+    registre = FauxRegistreEchantillons()
+
+    cas_usage_1 = ControlerQualiteAnonymisationUseCase(
+        repository_original=FauxRepository(originaux),
+        repository_anonymise=FauxRepository(anonymises),
+        verificateur_entites=FauxVerificateurEntites({}),
+        registre_echantillons=registre,
+        taille_echantillon=10,
+    )
+    controle_1 = cas_usage_1.executer()
+    assert controle_1.nombre_exemples_observes == 10
+    premiere_vague = registre.identifiants_vus(STRATUM_PRINCIPAL)
+    assert len(premiere_vague) == 10
+
+    cas_usage_2 = ControlerQualiteAnonymisationUseCase(
+        repository_original=FauxRepository(originaux),
+        repository_anonymise=FauxRepository(anonymises),
+        verificateur_entites=FauxVerificateurEntites({}),
+        registre_echantillons=registre,
+        taille_echantillon=10,
+    )
+    controle_2 = cas_usage_2.executer()
+
+    # La deuxieme vague tire EXACTEMENT les 10 identifiants restants,
+    # sans jamais recroiser ceux de la premiere.
+    assert controle_2.nombre_exemples_observes == 10
+    deuxieme_vague = registre.identifiants_vus(STRATUM_PRINCIPAL) - premiere_vague
+    assert len(deuxieme_vague) == 10
+    assert deuxieme_vague.isdisjoint(premiere_vague)
+    assert registre.identifiants_vus(STRATUM_PRINCIPAL) == {e.identifiant for e in originaux}
+
+
+def test_muestreo_incremental_troisieme_execution_ne_trouve_plus_rien():
+    originaux = [_exemple("MediQAl") for _ in range(10)]
+    anonymises = [_anonymiser(e, "[ANON]") for e in originaux]
+    registre = FauxRegistreEchantillons()
+
+    for _ in range(2):
+        ControlerQualiteAnonymisationUseCase(
+            repository_original=FauxRepository(originaux),
+            repository_anonymise=FauxRepository(anonymises),
+            verificateur_entites=FauxVerificateurEntites({}),
+            registre_echantillons=registre,
+            taille_echantillon=10,
+        ).executer()
+
+    cas_usage_3 = ControlerQualiteAnonymisationUseCase(
+        repository_original=FauxRepository(originaux),
+        repository_anonymise=FauxRepository(anonymises),
+        verificateur_entites=FauxVerificateurEntites({}),
+        registre_echantillons=registre,
+        taille_echantillon=10,
+    )
+    controle_3 = cas_usage_3.executer()
+
+    assert controle_3.nombre_exemples_observes == 0
+
+
+def test_muestreo_incremental_stratum_sans_entite_exclut_les_deja_vus():
+    originaux = [_exemple("MediQAl", symptomes=f"Rien de notable numero {i}.") for i in range(20)]
+    anonymises = [_anonymiser(e, e.symptomes) for e in originaux]  # texte inchange -> stratum "sans entite"
+    registre = FauxRegistreEchantillons()
+
+    cas_usage_1 = ControlerQualiteAnonymisationUseCase(
+        repository_original=FauxRepository(originaux),
+        repository_anonymise=FauxRepository(anonymises),
+        verificateur_entites=FauxVerificateurEntites({}),
+        registre_echantillons=registre,
+        taille_echantillon_sans_entite=10,
+        graine_aleatoire_sans_entite=7,
+    )
+    controle_1 = cas_usage_1.executer()
+    assert controle_1.nombre_exemples_sans_entite_observes == 10
+
+    cas_usage_2 = ControlerQualiteAnonymisationUseCase(
+        repository_original=FauxRepository(originaux),
+        repository_anonymise=FauxRepository(anonymises),
+        verificateur_entites=FauxVerificateurEntites({}),
+        registre_echantillons=registre,
+        taille_echantillon_sans_entite=10,
+        graine_aleatoire_sans_entite=7,
+    )
+    controle_2 = cas_usage_2.executer()
+
+    assert controle_2.nombre_exemples_sans_entite_observes == 10
+    # Le total du stratum reste inchange par le muestreo incremental --
+    # seul le TIRAGE est restreint aux identifiants pas encore vus.
+    assert controle_2.nombre_disponibles_sans_entite == 20
+    assert registre.identifiants_vus(STRATUM_SANS_ENTITE) == {e.identifiant for e in anonymises}

@@ -8,15 +8,24 @@ from chsa_triage.application.use_cases.uc_02_construire_dataset_pivot import (
     ConstruireDatasetPivotUseCase,
 )
 from chsa_triage.application.use_cases.uc_03_02_controler_qualite_anonymisation import (
+    STRATUM_PRINCIPAL,
+    STRATUM_SANS_ENTITE,
     CandidatFauxPositifAnonymisation,
     CandidatPiiResiduelle,
     ControleQualiteAnonymisation,
     ControlerQualiteAnonymisationUseCase,
     ExempleControle,
+    cle_candidat_faux_positif,
+    cle_candidat_pii,
     controle_vers_dict,
 )
 from chsa_triage.application.use_cases.uc_03_02_controler_qualite_anonymisation import (
     formater_rapport_markdown as formater_rapport_controle_qualite_markdown,
+)
+from chsa_triage.application.use_cases.uc_03_03_reviser_pii_residuelle import (
+    CandidatARevoir,
+    ReviserPiiResiduelleUseCase,
+    candidats_a_revoir,
 )
 from chsa_triage.application.use_cases.uc_04_00_decouper_splits import (
     DecouperSplitsUseCase,
@@ -42,7 +51,10 @@ from chsa_triage.application.use_cases.uc_04_01_verifier_repartition_splits impo
 )
 
 __all__ = [
+    "STRATUM_PRINCIPAL",
+    "STRATUM_SANS_ENTITE",
     "AnonymiserDatasetUseCase",
+    "CandidatARevoir",
     "CandidatFauxPositifAnonymisation",
     "CandidatPiiResiduelle",
     "ConstruireDatasetPivotUseCase",
@@ -53,8 +65,12 @@ __all__ = [
     "ExempleControle",
     "ProfilerCorpusUseCase",
     "RapportAnonymisationCumule",
+    "ReviserPiiResiduelleUseCase",
     "StatistiquesSource",
     "VerifierRepartitionSplitsUseCase",
+    "candidats_a_revoir",
+    "cle_candidat_faux_positif",
+    "cle_candidat_pii",
     "controle_vers_dict",
     "formater_rapport_anonymisation_markdown",
     "formater_rapport_controle_qualite_markdown",

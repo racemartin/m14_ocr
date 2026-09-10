@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import difflib  # diff par opcodes entre texte original et anonymise
 import random   # tirage aleatoire du stratum "sans entite detectee"
+from datetime import datetime, timezone  # horodatage du muestreo incremental persiste
 
 # Structures de donnees immuables
 from dataclasses import dataclass, field  # dataclasses figees (accumulateur, resultats)
@@ -37,12 +38,29 @@ from chsa_triage.application.echantillonnage import echantillon_stratifie  # tir
 
 # Modele pivot, ports du domaine et statistiques RGPD cumulees
 from chsa_triage.application.use_cases.uc_03_00_anonymiser_dataset import StatistiquesSource  # stats cumulees (Partie 1)
-from chsa_triage.domain.model import ExemplePivot  # entite pivot comparee (original/anonymise)
+from chsa_triage.domain.model import (  # entite pivot comparee + cle stable des decisions humaines
+    DECISION_ACCEPTE,
+    DECISION_REJETE,
+    SOURCE_CANDIDATS_FAUX_POSITIFS,
+    SOURCE_CANDIDATS_PII,
+    SOURCE_CANDIDATS_PII_SANS_ENTITE,
+    CleCandidatRevision,
+    ExemplePivot,
+)
 from chsa_triage.domain.ports import RepositoryLectureEcriture  # port de lecture/ecriture generique
+from chsa_triage.domain.ports.registre_echantillons_controle_qualite import (  # port du muestreo incremental
+    RegistreEchantillonsControleQualite,
+)
 
 VERDICT_CONFIRME           = "confirme"
 VERDICT_FAUX_POSITIF_REGEX = "faux_positif_regex_ecarte_par_spacy"
 VERDICT_REVISION_HUMAINE   = "pendant_revision_humaine"
+
+# Strates du muestreo incremental persiste (cf. RegistreEchantillonsControleQualite) --
+# INDEPENDANTES l'une de l'autre, comme les deux tirages qu'elles recouvrent
+# (echantillon principal vs stratum dedie "sans entite detectee").
+STRATUM_PRINCIPAL     = "principal"
+STRATUM_SANS_ENTITE   = "sans_entite"
 
 # Jeton de masquage par defaut de PresidioAnonymiseur (strategie
 # "replace", la strategie retenue par la mission -- cf.
@@ -64,6 +82,17 @@ class CandidatPiiResiduelle:
     type_motif  : str
     passage     : str
     verdict     : str  # VERDICT_CONFIRME | VERDICT_FAUX_POSITIF_REGEX | VERDICT_REVISION_HUMAINE
+    # Position [debut:fin] du match dans le texte ANONYMISE -- desambiguise
+    # plusieurs matches du meme type_motif dans le meme champ (confirme sur
+    # donnees reelles : jusqu'a 17 matches de bigramme_capitalise dans un
+    # seul champ chosen[0]) pour la cle stable de revision humaine (cf.
+    # `application.use_cases.uc_03_03_reviser_pii_residuelle.cle_candidat_pii` --
+    # ce dataclass sert a la fois a `candidats_pii` et
+    # `candidats_pii_sans_entite`, deux SOURCE_* differentes, donc la cle
+    # complete ne peut pas etre calculee ici sans savoir dans quelle liste
+    # l'appelant l'a range).
+    debut       : int = 0
+    fin         : int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,6 +120,10 @@ class CandidatFauxPositifAnonymisation:
     texte_original  : str
     texte_anonymise : str
     verdict         : str  # VERDICT_FAUX_POSITIF_REGEX | VERDICT_REVISION_HUMAINE (jamais CONFIRME -- cf. observer())
+    # Position [debut:fin] de fragment_masque dans texte_original (pas
+    # regex-type -- type_motif="" dans la cle stable de revision humaine).
+    debut           : int = 0
+    fin             : int = 0
 
 
 # ##############################################################################
@@ -170,7 +203,12 @@ class ControleQualiteAnonymisation:
 
     verificateur_entites             : VerificateurEntitesNommees
     max_exemples_par_source          : int = 10
-    max_faux_positifs_par_source     : int = 10
+    # None = pas de plafond -- necessaire pour `ReviserPiiResiduelleUseCase`
+    # (cf. uc_03_03) qui doit voir TOUS les candidats REVISION_HUMAINE, pas
+    # seulement les `max_faux_positifs_par_source` premiers par source
+    # (plafond pense pour la LISIBILITE du rapport Markdown, pas pour la
+    # completude de la revue humaine).
+    max_faux_positifs_par_source     : int | None = 10
     jeton_masque                     : str = JETON_MASQUE_DEFAUT
 
     nombre_exemples_observes : int = field(default=0, init=False)
@@ -265,6 +303,8 @@ class ControleQualiteAnonymisation:
                     type_motif=candidat.type_motif,
                     passage=candidat.passage,
                     verdict=verdict,
+                    debut=candidat.debut,
+                    fin=candidat.fin,
                 )
             )
         return resultats
@@ -289,8 +329,9 @@ class ControleQualiteAnonymisation:
     def _detecter_candidats_faux_positifs(
         self, original: ExemplePivot, nom_champ: str, texte_original: str, texte_anonymise: str, langue: str
     ) -> None:
+        plafond = self.max_faux_positifs_par_source
         deja_pour_source = sum(1 for c in self.candidats_faux_positifs if c.source == original.source)
-        if deja_pour_source >= self.max_faux_positifs_par_source:
+        if plafond is not None and deja_pour_source >= plafond:
             return
         for fragment, debut, fin in _extraire_fragments_masques(texte_original, texte_anonymise, self.jeton_masque):
             if not fragment.strip():
@@ -312,10 +353,12 @@ class ControleQualiteAnonymisation:
                     texte_original=texte_original,
                     texte_anonymise=texte_anonymise,
                     verdict=verdict,
+                    debut=debut,
+                    fin=fin,
                 )
             )
             deja_pour_source += 1
-            if deja_pour_source >= self.max_faux_positifs_par_source:
+            if plafond is not None and deja_pour_source >= plafond:
                 break
 
 
@@ -323,18 +366,30 @@ class ControleQualiteAnonymisation:
 class ControlerQualiteAnonymisationUseCase:
     """
     Orchestre le controle qualite : lit le pivot original et le
-    fichier anonymise, preleve un echantillon stratifie parmi les
-    exemples anonymises disponibles, et compare chaque couple via
-    `ControleQualiteAnonymisation.observer`.
+    fichier anonymise, preleve un echantillon stratifie INCREMENTAL
+    parmi les exemples anonymises disponibles, et compare chaque
+    couple via `ControleQualiteAnonymisation.observer`.
+
+    Muestreo incremental (09/09/2026, decision du capitaine -- NF2 du
+    cahier des charges exige une revision humaine PERSISTEE, pas un
+    echantillon aleatoire jete a chaque execution) : `registre_echantillons`
+    (meme role, pour ce cas d'usage, que `RepositoryLectureEcriture.identifiants_existants()`
+    pour `AnonymiserDatasetUseCase`) exclut du tirage les identifiants
+    DEJA echantillonnes lors d'une execution precedente -- chaque
+    execution tire `taille_echantillon` identifiants NOUVEAUX, jamais
+    revus. Applique au stratum principal (STRATUM_PRINCIPAL) ET au
+    stratum dedie "sans entite detectee" (STRATUM_SANS_ENTITE),
+    independamment l'un de l'autre comme le reste de ces deux strates.
     """
 
     repository_original          : RepositoryLectureEcriture
     repository_anonymise         : RepositoryLectureEcriture
     verificateur_entites         : VerificateurEntitesNommees
+    registre_echantillons        : RegistreEchantillonsControleQualite
     taille_echantillon           : int | None = 200
     graine_aleatoire             : int = 42
     max_exemples_par_source      : int = 10
-    max_faux_positifs_par_source : int = 10
+    max_faux_positifs_par_source : int | None = 10
     jeton_masque                 : str = JETON_MASQUE_DEFAUT
     # Stratum dedie "sans entite detectee" (item 3) -- independant de
     # `taille_echantillon`/`graine_aleatoire` ci-dessus (graine
@@ -353,11 +408,7 @@ class ControlerQualiteAnonymisationUseCase:
     def executer(self) -> ControleQualiteAnonymisation:
         originaux_par_id = {e.identifiant: e for e in self.repository_original.lister()}
         anonymises = list(self.repository_anonymise.lister())
-
-        if self.taille_echantillon is not None and self.taille_echantillon < len(anonymises):
-            echantillon = echantillon_stratifie(anonymises, self.taille_echantillon, self.graine_aleatoire)
-        else:
-            echantillon = anonymises
+        horodatage = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
         controle = ControleQualiteAnonymisation(
             verificateur_entites=self.verificateur_entites,
@@ -367,8 +418,18 @@ class ControlerQualiteAnonymisationUseCase:
         )
 
         # ----------------------------------------------------------------------
-        # Echantillon stratifie principal (type_exemple, source)
+        # Echantillon stratifie principal (type_exemple, source) --
+        # EXCLUT les identifiants deja echantillonnes lors d'une
+        # execution precedente (muestreo incremental, cf. docstring).
         # ----------------------------------------------------------------------
+        deja_echantillonnes_principal = self.registre_echantillons.identifiants_vus(STRATUM_PRINCIPAL)
+        candidats_principal = [a for a in anonymises if a.identifiant not in deja_echantillonnes_principal]
+
+        if self.taille_echantillon is not None and self.taille_echantillon < len(candidats_principal):
+            echantillon = echantillon_stratifie(candidats_principal, self.taille_echantillon, self.graine_aleatoire)
+        else:
+            echantillon = candidats_principal
+
         self.nombre_introuvables_dans_original = 0
         for exemple_anonymise in echantillon:
             exemple_original = originaux_par_id.get(exemple_anonymise.identifiant)
@@ -380,12 +441,20 @@ class ControlerQualiteAnonymisationUseCase:
                 continue
             controle.observer(exemple_original, exemple_anonymise)
 
+        if echantillon:
+            self.registre_echantillons.marquer_vus(
+                STRATUM_PRINCIPAL, [e.identifiant for e in echantillon], horodatage
+            )
+
         # ----------------------------------------------------------------------
         # Stratum dedie "sans entite detectee" (item 3) : independant
         # du tirage stratifie ci-dessus -- tire sur TOUS les couples
         # valides disponibles (pas seulement `echantillon`), pour ne
         # pas dependre du hasard du premier tirage. cf.
         # ControleQualiteAnonymisation.observer_sans_entite.
+        # `nombre_disponibles_sans_entite` reste le total du stratum
+        # (deja echantillonne ou non) -- seul le TIRAGE ci-dessous est
+        # restreint aux identifiants pas encore vus.
         # ----------------------------------------------------------------------
         sans_entite = [
             (originaux_par_id[a.identifiant], a)
@@ -393,13 +462,24 @@ class ControlerQualiteAnonymisationUseCase:
             if a.identifiant in originaux_par_id and _est_exemple_sans_entite(originaux_par_id[a.identifiant], a)
         ]
         controle.nombre_disponibles_sans_entite = len(sans_entite)
-        if self.taille_echantillon_sans_entite is not None and self.taille_echantillon_sans_entite < len(sans_entite):
+
+        deja_echantillonnes_sans_entite = self.registre_echantillons.identifiants_vus(STRATUM_SANS_ENTITE)
+        candidats_sans_entite = [
+            (o, a) for (o, a) in sans_entite if a.identifiant not in deja_echantillonnes_sans_entite
+        ]
+
+        if self.taille_echantillon_sans_entite is not None and self.taille_echantillon_sans_entite < len(candidats_sans_entite):
             rng = random.Random(self.graine_aleatoire_sans_entite)
-            echantillon_sans_entite = rng.sample(sans_entite, self.taille_echantillon_sans_entite)
+            echantillon_sans_entite = rng.sample(candidats_sans_entite, self.taille_echantillon_sans_entite)
         else:
-            echantillon_sans_entite = sans_entite
+            echantillon_sans_entite = candidats_sans_entite
         for exemple_original, exemple_anonymise in echantillon_sans_entite:
             controle.observer_sans_entite(exemple_original, exemple_anonymise)
+
+        if echantillon_sans_entite:
+            self.registre_echantillons.marquer_vus(
+                STRATUM_SANS_ENTITE, [a.identifiant for _, a in echantillon_sans_entite], horodatage
+            )
 
         return controle
 
@@ -422,6 +502,8 @@ def _candidat_pii_vers_dict(c: CandidatPiiResiduelle) -> dict:
         "type_motif"  : c.type_motif,
         "passage"     : c.passage,
         "verdict"     : c.verdict,
+        "debut"       : c.debut,
+        "fin"         : c.fin,
     }
 
 
@@ -462,6 +544,8 @@ def controle_vers_dict(
                 "texte_original"  : c.texte_original,
                 "texte_anonymise" : c.texte_anonymise,
                 "verdict"         : c.verdict,
+                "debut"           : c.debut,
+                "fin"             : c.fin,
             }
             for c in controle.candidats_faux_positifs
         ],
@@ -491,25 +575,48 @@ def formater_rapport_markdown(
     taille_echantillon_demandee: int | None,
     total_anonymise_disponible: int,
     statistiques_cumulees: dict[str, StatistiquesSource],
+    decisions_par_cle: dict[CleCandidatRevision, str] | None = None,
 ) -> str:
     """
     Rapport Markdown du controle qualite pour L'ECHANTILLON compare
-    lors de cette execution -- pas un cumul persistant (a la
-    difference du rapport RGPD de la Partie 1) : chaque execution de
-    `controler_qualite_anonymisation.py` compare un echantillon frais,
-    stratifie parmi TOUT ce qui est anonymise au moment de l'appel
-    (y compris retroactivement sur d'anciennes vagues, puisque le
-    pivot original n'est jamais modifie).
+    lors de cette execution.
+
+    Design incremental (09/09/2026, decision du capitaine -- NF2 du
+    cahier des charges) : chaque execution ne compare que des
+    identifiants JAMAIS echantillonnes auparavant (cf.
+    `RegistreEchantillonsControleQualite` / `ControlerQualiteAnonymisationUseCase`),
+    donc CE rapport ne decrit que le LOT de cette execution -- il ne
+    remplace pas un decompte cumule sur toutes les executions. Le
+    statut cumule des decisions humaines (acceptees/rejetees/encore en
+    attente, toutes executions confondues) vit dans
+    `data/processed/decisions_revision_humaine.jsonl`, tenu a jour par
+    `reviser_pii_residuelle.py` -- c'est la source de verite pour
+    affirmer "0 PII residuelle confirmee", pas ce rapport a lui seul.
+
+    `decisions_par_cle` (optionnel, cle stable `CleCandidatRevision` ->
+    "accepte"/"rejete") permet d'annoter chaque candidat
+    VERDICT_REVISION_HUMAINE de CETTE execution avec son statut de
+    decision humaine, s'il en a deja une (typiquement rare pour un lot
+    fraichement echantillonne -- une decision suppose une execution
+    prealable de `reviser_pii_residuelle.py`).
     """
+    decisions_par_cle = decisions_par_cle or {}
+
     total_confirmes = sum(1 for c in controle.candidats_pii if c.verdict == VERDICT_CONFIRME)
     total_faux_positifs_regex = sum(1 for c in controle.candidats_pii if c.verdict == VERDICT_FAUX_POSITIF_REGEX)
     total_revision_humaine = sum(1 for c in controle.candidats_pii if c.verdict == VERDICT_REVISION_HUMAINE)
+    acceptes_pii, rejetes_pii, en_attente_pii = _repartir_revision_humaine(
+        controle.candidats_pii, SOURCE_CANDIDATS_PII, decisions_par_cle
+    )
 
     total_masquages_faux_positifs = sum(
         1 for c in controle.candidats_faux_positifs if c.verdict == VERDICT_FAUX_POSITIF_REGEX
     )
     total_masquages_a_revoir = sum(
         1 for c in controle.candidats_faux_positifs if c.verdict == VERDICT_REVISION_HUMAINE
+    )
+    acceptes_fp, rejetes_fp, en_attente_fp = _repartir_revision_humaine_faux_positifs(
+        controle.candidats_faux_positifs, decisions_par_cle
     )
 
     # ----------------------------------------------------------------------
@@ -529,10 +636,12 @@ def formater_rapport_markdown(
             else ""
         )
         + f" parmi les {total_anonymise_disponible} exemples disponibles dans `{dataset_anonymise}` au "
-        "moment de cette execution -- PAS un cumul persistant entre executions (relancer ce script "
-        "compare un nouvel echantillon frais a chaque fois). Comme le pivot original n'est jamais "
-        "modifie, ce controle peut porter sur n'importe quelle vague deja anonymisee, y compris "
-        "retroactivement.",
+        "moment de cette execution -- muestreo INCREMENTAL (09/09/2026) : les identifiants deja "
+        "echantillonnes lors d'une execution precedente (cf. "
+        "`data/processed/controle_qualite_identifiants_echantillonnes.jsonl`) sont exclus du tirage, "
+        "chaque execution ne compare donc que des identifiants JAMAIS encore vus. Comme le pivot "
+        "original n'est jamais modifie, ce controle peut porter sur n'importe quelle vague deja "
+        "anonymisee, y compris retroactivement.",
         "",
         "## 1. Compteurs par categorie d'entite anonymisee (rapport RGPD cumule, Partie 1)",
         "",
@@ -563,14 +672,17 @@ def formater_rapport_markdown(
         f"spaCy reconnait comme entite nommee) : **{total_confirmes}**.",
         f"- Ecartes par la seconde opinion spaCy (bigramme capitalise sans entite nommee detectee -- "
         f"probable terme medical, pas une PII) : **{total_faux_positifs_regex}**.",
-        f"- En attente de revision humaine (spaCy detecte une entite mais d'un type non tranchant) : "
-        f"**{total_revision_humaine}**.",
+        f"- Marques revision humaine par le regex+spaCy (spaCy detecte une entite mais d'un type non "
+        f"tranchant) : **{total_revision_humaine}** -- dont **{acceptes_pii}** deja acceptes (confirmes "
+        f"non-PII par une personne), **{rejetes_pii}** deja rejetes (PII reelle confirmee), "
+        f"**{en_attente_pii}** encore genuinement en attente d'une decision humaine "
+        f"(`reviser_pii_residuelle.py --verify`).",
         "",
         "### Passages confirmes",
     ]
     lignes += _lister_candidats_pii(controle.candidats_pii, VERDICT_CONFIRME)
-    lignes += ["", "### Passages en attente de revision humaine"]
-    lignes += _lister_candidats_pii(controle.candidats_pii, VERDICT_REVISION_HUMAINE)
+    lignes += ["", "### Passages marques revision humaine (statut de decision entre crochets)"]
+    lignes += _lister_candidats_pii(controle.candidats_pii, VERDICT_REVISION_HUMAINE, SOURCE_CANDIDATS_PII, decisions_par_cle)
 
     # ----------------------------------------------------------------------
     # Faux positifs de masquage (termes masques sans necessite)
@@ -587,13 +699,19 @@ def formater_rapport_markdown(
         "",
         f"- Fragments masques trouves sans confirmation spaCy : **{len(controle.candidats_faux_positifs)}** "
         f"({total_masquages_faux_positifs} sans aucune entite detectee, {total_masquages_a_revoir} "
-        "avec une entite d'un type non tranchant).",
+        "avec une entite d'un type non tranchant -- dont "
+        f"**{acceptes_fp}** deja acceptes, **{rejetes_fp}** deja rejetes, **{en_attente_fp}** encore "
+        "en attente d'une decision humaine).",
         "",
     ]
     for candidat in controle.candidats_faux_positifs:
+        suffixe = ""
+        if candidat.verdict == VERDICT_REVISION_HUMAINE:
+            decision = decisions_par_cle.get(cle_candidat_faux_positif(candidat))
+            suffixe = f" [decision humaine : {decision or 'en attente'}]"
         lignes.append(
             f"- `{candidat.identifiant}` ({candidat.source}, champ `{candidat.champ}`, "
-            f"verdict `{candidat.verdict}`) : fragment masque {candidat.fragment_masque!r}"
+            f"verdict `{candidat.verdict}`) : fragment masque {candidat.fragment_masque!r}{suffixe}"
         )
     if not controle.candidats_faux_positifs:
         lignes.append("- (aucun)")
@@ -619,6 +737,9 @@ def formater_rapport_markdown(
     total_revision_sans_entite = sum(
         1 for c in controle.candidats_pii_sans_entite if c.verdict == VERDICT_REVISION_HUMAINE
     )
+    acceptes_se, rejetes_se, en_attente_se = _repartir_revision_humaine(
+        controle.candidats_pii_sans_entite, SOURCE_CANDIDATS_PII_SANS_ENTITE, decisions_par_cle
+    )
     lignes += [
         "",
         "## 5. Stratum dedie : exemples SANS entite detectee (item 3)",
@@ -637,13 +758,16 @@ def formater_rapport_markdown(
         f"- Exemples relus dans cette execution : **{controle.nombre_exemples_sans_entite_observes}**.",
         f"- Candidats de PII residuelle detectes sur ce sous-ensemble (texte NON modifie) : "
         f"**{len(controle.candidats_pii_sans_entite)}** ({total_confirmes_sans_entite} confirmes, "
-        f"{total_revision_sans_entite} en attente de revision humaine).",
+        f"{total_revision_sans_entite} marques revision humaine -- dont **{acceptes_se}** acceptes, "
+        f"**{rejetes_se}** rejetes, **{en_attente_se}** encore en attente).",
         "",
         "### Candidats confirmes (faux negatif complet possible de Presidio)",
     ]
     lignes += _lister_candidats_pii(controle.candidats_pii_sans_entite, VERDICT_CONFIRME)
-    lignes += ["", "### Candidats en attente de revision humaine"]
-    lignes += _lister_candidats_pii(controle.candidats_pii_sans_entite, VERDICT_REVISION_HUMAINE)
+    lignes += ["", "### Candidats marques revision humaine (statut de decision entre crochets)"]
+    lignes += _lister_candidats_pii(
+        controle.candidats_pii_sans_entite, VERDICT_REVISION_HUMAINE, SOURCE_CANDIDATS_PII_SANS_ENTITE, decisions_par_cle
+    )
 
     lignes += ["", "### Exemples relus (texte inchange)", ""]
     for exemple in controle.exemples_sans_entite:
@@ -656,16 +780,85 @@ def formater_rapport_markdown(
 
 
 # ##############################################################################
+# cle_candidat_pii / cle_candidat_faux_positif
+# ##############################################################################
+def cle_candidat_pii(source_liste: str, c: CandidatPiiResiduelle) -> CleCandidatRevision:
+    """
+    Cle stable d'un `CandidatPiiResiduelle` -- `source_liste` doit etre
+    SOURCE_CANDIDATS_PII ou SOURCE_CANDIDATS_PII_SANS_ENTITE selon la
+    liste d'origine (le meme dataclass sert aux deux, cf. docstring de
+    `CandidatPiiResiduelle.debut`). Reutilisee par
+    `application.use_cases.uc_03_03_reviser_pii_residuelle`.
+    """
+    return CleCandidatRevision(source_liste, c.identifiant, c.champ, c.type_motif, c.debut, c.fin)
+
+
+def cle_candidat_faux_positif(c: CandidatFauxPositifAnonymisation) -> CleCandidatRevision:
+    """Cle stable d'un `CandidatFauxPositifAnonymisation` (type_motif="" -- pas issu d'une regex typee)."""
+    return CleCandidatRevision(SOURCE_CANDIDATS_FAUX_POSITIFS, c.identifiant, c.champ, "", c.debut, c.fin)
+
+
+# ##############################################################################
+# _repartir_revision_humaine / _repartir_revision_humaine_faux_positifs
+# ##############################################################################
+def _repartir_revision_humaine(
+    candidats: list[CandidatPiiResiduelle],
+    source_liste: str,
+    decisions_par_cle: dict[CleCandidatRevision, str],
+) -> tuple[int, int, int]:
+    """Parmi les candidats VERDICT_REVISION_HUMAINE, compte (acceptes, rejetes, encore en attente)."""
+    acceptes = rejetes = en_attente = 0
+    for c in candidats:
+        if c.verdict != VERDICT_REVISION_HUMAINE:
+            continue
+        decision = decisions_par_cle.get(cle_candidat_pii(source_liste, c))
+        if decision == DECISION_ACCEPTE:
+            acceptes += 1
+        elif decision == DECISION_REJETE:
+            rejetes += 1
+        else:
+            en_attente += 1
+    return acceptes, rejetes, en_attente
+
+
+def _repartir_revision_humaine_faux_positifs(
+    candidats: list[CandidatFauxPositifAnonymisation],
+    decisions_par_cle: dict[CleCandidatRevision, str],
+) -> tuple[int, int, int]:
+    acceptes = rejetes = en_attente = 0
+    for c in candidats:
+        if c.verdict != VERDICT_REVISION_HUMAINE:
+            continue
+        decision = decisions_par_cle.get(cle_candidat_faux_positif(c))
+        if decision == DECISION_ACCEPTE:
+            acceptes += 1
+        elif decision == DECISION_REJETE:
+            rejetes += 1
+        else:
+            en_attente += 1
+    return acceptes, rejetes, en_attente
+
+
+# ##############################################################################
 # _lister_candidats_pii
 # ##############################################################################
-def _lister_candidats_pii(candidats: list[CandidatPiiResiduelle], verdict: str) -> list[str]:
+def _lister_candidats_pii(
+    candidats: list[CandidatPiiResiduelle],
+    verdict: str,
+    source_liste: str = "",
+    decisions_par_cle: dict[CleCandidatRevision, str] | None = None,
+) -> list[str]:
     lignes = []
     for candidat in candidats:
         if candidat.verdict != verdict:
             continue
+        suffixe = ""
+        if verdict == VERDICT_REVISION_HUMAINE and decisions_par_cle is not None and source_liste:
+            decision = decisions_par_cle.get(cle_candidat_pii(source_liste, candidat))
+            suffixe = f" [decision humaine : {decision or 'en attente'}]"
         lignes.append(
             f"- `{candidat.identifiant}` ({candidat.source}, champ `{candidat.champ}`, "
-            f"motif `{candidat.type_motif}`) : {candidat.passage!r}"
+            f"motif `{candidat.type_motif}`) : {candidat.passage!r}{suffixe}"
         )
     if not lignes:
         lignes.append("- (aucun)")
