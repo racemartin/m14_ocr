@@ -563,3 +563,9 @@ jusqu'à ce que la liste des candidats en attente soit vide. C'est la
 même limite que celle déjà posée au §6 : ce document ne remplace pas
 une revue humaine indépendante, il lui donne enfin un endroit où
 laisser une trace.
+
+## 8. Document suivant
+
+`docs/03_etape2_sft/00_introduction_concepts.md` : planification du
+fine-tuning supervisé (SFT + LoRA) sur le dataset anonymisé documenté
+ici.

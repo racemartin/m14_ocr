@@ -24,7 +24,12 @@ docs/diagrams/
 │   │                                 paquets en jeu pour decouper_splits/verifier_repartition_splits
 │   └── deploiement/                 environnement local (WSL2, uv)
 ├── 03_etape2_sft/
-│   ├── activite/                  pipeline SFT (conceptuel)
+│   ├── activite/                  pipeline SFT (conceptuel, avec le point de
+│   │                                decision "convergence saine ?")
+│   ├── sequence/                   entrainement SFT : script training/sft_train.py,
+│   │                                cas d'usage et adaptateurs proposes (conceptuel)
+│   ├── paquets/                     classes/ports proposes pour le SFT-LoRA et leur
+│   │                                 relation aux paquets reels de l'Etape 1 (conceptuel)
 │   └── deploiement/                infrastructure HF Jobs / Dev Mode (conceptuel)
 ├── 04_etape3_dpo/
 │   ├── activite/                  pipeline DPO (conceptuel)
@@ -42,7 +47,7 @@ docs/diagrams/
 | 00 : Vue d'ensemble | [FAIT] | N/A | N/A | N/A |
 | 01 : Environnement | N/A | N/A | [FAIT] (réel) | N/A |
 | 02 : Étape 1 (données) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel) |
-| 03 : Étape 2 (SFT) | [FAIT] (conceptuel) | [A FAIRE] | [A FAIRE] | [FAIT] (conceptuel) |
+| 03 : Étape 2 (SFT) | [FAIT] (conceptuel) | [FAIT] (conceptuel) | [FAIT] (conceptuel) | [FAIT] (conceptuel) |
 | 04 : Étape 3 (DPO) | [FAIT] (conceptuel) | [A FAIRE] | [A FAIRE] | [FAIT] (conceptuel) |
 | 05 : Étape 4 (déploiement) | [FAIT] (conceptuel) | [FAIT] (conceptuel) | [A FAIRE] | [FAIT] (conceptuel) |
 
@@ -50,13 +55,18 @@ docs/diagrams/
 (`src/chsa_triage/`, `interfaces/cli/`).
 **« conceptuel »** = anticipe une architecture qui n'est pas encore
 codée (`training/*.py`, `interfaces/api/`, `interfaces/web/`), à
-mettre à jour dès que le code correspondant existe.
+mettre à jour dès que le code correspondant existe. Les diagrammes de
+séquence et de paquets de l'Étape 2 (SFT) sont passés de [A FAIRE] à
+[FAIT] (conceptuel) une fois la proposition de conception documentée
+dans `docs/03_etape2_sft/` (ports, cas d'usage et adaptateurs
+proposés, aucun encore codé), à remplacer par la version « réelle »
+une fois `training/sft_train.py` effectivement écrit.
 **[A FAIRE]** = pas encore produit : les diagrammes de séquence et de
-paquets du SFT/DPO n'ont de sens qu'une fois `training/sft_train.py`
-et `training/dpo_train.py` écrits (sinon il n'y a pas encore de
-classes/appels réels à documenter) ; le diagramme de paquets de
-l'Étape 4 de même, une fois `interfaces/api` et `interfaces/web`
-implémentés.
+paquets du DPO (Étape 3) restent à faire, aucune proposition de
+conception équivalente n'ayant encore été documentée pour cette étape ;
+le diagramme de paquets de l'Étape 4 de même, une fois `interfaces/api`
+et `interfaces/web` implémentés (ou une proposition de conception
+documentée pour eux, sur le même principe que l'Étape 2).
 
 ## Régénérer les diagrammes
 
