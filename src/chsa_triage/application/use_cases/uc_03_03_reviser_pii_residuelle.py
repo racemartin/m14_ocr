@@ -3,13 +3,13 @@ Cas d'usage : fermer reellement l'exigence NF2 du cahier des charges
 ("anonymisation validee MANUELLEMENT, 0 PII residuelle sur echantillon
 de controle") en donnant a une personne le moyen de trancher les
 candidats que `controler_qualite_anonymisation.py` marque
-`VERDICT_REVISION_HUMAINE` -- ni le regex ni la seconde opinion spaCy
-ne les tranchent seuls -- et de PERSISTER sa decision.
+`VERDICT_REVISION_HUMAINE` ; ni le regex ni la seconde opinion spaCy
+ne les tranchent seuls ; et de PERSISTER sa decision.
 
-Design "replay cumule" (09/09/2026, decision du capitaine) : a cause du
+Design "replay cumule" (09/09/2026) : a cause du
 muestreo incremental de `ControlerQualiteAnonymisationUseCase` (cf.
 uc_03_02), le rapport d'une execution donnee ne contient QUE les
-candidats du lot fraichement echantillonne -- il ne suffit donc pas de
+candidats du lot fraichement echantillonne ; il ne suffit donc pas de
 relire le dernier rapport JSON pour trouver TOUS les candidats en
 attente de revision humaine. Ce cas d'usage recalcule plutot la
 comparaison original/anonymise sur la TOTALITE des identifiants deja
@@ -54,7 +54,7 @@ class CandidatARevoir:
     """Un candidat REVISION_HUMAINE, uniformise entre les 3 sources, pret a etre montre pour decision."""
 
     cle          : CleCandidatRevision
-    source_corpus: str  # ExemplePivot.source (nom du corpus, ex. "MediQAl") -- pas source_liste
+    source_corpus: str  # ExemplePivot.source (nom du corpus, ex. "MediQAl") ; pas source_liste
     langue       : str  # "" pour SOURCE_CANDIDATS_FAUX_POSITIFS (pas de langue stockee sur ce candidat)
     passage      : str
 
@@ -98,7 +98,7 @@ def texte_original_et_anonymise(
     """
     Retrouve le texte COMPLET (original, anonymise) d'un champ nomme
     (ex. "symptomes", "chosen[0]") pour l'affichage etendu en mode
-    verification -- le `passage` de 40 caracteres de contexte de
+    verification ; le `passage` de 40 caracteres de contexte de
     chaque cote (cf. `detection_pii_residuelle.CONTEXTE_CARACTERES`)
     suffit dans la majorite des cas, mais une personne qui revise peut
     vouloir le champ entier pour juger un cas ambigu. Retourne None si

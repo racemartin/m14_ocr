@@ -5,7 +5,7 @@ residuelle marques `VERDICT_REVISION_HUMAINE` par
 opinion spaCy ne tranchent).
 
 Avant ce port, `CandidatPiiResiduelle.verdict` etait uniquement un
-calcul automatique, jamais une decision de personne -- ce port ferme
+calcul automatique, jamais une decision de personne ; ce port ferme
 cet ecart pour l'exigence NF2 du cahier des charges (anonymisation
 "validee manuellement"). Une decision est identifiee par une cle
 stable (cf. `domain.model.CleCandidatRevision`) plutot que par une

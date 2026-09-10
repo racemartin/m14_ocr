@@ -1,4 +1,4 @@
-"""Test de l'adaptateur JsonlDecisionsRevisionHumaine -- round-trip et correction sur disque."""
+"""Test de l'adaptateur JsonlDecisionsRevisionHumaine ; round-trip et correction sur disque."""
 
 from __future__ import annotations
 

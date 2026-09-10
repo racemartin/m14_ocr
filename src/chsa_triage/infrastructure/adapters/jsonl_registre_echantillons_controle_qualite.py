@@ -4,7 +4,7 @@ identifiants ont deja ete echantillonnes pour le controle qualite"
 (par stratum). Implemente le port `RegistreEchantillonsControleQualite`.
 
 Append-only : un identifiant, une fois marque vu pour un stratum, le
-reste pour toujours -- pas de fusion/remplacement necessaire (a la
+reste pour toujours ; pas de fusion/remplacement necessaire (a la
 difference de `JsonlDatasetRepository.sauvegarder`, qui fusionne par
 identifiant parce qu'un ExemplePivot peut changer de contenu). Meme
 esprit que `ajouter_exemples_jsonl` (fichiers d'audit append-only),

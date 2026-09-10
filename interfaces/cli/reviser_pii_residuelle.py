@@ -16,7 +16,7 @@ deux modes :
   les candidats REVISION_HUMAINE sur TOUT ce qui a deja ete echantillonne
   par `controler_qualite_anonymisation.py` (les deux strates), exclut
   ceux ayant deja une decision, et pour chaque candidat restant,
-  demande interactivement d'accepter/rejeter/sauter -- la decision est
+  demande interactivement d'accepter/rejeter/sauter ; la decision est
   persistee IMMEDIATEMENT apres chaque reponse (pas en fin de lot), donc
   fermer le terminal a mi-parcours ne perd jamais le travail deja fait.
 - `modify` : localise une decision deja prise par `--identifiant`
@@ -85,7 +85,7 @@ def _afficher_texte_complet(cas_usage: ReviserPiiResiduelleUseCase, candidat: Ca
     anonymise = cas_usage.repository_anonymise.trouver_par_id(candidat.cle.identifiant)
     paire = texte_original_et_anonymise(original, anonymise, candidat.cle.champ) if original and anonymise else None
     if paire is None:
-        print("  (texte complet introuvable -- identifiant absent d'un des deux fichiers ?)")
+        print("  (texte complet introuvable ; identifiant absent d'un des deux fichiers ?)")
         return
     texte_original, texte_anonymise = paire
     print(f"  --- {candidat.cle.champ} (original) ---\n  {texte_original}")
@@ -131,7 +131,7 @@ def _mode_verify(arguments: argparse.Namespace) -> None:
             if action == "s":
                 break
             if action == "q":
-                print(f"Arret demande -- {traites}/{total} decisions prises cette session.")
+                print(f"Arret demande : {traites}/{total} decisions prises cette session.")
                 log.FINISH_ACTION(
                     "reviser_pii_residuelle", "verify", f"{traites}/{total} decisions prises, arret demande"
                 )

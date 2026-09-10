@@ -30,16 +30,16 @@ une PII", d'ou la relecture dediee (30-50 cas par defaut) plutot que
 de les laisser se noyer dans le tirage general. Compteurs et section
 de rapport (§5) toujours SEPARES du reste.
 
-Muestreo INCREMENTAL (09/09/2026, decision du capitaine -- NF2 du
+Muestreo INCREMENTAL (09/09/2026 ; NF2 du
 cahier des charges exige une revision humaine PERSISTEE, pas un
 echantillon aleatoire jete a chaque execution) : --registre-echantillons
 (defaut `data/processed/controle_qualite_identifiants_echantillonnes.jsonl`)
 exclut du tirage les identifiants deja echantillonnes lors d'une
-execution precedente -- chaque execution ne compare que des
+execution precedente ; chaque execution ne compare que des
 identifiants NOUVEAUX, sur les deux strates. Les candidats
 "pendant_revision_humaine" qui en ressortent sont a trancher avec
 `reviser_pii_residuelle.py`, qui persiste la decision humaine dans
---decisions (defaut `data/processed/decisions_revision_humaine.jsonl`) --
+--decisions (defaut `data/processed/decisions_revision_humaine.jsonl`) ;
 ce script-ci relit ce fichier pour annoter le rapport du statut de
 decision deja pris, sans jamais le modifier.
 
@@ -138,7 +138,7 @@ def main() -> None:
     parser.add_argument(
         "--decisions",
         default=CHEMIN_DECISIONS_DEFAUT,
-        help="Fichier des decisions humaines persistees (cf. reviser_pii_residuelle.py) -- reutilise "
+        help="Fichier des decisions humaines persistees (cf. reviser_pii_residuelle.py), reutilise "
              f"ici pour annoter le rapport du statut de decision des candidats REVISION_HUMAINE "
              f"(defaut {CHEMIN_DECISIONS_DEFAUT})",
     )
@@ -216,7 +216,7 @@ def main() -> None:
     horodatage = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
     # Decisions humaines deja persistees (cf. reviser_pii_residuelle.py)
-    # -- reutilisees pour annoter, dans CE rapport, le statut de decision
+    # reutilisees pour annoter, dans CE rapport, le statut de decision
     # des candidats REVISION_HUMAINE deja tranches par une personne.
     decisions_par_cle = {d.cle: d.decision for d in decisions.toutes()}
 

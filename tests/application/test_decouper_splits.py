@@ -187,7 +187,7 @@ def test_decouper_splits_croissance_stable_ne_reordonne_jamais_les_deja_assignes
 
     for identifiant, split_original in splits_apres_premiere_execution.items():
         assert repository.items[identifiant].split == split_original, (
-            f"exemple {identifiant} a change de split entre les deux executions -- fuite train/test"
+            f"exemple {identifiant} a change de split entre les deux executions ; fuite train/test"
         )
 
     avec_split_apres_seconde_execution = [e for e in repository.items.values() if e.split is not None]

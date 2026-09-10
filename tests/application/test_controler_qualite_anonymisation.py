@@ -68,7 +68,7 @@ class FauxRepository:
 
 
 class FauxRegistreEchantillons:
-    """Faux RegistreEchantillonsControleQualite, en memoire -- une instance par test = etat neuf."""
+    """Faux RegistreEchantillonsControleQualite, en memoire ; une instance par test = etat neuf."""
 
     def __init__(self) -> None:
         self._vus: dict[str, set[str]] = {}
@@ -401,7 +401,7 @@ def test_rapport_markdown_inclut_la_section_stratum_sans_entite():
 
 
 # ----------------------------------------------------------------------
-# Muestreo incremental (09/09/2026) -- meme patron que --limite pour
+# Muestreo incremental (09/09/2026) ; meme patron que --limite pour
 # AnonymiserDatasetUseCase : une deuxieme execution ne doit jamais
 # re-echantillonner un identifiant deja vu lors d'une execution
 # precedente, sur AUCUN des deux strates (principal / sans_entite).

@@ -656,7 +656,7 @@ tableau ci-dessus).
 
 ## Croissance stable de `decouper_splits.py` — protection contre la fuite train/test à l'agrandissement (10/09/2026)
 
-**Décision du capitaine**, prise explicitement après comparaison de
+**Décision**, prise explicitement après comparaison de
 deux alternatives. Constat : dans le comportement décrit à la section
 précédente, `--n` prélevait un échantillon **frais** à chaque exécution
 et **réassignait le split de TOUS les exemples considérés** (que ce
@@ -677,7 +677,7 @@ comparant manuellement les identifiants de deux exécutions successives.
 exécution (comportement historique, simple mais sujet à la fuite
 ci-dessus dès qu'on agrandit le dataset) vs (b) figer définitivement le
 split de tout exemple déjà vu et ne répartir que les exemples
-nouvellement candidats. Le capitaine a tranché pour (b).
+nouvellement candidats. Le choix retenu est (b).
 
 **Nouveau comportement** (`DecouperSplitsUseCase.executer`, cf.
 `src/chsa_triage/application/use_cases/uc_04_00_decouper_splits.py`) :
