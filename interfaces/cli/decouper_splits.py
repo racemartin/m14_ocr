@@ -15,18 +15,32 @@ ne contient donc jamais d'exemple avec `anonymise=True`. Ce script
 lit ET ecrit sur le meme fichier (le champ `split` est ajoute en
 place sur le fichier anonymise).
 
-Option --n (sous-echantillonnage avant repartition, meme logique
-produit que `--limite` sur `anonymiser_dataset.py`) : pour obtenir un
-dataset d'entrainement de taille N plutot que repartir TOUT ce qui a
-deja ete anonymise, `--n N` preleve d'abord un echantillon stratifie
-(type_exemple, source) de taille N parmi les exemples `anonymise=True`
-disponibles (methode du plus grand reste, cf.
-`chsa_triage.application.echantillonnage.echantillon_stratifie`), puis
-repartit train/val/test sur ce sous-ensemble. Si N est omis, ou si N
-est superieur ou egal au nombre d'exemples anonymises disponibles, le
-comportement est inchange : tout ce qui est anonymise est reparti (un
-avertissement est alors trace via LogTool, comme pour les autres
-scripts Etape 1).
+CROISSANCE STABLE, JAMAIS DE REORDONNANCEMENT (10/09/2026, decision du
+capitaine -- CHANGEMENT DE COMPORTEMENT reel par rapport a avant).
+Un exemple qui a deja un `split` (execution anterieure) n'est JAMAIS
+reassigne, quel que soit le `--n` demande ensuite : agrandir le jeu de
+donnees en relancant avec un `--n` plus grand (ou sans `--n`) ne fait
+QUE completer ce qui manque, il ne recalcule plus jamais le decoupage
+en entier. Avant ce changement, relancer avec un `--n` different (ou
+sans `--n`) pouvait deplacer un exemple deja vu de `train` vers `test`
+(ou l'inverse) -- une fuite silencieuse d'exemples d'entrainement dans
+le jeu de test, ce que le cahier des charges interdit explicitement.
+Exemple concret : `--n 5000` puis, plus tard, `--n 10000` -- les 5000
+premiers exemples GARDENT exactement le split qui leur a ete assigne
+la premiere fois ; seuls 5000 exemples NOUVEAUX (jamais vus) recoivent
+un split lors de la seconde execution.
+
+Option --n (taille CIBLE cumulee, pas taille de cette seule execution)
+: `--n N` preleve `N - (nombre deja assigne)` nouveaux exemples --
+echantillon stratifie (type_exemple, source), methode du plus grand
+reste, cf. `chsa_triage.application.echantillonnage.echantillon_stratifie`
+-- parmi les exemples `anonymise=True` qui n'ont PAS encore de split,
+puis leur assigne train/val/test. Si `N` est <= au nombre d'exemples
+deja assignes, il n'y a rien de nouveau a faire : REDUIRE un decoupage
+deja fait n'est PAS supporte (le jeu ne peut que grandir), un
+avertissement est trace via LogTool (pas une erreur). Si `--n` est
+omis, tous les exemples anonymises qui n'ont pas encore de split
+recoivent un split (mode "completer ce qui manque").
 """
 
 from __future__ import annotations
@@ -53,18 +67,19 @@ def main() -> None:
         "--n",
         type=int,
         default=None,
-        help="Taille de l'echantillon stratifie (type_exemple, source) a repartir parmi les exemples "
-             "deja anonymises (defaut : tout repartir) ; si N depasse le nombre disponible, tout est "
-             "reparti et un avertissement est trace",
+        help="Taille CIBLE cumulee (deja assignes + nouveaux) ; seuls les exemples sans split "
+             "encore sont candidats aux N - (deja assignes) nouveaux prelevements (defaut : "
+             "completer -- tout exemple anonymise sans split recoit un split). N <= au nombre "
+             "deja assigne : rien de nouveau, non supporte de reduire un decoupage existant",
     )
     arguments = parser.parse_args()
 
-    log.START_ACTION("decouper_splits", "main", "decoupage train/val/test")
+    log.START_ACTION("decouper_splits", "main", "decoupage train/val/test (croissance stable)")
     log.PARAMETER_VALUE("dataset", arguments.dataset)
     log.PARAMETER_VALUE("graine", arguments.graine)
     log.PARAMETER_VALUE("proportion-val", arguments.proportion_val)
     log.PARAMETER_VALUE("proportion-test", arguments.proportion_test)
-    log.PARAMETER_VALUE("n", arguments.n if arguments.n is not None else "(aucun -- tout repartir)")
+    log.PARAMETER_VALUE("n (taille cible cumulee)", arguments.n if arguments.n is not None else "(aucun -- completer tout)")
 
     # -------------------------------------------------------------------------
     # PREPARE ADAPTERS (Dependency Injection)
@@ -74,19 +89,7 @@ def main() -> None:
     # -------------------------------------------------------------------------
     # USE CASE EXECUTE
     # -------------------------------------------------------------------------
-    if arguments.n is not None:
-        disponible = repository.compter(filtre={"anonymise": True})
-        if arguments.n >= disponible:
-            log.LEVEL_5_WARNING(
-                "decouper_splits",
-                f"--n {arguments.n} demande mais seulement {disponible} exemples anonymises disponibles -- "
-                "tous les exemples anonymises seront repartis (aucune erreur, --n ignore pour cette execution)",
-            )
-
-    # -------------------------------------------------------------------------
-    # USE CASE EXECUTE
-    # -------------------------------------------------------------------------
-    log.STEP(1, "Decoupage aleatoire des splits")
+    log.STEP(1, "Decoupage des nouveaux exemples (ceux deja assignes ne sont jamais touches)")
     try:
         cas_usage = DecouperSplitsUseCase(
             repository=repository,
@@ -103,11 +106,21 @@ def main() -> None:
     # -------------------------------------------------------------------------
     # LOG FINAL INFO
     # -------------------------------------------------------------------------
+    log.PARAMETER_VALUE("deja assignes (executions anterieures, non touches)", cas_usage.nombre_deja_assignes)
+    log.PARAMETER_VALUE("nouveaux repartis cette execution", cas_usage.nombre_nouveaux)
+    if arguments.n is not None and cas_usage.nombre_nouveaux == 0:
+        log.LEVEL_5_WARNING(
+            "decouper_splits",
+            f"--n {arguments.n} <= {cas_usage.nombre_deja_assignes} exemples deja assignes -- rien de "
+            "nouveau a repartir (reduire un decoupage deja fait n'est pas supporte, aucune erreur)",
+        )
     for split, nombre in decompte.items():
-        log.PARAMETER_VALUE(f"split {split}", nombre)
+        log.PARAMETER_VALUE(f"split {split} (total cumule)", nombre)
     log.FINISH_ACTION("decouper_splits", "main", f"splits ecrits pour {arguments.dataset}")
 
-    print("Repartition des splits :")
+    print(f"Nouveaux exemples repartis lors de cette execution : {cas_usage.nombre_nouveaux}")
+    print(f"Exemples deja assignes (executions anterieures, non touches) : {cas_usage.nombre_deja_assignes}")
+    print("Repartition totale actuelle des splits (deja assignes + nouveaux) :")
     for split, nombre in decompte.items():
         print(f"  {split:<10}: {nombre}")
 

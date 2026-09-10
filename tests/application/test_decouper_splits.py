@@ -147,3 +147,85 @@ def test_decouper_splits_n_none_comportement_inchange():
     decompte = cas_usage.executer()
 
     assert sum(decompte.values()) == 10
+
+
+def test_decouper_splits_croissance_stable_ne_reordonne_jamais_les_deja_assignes():
+    """
+    Point de vigilance du cahier des charges : le jeu de test ne doit
+    jamais etre reutilise en entrainement. Agrandir le dataset
+    (--n 5000 puis --n 10000, meme repository) ne doit JAMAIS deplacer
+    un exemple deja reparti d'un split vers un autre.
+    """
+    exemples = (
+        [_exemple_anonymise("MediQAl", TypeExemple.SFT) for _ in range(80)]
+        + [_exemple_anonymise("MedQuAD", TypeExemple.SFT) for _ in range(15)]
+        + [_exemple_anonymise("UltraMedical-Preference", TypeExemple.DPO) for _ in range(5)]
+        + [_exemple_anonymise("FrenchMedMCQA", TypeExemple.SFT) for _ in range(200)]
+    )
+    repository = FauxRepository(exemples)
+
+    premiere_cas_usage = DecouperSplitsUseCase(repository=repository, n=100, graine_aleatoire=42)
+    premier_decompte = premiere_cas_usage.executer()
+
+    assert sum(premier_decompte.values()) == 100
+    assert premiere_cas_usage.nombre_deja_assignes == 0
+    assert premiere_cas_usage.nombre_nouveaux == 100
+
+    splits_apres_premiere_execution = {
+        identifiant: exemple.split
+        for identifiant, exemple in repository.items.items()
+        if exemple.split is not None
+    }
+    assert len(splits_apres_premiere_execution) == 100
+
+    seconde_cas_usage = DecouperSplitsUseCase(repository=repository, n=200, graine_aleatoire=42)
+    second_decompte = seconde_cas_usage.executer()
+
+    assert sum(second_decompte.values()) == 200
+    assert seconde_cas_usage.nombre_deja_assignes == 100
+    assert seconde_cas_usage.nombre_nouveaux == 100
+
+    for identifiant, split_original in splits_apres_premiere_execution.items():
+        assert repository.items[identifiant].split == split_original, (
+            f"exemple {identifiant} a change de split entre les deux executions -- fuite train/test"
+        )
+
+    avec_split_apres_seconde_execution = [e for e in repository.items.values() if e.split is not None]
+    assert len(avec_split_apres_seconde_execution) == 200
+
+
+def test_decouper_splits_n_inferieur_ou_egal_au_deja_assigne_ne_fait_rien_de_nouveau():
+    """Reduire un decoupage deja fait n'est pas supporte : --n <= deja assigne ne touche a rien."""
+    exemples = [_exemple_anonymise("MediQAl") for _ in range(30)]
+    repository = FauxRepository(exemples)
+
+    DecouperSplitsUseCase(repository=repository, n=20, graine_aleatoire=42).executer()
+    splits_avant = {identifiant: e.split for identifiant, e in repository.items.items()}
+
+    cas_usage = DecouperSplitsUseCase(repository=repository, n=10, graine_aleatoire=42)
+    decompte = cas_usage.executer()
+
+    assert cas_usage.nombre_nouveaux == 0
+    assert cas_usage.nombre_deja_assignes == 20
+    assert sum(decompte.values()) == 20
+    assert {identifiant: e.split for identifiant, e in repository.items.items()} == splits_avant
+
+
+def test_decouper_splits_sans_n_complete_ce_qui_manque_sans_toucher_au_deja_assigne():
+    """Sans --n, le mode "tout" ne recalcule plus depuis zero : il complete seulement ce qui manque."""
+    exemples = [_exemple_anonymise("MediQAl") for _ in range(30)]
+    repository = FauxRepository(exemples)
+
+    DecouperSplitsUseCase(repository=repository, n=10, graine_aleatoire=42).executer()
+    splits_avant = {identifiant: e.split for identifiant, e in repository.items.items() if e.split is not None}
+    assert len(splits_avant) == 10
+
+    cas_usage = DecouperSplitsUseCase(repository=repository, n=None, graine_aleatoire=42)
+    decompte = cas_usage.executer()
+
+    assert cas_usage.nombre_deja_assignes == 10
+    assert cas_usage.nombre_nouveaux == 20
+    assert sum(decompte.values()) == 30
+    for identifiant, split_original in splits_avant.items():
+        assert repository.items[identifiant].split == split_original
+    assert all(e.split is not None for e in repository.items.values())

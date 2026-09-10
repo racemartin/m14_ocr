@@ -654,3 +654,59 @@ pourcentage par split — `decouper_splits.py` n'affichait que le total
 global, ce qui ne permettait pas de vérifier visuellement que la
 stratification restait représentative dans **chaque** split (voir
 tableau ci-dessus).
+
+## Croissance stable de `decouper_splits.py` — protection contre la fuite train/test à l'agrandissement (10/09/2026)
+
+**Décision du capitaine**, prise explicitement après comparaison de
+deux alternatives. Constat : dans le comportement décrit à la section
+précédente, `--n` prélevait un échantillon **frais** à chaque exécution
+et **réassignait le split de TOUS les exemples considérés** (que ce
+soit le sous-ensemble `--n` ou le dataset anonymisé entier). Relancer
+`decouper_splits.py` avec un `--n` différent (par exemple élargir de
+5 000 à 10 000, ou omettre `--n` pour tout répartir) pouvait donc faire
+passer un exemple déjà vu de `train` à `test` — ou l'inverse — d'une
+exécution à l'autre. C'est une **fuite silencieuse** de données
+d'entraînement dans le jeu d'évaluation, exactement le point de
+vigilance explicite du cahier des charges de la mission : *« le jeu de
+test ne doit jamais être réutilisé en entraînement »*. Un modèle évalué
+sur un exemple qu'il a vu en entraînement lors d'une vague antérieure
+donnerait des métriques de test artificiellement optimistes, sans
+qu'aucune erreur ne le signale — le bug n'aurait été visible qu'en
+comparant manuellement les identifiants de deux exécutions successives.
+
+**Alternatives comparées** : (a) recalculer tout le découpage à chaque
+exécution (comportement historique, simple mais sujet à la fuite
+ci-dessus dès qu'on agrandit le dataset) vs (b) figer définitivement le
+split de tout exemple déjà vu et ne répartir que les exemples
+nouvellement candidats. Le capitaine a tranché pour (b).
+
+**Nouveau comportement** (`DecouperSplitsUseCase.executer`, cf.
+`src/chsa_triage/application/use_cases/uc_04_00_decouper_splits.py`) :
+un exemple qui a déjà un `split` non nul (exécution antérieure) n'est
+**plus jamais réassigné**, quel que soit le `--n` demandé ensuite.
+`--n N` est désormais une taille **cible cumulée** : seuls
+`N - (nombre déjà assigné)` exemples **nouveaux** (choisis parmi ceux
+sans split, par le même échantillonnage stratifié qu'avant) reçoivent
+un split lors de cette exécution. Omettre `--n` bascule le mode
+« tout répartir » en mode « compléter ce qui manque » — changement de
+comportement réel par rapport à la section précédente, documenté aussi
+dans le README (§6/§7) et le docstring du module. Réduire un découpage
+déjà fait (`--n` ≤ au nombre déjà assigné) n'est **pas supporté** : le
+jeu ne peut que grandir, jamais rétrécir — un avertissement est tracé
+via LogTool (pas une erreur) dans ce cas, la décision explicite étant
+qu'encoger n'a pas de cas d'usage légitime ici (contrairement à
+agrandir, qui correspond au besoin produit réel de vagues successives
+d'anonymisation).
+
+`verifier_repartition_splits.py` n'a nécessité **aucune modification** :
+il relit simplement les splits déjà présents dans le fichier de sortie,
+quelle que soit la séquence d'exécutions `--n` qui les a produits — la
+garantie de stabilité vit entièrement côté écriture
+(`DecouperSplitsUseCase`), pas côté lecture.
+
+Couvert par un test dédié
+(`tests/application/test_decouper_splits.py`) : découpage avec `--n
+5000`, relevé des identifiants et de leur split par identifiant, puis
+second découpage avec `--n 10000` sur le même repository — vérification
+que les 5 000 premiers identifiants conservent **exactement** le même
+split qu'à la première exécution.

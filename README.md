@@ -243,17 +243,49 @@ complete.
 # d'anonymisation.
 uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset_pivot_anonymise.jsonl
 
-# --n (optionnel) : pour obtenir un dataset d'entrainement de taille N
-# plutot que repartir TOUT ce qui est deja anonymise, --n preleve
-# d'abord un echantillon stratifie (type_exemple, source) de taille N
-# parmi les exemples anonymises disponibles (meme algorithme que
-# --limite ci-dessus), puis repartit train/val/test sur ce
-# sous-ensemble. Si N est omis, ou >= au nombre d'exemples anonymises
-# disponibles, comportement inchange (tout ce qui est anonymise est
-# reparti) -- un avertissement est trace via LogTool si N depasse le
-# disponible, sans erreur.
+# --n : taille CIBLE cumulee (pas la taille de cette seule execution).
 uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset_pivot_anonymise.jsonl --n 5000
 ```
+
+**Croissance stable, jamais de reordonnancement (10/09/2026, decision
+du capitaine, CHANGEMENT DE COMPORTEMENT reel).** Un exemple qui a
+deja un `split` (execution anterieure) n'est JAMAIS reassigne, quel
+que soit le `--n` demande ensuite -- agrandir le dataset ne fait QUE
+completer ce qui manque, il ne recalcule plus jamais le decoupage
+entier. Avant ce changement, relancer avec un `--n` different (ou sans
+`--n`) pouvait deplacer un exemple deja vu de `train` vers `test` (ou
+l'inverse), une fuite silencieuse d'exemples d'entrainement dans le
+jeu de test -- ce que le cahier des charges interdit explicitement
+("le jeu de test ne doit jamais etre reutilise en entrainement").
+
+Exemple concret :
+
+```bash
+# Premiere execution : 5000 exemples, aucun split existant -- les 5000
+# sont repartis stratifie (type_exemple, source) selon les proportions
+# habituelles.
+uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset_pivot_anonymise.jsonl --n 5000
+
+# Deuxieme execution, plus tard : --n 10000 preleve N - (deja assignes)
+# = 10000 - 5000 = 5000 NOUVEAUX exemples (echantillon stratifie parmi
+# ceux qui n'ont pas encore de split) et leur assigne un split. Les
+# 5000 PREMIERS exemples GARDENT exactement le split qui leur a ete
+# assigne lors de la premiere execution -- aucun n'est deplace entre
+# train/val/test.
+uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset_pivot_anonymise.jsonl --n 10000
+```
+
+Si `--n N` est demande mais `N` est <= au nombre d'exemples deja
+assignes, il n'y a rien de nouveau a faire : **reduire un decoupage
+deja fait n'est pas supporte** (le jeu ne peut que grandir), un
+avertissement est trace via LogTool (pas une erreur). Si `--n` est
+omis, TOUS les exemples anonymises qui n'ont pas encore de split en
+recoivent un (mode "completer ce qui manque" -- avant ce changement,
+le mode sans `--n` recalculait le decoupage de tout le dataset anonymise
+depuis zero). Le decompte affiche en sortie est le TOTAL cumule
+(deja assignes + nouveaux de cette execution), distinct du nombre de
+nouveaux exemples repartis lors de CETTE execution (affiche
+separement).
 
 ### 8. Verification de la repartition des splits par strate
 
@@ -265,7 +297,10 @@ uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset
 # que l'echantillonnage stratifie reste representatif DANS CHAQUE
 # split (ex. une petite source comme FrenchMedMCQA doit rester
 # ~80/10/10 comme les grosses sources, pas disparaitre de train ou de
-# test).
+# test). Fonctionne sans changement avec la croissance stable de
+# decouper_splits.py ci-dessus : il relit simplement les splits deja
+# presents dans le fichier, quelle que soit la sequence d'executions
+# --n qui les a produits.
 uv run python interfaces/cli/verifier_repartition_splits.py --dataset data/processed/dataset_pivot_anonymise.jsonl
 ```
 
