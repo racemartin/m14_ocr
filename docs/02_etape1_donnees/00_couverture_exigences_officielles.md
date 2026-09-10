@@ -464,6 +464,24 @@ rapport dans `data/processed/rapport_controle_qualite_anonymisation.{json,md}`) 
 - Exemples réels (original → anonymisé) inspectables dans le rapport
   Markdown pour chacune des 4 sources.
 
+**Exclusion des candidats en attente du décrédelage train/val/test
+(décision du capitaine, 10/09/2026)** : un `ExemplePivot` portant au
+moins un candidat de PII résiduelle encore SANS décision humaine
+persistée (`en attente de revision humaine` ci-dessus) est exclu par
+précaution du décrédelage `decouper_splits.py`, plutôt que de bloquer
+le pipeline en attendant qu'une personne tranche chaque candidat un
+par un — voir `DecouperSplitsUseCase.obtenir_identifiants_pii_en_attente`
+et `ReviserPiiResiduelleUseCase.identifiants_en_attente`. Cet exemple
+reste sans `split` (ni train, ni val, ni test) jusqu'à ce qu'une
+décision humaine soit prise (`reviser_pii_residuelle.py verify`) ou
+que le candidat cesse d'exister après un reproces. Conséquence directe
+sur la lecture de l'exigence NF2 : **« 0 PII résiduelle validée
+manuellement »** ne couvre que les candidats ayant effectivement reçu
+une décision explicite (`decisions_revision_humaine.jsonl`), pas
+l'ensemble des candidats détectés par le contrôle qualité — les
+candidats encore en attente ne sont ni confirmés ni infirmés, ils sont
+simplement tenus à l'écart de l'entraînement/évaluation.
+
 **Splits** (sur les 5 000 exemples anonymisés) : identique à la vague
 historique (4 004 train / 498 val / 498 test), vérifié représentatif
 par strate à ~80/10/10 dans chaque `(type_exemple, source)` (y compris

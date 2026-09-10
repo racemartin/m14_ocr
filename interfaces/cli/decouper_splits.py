@@ -41,6 +41,18 @@ deja fait n'est PAS supporte (le jeu ne peut que grandir), un
 avertissement est trace via LogTool (pas une erreur). Si `--n` est
 omis, tous les exemples anonymises qui n'ont pas encore de split
 recoivent un split (mode "completer ce qui manque").
+
+EXCLUSION PII EN ATTENTE DE DECISION HUMAINE (10/09/2026, decision du
+capitaine). Par precaution, un exemple avec au moins un candidat de
+PII residuelle sans decision humaine persistee (VERDICT_REVISION_HUMAINE,
+cf. `reviser_pii_residuelle.py`) est exclu des candidats de CETTE
+execution -- plutot que de bloquer le pipeline en attendant une revue
+candidat par candidat. Ce script instancie donc les memes adaptateurs
+que `reviser_pii_residuelle.py verify` (`--original`, `--registre-echantillons`,
+`--decisions`, `--jeton-masque`, en plus de `--dataset` qui reste le
+fichier ANONYMISE) pour recalculer cet ensemble d'identifiants
+(`ReviserPiiResiduelleUseCase.identifiants_en_attente`) ; le nombre
+d'exemples exclus pour cette raison est affiche a la fin de l'execution.
 """
 
 from __future__ import annotations
@@ -48,10 +60,21 @@ from __future__ import annotations
 import argparse
 
 from chsa_triage.application.use_cases import DecouperSplitsUseCase
-from chsa_triage.infrastructure.adapters import JsonlDatasetRepository
+from chsa_triage.application.use_cases.uc_03_02_controler_qualite_anonymisation import JETON_MASQUE_DEFAUT
+from chsa_triage.application.use_cases.uc_03_03_reviser_pii_residuelle import ReviserPiiResiduelleUseCase
+from chsa_triage.infrastructure.adapters import (
+    JsonlDatasetRepository,
+    JsonlDecisionsRevisionHumaine,
+    JsonlRegistreEchantillonsControleQualite,
+    SpacyVerificateurEntitesNommees,
+)
 from tools.rafael.log_tool import LogTool
 
 log = LogTool(origin="decouper_splits")
+
+CHEMIN_ORIGINAL_DEFAUT              = "data/processed/dataset_pivot.jsonl"
+CHEMIN_REGISTRE_ECHANTILLONS_DEFAUT = "data/processed/controle_qualite_identifiants_echantillonnes.jsonl"
+CHEMIN_DECISIONS_DEFAUT             = "data/processed/decisions_revision_humaine.jsonl"
 
 
 def main() -> None:
@@ -72,6 +95,14 @@ def main() -> None:
              "completer, tout exemple anonymise sans split recoit un split). N <= au nombre "
              "deja assigne : rien de nouveau, non supporte de reduire un decoupage existant",
     )
+    parser.add_argument(
+        "--original",
+        default=CHEMIN_ORIGINAL_DEFAUT,
+        help="Chemin du pivot ORIGINAL (pour recalculer les candidats de PII en attente de decision)",
+    )
+    parser.add_argument("--registre-echantillons", default=CHEMIN_REGISTRE_ECHANTILLONS_DEFAUT)
+    parser.add_argument("--decisions", default=CHEMIN_DECISIONS_DEFAUT)
+    parser.add_argument("--jeton-masque", default=JETON_MASQUE_DEFAUT)
     arguments = parser.parse_args()
 
     log.START_ACTION("decouper_splits", "main", "decoupage train/val/test (croissance stable)")
@@ -86,6 +117,19 @@ def main() -> None:
     # -------------------------------------------------------------------------
     repository = JsonlDatasetRepository(arguments.dataset)
 
+    # Meme adaptateurs que `reviser_pii_residuelle.py verify` : necessaires
+    # pour recalculer (replay deterministe) les identifiants portant un
+    # candidat de PII residuelle sans decision humaine, et les exclure du
+    # decoupage par precaution (decision du capitaine, 10/09/2026).
+    revision_pii = ReviserPiiResiduelleUseCase(
+        repository_original=JsonlDatasetRepository(arguments.original),
+        repository_anonymise=repository,
+        verificateur_entites=SpacyVerificateurEntitesNommees(),
+        registre_echantillons=JsonlRegistreEchantillonsControleQualite(arguments.registre_echantillons),
+        decisions=JsonlDecisionsRevisionHumaine(arguments.decisions),
+        jeton_masque=arguments.jeton_masque,
+    )
+
     # -------------------------------------------------------------------------
     # USE CASE EXECUTE
     # -------------------------------------------------------------------------
@@ -97,6 +141,7 @@ def main() -> None:
             proportion_val=arguments.proportion_val,
             proportion_test=arguments.proportion_test,
             n=arguments.n,
+            obtenir_identifiants_pii_en_attente=revision_pii.identifiants_en_attente,
         )
         decompte = cas_usage.executer()
     except Exception as erreur:
@@ -108,6 +153,9 @@ def main() -> None:
     # -------------------------------------------------------------------------
     log.PARAMETER_VALUE("deja assignes (executions anterieures, non touches)", cas_usage.nombre_deja_assignes)
     log.PARAMETER_VALUE("nouveaux repartis cette execution", cas_usage.nombre_nouveaux)
+    log.PARAMETER_VALUE(
+        "exclus cette execution (PII en attente de decision humaine)", cas_usage.nombre_exclus_pii_en_attente
+    )
     if arguments.n is not None and cas_usage.nombre_nouveaux == 0:
         log.LEVEL_5_WARNING(
             "decouper_splits",
@@ -120,6 +168,10 @@ def main() -> None:
 
     print(f"Nouveaux exemples repartis lors de cette execution : {cas_usage.nombre_nouveaux}")
     print(f"Exemples deja assignes (executions anterieures, non touches) : {cas_usage.nombre_deja_assignes}")
+    print(
+        "Exemples exclus cette execution (PII residuelle en attente de decision humaine) : "
+        f"{cas_usage.nombre_exclus_pii_en_attente}"
+    )
     print("Repartition totale actuelle des splits (deja assignes + nouveaux) :")
     for split, nombre in decompte.items():
         print(f"  {split:<10}: {nombre}")

@@ -285,6 +285,20 @@ depuis zero). Le decompte affiche en sortie est le TOTAL cumule
 nouveaux exemples repartis lors de CETTE execution (affiche
 separement).
 
+**Exclusion des candidats PII en attente de revision humaine
+(decision du capitaine, 10/09/2026).** Par precaution, un exemple
+portant au moins un candidat de PII residuelle SANS decision humaine
+persistee (§6, `reviser_pii_residuelle.py`) est exclu du decoupage de
+cette execution -- il reste sans `split` jusqu'a ce qu'une decision
+soit prise. `decouper_splits.py` accepte donc desormais les memes
+adaptateurs que `reviser_pii_residuelle.py verify` pour recalculer cet
+ensemble : `--original` (defaut `data/processed/dataset_pivot.jsonl`),
+`--registre-echantillons` (defaut
+`data/processed/controle_qualite_identifiants_echantillonnes.jsonl`),
+`--decisions` (defaut `data/processed/decisions_revision_humaine.jsonl`)
+et `--jeton-masque`. Le nombre d'exemples exclus pour cette raison
+lors de cette execution est affiche en sortie.
+
 ### 8. Verification de la repartition des splits par strate
 
 ```bash

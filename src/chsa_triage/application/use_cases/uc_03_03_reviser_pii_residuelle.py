@@ -167,6 +167,20 @@ class ReviserPiiResiduelleUseCase:
         return [c for c in candidats_a_revoir(controle) if c.cle not in deja_decides]
 
     # ##########################################################################
+    # identifiants_en_attente
+    # ##########################################################################
+    def identifiants_en_attente(self) -> set[str]:
+        """
+        Ensemble des `ExemplePivot.identifiant` portant au moins un
+        candidat de PII residuelle encore SANS decision humaine
+        persistee ; utilise par `DecouperSplitsUseCase` (10/09/2026)
+        pour exclure ces exemples du decoupage train/val/test par
+        precaution, sans dupliquer le calcul deterministe de
+        `candidats_en_attente`.
+        """
+        return {c.cle.identifiant for c in self.candidats_en_attente()}
+
+    # ##########################################################################
     # enregistrer_decision
     # ##########################################################################
     def enregistrer_decision(

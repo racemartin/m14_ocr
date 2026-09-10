@@ -8,6 +8,7 @@ entrainement.
 from __future__ import annotations
 
 import random
+from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 
 from chsa_triage.application.echantillonnage import echantillon_stratifie
@@ -15,17 +16,24 @@ from chsa_triage.domain.model import ExemplePivot, TypeSplit
 from chsa_triage.domain.ports import RepositoryLectureEcriture
 
 
+def _aucun_identifiant_en_attente() -> set[str]:
+    """Valeur par defaut de `obtenir_identifiants_pii_en_attente` : aucune exclusion."""
+    return set()
+
+
 @dataclass(slots=True)
 class DecouperSplitsUseCase:
     """Orchestre le decoupage train/val/test clinique du dataset pivot."""
 
-    repository            : RepositoryLectureEcriture
-    graine_aleatoire        : int = 42
-    proportion_val           : float = 0.10
-    proportion_test           : float = 0.10
-    n                        : int | None = None
-    nombre_deja_assignes      : int = field(default=0, init=False)
-    nombre_nouveaux            : int = field(default=0, init=False)
+    repository                       : RepositoryLectureEcriture
+    graine_aleatoire                   : int = 42
+    proportion_val                      : float = 0.10
+    proportion_test                      : float = 0.10
+    n                                   : int | None = None
+    obtenir_identifiants_pii_en_attente : Callable[[], set[str]] = _aucun_identifiant_en_attente
+    nombre_deja_assignes                 : int = field(default=0, init=False)
+    nombre_nouveaux                       : int = field(default=0, init=False)
+    nombre_exclus_pii_en_attente            : int = field(default=0, init=False)
 
     def executer(self) -> dict[str, int]:
         """
@@ -88,10 +96,36 @@ class DecouperSplitsUseCase:
         avant ; seule la POPULATION consideree a change (candidats
         sans split de cette execution), pas l'algorithme de
         repartition au sein d'un groupe.
+
+        Exclusion PII en attente de decision humaine (10/09/2026,
+        decision du capitaine) : `obtenir_identifiants_pii_en_attente`
+        (defaut : aucune exclusion) fournit l'ensemble des `identifiant`
+        portant au moins un candidat de PII residuelle SANS decision
+        humaine persistee (voir `ReviserPiiResiduelleUseCase.identifiants_en_attente`).
+        Ces exemples sont retires des `candidats` AVANT le sous-echantillonnage
+        `n`/le decoupage, pour rester conservateur -- par precaution,
+        plutot que de bloquer le pipeline en attendant une revue
+        candidat par candidat. Ils ne recoivent PAS de split cette
+        execution mais pourront en recevoir un lors d'une execution
+        FUTURE des que la decision est prise (ou que le candidat
+        disparait apres reproces). `deja_assignes` n'est jamais
+        concerne par cette exclusion.
         """
         exemples      = list(self.repository.lister(filtre={"anonymise": True}))
         deja_assignes = [e for e in exemples if e.split is not None]
         candidats     = [e for e in exemples if e.split is None]
+
+        # Exclusion par precaution (10/09/2026, decision du capitaine) des
+        # candidats ayant au moins un candidat de PII residuelle encore
+        # SANS decision humaine persistee : seuls les `candidats` (sans
+        # split) sont concernes, jamais `deja_assignes` -- un exemple deja
+        # reparti garde son split meme si un candidat en attente lui
+        # apparait plus tard (cf. garantie de croissance stable ci-dessus).
+        identifiants_en_attente = self.obtenir_identifiants_pii_en_attente()
+        if identifiants_en_attente:
+            avant = len(candidats)
+            candidats = [e for e in candidats if e.identifiant not in identifiants_en_attente]
+            self.nombre_exclus_pii_en_attente = avant - len(candidats)
 
         self.nombre_deja_assignes = len(deja_assignes)
 
