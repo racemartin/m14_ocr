@@ -39,3 +39,6 @@ data/splits/*
 !data/processed/.gitkeep
 !data/splits/.gitkeep
 !data/README.md
+
+# Notes de travail locales, non versionnees
+docs/01_environnement/M14 Support de presentation_V2.pptx.pdf
