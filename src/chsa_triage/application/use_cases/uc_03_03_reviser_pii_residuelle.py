@@ -27,6 +27,7 @@ from chsa_triage.application.use_cases.uc_03_02_controler_qualite_anonymisation 
     JETON_MASQUE_DEFAUT,
     STRATUM_PRINCIPAL,
     STRATUM_SANS_ENTITE,
+    VERDICT_CONFIRME,
     VERDICT_REVISION_HUMAINE,
     ControleQualiteAnonymisation,
     _est_exemple_sans_entite,
@@ -35,6 +36,7 @@ from chsa_triage.application.use_cases.uc_03_02_controler_qualite_anonymisation 
     cle_candidat_pii,
 )
 from chsa_triage.domain.model import (
+    DECISION_ACCEPTE,
     SOURCE_CANDIDATS_PII,
     SOURCE_CANDIDATS_PII_SANS_ENTITE,
     CleCandidatRevision,
@@ -49,40 +51,58 @@ from chsa_triage.domain.ports.registre_echantillons_controle_qualite import (
 from chsa_triage.domain.ports.verificateur_entites import VerificateurEntitesNommees
 
 
+VERDICTS_REVISION_HUMAINE_SEUL: frozenset[str] = frozenset({VERDICT_REVISION_HUMAINE})
+
+# Motifs d'exclusion de publication (cf. `ReviserPiiResiduelleUseCase.identifiants_a_exclure_publication`) ;
+# "confirme" l'emporte sur "pendant_revision_humaine" quand un identifiant a les deux (motif le plus grave).
+RAISON_CONFIRME                 = "confirme"
+RAISON_PENDANT_REVISION_HUMAINE = "pendant_revision_humaine"
+
+
 @dataclass(frozen=True, slots=True)
 class CandidatARevoir:
-    """Un candidat REVISION_HUMAINE, uniformise entre les 3 sources, pret a etre montre pour decision."""
+    """Un candidat de PII residuelle, uniformise entre les 3 sources, pret a etre montre pour decision ou export."""
 
     cle          : CleCandidatRevision
     source_corpus: str  # ExemplePivot.source (nom du corpus, ex. "MediQAl") ; pas source_liste
     langue       : str  # "" pour SOURCE_CANDIDATS_FAUX_POSITIFS (pas de langue stockee sur ce candidat)
     passage      : str
+    verdict      : str  # VERDICT_CONFIRME | VERDICT_FAUX_POSITIF_REGEX | VERDICT_REVISION_HUMAINE
 
 
 # ##############################################################################
 # candidats_a_revoir
 # ##############################################################################
-def candidats_a_revoir(controle: ControleQualiteAnonymisation) -> list[CandidatARevoir]:
-    """Rassemble, uniformisés, tous les candidats VERDICT_REVISION_HUMAINE des 3 sources de `controle`."""
+def candidats_a_revoir(
+    controle: ControleQualiteAnonymisation, verdicts: frozenset[str] = VERDICTS_REVISION_HUMAINE_SEUL
+) -> list[CandidatARevoir]:
+    """
+    Rassemble, uniformises, tous les candidats des 3 sources de
+    `controle` dont le `verdict` figure dans `verdicts` (par defaut,
+    uniquement VERDICT_REVISION_HUMAINE, pour la revue interactive).
+    Generalise (11/09/2026) pour aussi couvrir VERDICT_CONFIRME, sans
+    dupliquer cette collecte, au profit de
+    `ReviserPiiResiduelleUseCase.identifiants_a_exclure_publication`.
+    """
     resultats: list[CandidatARevoir] = []
 
     for c in controle.candidats_pii:
-        if c.verdict == VERDICT_REVISION_HUMAINE:
+        if c.verdict in verdicts:
             resultats.append(
-                CandidatARevoir(cle_candidat_pii(SOURCE_CANDIDATS_PII, c), c.source, c.langue, c.passage)
+                CandidatARevoir(cle_candidat_pii(SOURCE_CANDIDATS_PII, c), c.source, c.langue, c.passage, c.verdict)
             )
 
     for c in controle.candidats_faux_positifs:
-        if c.verdict == VERDICT_REVISION_HUMAINE:
+        if c.verdict in verdicts:
             resultats.append(
-                CandidatARevoir(cle_candidat_faux_positif(c), c.source, "", c.fragment_masque)
+                CandidatARevoir(cle_candidat_faux_positif(c), c.source, "", c.fragment_masque, c.verdict)
             )
 
     for c in controle.candidats_pii_sans_entite:
-        if c.verdict == VERDICT_REVISION_HUMAINE:
+        if c.verdict in verdicts:
             resultats.append(
                 CandidatARevoir(
-                    cle_candidat_pii(SOURCE_CANDIDATS_PII_SANS_ENTITE, c), c.source, c.langue, c.passage
+                    cle_candidat_pii(SOURCE_CANDIDATS_PII_SANS_ENTITE, c), c.source, c.langue, c.passage, c.verdict
                 )
             )
 
@@ -128,14 +148,15 @@ class ReviserPiiResiduelleUseCase:
     jeton_masque              : str = JETON_MASQUE_DEFAUT
 
     # ##########################################################################
-    # candidats_en_attente
+    # _rejouer_controle
     # ##########################################################################
-    def candidats_en_attente(self) -> list[CandidatARevoir]:
+    def _rejouer_controle(self) -> ControleQualiteAnonymisation:
         """
-        Recalcule (replay deterministe, cf. docstring du module) les
-        candidats REVISION_HUMAINE sur TOUS les identifiants deja
-        echantillonnes (les deux strates), puis exclut ceux ayant deja
-        une decision humaine persistee.
+        Recalcule (replay deterministe, cf. docstring du module)
+        `ControleQualiteAnonymisation` sur TOUS les identifiants deja
+        echantillonnes (les deux strates) ; moteur commun a
+        `candidats_en_attente` et `identifiants_a_exclure_publication`,
+        pour ne jamais dupliquer ce replay.
         """
         originaux_par_id = {e.identifiant: e for e in self.repository_original.lister()}
         anonymises_par_id = {e.identifiant: e for e in self.repository_anonymise.lister()}
@@ -163,8 +184,49 @@ class ReviserPiiResiduelleUseCase:
             if original is not None and anonymise is not None and _est_exemple_sans_entite(original, anonymise):
                 controle.observer_sans_entite(original, anonymise)
 
+        return controle
+
+    # ##########################################################################
+    # candidats_en_attente
+    # ##########################################################################
+    def candidats_en_attente(self) -> list[CandidatARevoir]:
+        """
+        Candidats VERDICT_REVISION_HUMAINE sur tout ce qui a deja ete
+        echantillonne, exclus ceux ayant deja une decision humaine
+        persistee (peu importe laquelle : `verify` ne doit plus les
+        montrer une fois tranches).
+        """
+        controle = self._rejouer_controle()
         deja_decides = self.decisions.cles_decidees()
         return [c for c in candidats_a_revoir(controle) if c.cle not in deja_decides]
+
+    # ##########################################################################
+    # identifiants_a_exclure_publication
+    # ##########################################################################
+    def identifiants_a_exclure_publication(self) -> dict[str, str]:
+        """
+        Identifiants a exclure d'une publication (ex. sous-ensemble SFT,
+        cf. `interfaces/cli/reviser_pii_residuelle.py exporter`) : au
+        moins un candidat VERDICT_CONFIRME (fuite non ambigue, jamais
+        soumise a decision humaine), ou au moins un candidat
+        VERDICT_REVISION_HUMAINE sans decision DECISION_ACCEPTE
+        persistee (candidat encore ouvert, ou explicitement DECISION_REJETE
+        = PII confirmee par une personne). "confirme" l'emporte sur
+        "pendant_revision_humaine" quand un identifiant a les deux motifs.
+        """
+        controle = self._rejouer_controle()
+        candidats = candidats_a_revoir(controle, verdicts=frozenset({VERDICT_CONFIRME, VERDICT_REVISION_HUMAINE}))
+        cles_acceptees = {d.cle for d in self.decisions.toutes() if d.decision == DECISION_ACCEPTE}
+
+        razons: dict[str, str] = {}
+        for c in candidats:
+            if c.verdict == VERDICT_REVISION_HUMAINE and c.cle not in cles_acceptees:
+                razons[c.cle.identifiant] = RAISON_PENDANT_REVISION_HUMAINE
+        for c in candidats:
+            if c.verdict == VERDICT_CONFIRME:
+                razons[c.cle.identifiant] = RAISON_CONFIRME
+
+        return razons
 
     # ##########################################################################
     # identifiants_en_attente

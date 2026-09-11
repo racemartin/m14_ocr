@@ -49,6 +49,9 @@ from chsa_triage.application.use_cases.uc_03_01_rapport_anonymisation import (
 from chsa_triage.application.use_cases.uc_04_01_verifier_repartition_splits import (
     VerifierRepartitionSplitsUseCase,
 )
+from chsa_triage.application.use_cases.uc_04_02_extraire_sous_ensemble_sft import (
+    ExtraireSousEnsembleSftUseCase,
+)
 
 __all__ = [
     "STRATUM_PRINCIPAL",
@@ -63,6 +66,7 @@ __all__ = [
     "DecouperSplitsUseCase",
     "ExecutionAnonymisation",
     "ExempleControle",
+    "ExtraireSousEnsembleSftUseCase",
     "ProfilerCorpusUseCase",
     "RapportAnonymisationCumule",
     "ReviserPiiResiduelleUseCase",
