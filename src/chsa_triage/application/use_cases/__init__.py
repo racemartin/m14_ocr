@@ -1,5 +1,19 @@
 """Point d'entree du sous-paquet application.use_cases."""
 
+from chsa_triage.application.use_cases.E2_00_uc_formater_dataset_chatml import (
+    FormaterDatasetChatMLUseCase,
+)
+from chsa_triage.application.use_cases.E2_01_uc_entrainer_sft import (
+    EntrainerSftUseCase,
+)
+from chsa_triage.application.use_cases.E2_02_uc_ajuster_boucle_hyperparametres_sft import (
+    AjusterBoucleHyperparametresSftUseCase,
+    EssaiHyperparametres,
+    ResultatBoucleAjustement,
+)
+from chsa_triage.application.use_cases.E2_03_uc_sauvegarder_checkpoint_sft import (
+    SauvegarderCheckpointSftUseCase,
+)
 from chsa_triage.application.use_cases.E1_04_00_anonymiser_dataset import (
     AnonymiserDatasetUseCase,
     StatistiquesSource,
@@ -58,6 +72,7 @@ from chsa_triage.application.use_cases.E1_05_02_extraire_sous_ensemble_sft impor
 __all__ = [
     "STRATUM_PRINCIPAL",
     "STRATUM_SANS_ENTITE",
+    "AjusterBoucleHyperparametresSftUseCase",
     "AnonymiserDatasetUseCase",
     "CandidatARevoir",
     "CandidatFauxPositifAnonymisation",
@@ -66,12 +81,17 @@ __all__ = [
     "ControleQualiteAnonymisation",
     "ControlerQualiteAnonymisationUseCase",
     "DecouperSplitsUseCase",
+    "EntrainerSftUseCase",
+    "EssaiHyperparametres",
     "ExecutionAnonymisation",
     "ExempleControle",
     "ExtraireSousEnsembleSftUseCase",
+    "FormaterDatasetChatMLUseCase",
     "ProfilerCorpusUseCase",
     "RapportAnonymisationCumule",
+    "ResultatBoucleAjustement",
     "ReviserPiiResiduelleUseCase",
+    "SauvegarderCheckpointSftUseCase",
     "StatistiquesSource",
     "VerifierRepartitionSplitsUseCase",
     "calculer_repartition_par_strate",
