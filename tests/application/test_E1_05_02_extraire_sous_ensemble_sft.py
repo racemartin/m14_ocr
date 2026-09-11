@@ -229,7 +229,7 @@ def test_calculer_repartition_par_strate_et_formater_tableau_somme_le_total_atte
 
 def test_chemin_sortie_defaut_du_cli_depend_de_la_taille_reelle():
     """`--sortie` par defaut doit refleter la `--taille` reellement utilisee, pas une valeur figee."""
-    from interfaces.cli.E1_05_03_extraire_sous_ensemble_sft import chemin_sortie_defaut
+    from interfaces.cli.E1_05_02_extraire_sous_ensemble_sft import chemin_sortie_defaut
 
     assert chemin_sortie_defaut(5000) == "data/processed/dataset_chsa_triage_sft_anonymise_5000.jsonl"
     assert chemin_sortie_defaut(8000) == "data/processed/dataset_chsa_triage_sft_anonymise_8000.jsonl"

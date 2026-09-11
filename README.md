@@ -343,7 +343,7 @@ uv run python interfaces/cli/E1_04_01_reviser_pii_residuelle.py exporter \
 #    type_exemple/source) si le resultat filtre en contient plus.
 #    Pure soustraction + recoupage : ne rajoute jamais d'exemples pour
 #    compenser un manque.
-uv run python interfaces/cli/E1_05_03_extraire_sous_ensemble_sft.py \
+uv run python interfaces/cli/E1_05_02_extraire_sous_ensemble_sft.py \
     --dataset data/processed/dataset_pivot_anonymise.jsonl \
     --exclusions data/processed/identifiants_a_exclure_publication.jsonl \
     --taille 5000
@@ -381,7 +381,7 @@ Taille cible atteinte (5000 == 5000).
 Le pivot anonymise complet contient bien plus d'exemples que les 5000
 demandes (§7-8 ci-dessus) : `E1_05_00_decouper_splits.py --n <N>` peut affecter
 un `split` (train/val/test) a un echantillon stratifie plus grand que
-`--taille`, les autres restant a `split: null`. `E1_05_03_extraire_sous_ensemble_sft.py`
+`--taille`, les autres restant a `split: null`. `E1_05_02_extraire_sous_ensemble_sft.py`
 filtre sur `split != null`, retire les identifiants listes dans
 `data/processed/identifiants_a_exclure_publication.jsonl` (produit par
 l'etape 1), et, si le resultat filtre depasse `--taille`, le RECOUPE a
@@ -416,7 +416,7 @@ Taille cible atteinte (5000 == 5000).
 ```
 
 Si le resultat, apres exclusion, contient MOINS d'exemples que
-`--taille`, `E1_05_03_extraire_sous_ensemble_sft.py` ne tente jamais de
+`--taille`, `E1_05_02_extraire_sous_ensemble_sft.py` ne tente jamais de
 completer automatiquement (ce n'est qu'un filtre/une soustraction, pas
 un nouveau muestreo) : il affiche clairement combien d'exemples
 restent et combien manquent, et suggere d'elargir le decoupage des
