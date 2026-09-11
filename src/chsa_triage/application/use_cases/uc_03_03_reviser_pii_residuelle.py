@@ -229,18 +229,18 @@ class ReviserPiiResiduelleUseCase:
         return razons
 
     # ##########################################################################
-    # identifiants_en_attente
+    # identifiants_a_exclure_publication_set
     # ##########################################################################
-    def identifiants_en_attente(self) -> set[str]:
+    def identifiants_a_exclure_publication_set(self) -> set[str]:
         """
-        Ensemble des `ExemplePivot.identifiant` portant au moins un
-        candidat de PII residuelle encore SANS decision humaine
-        persistee ; utilise par `DecouperSplitsUseCase` (10/09/2026)
+        Ensemble des `ExemplePivot.identifiant` a exclure d'une
+        publication, toutes raisons confondues (CONFIRME ou en attente
+        de revision humaine) ; utilise par `DecouperSplitsUseCase`
+        (10/09/2026, etendu le 11/09/2026 aux candidats CONFIRMES)
         pour exclure ces exemples du decoupage train/val/test par
-        precaution, sans dupliquer le calcul deterministe de
-        `candidats_en_attente`.
+        precaution, sans dupliquer `identifiants_a_exclure_publication`.
         """
-        return {c.cle.identifiant for c in self.candidats_en_attente()}
+        return set(self.identifiants_a_exclure_publication().keys())
 
     # ##########################################################################
     # enregistrer_decision

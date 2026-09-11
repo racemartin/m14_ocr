@@ -285,12 +285,14 @@ depuis zero). Le decompte affiche en sortie est le TOTAL cumule
 nouveaux exemples repartis lors de CETTE execution (affiche
 separement).
 
-**Exclusion des candidats PII en attente de revision humaine
-(10/09/2026).** Par precaution, un exemple
-portant au moins un candidat de PII residuelle SANS decision humaine
+**Exclusion des candidats PII confirmes ou en attente de revision
+humaine (10/09/2026, etendue le 11/09/2026 aux candidats confirmes).**
+Par precaution, un exemple portant au moins un candidat de PII
+residuelle CONFIRME (fuite non ambigue) ou SANS decision humaine
 persistee (§6, `reviser_pii_residuelle.py`) est exclu du decoupage de
 cette execution : il reste sans `split` jusqu'a ce qu'une decision
-soit prise. `decouper_splits.py` accepte donc desormais les memes
+soit prise (ou, pour un candidat confirme, indefiniment tant que le
+texte n'est pas corrige). `decouper_splits.py` accepte donc desormais les memes
 adaptateurs que `reviser_pii_residuelle.py verify` pour recalculer cet
 ensemble : `--original` (defaut `data/processed/dataset_pivot.jsonl`),
 `--registre-echantillons` (defaut

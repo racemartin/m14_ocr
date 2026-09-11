@@ -21,6 +21,13 @@ def _aucun_identifiant_en_attente() -> set[str]:
     return set()
 
 
+# Le nom `obtenir_identifiants_pii_en_attente` est historique (10/09/2026,
+# alors limite aux candidats sans decision humaine) ; depuis le 11/09/2026
+# il est cable a `ReviserPiiResiduelleUseCase.identifiants_a_exclure_publication_set`,
+# qui couvre aussi les candidats CONFIRMES. Conserve tel quel pour limiter
+# le perimetre du changement (voir la docstring de `executer` ci-dessous).
+
+
 @dataclass(slots=True)
 class DecouperSplitsUseCase:
     """Orchestre le decoupage train/val/test clinique du dataset pivot."""
@@ -98,29 +105,32 @@ class DecouperSplitsUseCase:
         repartition au sein d'un groupe.
 
         Exclusion PII en attente de decision humaine (10/09/2026,
-        decision du capitaine) : `obtenir_identifiants_pii_en_attente`
-        (defaut : aucune exclusion) fournit l'ensemble des `identifiant`
-        portant au moins un candidat de PII residuelle SANS decision
-        humaine persistee (voir `ReviserPiiResiduelleUseCase.identifiants_en_attente`).
-        Ces exemples sont retires des `candidats` AVANT le sous-echantillonnage
-        `n`/le decoupage, pour rester conservateur -- par precaution,
-        plutot que de bloquer le pipeline en attendant une revue
-        candidat par candidat. Ils ne recoivent PAS de split cette
-        execution mais pourront en recevoir un lors d'une execution
-        FUTURE des que la decision est prise (ou que le candidat
-        disparait apres reproces). `deja_assignes` n'est jamais
-        concerne par cette exclusion.
+        etendue le 11/09/2026 aux candidats deja confirmes) : le nom
+        historique `obtenir_identifiants_pii_en_attente` (defaut :
+        aucune exclusion) couvre en realite deux motifs distincts,
+        cf. `ReviserPiiResiduelleUseCase.identifiants_a_exclure_publication_set`) :
+        au moins un candidat de PII residuelle CONFIRME (fuite non
+        ambigue), ou au moins un candidat encore SANS decision humaine
+        persistee. Ces exemples sont retires des `candidats` AVANT le
+        sous-echantillonnage `n`/le decoupage, par precaution, plutot
+        que de bloquer le pipeline en attendant une revue candidat par
+        candidat. Ils ne recoivent PAS de split cette execution mais
+        pourront en recevoir un lors d'une execution FUTURE des que la
+        decision est prise (ou que le candidat disparait apres
+        reproces). `deja_assignes` n'est jamais concerne par cette
+        exclusion.
         """
         exemples      = list(self.repository.lister(filtre={"anonymise": True}))
         deja_assignes = [e for e in exemples if e.split is not None]
         candidats     = [e for e in exemples if e.split is None]
 
-        # Exclusion par precaution (10/09/2026, decision du capitaine) des
-        # candidats ayant au moins un candidat de PII residuelle encore
-        # SANS decision humaine persistee : seuls les `candidats` (sans
-        # split) sont concernes, jamais `deja_assignes` -- un exemple deja
-        # reparti garde son split meme si un candidat en attente lui
-        # apparait plus tard (cf. garantie de croissance stable ci-dessus).
+        # Exclusion par precaution (10/09/2026, etendue le 11/09/2026)
+        # des candidats ayant au moins un candidat de PII residuelle
+        # confirme ou encore SANS decision humaine persistee : seuls
+        # les `candidats` (sans split) sont concernes, jamais
+        # `deja_assignes` ; un exemple deja reparti garde son split
+        # meme si un candidat en attente lui apparait plus tard
+        # (cf. garantie de croissance stable ci-dessus).
         identifiants_en_attente = self.obtenir_identifiants_pii_en_attente()
         if identifiants_en_attente:
             avant = len(candidats)
