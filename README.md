@@ -347,6 +347,35 @@ uv run python interfaces/cli/extraire_sous_ensemble_sft.py \
     --dataset data/processed/dataset_pivot_anonymise.jsonl \
     --exclusions data/processed/identifiants_a_exclure_publication.jsonl \
     --taille 5000
+
+2026-09-11 13:22:44,780 [extraire_sous_ensemble_sft] ######################################
+2026-09-11 13:22:44,780 [extraire_sous_ensemble_sft]  ┌[extraire_sous_ensemble_sft]........: [main] ------------------------------ [extraction du sous-ensemble SFT a publier]
+2026-09-11 13:22:44,780 [extraire_sous_ensemble_sft]           dataset.....................: data/processed/dataset_pivot_anonymise.jsonl
+2026-09-11 13:22:44,780 [extraire_sous_ensemble_sft]           exclusions..................: data/processed/identifiants_a_exclure_publication.jsonl
+2026-09-11 13:22:44,780 [extraire_sous_ensemble_sft]           taille cible................: 5000
+2026-09-11 13:22:44,788 [extraire_sous_ensemble_sft]           identifiants a exclure lus..: 96
+2026-09-11 13:22:44,788 [extraire_sous_ensemble_sft] -------------------------------------
+2026-09-11 13:22:44,788 [extraire_sous_ensemble_sft] Filtrage split != null puis soustraction des exclusions
+2026-09-11 13:23:33,783 [extraire_sous_ensemble_sft]           exemples avec split (avant exclusion): 10000
+2026-09-11 13:23:33,816 [extraire_sous_ensemble_sft]           exclus (PII confirmee ou en attente): 74
+2026-09-11 13:23:33,816 [extraire_sous_ensemble_sft]           disponibles apres exclusion.: 9926
+2026-09-11 13:23:33,816 [extraire_sous_ensemble_sft]           tronques (surplus au-dela de taille cible): 4926
+Exemples avec split (avant exclusion) : 10000
+Exclus (PII confirmee ou en attente de revision humaine) : 74
+Disponibles apres exclusion : 9926
+Recoupes par echantillonnage stratifie : -4926 (surplus au-dela de 5000)
+Ecrits dans data/processed/dataset_sft_5000.jsonl : 5000 exemple(s).
+
+Repartition du sous-ensemble ecrit par strate (type_exemple, source) :
+Strate                                          Total           train             val            test
+dpo/UltraMedical-Preference                      3591    2890 (80.5%)     334 ( 9.3%)     367 (10.2%)
+sft/FrenchMedMCQA                                  22      17 (77.3%)       4 (18.2%)       1 ( 4.5%)
+sft/MedQuAD                                       609     489 (80.3%)      66 (10.8%)      54 ( 8.9%)
+sft/MediQAl                                       778     618 (79.4%)      82 (10.5%)      78 (10.0%)
+Taille cible atteinte (5000 == 5000).
+2026-09-11 13:23:35,845 [extraire_sous_ensemble_sft]  └[extraire_sous_ensemble_sft]........: [main] ------------------------------ [5000 exemple(s) ecrits dans data/processed/dataset_sft_5000.jsonl Exec: 00:00:51.064596]
+2026-09-11 13:23:35,845 [extraire_sous_ensemble_sft] **************************************
+
 ```
 
 Le pivot anonymise complet contient bien plus d'exemples que les 5000
