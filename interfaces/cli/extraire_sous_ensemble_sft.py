@@ -53,7 +53,10 @@ log = LogTool(origin="extraire_sous_ensemble_sft")
 
 CHEMIN_DATASET_DEFAUT    = "data/processed/dataset_pivot_anonymise.jsonl"
 CHEMIN_EXCLUSIONS_DEFAUT = "data/processed/identifiants_a_exclure_publication.jsonl"
-CHEMIN_SORTIE_DEFAUT     = "data/processed/dataset_sft_5000.jsonl"
+
+
+def chemin_sortie_defaut(taille: int) -> str:
+    return f"data/processed/dataset_chsa_triage_sft_anonymise_{taille}.jsonl"
 
 
 def _lire_identifiants_a_exclure(chemin: str) -> frozenset[str]:
@@ -72,8 +75,14 @@ def main() -> None:
     parser.add_argument("--dataset", default=CHEMIN_DATASET_DEFAUT, help="Chemin du pivot ANONYMISE deja reparti")
     parser.add_argument("--exclusions", default=CHEMIN_EXCLUSIONS_DEFAUT)
     parser.add_argument("--taille", type=int, default=5000, help="Taille cible du sous-ensemble a publier")
-    parser.add_argument("--sortie", default=CHEMIN_SORTIE_DEFAUT)
+    parser.add_argument(
+        "--sortie",
+        default=None,
+        help="Chemin de sortie (defaut : data/processed/dataset_chsa_triage_sft_anonymise_<taille>.jsonl)",
+    )
     arguments = parser.parse_args()
+    if arguments.sortie is None:
+        arguments.sortie = chemin_sortie_defaut(arguments.taille)
 
     log.START_ACTION("extraire_sous_ensemble_sft", "main", "extraction du sous-ensemble SFT a publier")
     log.PARAMETER_VALUE("dataset", arguments.dataset)
