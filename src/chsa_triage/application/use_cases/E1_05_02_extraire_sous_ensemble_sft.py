@@ -53,7 +53,7 @@ class ExtraireSousEnsembleSftUseCase:
         source) si le resultat filtre en contient plus. N'assigne, ne
         modifie ni ne persiste jamais rien (pure lecture) : le
         resultat est a ecrire par l'appelant (cf.
-        `interfaces/cli/E1_05_03_extraire_sous_ensemble_sft.py`).
+        `interfaces/cli/E1_05_02_extraire_sous_ensemble_sft.py`).
         """
         avec_split = [e for e in self.repository.lister() if e.split is not None]
         self.nombre_avec_split = len(avec_split)

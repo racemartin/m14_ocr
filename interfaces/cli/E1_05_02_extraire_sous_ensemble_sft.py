@@ -28,7 +28,7 @@ Usage :
         --dataset data/processed/dataset_pivot.jsonl \
         --anonymise data/processed/dataset_pivot_anonymise.jsonl
 
-    uv run python interfaces/cli/E1_05_03_extraire_sous_ensemble_sft.py \
+    uv run python interfaces/cli/E1_05_02_extraire_sous_ensemble_sft.py \
         --dataset data/processed/dataset_pivot_anonymise.jsonl \
         --exclusions data/processed/identifiants_a_exclure_publication.jsonl \
         --taille 5000

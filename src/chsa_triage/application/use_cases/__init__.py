@@ -49,7 +49,7 @@ from chsa_triage.application.use_cases.E1_04_03_rapport_anonymisation import (
 from chsa_triage.application.use_cases.E1_05_01_verifier_repartition_splits import (
     VerifierRepartitionSplitsUseCase,
 )
-from chsa_triage.application.use_cases.E1_05_03_extraire_sous_ensemble_sft import (
+from chsa_triage.application.use_cases.E1_05_02_extraire_sous_ensemble_sft import (
     ExtraireSousEnsembleSftUseCase,
     calculer_repartition_par_strate,
     formater_tableau_repartition,
