@@ -286,10 +286,10 @@ nouveaux exemples repartis lors de CETTE execution (affiche
 separement).
 
 **Exclusion des candidats PII en attente de revision humaine
-(decision du capitaine, 10/09/2026).** Par precaution, un exemple
+(10/09/2026).** Par precaution, un exemple
 portant au moins un candidat de PII residuelle SANS decision humaine
 persistee (§6, `reviser_pii_residuelle.py`) est exclu du decoupage de
-cette execution -- il reste sans `split` jusqu'a ce qu'une decision
+cette execution : il reste sans `split` jusqu'a ce qu'une decision
 soit prise. `decouper_splits.py` accepte donc desormais les memes
 adaptateurs que `reviser_pii_residuelle.py verify` pour recalculer cet
 ensemble : `--original` (defaut `data/processed/dataset_pivot.jsonl`),
@@ -317,6 +317,43 @@ uv run python interfaces/cli/verifier_repartition_splits.py --dataset data/proce
 ```
 
 `anonymiser_dataset.py` affiche une barre de progression `tqdm` pendant le traitement (peut durer plusieurs dizaines de minutes sur un gros dataset).
+
+### 9. Extraction du sous-ensemble SFT (5000 exemples, pour publication Hugging Face)
+
+```bash
+jq -c 'select(.split != null)' data/processed/dataset_pivot_anonymise.jsonl > data/processed/dataset_sft_5000.jsonl
+wc -l data/processed/dataset_sft_5000.jsonl   # doit afficher 5000
+```
+
+Le pivot anonymise complet contient bien plus d'exemples que les 5000
+deja repartis en splits (§7-8 ci-dessus) : `decouper_splits.py --n 5000`
+n'affecte un `split` (train/val/test) qu'a un echantillon stratifie de
+5000 exemples, les autres restant a `split: null`. Filtrer sur
+`split != null` recupere donc exactement ce sous-ensemble deja
+stratifie, sans nouveau tirage. Publier uniquement ces 5000 exemples
+plutot que les 134 883 du pivot complet reduit la surface d'exposition
+publique de donnees issues des corpus sources. `jq` est prefere a
+`grep` car il parse reellement le JSON plutot que de chercher un motif
+texte, ce qui evite tout faux positif si la sous-chaine `"split"`
+apparaissait ailleurs (par exemple dans un champ de texte libre).
+
+Le pivot anonymise complet (`dataset_pivot_anonymise.jsonl`) reste
+local sous `data/processed/` (deja exclu de Git, voir le commentaire
+correspondant dans `.gitignore`) ; le fichier filtre de 5000 exemples
+est autonome et reproductible a tout moment a partir du pivot complet
+via la commande ci-dessus. La publication sur Hugging Face Hub (nom du
+depot et visibilite encore a decider) reste une etape ulterieure, qui
+sera documentee separement une fois ces choix arretes.
+
+**Point de vigilance (11/09/2026) :** filtrer sur `split != null` ne
+garantit PAS a lui seul que les 5000 exemples sont exempts de PII
+residuelle. Seul un sous-ensemble du pivot a ete audite par le
+controle qualite (§5) a ce jour, et des candidats confirmes ou en
+attente de revision humaine peuvent se trouver parmi des exemples
+deja repartis en split (l'exclusion decrite en §7 ne protege que les
+repartitions futures, jamais retroactivement). Croiser ce fichier
+avec le rapport de controle qualite (§5) et les decisions humaines
+(§6) avant toute publication.
 
 ## Structure (architecture hexagonale)
 
