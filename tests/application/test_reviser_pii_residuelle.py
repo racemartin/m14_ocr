@@ -220,6 +220,94 @@ def test_texte_original_et_anonymise_retourne_none_pour_champ_inconnu():
     assert texte_original_et_anonymise(original, anonymise, "champ_inexistant") is None
 
 
+def test_identifiants_a_exclure_publication_inclut_confirme_et_pendant_revision_humaine():
+    """Un candidat CONFIRME (email non masque) et un candidat REVISION_HUMAINE portent chacun leur identifiant."""
+    verificateur = FauxVerificateurEntites({"Some Product": VerdictEntiteNommee.ENTITE_NON_PERTINENTE})
+    original_confirme = _exemple(symptomes="contact: jean@example.com")
+    anonymise_confirme = _anonymiser(original_confirme, "contact: jean@example.com")  # email jamais masque
+    original_en_attente = _exemple(symptomes="orig")
+    anonymise_en_attente = _anonymiser(original_en_attente, "Some Product was mentioned.")
+
+    cas_usage = ReviserPiiResiduelleUseCase(
+        repository_original=FauxRepository([original_confirme, original_en_attente]),
+        repository_anonymise=FauxRepository([anonymise_confirme, anonymise_en_attente]),
+        verificateur_entites=verificateur,
+        registre_echantillons=FauxRegistreEchantillons(
+            {STRATUM_PRINCIPAL: {original_confirme.identifiant, original_en_attente.identifiant}}
+        ),
+        decisions=FauxDecisions(),
+    )
+
+    razons = cas_usage.identifiants_a_exclure_publication()
+
+    assert razons == {
+        original_confirme.identifiant: "confirme",
+        original_en_attente.identifiant: "pendant_revision_humaine",
+    }
+
+
+def test_identifiants_a_exclure_publication_exclut_ceux_deja_acceptes():
+    """Un candidat REVISION_HUMAINE avec decision DECISION_ACCEPTE ne doit plus figurer dans l'export."""
+    verificateur = FauxVerificateurEntites({"Some Product": VerdictEntiteNommee.ENTITE_NON_PERTINENTE})
+    original = _exemple(symptomes="orig")
+    anonymise = _anonymiser(original, "Some Product was mentioned.")
+
+    cas_usage = ReviserPiiResiduelleUseCase(
+        repository_original=FauxRepository([original]),
+        repository_anonymise=FauxRepository([anonymise]),
+        verificateur_entites=verificateur,
+        registre_echantillons=FauxRegistreEchantillons({STRATUM_PRINCIPAL: {original.identifiant}}),
+        decisions=FauxDecisions(),
+    )
+    (candidat,) = cas_usage.candidats_en_attente()
+    cas_usage.enregistrer_decision(candidat, DECISION_ACCEPTE, "2026-09-11T10:00:00+00:00")
+
+    assert cas_usage.identifiants_a_exclure_publication() == {}
+
+
+def test_identifiants_a_exclure_publication_deduplique_plusieurs_candidats_du_meme_identifiant():
+    """Deux candidats REVISION_HUMAINE distincts sur le meme identifiant ne donnent qu'UNE entree exportee."""
+    verificateur = FauxVerificateurEntites(
+        {"Some Product": VerdictEntiteNommee.ENTITE_NON_PERTINENTE, "Other Brand": VerdictEntiteNommee.ENTITE_NON_PERTINENTE}
+    )
+    original = _exemple(symptomes="orig")
+    anonymise = _anonymiser(original, "Some Product met Other Brand.")
+
+    cas_usage = ReviserPiiResiduelleUseCase(
+        repository_original=FauxRepository([original]),
+        repository_anonymise=FauxRepository([anonymise]),
+        verificateur_entites=verificateur,
+        registre_echantillons=FauxRegistreEchantillons({STRATUM_PRINCIPAL: {original.identifiant}}),
+        decisions=FauxDecisions(),
+    )
+
+    en_attente = cas_usage.candidats_en_attente()
+    assert len(en_attente) >= 2  # deux candidats distincts, meme identifiant
+
+    razons = cas_usage.identifiants_a_exclure_publication()
+
+    assert razons == {original.identifiant: "pendant_revision_humaine"}
+
+
+def test_identifiants_a_exclure_publication_confirme_gagne_sur_pendant_revision_humaine():
+    """Un identifiant avec a la fois un candidat CONFIRME et un candidat REVISION_HUMAINE garde le motif 'confirme'."""
+    verificateur = FauxVerificateurEntites({"Some Product": VerdictEntiteNommee.ENTITE_NON_PERTINENTE})
+    original = _exemple(symptomes="contact: jean@example.com, Some Product was mentioned.")
+    anonymise = _anonymiser(original, "contact: jean@example.com, Some Product was mentioned.")
+
+    cas_usage = ReviserPiiResiduelleUseCase(
+        repository_original=FauxRepository([original]),
+        repository_anonymise=FauxRepository([anonymise]),
+        verificateur_entites=verificateur,
+        registre_echantillons=FauxRegistreEchantillons({STRATUM_PRINCIPAL: {original.identifiant}}),
+        decisions=FauxDecisions(),
+    )
+
+    razons = cas_usage.identifiants_a_exclure_publication()
+
+    assert razons == {original.identifiant: "confirme"}
+
+
 def test_candidats_en_attente_ignore_les_verdicts_deja_tranches():
     """Un candidat CONFIRME/FAUX_POSITIF_REGEX (regex+spaCy tranchent seuls) ne doit jamais apparaitre ici."""
     verificateur = FauxVerificateurEntites({})  # AUCUNE_ENTITE partout -> jamais REVISION_HUMAINE

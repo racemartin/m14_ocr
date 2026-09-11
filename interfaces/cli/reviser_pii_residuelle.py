@@ -9,7 +9,7 @@ Avant ce script, `CandidatPiiResiduelle.verdict == VERDICT_REVISION_HUMAINE`
 (cf. `controler_qualite_anonymisation.py`) restait un cul-de-sac : ni
 le regex ni la seconde opinion spaCy ne tranchent, et aucune decision
 de personne n'etait jamais persistee. Ce script ferme cet ecart avec
-deux modes :
+trois modes :
 
 - `verify` : recalcule (replay deterministe, cf.
   `uc_03_03_reviser_pii_residuelle.ReviserPiiResiduelleUseCase`) TOUS
@@ -22,6 +22,16 @@ deux modes :
 - `modify` : localise une decision deja prise par `--identifiant`
   (optionnellement `--champ`) et permet de la corriger sans repasser
   par toute la liste en attente.
+- `exporter` (11/09/2026) : mode NON interactif,
+  pour une publication (ex. sous-ensemble SFT) plutot qu'une revue.
+  Reutilise le meme replay que `verify`
+  (`ReviserPiiResiduelleUseCase.identifiants_a_exclure_publication`) mais
+  inclut aussi les candidats VERDICT_CONFIRME (jamais soumis a decision
+  humaine, donc jamais retournes par `verify`) ; ecrit dans un fichier
+  JSONL la liste dedupliquee des identifiants a exclure d'une
+  publication, avec leur motif (`confirme` ou `pendant_revision_humaine`).
+  Lecture seule sur `decisions_revision_humaine.jsonl` : n'ecrit jamais
+  dedans.
 
 Usage :
     uv run python interfaces/cli/reviser_pii_residuelle.py verify \
@@ -29,16 +39,23 @@ Usage :
         --anonymise data/processed/dataset_pivot_anonymise.jsonl
 
     uv run python interfaces/cli/reviser_pii_residuelle.py modify --identifiant chsa-xxxxxxxx
+
+    uv run python interfaces/cli/reviser_pii_residuelle.py exporter \
+        --dataset data/processed/dataset_pivot.jsonl \
+        --anonymise data/processed/dataset_pivot_anonymise.jsonl
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 from dataclasses import replace
 from datetime import datetime, timezone
+from pathlib import Path
 
 from chsa_triage.application.use_cases.uc_03_02_controler_qualite_anonymisation import JETON_MASQUE_DEFAUT
 from chsa_triage.application.use_cases.uc_03_03_reviser_pii_residuelle import (
+    RAISON_CONFIRME,
     CandidatARevoir,
     ReviserPiiResiduelleUseCase,
     texte_original_et_anonymise,
@@ -56,6 +73,7 @@ log = LogTool(origin="reviser_pii_residuelle")
 CHEMIN_ANONYMISE_DEFAUT             = "data/processed/dataset_pivot_anonymise.jsonl"
 CHEMIN_REGISTRE_ECHANTILLONS_DEFAUT = "data/processed/controle_qualite_identifiants_echantillonnes.jsonl"
 CHEMIN_DECISIONS_DEFAUT             = "data/processed/decisions_revision_humaine.jsonl"
+CHEMIN_EXCLUSIONS_DEFAUT            = "data/processed/identifiants_a_exclure_publication.jsonl"
 
 
 def _horodatage() -> str:
@@ -197,6 +215,47 @@ def _mode_modify(arguments: argparse.Namespace) -> None:
     )
 
 
+# ##############################################################################
+# _mode_exporter
+# ##############################################################################
+def _mode_exporter(arguments: argparse.Namespace) -> None:
+    from chsa_triage.infrastructure.adapters import SpacyVerificateurEntitesNommees
+
+    log.START_ACTION(
+        "reviser_pii_residuelle", "exporter", "export non interactif des identifiants a exclure d'une publication"
+    )
+
+    cas_usage = ReviserPiiResiduelleUseCase(
+        repository_original=JsonlDatasetRepository(arguments.dataset),
+        repository_anonymise=JsonlDatasetRepository(arguments.anonymise),
+        verificateur_entites=SpacyVerificateurEntitesNommees(),
+        registre_echantillons=JsonlRegistreEchantillonsControleQualite(arguments.registre_echantillons),
+        decisions=JsonlDecisionsRevisionHumaine(arguments.decisions),
+        jeton_masque=arguments.jeton_masque,
+    )
+
+    log.STEP(1, "Recalcul des identifiants a exclure", "replay sur tous les identifiants deja echantillonnes")
+    razons = cas_usage.identifiants_a_exclure_publication()
+
+    nombre_confirme = sum(1 for r in razons.values() if r == RAISON_CONFIRME)
+    nombre_en_attente = len(razons) - nombre_confirme
+    log.PARAMETER_VALUE("identifiants a exclure (total)", len(razons))
+    log.PARAMETER_VALUE("dont motif 'confirme'", nombre_confirme)
+    log.PARAMETER_VALUE("dont motif 'pendant_revision_humaine'", nombre_en_attente)
+
+    log.STEP(2, "Ecriture du fichier d'exclusions", arguments.sortie)
+    chemin_sortie = Path(arguments.sortie)
+    chemin_sortie.parent.mkdir(parents=True, exist_ok=True)
+    with chemin_sortie.open("w", encoding="utf-8") as f:
+        for identifiant in sorted(razons):
+            f.write(json.dumps({"identifiant": identifiant, "razon": razons[identifiant]}, ensure_ascii=False) + "\n")
+
+    print(f"{len(razons)} identifiant(s) a exclure d'une publication ecrit(s) dans {arguments.sortie}.")
+    print(f"  dont 'confirme'                : {nombre_confirme}")
+    print(f"  dont 'pendant_revision_humaine' : {nombre_en_attente}")
+    log.FINISH_ACTION("reviser_pii_residuelle", "exporter", f"{len(razons)} identifiant(s) ecrits")
+
+
 def main() -> None:
     # -------------------------------------------------------------------------
     # PARSE ARGUMENTS
@@ -218,6 +277,16 @@ def main() -> None:
     parseur_modify.add_argument("--champ", default=None, help="Restreint la recherche a un champ precis (optionnel)")
     parseur_modify.add_argument("--decisions", default=CHEMIN_DECISIONS_DEFAUT)
 
+    parseur_exporter = sous_parseurs.add_parser(
+        "exporter", help="Export non interactif des identifiants a exclure d'une publication (confirme + en attente)"
+    )
+    parseur_exporter.add_argument("--dataset", required=True, help="Chemin du fichier pivot JSONL ORIGINAL")
+    parseur_exporter.add_argument("--anonymise", default=CHEMIN_ANONYMISE_DEFAUT)
+    parseur_exporter.add_argument("--registre-echantillons", default=CHEMIN_REGISTRE_ECHANTILLONS_DEFAUT)
+    parseur_exporter.add_argument("--decisions", default=CHEMIN_DECISIONS_DEFAUT)
+    parseur_exporter.add_argument("--jeton-masque", default=JETON_MASQUE_DEFAUT)
+    parseur_exporter.add_argument("--sortie", default=CHEMIN_EXCLUSIONS_DEFAUT)
+
     arguments = parser.parse_args()
 
     # -------------------------------------------------------------------------
@@ -225,8 +294,10 @@ def main() -> None:
     # -------------------------------------------------------------------------
     if arguments.mode == "verify":
         _mode_verify(arguments)
-    else:
+    elif arguments.mode == "modify":
         _mode_modify(arguments)
+    else:
+        _mode_exporter(arguments)
 
 
 if __name__ == "__main__":
