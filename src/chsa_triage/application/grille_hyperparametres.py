@@ -10,7 +10,7 @@ role de `candidat_suivant(grille, historique)` y sont proposes) :
 `HyperparametresEntrainement` candidats (le produit cartesien des axes
 de `recipes/sft_qwen3_lora.yaml::grille_hyperparametres` est calcule
 en amont, par l'appelant qui assemble aussi `ConfigurationLora`, cf.
-`training/sft_train.py`, non encore ecrit). Cette fonction se contente
+`training/E2_04_sft_train.py`, non encore ecrit). Cette fonction se contente
 de retourner le premier candidat de `grille` absent de `historique`
 (l'ensemble des jeux deja essayes), ou `None` si tous l'ont ete
 (grille epuisee).

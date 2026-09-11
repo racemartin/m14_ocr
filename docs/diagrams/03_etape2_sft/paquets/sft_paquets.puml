@@ -2,7 +2,7 @@
 !pragma layout smetana
 !include ../../_common/estilo.iuml
 
-title Étape 2 : Diagramme de paquets\nModules/classes du SFT-LoRA et leur relation à l'existant (Étape 1) : [FAIT] sauf TrlSftEntraineurAdapter et training/sft_train.py [CONCEPTION]
+title Étape 2 : Diagramme de paquets\nModules/classes du SFT-LoRA et leur relation à l'existant (Étape 1) : [FAIT] sauf TrlSftEntraineurAdapter et training/E2_04_sft_train.py [CONCEPTION]
 
 package "training\n(analogue à interfaces/cli pour l'Étape 2)\n[CONCEPTION] pas encore écrit" as TRAINING {
   class sft_train
@@ -50,7 +50,7 @@ package "infrastructure" as INFRASTRUCTURE {
 }
 
 ' ----------------------------------------------------------------------
-' Dependances reelles (training/sft_train.py restant a ecrire)
+' Dependances reelles (training/E2_04_sft_train.py restant a ecrire)
 ' ----------------------------------------------------------------------
 
 sft_train ..> JsonlDatasetRepository

@@ -6,7 +6,7 @@
 > vert au moment de l'écriture de cette mise à jour) : ce document
 > décrit désormais l'ordre réellement suivi, pas seulement un ordre
 > proposé. Seules les étapes 9 (`TrlSftEntraineurAdapter`) et 10
-> (`training/sft_train.py` + `recipes/sft_qwen3_lora.yaml`) restent
+> (`training/E2_04_sft_train.py` + `recipes/sft_qwen3_lora.yaml`) restent
 > **[CONCEPTION]** : elles nécessitent un GPU réel (Environnement B),
 > absent au moment de l'écriture.
 
@@ -151,7 +151,7 @@ sous-échantillon de 50-100 exemples, suffisant pour confirmer que la
 perte décroît et qu'aucune erreur CUDA ne survient, sans consommer un
 run complet.
 
-### 10. [CONCEPTION] `training/sft_train.py` + `recipes/sft_qwen3_lora.yaml`
+### 10. [CONCEPTION] `training/E2_04_sft_train.py` + `recipes/sft_qwen3_lora.yaml`
 
 Point d'entrée, sur le modèle argparse + `LogTool` + résumé console de
 `interfaces/cli/E1_04_00_anonymiser_dataset.py` : charge la recette YAML,
@@ -178,7 +178,7 @@ que ce test réduit n'a pas produit une courbe de perte qui décroît.
 | 7 | `infrastructure/adapters/chatml_formateur_adapter.py` | infrastructure | [FAIT] | **oui** (tokenizer seul) | `tests/infrastructure/test_chatml_formateur_adapter.py`, intégration réelle, Environnement A |
 | 8 | `infrastructure/adapters/mlflow_suivi_experimentation.py` / `tensorboard_...` | infrastructure | [FAIT] | **oui** (déjà dans l'extra `local`) | `tests/infrastructure/test_mlflow_suivi_experimentation.py`, `test_tensorboard_suivi_experimentation.py`, intégration réelle, Environnement A |
 | 9 | `infrastructure/adapters/trl_sft_entraineur.py` | infrastructure | [CONCEPTION] | non | intégration réelle, Environnement B, GPU requis |
-| 10 | `training/sft_train.py`, `recipes/sft_qwen3_lora.yaml` | training (point d'entrée) | [CONCEPTION] | non (dépend de 9) | exécution réelle réduite, Environnement B |
+| 10 | `training/E2_04_sft_train.py`, `recipes/sft_qwen3_lora.yaml` | training (point d'entrée) | [CONCEPTION] | non (dépend de 9) | exécution réelle réduite, Environnement B |
 
 Huit des dix éléments (1 à 8) sont donc écrits et testés sans jamais
 ouvrir de session GPU facturée : seuls les deux derniers restent à
@@ -206,7 +206,7 @@ cours de route :
 4. **`--model` par défaut de `scripts/check_env_gpu.py`** pointe vers
    la variante instruct (`Qwen/Qwen3-1.7B`) plutôt que
    `Qwen3-1.7B-Base` : correctif d'une ligne, toujours pas fait, à
-   faire au moment d'écrire `training/sft_train.py`
+   faire au moment d'écrire `training/E2_04_sft_train.py`
    (`01_installation_configuration.md` §5).
 5. **Vérification `assistant_only_loss` réelle** (pas seulement la
    présence du flag) : vérification supplémentaire proposée pour
@@ -220,7 +220,7 @@ lecture : `00_introduction_concepts.md` →
 `01_installation_configuration.md` → `02_etapes_cas_usage.md` →
 diagrammes (`docs/diagrams/03_etape2_sft/`) → ce document. La suite
 directe est l'écriture des étapes 9-10 ci-dessus
-(`TrlSftEntraineurAdapter` puis `training/sft_train.py`), qui
+(`TrlSftEntraineurAdapter` puis `training/E2_04_sft_train.py`), qui
 nécessite un GPU réel (Environnement B) et sort du périmètre de cette
 mise à jour purement documentaire.
 

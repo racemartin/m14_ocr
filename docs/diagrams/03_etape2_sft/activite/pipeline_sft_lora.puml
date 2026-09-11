@@ -22,7 +22,7 @@ note right
   01_installation_configuration.md §4
 end note
 
-partition "training/sft_train.py (Environnement B, GPU)\n[CONCEPTION] point d'entrée pas encore écrit" #E8F0F5 {
+partition "training/E2_04_sft_train.py (Environnement B, GPU)\n[CONCEPTION] point d'entrée pas encore écrit" #E8F0F5 {
 
   :E2_00_uc_formater_dataset_chatml.py\n(FormaterDatasetChatMLUseCase.executer(split));
   note right

@@ -4,7 +4,7 @@ Adaptateur secondaire : suivi d'experimentation via MLflow.
 Implemente le port `SuiviExperimentation`. `uri_tracking` est passe
 tel quel a `mlflow.set_tracking_uri` : le choix du backend (fichier
 local, `sqlite:///...`, serveur distant) reste une decision de
-`training/sft_train.py`/`recipes/sft_qwen3_lora.yaml`, pas de cet
+`training/E2_04_sft_train.py`/`recipes/sft_qwen3_lora.yaml`, pas de cet
 adaptateur. Note pour les tests/usages locaux : MLflow >= 3 refuse le
 backend fichier brut par defaut (`MlflowException: ... maintenance
 mode ...`) ; utiliser un backend `sqlite:///chemin/mlflow.db` ou

@@ -12,7 +12,7 @@
 > `02_etapes_cas_usage.md` pour la correspondance avec les fichiers
 > réels. Ce qui reste non écrit et nécessite un GPU réel :
 > `infrastructure/adapters/trl_sft_entraineur.py` et
-> `training/sft_train.py` (aucun poids de `Qwen3-1.7B-Base` n'a encore
+> `training/E2_04_sft_train.py` (aucun poids de `Qwen3-1.7B-Base` n'a encore
 > été téléchargé, aucune bibliothèque d'entraînement GPU exécutée) :
 > les commandes/journaux les concernant, montrés ici, restent des
 > exemples illustratifs, pas des résultats mesurés.

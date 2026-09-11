@@ -26,7 +26,7 @@ docs/diagrams/
 ├── 03_etape2_sft/
 │   ├── activite/                  pipeline SFT (conceptuel, avec le point de
 │   │                                decision "convergence saine ?")
-│   ├── sequence/                   entrainement SFT : script training/sft_train.py,
+│   ├── sequence/                   entrainement SFT : script training/E2_04_sft_train.py,
 │   │                                cas d'usage et adaptateurs proposes (conceptuel)
 │   ├── paquets/                     classes/ports proposes pour le SFT-LoRA et leur
 │   │                                 relation aux paquets reels de l'Etape 1 (conceptuel)
@@ -60,7 +60,7 @@ séquence et de paquets de l'Étape 2 (SFT) sont passés de [A FAIRE] à
 [FAIT] (conceptuel) une fois la proposition de conception documentée
 dans `docs/03_etape2_sft/` (ports, cas d'usage et adaptateurs
 proposés, aucun encore codé), à remplacer par la version « réelle »
-une fois `training/sft_train.py` effectivement écrit.
+une fois `training/E2_04_sft_train.py` effectivement écrit.
 **[A FAIRE]** = pas encore produit : les diagrammes de séquence et de
 paquets du DPO (Étape 3) restent à faire, aucune proposition de
 conception équivalente n'ayant encore été documentée pour cette étape ;
