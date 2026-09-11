@@ -338,8 +338,11 @@ uv run python interfaces/cli/reviser_pii_residuelle.py exporter \
     --dataset data/processed/dataset_pivot.jsonl \
     --anonymise data/processed/dataset_pivot_anonymise.jsonl
 
-# 2. Filtre `split != null` MOINS les identifiants exclus a l'etape 1.
-#    Pure soustraction : ne rajoute jamais d'exemples pour compenser.
+# 2. Filtre `split != null` MOINS les identifiants exclus a l'etape 1,
+#    puis RECOUPE a exactement --taille (echantillonnage stratifie
+#    type_exemple/source) si le resultat filtre en contient plus.
+#    Pure soustraction + recoupage : ne rajoute jamais d'exemples pour
+#    compenser un manque.
 uv run python interfaces/cli/extraire_sous_ensemble_sft.py \
     --dataset data/processed/dataset_pivot_anonymise.jsonl \
     --exclusions data/processed/identifiants_a_exclure_publication.jsonl \
@@ -347,15 +350,40 @@ uv run python interfaces/cli/extraire_sous_ensemble_sft.py \
 ```
 
 Le pivot anonymise complet contient bien plus d'exemples que les 5000
-deja repartis en splits (§7-8 ci-dessus) : `decouper_splits.py --n 5000`
-n'affecte un `split` (train/val/test) qu'a un echantillon stratifie de
-5000 exemples, les autres restant a `split: null`. `extraire_sous_ensemble_sft.py`
+demandes (§7-8 ci-dessus) : `decouper_splits.py --n <N>` peut affecter
+un `split` (train/val/test) a un echantillon stratifie plus grand que
+`--taille`, les autres restant a `split: null`. `extraire_sous_ensemble_sft.py`
 filtre sur `split != null`, retire les identifiants listes dans
 `data/processed/identifiants_a_exclure_publication.jsonl` (produit par
-l'etape 1) et ecrit le resultat dans
-`data/processed/dataset_sft_5000.jsonl`. Publier uniquement ce
-sous-ensemble plutot que les 134 883 exemples du pivot complet reduit
-la surface d'exposition publique de donnees issues des corpus sources.
+l'etape 1), et, si le resultat filtre depasse `--taille`, le RECOUPE a
+exactement `--taille` par echantillonnage stratifie (type_exemple,
+source) avant d'ecrire dans `data/processed/dataset_sft_5000.jsonl` :
+la taille publiee correspond toujours a `--taille` demandee, jamais au
+surplus disponible apres filtrage. Publier uniquement ce sous-ensemble
+plutot que les 134 883 exemples du pivot complet reduit la surface
+d'exposition publique de donnees issues des corpus sources.
+
+A la fin, le script affiche un tableau de repartition du sous-ensemble
+ECRIT par strate (type_exemple, source) x split (train/val/test),
+meme format que `verifier_repartition_splits.py` (§8). Exemple reel
+(execute sur un pool synthetique de 10026 exemples avec split, 74
+identifiants exclus, `--taille 5000`) :
+
+```
+Exemples avec split (avant exclusion) : 10026
+Exclus (PII confirmee ou en attente de revision humaine) : 74
+Disponibles apres exclusion : 9952
+Recoupes par echantillonnage stratifie : -4952 (surplus au-dela de 5000)
+Ecrits dans data/processed/dataset_sft_5000.jsonl : 5000 exemple(s).
+
+Repartition du sous-ensemble ecrit par strate (type_exemple, source) :
+Strate                                          Total           train             val            test
+dpo/UltraMedical-Preference                      1795    1420 (79.1%)     183 (10.2%)     192 (10.7%)
+sft/FrenchMedMCQA                                  11       9 (81.8%)       1 ( 9.1%)       1 ( 9.1%)
+sft/MedQuAD                                       302     239 (79.1%)      36 (11.9%)      27 ( 8.9%)
+sft/MediQAl                                      2892    2309 (79.8%)     304 (10.5%)     279 ( 9.6%)
+Taille cible atteinte (5000 == 5000).
+```
 
 Si le resultat, apres exclusion, contient MOINS d'exemples que
 `--taille`, `extraire_sous_ensemble_sft.py` ne tente jamais de
