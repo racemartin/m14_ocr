@@ -18,6 +18,11 @@ completer automatiquement le manque (ce role reste a
 grand avant de reessayer l'extraction) ; il se contente d'indiquer
 clairement combien d'exemples restent et combien manquent.
 
+Si le resultat, apres exclusion, contient PLUS d'exemples que
+`--taille`, il est recoupe a exactement `--taille` par echantillonnage
+stratifie (type_exemple, source) : la taille publiee correspond
+toujours a `--taille` demandee (jamais au surplus disponible).
+
 Usage :
     uv run python interfaces/cli/reviser_pii_residuelle.py exporter \
         --dataset data/processed/dataset_pivot.jsonl \
@@ -35,7 +40,11 @@ import argparse
 import json
 from pathlib import Path
 
-from chsa_triage.application.use_cases import ExtraireSousEnsembleSftUseCase
+from chsa_triage.application.use_cases import (
+    ExtraireSousEnsembleSftUseCase,
+    calculer_repartition_par_strate,
+    formater_tableau_repartition,
+)
 from chsa_triage.infrastructure.adapters import JsonlDatasetRepository
 from chsa_triage.infrastructure.adapters.jsonl_dataset_repository import exemple_pivot_vers_dict
 from tools.rafael.log_tool import LogTool
@@ -95,6 +104,7 @@ def main() -> None:
     log.PARAMETER_VALUE("exemples avec split (avant exclusion)", cas_usage.nombre_avec_split)
     log.PARAMETER_VALUE("exclus (PII confirmee ou en attente)", cas_usage.nombre_exclus)
     log.PARAMETER_VALUE("disponibles apres exclusion", cas_usage.nombre_disponible_final)
+    log.PARAMETER_VALUE("tronques (surplus au-dela de taille cible)", cas_usage.nombre_tronque)
 
     chemin_sortie = Path(arguments.sortie)
     chemin_sortie.parent.mkdir(parents=True, exist_ok=True)
@@ -105,7 +115,12 @@ def main() -> None:
     print(f"Exemples avec split (avant exclusion) : {cas_usage.nombre_avec_split}")
     print(f"Exclus (PII confirmee ou en attente de revision humaine) : {cas_usage.nombre_exclus}")
     print(f"Disponibles apres exclusion : {cas_usage.nombre_disponible_final}")
-    print(f"Ecrits dans {arguments.sortie}.")
+    if cas_usage.nombre_tronque > 0:
+        print(f"Recoupes par echantillonnage stratifie : -{cas_usage.nombre_tronque} (surplus au-dela de {arguments.taille})")
+    print(f"Ecrits dans {arguments.sortie} : {len(resultat)} exemple(s).")
+    print()
+    print("Repartition du sous-ensemble ecrit par strate (type_exemple, source) :")
+    print(formater_tableau_repartition(calculer_repartition_par_strate(resultat)))
 
     if cas_usage.manque > 0:
         log.LEVEL_5_WARNING(
@@ -126,10 +141,10 @@ def main() -> None:
         )
         print("puis relancer cette extraction.")
     else:
-        print(f"Taille cible atteinte ({cas_usage.nombre_disponible_final} >= {arguments.taille}).")
+        print(f"Taille cible atteinte ({len(resultat)} == {arguments.taille}).")
 
     log.FINISH_ACTION(
-        "extraire_sous_ensemble_sft", "main", f"{cas_usage.nombre_disponible_final} exemple(s) ecrits dans {arguments.sortie}"
+        "extraire_sous_ensemble_sft", "main", f"{len(resultat)} exemple(s) ecrits dans {arguments.sortie}"
     )
 
 

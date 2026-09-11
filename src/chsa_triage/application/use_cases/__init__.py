@@ -51,6 +51,8 @@ from chsa_triage.application.use_cases.uc_04_01_verifier_repartition_splits impo
 )
 from chsa_triage.application.use_cases.uc_04_02_extraire_sous_ensemble_sft import (
     ExtraireSousEnsembleSftUseCase,
+    calculer_repartition_par_strate,
+    formater_tableau_repartition,
 )
 
 __all__ = [
@@ -72,6 +74,7 @@ __all__ = [
     "ReviserPiiResiduelleUseCase",
     "StatistiquesSource",
     "VerifierRepartitionSplitsUseCase",
+    "calculer_repartition_par_strate",
     "candidats_a_revoir",
     "cle_candidat_faux_positif",
     "cle_candidat_pii",
@@ -79,6 +82,7 @@ __all__ = [
     "formater_rapport_anonymisation_markdown",
     "formater_rapport_controle_qualite_markdown",
     "formater_resume_anonymisation_console",
+    "formater_tableau_repartition",
     "fusionner_execution",
     "rapport_depuis_dict",
     "rapport_vers_dict",

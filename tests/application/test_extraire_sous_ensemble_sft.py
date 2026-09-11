@@ -10,7 +10,11 @@ from collections.abc import Iterable
 from dataclasses import replace
 from uuid import uuid4
 
-from chsa_triage.application.use_cases import ExtraireSousEnsembleSftUseCase
+from chsa_triage.application.use_cases import (
+    ExtraireSousEnsembleSftUseCase,
+    calculer_repartition_par_strate,
+    formater_tableau_repartition,
+)
 from chsa_triage.domain.model import ExemplePivot, Langue, Message, TypeExemple, TypeSplit
 
 
@@ -52,6 +56,36 @@ def _exemple(source: str = "MediQAl", avec_split: bool = True) -> ExemplePivot:
     if avec_split:
         exemple = replace(exemple, split=TypeSplit.TRAIN)
     return exemple
+
+
+def _pool_stratifie_80_10_10(compositions: dict[str, int]) -> list[ExemplePivot]:
+    """
+    Construit un pool d'exemples avec split deja assigne, ~80/10/10
+    par source, pour tester le recoupage proportionnel par strate.
+    `compositions` associe une source a son nombre total d'exemples.
+    """
+    exemples: list[ExemplePivot] = []
+    for source, total in compositions.items():
+        nombre_train = round(total * 0.8)
+        nombre_val = round(total * 0.1)
+        nombre_test = total - nombre_train - nombre_val
+        repartition_split = (
+            (TypeSplit.TRAIN, nombre_train),
+            (TypeSplit.VALIDATION, nombre_val),
+            (TypeSplit.TEST_CLINIQUE, nombre_test),
+        )
+        for split, nombre in repartition_split:
+            for _ in range(nombre):
+                exemple = ExemplePivot(
+                    identifiant=ExemplePivot.nouvel_identifiant(source, uuid4().hex),
+                    source=source,
+                    type_exemple=TypeExemple.SFT,
+                    langue=Langue.FRANCAIS,
+                    prompt=(Message(role="user", contenu="Question ?"),),
+                    completion=(Message(role="assistant", contenu="Reponse."),),
+                )
+                exemples.append(replace(exemple, anonymise=True, split=split))
+    return exemples
 
 
 def test_extraction_ignore_les_exemples_sans_split():
@@ -109,3 +143,85 @@ def test_extraction_manque_nul_quand_taille_cible_atteinte():
     cas_usage.executer()
 
     assert cas_usage.manque == 0
+
+
+def test_extraction_recoupe_a_exactement_taille_cible_quand_il_y_a_un_surplus():
+    """
+    Reproduit le trou du 11/09/2026 : un pool de 10000 avec split, 74
+    identifiants exclus (9926 disponibles), demande a taille_cible=5000.
+    Avant le correctif, executer() retournait les 9926 tels quels.
+    """
+    exemples = _pool_stratifie_80_10_10({"MediQAl": 6000, "FrenchMedMCQA": 2000, "MedQuAD": 2000})
+    assert len(exemples) == 10000
+    identifiants_exclus = frozenset(e.identifiant for e in exemples[:74])
+    repository = FauxRepository(exemples)
+
+    cas_usage = ExtraireSousEnsembleSftUseCase(
+        repository=repository, identifiants_a_exclure=identifiants_exclus, taille_cible=5000
+    )
+    resultat = cas_usage.executer()
+
+    assert len(resultat) == 5000
+    assert cas_usage.nombre_disponible_final == 9926
+    assert cas_usage.nombre_tronque == 9926 - 5000
+    assert cas_usage.manque == 0
+    assert len({e.identifiant for e in resultat}) == 5000
+
+
+def test_extraction_recoupe_preserve_la_proportion_par_strate():
+    compositions = {"MediQAl": 6000, "FrenchMedMCQA": 800, "MedQuAD": 3200}
+    exemples = _pool_stratifie_80_10_10(compositions)
+    repository = FauxRepository(exemples)
+    total = sum(compositions.values())
+    taille_cible = 2000
+
+    cas_usage = ExtraireSousEnsembleSftUseCase(repository=repository, taille_cible=taille_cible)
+    resultat = cas_usage.executer()
+
+    assert len(resultat) == taille_cible
+
+    compteur_par_source: dict[str, int] = {}
+    for exemple in resultat:
+        compteur_par_source[exemple.source] = compteur_par_source.get(exemple.source, 0) + 1
+
+    for source, total_source in compositions.items():
+        part_attendue = taille_cible * (total_source / total)
+        assert abs(compteur_par_source.get(source, 0) - part_attendue) <= 1
+
+
+def test_extraction_recoupe_reste_proche_de_80_10_10_dans_chaque_strate():
+    """
+    `echantillon_stratifie` ne stratifie pas par `split` : verifie
+    empiriquement (pas suppose) que le sous-echantillon aleatoire dans
+    chaque strate reste proche de la composition 80/10/10 d'origine.
+    """
+    compositions = {"MediQAl": 6000, "FrenchMedMCQA": 800, "MedQuAD": 3200}
+    exemples = _pool_stratifie_80_10_10(compositions)
+    repository = FauxRepository(exemples)
+
+    cas_usage = ExtraireSousEnsembleSftUseCase(repository=repository, taille_cible=2000)
+    resultat = cas_usage.executer()
+
+    repartition = calculer_repartition_par_strate(resultat)
+    for cle, compteur_strate in repartition.items():
+        total_strate = sum(compteur_strate.values())
+        for split, part_attendue in (("train", 0.80), ("val", 0.10), ("test", 0.10)):
+            part_observee = compteur_strate.get(split, 0) / total_strate
+            assert abs(part_observee - part_attendue) <= 0.05, (
+                f"strate {cle} split {split} : {part_observee:.3f} attendu ~{part_attendue}"
+            )
+
+
+def test_calculer_repartition_par_strate_et_formater_tableau_somme_le_total_attendu():
+    compositions = {"MediQAl": 600, "FrenchMedMCQA": 80, "MedQuAD": 320}
+    exemples = _pool_stratifie_80_10_10(compositions)
+
+    repartition = calculer_repartition_par_strate(exemples)
+    total_reparti = sum(sum(compteur.values()) for compteur in repartition.values())
+    assert total_reparti == sum(compositions.values())
+
+    tableau = formater_tableau_repartition(repartition)
+    for source in compositions:
+        assert f"sft/{source}" in tableau
+    lignes_donnees = tableau.splitlines()[1:]
+    assert len(lignes_donnees) == len(compositions)
