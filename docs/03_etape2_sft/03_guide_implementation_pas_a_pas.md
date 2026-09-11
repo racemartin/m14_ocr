@@ -143,7 +143,7 @@ run complet.
 ### 10. `training/sft_train.py` + `recipes/sft_qwen3_lora.yaml`
 
 Point d'entrée, sur le modèle argparse + `LogTool` + résumé console de
-`interfaces/cli/anonymiser_dataset.py` : charge la recette YAML,
+`interfaces/cli/E1_04_00_anonymiser_dataset.py` : charge la recette YAML,
 construit les adaptateurs (dependency injection, comme dans tous les
 scripts `interfaces/cli/` existants), enchaîne les quatre cas d'usage
 dans l'ordre du diagramme d'activité

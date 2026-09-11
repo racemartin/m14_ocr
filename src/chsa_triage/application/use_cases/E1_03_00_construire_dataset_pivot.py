@@ -33,7 +33,7 @@ class ConstruireDatasetPivotUseCase:
     identiques sur tous les champs qui alimentent le pivot ; de vrais
     doublons, pas une collision de cle insuffisante (verifie
     corpus par corpus sur les donnees reelles, cf.
-    `interfaces/cli/mappers_corpus.py`). Seul le PREMIER exemple
+    `interfaces/cli/E1_03_01_mappers_corpus.py`). Seul le PREMIER exemple
     rencontre pour un identifiant donne est conserve dans le pivot ;
     les suivants sont ecartes et exposes via `self.doublons` pour que
     l'appelant (CLI) puisse les archiver avant de les jeter ; jamais

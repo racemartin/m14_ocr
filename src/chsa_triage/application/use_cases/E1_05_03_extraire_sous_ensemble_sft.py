@@ -3,7 +3,7 @@ Cas d'usage : extraire le sous-ensemble deja reparti en splits
 (§7 du README, `DecouperSplitsUseCase`) qui doit etre publie (ex. sur
 Hugging Face), en retirant les exemples portant une PII residuelle
 confirmee ou encore en attente de decision humaine (cf.
-`uc_03_03_reviser_pii_residuelle.ReviserPiiResiduelleUseCase.identifiants_a_exclure_publication`).
+`E1_04_01_reviser_pii_residuelle.ReviserPiiResiduelleUseCase.identifiants_a_exclure_publication`).
 
 Design (11/09/2026) : un FILTRE/une SOUSTRACTION,
 pas un nouveau muestreo. Si le resultat, apres exclusion, est plus
@@ -53,7 +53,7 @@ class ExtraireSousEnsembleSftUseCase:
         source) si le resultat filtre en contient plus. N'assigne, ne
         modifie ni ne persiste jamais rien (pure lecture) : le
         resultat est a ecrire par l'appelant (cf.
-        `interfaces/cli/extraire_sous_ensemble_sft.py`).
+        `interfaces/cli/E1_05_03_extraire_sous_ensemble_sft.py`).
         """
         avec_split = [e for e in self.repository.lister() if e.split is not None]
         self.nombre_avec_split = len(avec_split)
@@ -98,7 +98,7 @@ def formater_tableau_repartition(repartition: dict[tuple[str, str], dict[str, in
     """
     Formate `repartition` (cf. `calculer_repartition_par_strate`) en un
     tableau texte `Strate | Total | train (%) | val (%) | test (%)`,
-    meme presentation que `interfaces/cli/verifier_repartition_splits.py`.
+    meme presentation que `interfaces/cli/E1_05_01_verifier_repartition_splits.py`.
     """
     lignes = [f"{'Strate':<45} {'Total':>7}  " + "  ".join(f"{s:>14}" for s in ORDRE_SPLITS)]
     for cle, compteur_strate in sorted(repartition.items()):

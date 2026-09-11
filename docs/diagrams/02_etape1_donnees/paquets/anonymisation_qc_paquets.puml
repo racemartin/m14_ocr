@@ -70,7 +70,7 @@ AnonymiserDatasetUseCase --> Anonymiseur
 AnonymiserDatasetUseCase --> RepositoryLectureEcriture
 AnonymiserDatasetUseCase --> ResultatAnonymisation
 
-RapportAnonymisationCumule ..> StatistiquesSource : mêmes use_cases\n(uc_03_00_anonymiser_dataset)
+RapportAnonymisationCumule ..> StatistiquesSource : mêmes use_cases\n(E1_04_00_anonymiser_dataset)
 
 ControlerQualiteAnonymisationUseCase --> detecter_candidats
 ControlerQualiteAnonymisationUseCase --> CandidatRegex
@@ -93,7 +93,7 @@ note bottom of detecter_candidats
 end note
 
 note right of RapportAnonymisationCumule
-  uc_03_01_rapport_anonymisation.py n'importe
+  E1_04_03_rapport_anonymisation.py n'importe
   aucun port : formatage/agregation pure de
   StatistiquesSource
 end note

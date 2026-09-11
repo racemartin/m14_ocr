@@ -9,7 +9,7 @@ script ne l'invoquait ; tous les CLI de l'Etape 1 supposaient que
 `data/raw/*.jsonl` existait deja.
 
 Usage :
-    uv run python interfaces/cli/telecharger_corpus.py \
+    uv run python interfaces/cli/E1_01_telecharger_corpus.py \
         --identifiant-hub ANR-MALADES/MediQAl \
         --sortie data/raw/mediqal.jsonl
 """

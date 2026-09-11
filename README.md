@@ -44,25 +44,25 @@ uv run pytest tests/ -v
 
 ```bash
 # NB : la configuration "oeq" de MediQAl n'a qu'un split "test" (pas de "train") ; --split explicite requis
-uv run python interfaces/cli/telecharger_corpus.py --identifiant-hub ANR-MALADES/MediQAl --configuration oeq --split test --sortie data/raw/mediqal_oeq.jsonl
-uv run python interfaces/cli/telecharger_corpus.py --identifiant-hub ANR-MALADES/MediQAl --configuration mcqu --sortie data/raw/mediqal_mcqu.jsonl
-uv run python interfaces/cli/telecharger_corpus.py --identifiant-hub ANR-MALADES/MediQAl --configuration mcqm --sortie data/raw/mediqal_mcqm.jsonl
+uv run python interfaces/cli/E1_01_telecharger_corpus.py --identifiant-hub ANR-MALADES/MediQAl --configuration oeq --split test --sortie data/raw/mediqal_oeq.jsonl
+uv run python interfaces/cli/E1_01_telecharger_corpus.py --identifiant-hub ANR-MALADES/MediQAl --configuration mcqu --sortie data/raw/mediqal_mcqu.jsonl
+uv run python interfaces/cli/E1_01_telecharger_corpus.py --identifiant-hub ANR-MALADES/MediQAl --configuration mcqm --sortie data/raw/mediqal_mcqm.jsonl
 
-uv run python interfaces/cli/telecharger_corpus.py --identifiant-hub nthngdy/frenchmedmcqa      --sortie data/raw/frenchmedmcqa.jsonl
-uv run python interfaces/cli/telecharger_corpus.py --identifiant-hub keivalya/MedQuad-MedicalQnADataset  --sortie data/raw/medquad.jsonl
-uv run python interfaces/cli/telecharger_corpus.py --identifiant-hub TsinghuaC3I/UltraMedical-Preference --sortie data/raw/ultramedical_preference.jsonl
+uv run python interfaces/cli/E1_01_telecharger_corpus.py --identifiant-hub nthngdy/frenchmedmcqa      --sortie data/raw/frenchmedmcqa.jsonl
+uv run python interfaces/cli/E1_01_telecharger_corpus.py --identifiant-hub keivalya/MedQuad-MedicalQnADataset  --sortie data/raw/medquad.jsonl
+uv run python interfaces/cli/E1_01_telecharger_corpus.py --identifiant-hub TsinghuaC3I/UltraMedical-Preference --sortie data/raw/ultramedical_preference.jsonl
 ```
 
 ### 2. Profilage individuel (un rapport ydata-profiling par corpus)
 
 ```bash
-uv run python interfaces/cli/profiler_corpus.py --source data/raw/mediqal_oeq.jsonl   --nom MediQAl-oeq
-uv run python interfaces/cli/profiler_corpus.py --source data/raw/mediqal_mcqu.jsonl  --nom MediQAl-mcqu
-uv run python interfaces/cli/profiler_corpus.py --source data/raw/mediqal_mcqm.jsonl  --nom MediQAl-mcqm
+uv run python interfaces/cli/E1_02_profiler_corpus.py --source data/raw/mediqal_oeq.jsonl   --nom MediQAl-oeq
+uv run python interfaces/cli/E1_02_profiler_corpus.py --source data/raw/mediqal_mcqu.jsonl  --nom MediQAl-mcqu
+uv run python interfaces/cli/E1_02_profiler_corpus.py --source data/raw/mediqal_mcqm.jsonl  --nom MediQAl-mcqm
 
-uv run python interfaces/cli/profiler_corpus.py --source data/raw/frenchmedmcqa.jsonl           --nom FrenchMedMCQA
-uv run python interfaces/cli/profiler_corpus.py --source data/raw/medquad.jsonl                 --nom MedQuAD
-uv run python interfaces/cli/profiler_corpus.py --source data/raw/ultramedical_preference.jsonl --nom UltraMedicalPreference
+uv run python interfaces/cli/E1_02_profiler_corpus.py --source data/raw/frenchmedmcqa.jsonl           --nom FrenchMedMCQA
+uv run python interfaces/cli/E1_02_profiler_corpus.py --source data/raw/medquad.jsonl                 --nom MedQuAD
+uv run python interfaces/cli/E1_02_profiler_corpus.py --source data/raw/ultramedical_preference.jsonl --nom UltraMedicalPreference
 ```
 
 ### 3. Construction du dataset pivot (meme --sortie : fusionne les corpus par identifiant)
@@ -72,17 +72,17 @@ uv run python interfaces/cli/profiler_corpus.py --source data/raw/ultramedical_p
 # mapper (donc la valeur --corpus) depend du schema, pas seulement de
 # la source Hub. "oeq" (question/answer) -> mapper_mediqal ;
 # "mcqu"/"mcqm" (QCM, answer_a..answer_e + correct_answers) ->
-# mapper_mediqal_qcm. Voir interfaces/cli/mappers_corpus.py.
+# mapper_mediqal_qcm. Voir interfaces/cli/E1_03_01_mappers_corpus.py.
 # NB : --taille-bloc requis sur ultramedical_preference.jsonl (966 Mo,
 # 109353 enregistrements) ; sans lecture par blocs, OOM reel confirme
 # sur 5.8 Go de RAM disponibles. Voir --taille-bloc dans
-# interfaces/cli/construire_dataset_pivot.py.
-uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/mediqal_oeq.jsonl --corpus mediqal_oeq --sortie data/processed/dataset_pivot.jsonl
-uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/mediqal_mcqu.jsonl --corpus mediqal_mcqu --sortie data/processed/dataset_pivot.jsonl
-uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/mediqal_mcqm.jsonl --corpus mediqal_mcqm --sortie data/processed/dataset_pivot.jsonl
-uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/frenchmedmcqa.jsonl --corpus frenchmedmcqa --sortie data/processed/dataset_pivot.jsonl
-uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/medquad.jsonl --corpus medquad --sortie data/processed/dataset_pivot.jsonl
-uv run python interfaces/cli/construire_dataset_pivot.py --source data/raw/ultramedical_preference.jsonl --corpus ultramedical_preference --sortie data/processed/dataset_pivot.jsonl --taille-bloc 5000
+# interfaces/cli/E1_03_00_construire_dataset_pivot.py.
+uv run python interfaces/cli/E1_03_00_construire_dataset_pivot.py --source data/raw/mediqal_oeq.jsonl --corpus mediqal_oeq --sortie data/processed/dataset_pivot.jsonl
+uv run python interfaces/cli/E1_03_00_construire_dataset_pivot.py --source data/raw/mediqal_mcqu.jsonl --corpus mediqal_mcqu --sortie data/processed/dataset_pivot.jsonl
+uv run python interfaces/cli/E1_03_00_construire_dataset_pivot.py --source data/raw/mediqal_mcqm.jsonl --corpus mediqal_mcqm --sortie data/processed/dataset_pivot.jsonl
+uv run python interfaces/cli/E1_03_00_construire_dataset_pivot.py --source data/raw/frenchmedmcqa.jsonl --corpus frenchmedmcqa --sortie data/processed/dataset_pivot.jsonl
+uv run python interfaces/cli/E1_03_00_construire_dataset_pivot.py --source data/raw/medquad.jsonl --corpus medquad --sortie data/processed/dataset_pivot.jsonl
+uv run python interfaces/cli/E1_03_00_construire_dataset_pivot.py --source data/raw/ultramedical_preference.jsonl --corpus ultramedical_preference --sortie data/processed/dataset_pivot.jsonl --taille-bloc 5000
 ```
 
 Resultat reel (08/09/2026, pivot regenere avec identifiants **deterministes**,
@@ -129,13 +129,13 @@ des doublons UltraMedical-Preference) dans
 # un echantillon stratifie par (type_exemple, source) parmi les
 # exemples du pivot pas encore presents dans --sortie ; le reste
 # attend un appel ulterieur avec un N plus grand ou "full".
-uv run python interfaces/cli/anonymiser_dataset.py --dataset data/processed/dataset_pivot.jsonl --sortie data/processed/dataset_pivot_anonymise.jsonl --strategie replace --limite 5000
+uv run python interfaces/cli/E1_04_00_anonymiser_dataset.py --dataset data/processed/dataset_pivot.jsonl --sortie data/processed/dataset_pivot_anonymise.jsonl --strategie replace --limite 5000
 ```
 
 ```bash
 # Pour enchainer les vagues successives sans relancer la commande a
 # la main a chaque fois : scripts/anonymiser_par_lots.sh rappelle
-# anonymiser_dataset.py en boucle jusqu'a couverture complete du
+# E1_04_00_anonymiser_dataset.py en boucle jusqu'a couverture complete du
 # pivot, sans jamais retraiter les exemples deja presents dans
 # --sortie, avec protection anti-boucle-infinie si une vague
 # n'avance plus. Les 4 arguments positionnels sont optionnels
@@ -152,7 +152,7 @@ les executions) et proportion reelle sur le total du dataset pivot
 (compte a chaque execution, jamais code en dur), taux d'enregistrements
 avec >=1 entite detectee, entites par type, et la liste tracable des
 executions ayant contribue (horodatage, strategie, limite, graine).
-Voir `application/use_cases/uc_03_01_rapport_anonymisation.py`.
+Voir `application/use_cases/E1_04_03_rapport_anonymisation.py`.
 
 `PresidioAnonymiseur` (08/09/2026, ameliorations avancees, voir
 `docs/02_etape1_donnees/01_rapport_rgpd.md` §7 pour la justification
@@ -174,7 +174,7 @@ identifiant.
 # croises par identifiant, sur un echantillon stratifie ; peut se
 # relancer a tout moment, y compris retroactivement sur une vague
 # anonymisee il y a longtemps (le pivot original existe toujours).
-uv run python interfaces/cli/controler_qualite_anonymisation.py --dataset data/processed/dataset_pivot.jsonl --anonymise data/processed/dataset_pivot_anonymise.jsonl --taille-echantillon 200
+uv run python interfaces/cli/E1_04_02_controler_qualite_anonymisation.py --dataset data/processed/dataset_pivot.jsonl --anonymise data/processed/dataset_pivot_anonymise.jsonl --taille-echantillon 200
 ```
 
 Detecte les candidats de PII residuelle sur le texte anonymise (regex
@@ -194,7 +194,7 @@ plutot que de presumer ces cas corrects par defaut. Ecrit son propre
 rapport (`data/processed/rapport_controle_qualite_anonymisation.{json,md}`),
 avec des exemples reels inspectables par source et les compteurs
 d'entites par type repris du rapport RGPD cumule (§4 ci-dessus, pas
-recalcules). Voir `application/use_cases/uc_03_02_controler_qualite_anonymisation.py`.
+recalcules). Voir `application/use_cases/E1_04_02_controler_qualite_anonymisation.py`.
 
 **Muestreo INCREMENTAL** (09/09/2026, meme
 patron que `--limite` ci-dessus) : `--registre-echantillons` (defaut
@@ -212,10 +212,10 @@ executions, au lieu d'un echantillon jete a chaque fois.
 # deja echantillonnes (les deux strates, toutes executions confondues),
 # exclut ceux ayant deja une decision, et persiste chaque reponse
 # IMMEDIATEMENT (fermer le terminal a mi-parcours ne perd rien).
-uv run python interfaces/cli/reviser_pii_residuelle.py verify --dataset data/processed/dataset_pivot.jsonl --anonymise data/processed/dataset_pivot_anonymise.jsonl
+uv run python interfaces/cli/E1_04_01_reviser_pii_residuelle.py verify --dataset data/processed/dataset_pivot.jsonl --anonymise data/processed/dataset_pivot_anonymise.jsonl
 
 # Corriger une decision deja prise (sans repasser par toute la liste) :
-uv run python interfaces/cli/reviser_pii_residuelle.py modify --identifiant chsa-xxxxxxxx
+uv run python interfaces/cli/E1_04_01_reviser_pii_residuelle.py modify --identifiant chsa-xxxxxxxx
 ```
 
 Ferme l'ecart identifie sur l'exigence NF2 du cahier des charges
@@ -226,23 +226,23 @@ Chaque decision (`accepte` = confirme non-PII, `rejete` = PII reelle
 confirmee) est identifiee par une cle stable
 `(source_liste, identifiant, champ, type_motif, debut, fin)` et
 persistee dans `data/processed/decisions_revision_humaine.jsonl`. Le
-rapport de `controler_qualite_anonymisation.py` (§5) relit ce fichier
+rapport de `E1_04_02_controler_qualite_anonymisation.py` (§5) relit ce fichier
 pour annoter chaque candidat en attente de son statut de decision
 (accepte/rejete/encore en attente). Voir
-`application/use_cases/uc_03_03_reviser_pii_residuelle.py` et
+`application/use_cases/E1_04_01_reviser_pii_residuelle.py` et
 `docs/02_etape1_donnees/01_rapport_rgpd.md` §7.5 pour la methodologie
 complete.
 
 ### 7. Decoupage en splits (train / val / test, stratifie)
 
 ```bash
-# decouper_splits.py opere sur le fichier ANONYMISE (dataset_pivot_anonymise.jsonl),
+# E1_05_00_decouper_splits.py opere sur le fichier ANONYMISE (dataset_pivot_anonymise.jsonl),
 # PAS sur le pivot original ; le relancer apres chaque nouvelle vague
 # d'anonymisation.
-uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset_pivot_anonymise.jsonl
+uv run python interfaces/cli/E1_05_00_decouper_splits.py --dataset data/processed/dataset_pivot_anonymise.jsonl
 
 # --n : taille CIBLE cumulee (pas la taille de cette seule execution).
-uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset_pivot_anonymise.jsonl --n 5000
+uv run python interfaces/cli/E1_05_00_decouper_splits.py --dataset data/processed/dataset_pivot_anonymise.jsonl --n 5000
 ```
 
 **Croissance stable, jamais de reordonnancement (10/09/2026,
@@ -262,7 +262,7 @@ Exemple concret :
 # Premiere execution : 5000 exemples, aucun split existant ; les 5000
 # sont repartis stratifie (type_exemple, source) selon les proportions
 # habituelles.
-uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset_pivot_anonymise.jsonl --n 5000
+uv run python interfaces/cli/E1_05_00_decouper_splits.py --dataset data/processed/dataset_pivot_anonymise.jsonl --n 5000
 
 # Deuxieme execution, plus tard : --n 10000 preleve N - (deja assignes)
 # = 10000 - 5000 = 5000 NOUVEAUX exemples (echantillon stratifie parmi
@@ -270,7 +270,7 @@ uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset
 # 5000 PREMIERS exemples GARDENT exactement le split qui leur a ete
 # assigne lors de la premiere execution ; aucun n'est deplace entre
 # train/val/test.
-uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset_pivot_anonymise.jsonl --n 10000
+uv run python interfaces/cli/E1_05_00_decouper_splits.py --dataset data/processed/dataset_pivot_anonymise.jsonl --n 10000
 ```
 
 Si `--n N` est demande mais `N` est <= au nombre d'exemples deja
@@ -289,11 +289,11 @@ separement).
 humaine (10/09/2026, etendue le 11/09/2026 aux candidats confirmes).**
 Par precaution, un exemple portant au moins un candidat de PII
 residuelle CONFIRME (fuite non ambigue) ou SANS decision humaine
-persistee (§6, `reviser_pii_residuelle.py`) est exclu du decoupage de
+persistee (§6, `E1_04_01_reviser_pii_residuelle.py`) est exclu du decoupage de
 cette execution : il reste sans `split` jusqu'a ce qu'une decision
 soit prise (ou, pour un candidat confirme, indefiniment tant que le
-texte n'est pas corrige). `decouper_splits.py` accepte donc desormais les memes
-adaptateurs que `reviser_pii_residuelle.py verify` pour recalculer cet
+texte n'est pas corrige). `E1_05_00_decouper_splits.py` accepte donc desormais les memes
+adaptateurs que `E1_04_01_reviser_pii_residuelle.py verify` pour recalculer cet
 ensemble : `--original` (defaut `data/processed/dataset_pivot.jsonl`),
 `--registre-echantillons` (defaut
 `data/processed/controle_qualite_identifiants_echantillonnes.jsonl`),
@@ -304,21 +304,21 @@ lors de cette execution est affiche en sortie.
 ### 8. Verification de la repartition des splits par strate
 
 ```bash
-# decouper_splits.py n'affiche que le total global (train/val/test).
-# verifier_repartition_splits.py relit le fichier anonymise deja
+# E1_05_00_decouper_splits.py n'affiche que le total global (train/val/test).
+# E1_05_01_verifier_repartition_splits.py relit le fichier anonymise deja
 # reparti et affiche, pour chaque strate (type_exemple, source), le
 # decompte ET le pourcentage par split, pour verifier visuellement
 # que l'echantillonnage stratifie reste representatif DANS CHAQUE
 # split (ex. une petite source comme FrenchMedMCQA doit rester
 # ~80/10/10 comme les grosses sources, pas disparaitre de train ou de
 # test). Fonctionne sans changement avec la croissance stable de
-# decouper_splits.py ci-dessus : il relit simplement les splits deja
+# E1_05_00_decouper_splits.py ci-dessus : il relit simplement les splits deja
 # presents dans le fichier, quelle que soit la sequence d'executions
 # --n qui les a produits.
-uv run python interfaces/cli/verifier_repartition_splits.py --dataset data/processed/dataset_pivot_anonymise.jsonl
+uv run python interfaces/cli/E1_05_01_verifier_repartition_splits.py --dataset data/processed/dataset_pivot_anonymise.jsonl
 ```
 
-`anonymiser_dataset.py` affiche une barre de progression `tqdm` pendant le traitement (peut durer plusieurs dizaines de minutes sur un gros dataset).
+`E1_04_00_anonymiser_dataset.py` affiche une barre de progression `tqdm` pendant le traitement (peut durer plusieurs dizaines de minutes sur un gros dataset).
 
 ### 9. Extraction du sous-ensemble SFT (5000 exemples, pour publication Hugging Face)
 
@@ -332,9 +332,9 @@ pivot anonymise deja reparti en splits.
 #    soumise a decision humaine), ou au moins un candidat
 #    VERDICT_REVISION_HUMAINE sans decision DECISION_ACCEPTE persistee
 #    (candidat encore ouvert, ou explicitement rejete). Meme replay
-#    deterministe que `reviser_pii_residuelle.py verify` (§6), etendu
+#    deterministe que `E1_04_01_reviser_pii_residuelle.py verify` (§6), etendu
 #    aux candidats CONFIRME.
-uv run python interfaces/cli/reviser_pii_residuelle.py exporter \
+uv run python interfaces/cli/E1_04_01_reviser_pii_residuelle.py exporter \
     --dataset data/processed/dataset_pivot.jsonl \
     --anonymise data/processed/dataset_pivot_anonymise.jsonl
 
@@ -343,7 +343,7 @@ uv run python interfaces/cli/reviser_pii_residuelle.py exporter \
 #    type_exemple/source) si le resultat filtre en contient plus.
 #    Pure soustraction + recoupage : ne rajoute jamais d'exemples pour
 #    compenser un manque.
-uv run python interfaces/cli/extraire_sous_ensemble_sft.py \
+uv run python interfaces/cli/E1_05_03_extraire_sous_ensemble_sft.py \
     --dataset data/processed/dataset_pivot_anonymise.jsonl \
     --exclusions data/processed/identifiants_a_exclure_publication.jsonl \
     --taille 5000
@@ -379,9 +379,9 @@ Taille cible atteinte (5000 == 5000).
 ```
 
 Le pivot anonymise complet contient bien plus d'exemples que les 5000
-demandes (§7-8 ci-dessus) : `decouper_splits.py --n <N>` peut affecter
+demandes (§7-8 ci-dessus) : `E1_05_00_decouper_splits.py --n <N>` peut affecter
 un `split` (train/val/test) a un echantillon stratifie plus grand que
-`--taille`, les autres restant a `split: null`. `extraire_sous_ensemble_sft.py`
+`--taille`, les autres restant a `split: null`. `E1_05_03_extraire_sous_ensemble_sft.py`
 filtre sur `split != null`, retire les identifiants listes dans
 `data/processed/identifiants_a_exclure_publication.jsonl` (produit par
 l'etape 1), et, si le resultat filtre depasse `--taille`, le RECOUPE a
@@ -395,7 +395,7 @@ d'exposition publique de donnees issues des corpus sources.
 
 A la fin, le script affiche un tableau de repartition du sous-ensemble
 ECRIT par strate (type_exemple, source) x split (train/val/test),
-meme format que `verifier_repartition_splits.py` (§8). Exemple reel
+meme format que `E1_05_01_verifier_repartition_splits.py` (§8). Exemple reel
 (execute sur un pool synthetique de 10026 exemples avec split, 74
 identifiants exclus, `--taille 5000`) :
 
@@ -416,11 +416,11 @@ Taille cible atteinte (5000 == 5000).
 ```
 
 Si le resultat, apres exclusion, contient MOINS d'exemples que
-`--taille`, `extraire_sous_ensemble_sft.py` ne tente jamais de
+`--taille`, `E1_05_03_extraire_sous_ensemble_sft.py` ne tente jamais de
 completer automatiquement (ce n'est qu'un filtre/une soustraction, pas
 un nouveau muestreo) : il affiche clairement combien d'exemples
 restent et combien manquent, et suggere d'elargir le decoupage des
-splits d'abord (`decouper_splits.py --n <taille plus grande>`, §7)
+splits d'abord (`E1_05_00_decouper_splits.py --n <taille plus grande>`, §7)
 avant de relancer l'extraction.
 
 Le pivot anonymise complet (`dataset_pivot_anonymise.jsonl`) et le
@@ -462,7 +462,7 @@ que sur ce qui a deja ete AUDITE. Seul un sous-ensemble du pivot a ete
 echantillonne par le controle qualite (§5) a ce jour ; un exemple
 jamais echantillonne peut donc encore contenir une PII residuelle non
 detectee, meme apres l'etape 1. Augmenter la couverture de
-`controler_qualite_anonymisation.py` (§5) avant publication reduit ce
+`E1_04_02_controler_qualite_anonymisation.py` (§5) avant publication reduit ce
 risque, mais ne l'elimine pas completement sans audit exhaustif.
 
 ## Structure (architecture hexagonale)
@@ -495,7 +495,7 @@ Détail complet : `docs/01_environnement/01_architecture_hexagonale.md`.
       exécution génère/fusionne automatiquement un **rapport RGPD
       cumulé** (JSON + Markdown) ; contrôle qualité **automatisé** par
       comparaison de fichiers (regex + seconde opinion spaCy,
-      `controler_qualite_anonymisation.py`) ; **première vague
+      `E1_04_02_controler_qualite_anonymisation.py`) ; **première vague
       exécutée sur le pivot régénéré (5 000/134 883 exemples, 90,6 %
       avec ≥1 entité détectée, 64 667 entités) et découpée en splits
       (4 004/498/498, vérifiée représentative par strate)** ; 200
@@ -505,7 +505,7 @@ Détail complet : `docs/01_environnement/01_architecture_hexagonale.md`.
       Muestreo du contrôle qualité rendu **incrémental** (09/09/2026,
       `--registre-echantillons`) et les 35 candidats en attente
       peuvent désormais être tranchés avec une décision humaine
-      **persistée** (`reviser_pii_residuelle.py`,
+      **persistée** (`E1_04_01_reviser_pii_residuelle.py`,
       `data/processed/decisions_revision_humaine.jsonl`) ; voir §6
       ci-dessus et `docs/02_etape1_donnees/01_rapport_rgpd.md` §7.5.
       **Vagues ultérieures** : à relancer avec `--limite` plus grand

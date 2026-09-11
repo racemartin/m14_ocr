@@ -3,7 +3,7 @@ STEP 04.1
 Point d'entree CLI, Etape 1, action "verifier la repartition des
 splits".
 
-`decouper_splits.py` n'affiche que le total global par split
+`E1_05_00_decouper_splits.py` n'affiche que le total global par split
 (train/val/test). Ce script relit le dataset pivot deja reparti et
 affiche, pour chaque strate `(type_exemple, source)`, le decompte ET
 le pourcentage par split, pour verifier visuellement que
@@ -12,7 +12,7 @@ split, pas seulement au global (ex. une petite source comme
 FrenchMedMCQA ne doit pas se retrouver absente de train ou de test).
 
 Usage :
-    uv run python interfaces/cli/verifier_repartition_splits.py \
+    uv run python interfaces/cli/E1_05_01_verifier_repartition_splits.py \
         --dataset data/processed/dataset_pivot_anonymise.jsonl
 
 IMPORTANT (08/09/2026, design source/sortie separes) : --dataset doit
@@ -68,7 +68,7 @@ def main() -> None:
         log.LEVEL_5_WARNING(
             "verifier_repartition_splits",
             f"aucun exemple anonymise+reparti trouve dans {arguments.dataset} ; "
-            "lancer anonymiser_dataset.py puis decouper_splits.py d'abord",
+            "lancer E1_04_00_anonymiser_dataset.py puis E1_05_00_decouper_splits.py d'abord",
         )
 
     for cle, compteur_strate in sorted(repartition.items()):

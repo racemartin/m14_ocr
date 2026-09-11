@@ -4,7 +4,7 @@
 > rapport de méthodologie + historique.** Le
 > pipeline génère désormais lui-même ses indicateurs RGPD de façon
 > automatique et reproductible à chaque exécution de
-> `anonymiser_dataset.py`, au lieu d'un calcul manuel ponctuel
+> `E1_04_00_anonymiser_dataset.py`, au lieu d'un calcul manuel ponctuel
 > (ce que documentaient les sections 3 et 4 ci-dessous, datées du
 > 09/09/2026). **Ces chiffres restent corrects comme trace historique**
 > mais portaient sur l'ANCIEN pivot (147 204 exemples, identifiants
@@ -20,10 +20,10 @@
 >   CUMULÉ (fusionne toutes les exécutions passées), par source :
 >   registres traités, proportion réelle sur le total du dataset pivot,
 >   taux d'enregistrements avec ≥1 entité détectée, entités par type.
->   Voir `src/chsa_triage/application/use_cases/uc_03_01_rapport_anonymisation.py`.
+>   Voir `src/chsa_triage/application/use_cases/E1_04_03_rapport_anonymisation.py`.
 > - `data/processed/rapport_controle_qualite_anonymisation.{json,md}` :
 >   contrôle qualité **automatisé** par comparaison du pivot original et
->   du fichier anonymisé (`controler_qualite_anonymisation.py`) : regex
+>   du fichier anonymisé (`E1_04_02_controler_qualite_anonymisation.py`) : regex
 >   sans modèle pour les candidats de PII résiduelle (emails,
 >   téléphones, URLs, dates, bigrammes capitalisés), seconde opinion
 >   spaCy (mêmes modèles que `PresidioAnonymiseur`) pour départager les
@@ -73,7 +73,7 @@ dès la conception).
 ## 3. Résultats quantitatifs (données réelles)
 
 **Méthodologie** : la première vague d'anonymisation déjà fusionnée
-sur `main` (`anonymiser_dataset.py --limite 5000`, 08/09/2026) a
+sur `main` (`E1_04_00_anonymiser_dataset.py --limite 5000`, 08/09/2026) a
 traité un échantillon stratifié réel de 5 000 exemples avec la
 stratégie `replace`. Cette stratégie remplace toute entité détectée
 par un jeton générique unique (`<INFO_MASQUEE>`) : le texte de sortie
@@ -83,7 +83,7 @@ exigés ci-dessous, `AnonymiserDatasetUseCase` a été instrumenté
 (nouveau champ `statistiques: dict[str, StatistiquesSource]`, qui
 accumule pendant l'anonymisation le nombre de registres traités, le
 nombre de registres avec ≥1 entité, et le détail des entités par
-type; voir `src/chsa_triage/application/use_cases/uc_03_00_anonymiser_dataset.py`),
+type; voir `src/chsa_triage/application/use_cases/E1_04_00_anonymiser_dataset.py`),
 puis exécutée pour de vrai (Presidio réel, pas de mock) sur un nouvel
 échantillon stratifié de 5 000 exemples, prélevé avec le **même
 algorithme, la même graine (42) et les mêmes corpus bruts**
@@ -273,7 +273,7 @@ pour les faux positifs bibliographiques d'UltraMedical-Preference.
 Suite à une analyse technique des risques réels de fuite
 RGPD du pipeline actuel et de sur-anonymisation (âge/durée perdus sans
 nécessité), quatre chantiers ont été menés dans
-`PresidioAnonymiseur` et `controler_qualite_anonymisation.py`. Chaque
+`PresidioAnonymiseur` et `E1_04_02_controler_qualite_anonymisation.py`. Chaque
 sous-section documente une hypothèse **vérifiée contre des données et
 un comportement réels**, pas contre ce qui « devrait » se passer en
 théorie; y compris quand la vérification infirme partiellement
@@ -353,7 +353,7 @@ seule fois puis oubliée.
 
 ### 7.3 Contrôle qualité : stratum dédié « sans entité détectée »
 
-`controler_qualite_anonymisation.py` disposait déjà de tout le
+`E1_04_02_controler_qualite_anonymisation.py` disposait déjà de tout le
 nécessaire (texte original ET anonymisé pour chaque exemple) mais son
 tirage stratifié (type_exemple, source) ne distinguait pas « rien
 détecté » de « quelque chose détecté ». Ajout d'un stratum
@@ -449,7 +449,7 @@ réelle, mais conduite par un agent IA autonome, pas par une personne
 Au-delà de ce POC initial, le mécanisme *lui-même* avait un défaut
 structurel indépendant de qui relit : `CandidatPiiResiduelle.verdict
 == "pendant_revision_humaine"` (cf. §2 méthode,
-`uc_03_02_controler_qualite_anonymisation.py`) était un **cul-de-sac** :
+`E1_04_02_controler_qualite_anonymisation.py`) était un **cul-de-sac** :
 ni le regex ni la seconde opinion spaCy ne tranchent seuls, et
 **aucune variable ni fichier ne persistait jamais la décision d'une
 personne**. Une revue humaine réelle, faite une fois, n'était nulle
@@ -459,7 +459,7 @@ lesquels restent réellement ouverts. Deux chantiers ferment cet écart
 pour de bon, dans cet ordre (le second dépend du premier) :
 
 **1. Muestreo incrémental du contrôle qualité.** Avant ce chantier,
-chaque exécution de `controler_qualite_anonymisation.py` tirait un
+chaque exécution de `E1_04_02_controler_qualite_anonymisation.py` tirait un
 échantillon **aléatoire neuf** (`--taille-echantillon`, `--graine`),
 confirmé dans le rapport généré lui-même, qui indiquait explicitement
 « pas un cumul persistant entre exécutions ». Deux exécutions
@@ -517,7 +517,7 @@ centaines/milliers), pas par la taille du corpus (147k+); la mise en
 garde de ce fichier sur le coût O(n²) de `sauvegarder()` en boucle
 concerne un tout autre ordre de grandeur.
 
-`interfaces/cli/reviser_pii_residuelle.py` expose deux modes :
+`interfaces/cli/E1_04_01_reviser_pii_residuelle.py` expose deux modes :
 
 - **`verify`** : recalcule (*replay* déterministe; mêmes textes,
   mêmes regex, même seconde opinion spaCy ⇒ mêmes candidats à chaque
@@ -538,14 +538,14 @@ concerne un tout autre ordre de grandeur.
   plusieurs décisions déjà prises et permet de corriger une erreur de
   saisie sans repasser par toute la liste en attente.
 
-**Le rapport de `controler_qualite_anonymisation.py` (§2 de ce
+**Le rapport de `E1_04_02_controler_qualite_anonymisation.py` (§2 de ce
 document, Markdown) relit ce fichier de décisions** pour annoter
 chaque candidat `pendant_revision_humaine` qu'il liste avec son statut
 réel : `accepte` / `rejete` / encore génuinement en attente; avec un
 avertissement explicite que ce rapport ne décrit que le lot de SON
 exécution (muestreo incrémental oblige), le statut **cumulé** vivant
 dans le fichier de décisions lui-même, tenu à jour par
-`reviser_pii_residuelle.py`.
+`E1_04_01_reviser_pii_residuelle.py`.
 
 **Ce que ce mécanisme permet de dire en soutenance, et ce qu'il ne
 permet toujours pas de dire** : il rend l'exigence NF2
@@ -558,7 +558,7 @@ remplacée). Il **ne rend pas** automatiquement vraie l'affirmation
 « 0 PII résiduelle confirmée » tant que des candidats restent
 `en_attente` dans `decisions_revision_humaine.jsonl`; ce mécanisme
 fournit l'outil pour fermer cet écart, il ne le ferme pas tout seul :
-quelqu'un doit encore exécuter `reviser_pii_residuelle.py verify`
+quelqu'un doit encore exécuter `E1_04_01_reviser_pii_residuelle.py verify`
 jusqu'à ce que la liste des candidats en attente soit vide. C'est la
 même limite que celle déjà posée au §6 : ce document ne remplace pas
 une revue humaine indépendante, il lui donne enfin un endroit où

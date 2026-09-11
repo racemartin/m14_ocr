@@ -1,7 +1,7 @@
 """
 Port de persistance des decisions humaines sur les candidats de PII
 residuelle marques `VERDICT_REVISION_HUMAINE` par
-`controler_qualite_anonymisation.py` (ni le regex ni la seconde
+`E1_04_02_controler_qualite_anonymisation.py` (ni le regex ni la seconde
 opinion spaCy ne tranchent).
 
 Avant ce port, `CandidatPiiResiduelle.verdict` etait uniquement un

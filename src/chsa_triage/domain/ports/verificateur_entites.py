@@ -3,7 +3,7 @@ Port generique de "seconde opinion" sur un passage de texte suspecte
 de contenir une entite nommee (personne, organisation, lieu).
 
 Utilise par le controle qualite d'anonymisation (cf.
-`controler_qualite_anonymisation.py`) pour trancher les candidats de
+`E1_04_02_controler_qualite_anonymisation.py`) pour trancher les candidats de
 PII residuelle trouves par une heuristique regex sur le texte deja
 anonymise : le regex seul confond frequemment un terme medical
 capitalise ("Polycystic", "Mitochondrial Myopathy") avec un nom

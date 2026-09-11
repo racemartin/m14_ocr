@@ -3,13 +3,13 @@ STEP 04
 Point d'entree CLI, Etape 1, action "decouper en splits".
 
 Usage :
-    uv run python interfaces/cli/decouper_splits.py \
+    uv run python interfaces/cli/E1_05_00_decouper_splits.py \
         --dataset data/processed/dataset_pivot_anonymise.jsonl \
         --n 5000
 
 IMPORTANT (08/09/2026, design source/sortie separes) : --dataset doit
 pointer vers le fichier ANONYMISE (`dataset_pivot_anonymise.jsonl`,
-sortie de `anonymiser_dataset.py`), PAS vers le pivot original
+sortie de `E1_04_00_anonymiser_dataset.py`), PAS vers le pivot original
 `dataset_pivot.jsonl` ; celui-ci n'est jamais anonymise en place et
 ne contient donc jamais d'exemple avec `anonymise=True`. Ce script
 lit ET ecrit sur le meme fichier (le champ `split` est ajoute en
@@ -46,10 +46,10 @@ EXCLUSION PII CONFIRMEE OU EN ATTENTE DE DECISION HUMAINE (10/09/2026,
 etendue le 11/09/2026 aux candidats deja confirmes). Par precaution,
 un exemple avec au moins un candidat de PII residuelle CONFIRME
 (VERDICT_CONFIRME, fuite non ambigue) ou sans decision humaine
-persistee (VERDICT_REVISION_HUMAINE, cf. `reviser_pii_residuelle.py`)
+persistee (VERDICT_REVISION_HUMAINE, cf. `E1_04_01_reviser_pii_residuelle.py`)
 est exclu des candidats de CETTE execution, plutot que de bloquer le
 pipeline en attendant une revue candidat par candidat. Ce script
-instancie donc les memes adaptateurs que `reviser_pii_residuelle.py
+instancie donc les memes adaptateurs que `E1_04_01_reviser_pii_residuelle.py
 verify` (`--original`, `--registre-echantillons`, `--decisions`,
 `--jeton-masque`, en plus de `--dataset` qui reste le fichier
 ANONYMISE) pour recalculer cet ensemble d'identifiants
@@ -63,8 +63,8 @@ from __future__ import annotations
 import argparse
 
 from chsa_triage.application.use_cases import DecouperSplitsUseCase
-from chsa_triage.application.use_cases.uc_03_02_controler_qualite_anonymisation import JETON_MASQUE_DEFAUT
-from chsa_triage.application.use_cases.uc_03_03_reviser_pii_residuelle import ReviserPiiResiduelleUseCase
+from chsa_triage.application.use_cases.E1_04_02_controler_qualite_anonymisation import JETON_MASQUE_DEFAUT
+from chsa_triage.application.use_cases.E1_04_01_reviser_pii_residuelle import ReviserPiiResiduelleUseCase
 from chsa_triage.infrastructure.adapters import (
     JsonlDatasetRepository,
     JsonlDecisionsRevisionHumaine,
@@ -120,7 +120,7 @@ def main() -> None:
     # -------------------------------------------------------------------------
     repository = JsonlDatasetRepository(arguments.dataset)
 
-    # Meme adaptateurs que `reviser_pii_residuelle.py verify` : necessaires
+    # Meme adaptateurs que `E1_04_01_reviser_pii_residuelle.py verify` : necessaires
     # pour recalculer (replay deterministe) les identifiants portant un
     # candidat de PII residuelle confirme ou sans decision humaine, et
     # les exclure du decoupage par precaution (10/09/2026, etendu le

@@ -30,7 +30,7 @@ data/
 | `ultramedical_preference.jsonl` | UltraMedical-Preference | colonnes `prompt`, `chosen`, `rejected` |
 
 Noms de colonnes vérifiés contre le contenu réel téléchargé et
-implémentés dans `interfaces/cli/mappers_corpus.py`. Détail par
+implémentés dans `interfaces/cli/E1_03_01_mappers_corpus.py`. Détail par
 source (schéma, config Hub) : `docs/02_etape1_donnees/00_couverture_exigences_officielles.md`.
 
 ## `data/processed/` : schéma pivot (`ExemplePivot`)
@@ -74,7 +74,7 @@ initial de la mission : cahier des charges §5.2
 | `rapports_profilage/` | Rapports HTML `ydata-profiling`, un par fichier source, non versionnés (volumineux, régénérables) |
 
 Le dataset pivot n'est **jamais modifié en place** par l'anonymisation :
-`anonymiser_dataset.py` lit `dataset_pivot.jsonl` et écrit dans
+`E1_04_00_anonymiser_dataset.py` lit `dataset_pivot.jsonl` et écrit dans
 `dataset_pivot_anonymise.jsonl` (fichiers séparés depuis le
 08/09/2026 ; permet de relancer le contrôle qualité ou
 une nouvelle vague d'anonymisation sans jamais perdre l'original). La

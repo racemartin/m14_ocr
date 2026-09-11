@@ -7,7 +7,7 @@ d'usage `ProfilerCorpusUseCase`. Aucune logique metier ici : ce
 fichier ne fait qu'assembler les briques hexagonales.
 
 Usage :
-    uv run python interfaces/cli/profiler_corpus.py \
+    uv run python interfaces/cli/E1_02_profiler_corpus.py \
         --source data/raw/mediqal.jsonl \
         --nom MediQAl
 

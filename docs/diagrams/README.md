@@ -18,7 +18,7 @@ docs/diagrams/
 │   │                                échantillon_stratifie() (méthode du plus grand reste,
 │   │                                partagée entre --limite et --n)
 │   ├── sequence/                   les 6 scripts CLI (telecharger, profiler, construire le pivot, anonymiser, decouper, verifier la repartition)
-│   │                                + vue frontiere generique/specifique du pivot (mappers_corpus.py)
+│   │                                + vue frontiere generique/specifique du pivot (E1_03_01_mappers_corpus.py)
 │   ├── paquets/                     classes réelles de l'Étape 1 ;
 │   │                                 paquets en jeu pour anonymisation/rapport/QC ;
 │   │                                 paquets en jeu pour decouper_splits/verifier_repartition_splits

@@ -62,7 +62,7 @@ class ExemplePivot:
     # `nouvel_identifiant`), mais la valeur la plus utile pour
     # retrouver le registre source dans data/raw/*.jsonl. Vide par
     # defaut (ExemplePivot synthetiques de test) ; toujours renseignee
-    # par les mappers reels (interfaces/cli/mappers_corpus.py).
+    # par les mappers reels (interfaces/cli/E1_03_01_mappers_corpus.py).
     identifiant_source_brute: str = ""
 
     symptomes             : str = ""

@@ -1,5 +1,5 @@
 """
-Tests des mappers specifiques par corpus (interfaces/cli/mappers_corpus.py).
+Tests des mappers specifiques par corpus (interfaces/cli/E1_03_01_mappers_corpus.py).
 
 Ces mappers n'avaient aucun test avant le smoke test d'integration du
 02/09/2026 ; ajoutes a cette occasion. Utilisent des enregistrements
@@ -18,7 +18,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from chsa_triage.domain.model import Langue, TypeExemple
-from interfaces.cli.mappers_corpus import (
+from interfaces.cli.E1_03_01_mappers_corpus import (
     mapper_frenchmedmcqa,
     mapper_mediqal,
     mapper_mediqal_qcm,

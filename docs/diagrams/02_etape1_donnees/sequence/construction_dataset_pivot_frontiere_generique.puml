@@ -6,11 +6,11 @@ title Étape 1 : Diagramme de séquence\nConstruction du dataset pivot, frontiè
 actor "Développeur\n(ligne de commande)" as Dev
 
 box "interfaces/cli" #F0EEE7
-  participant "construire_dataset_pivot.py" as CLI
+  participant "E1_03_00_construire_dataset_pivot.py" as CLI
 end box
 
 box "interfaces/cli : specifique corpus" #FCEBE6
-  participant "mappers_corpus.py\n(MAPPERS_PAR_CORPUS)" as Mappers
+  participant "E1_03_01_mappers_corpus.py\n(MAPPERS_PAR_CORPUS)" as Mappers
 end box
 
 box "application" #F0EEE7
@@ -24,7 +24,7 @@ end box
 
 autonumber "<b>0."
 
-Dev -> CLI : uv run python construire_dataset_pivot.py\n--source ... --corpus mediqal --sortie ...
+Dev -> CLI : uv run python E1_03_00_construire_dataset_pivot.py\n--source ... --corpus mediqal --sortie ...
 activate CLI
 
 CLI -> Lecteur : new(chemin_source)
@@ -40,7 +40,7 @@ note right of Mappers
   adaptateurs) est du code générique,
   réutilisable tel quel pour n'importe
   quel autre corpus ou domaine.
-  mappers_corpus.py est la SEULE pièce
+  E1_03_01_mappers_corpus.py est la SEULE pièce
   qui connaît la structure JSON concrète
   de chaque corpus (MediQAl,
   FrenchMedMCQA, MedQuAD,
