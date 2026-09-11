@@ -233,9 +233,9 @@ def test_decouper_splits_sans_n_complete_ce_qui_manque_sans_toucher_au_deja_assi
 
 def test_decouper_splits_exclut_les_exemples_avec_candidat_pii_en_attente():
     """
-    Decision du capitaine (10/09/2026) : un exemple portant au moins un
-    candidat de PII residuelle SANS decision humaine persistee ne doit
-    jamais recevoir de split, meme s'il y a de la place dans `--n`.
+    Un exemple portant au moins un candidat de PII residuelle SANS
+    decision humaine persistee (10/09/2026) ne doit jamais recevoir de
+    split, meme s'il y a de la place dans `--n`.
     """
     exemples = [_exemple_anonymise("MediQAl") for _ in range(10)]
     identifiant_en_attente = exemples[0].identifiant
@@ -253,6 +253,59 @@ def test_decouper_splits_exclut_les_exemples_avec_candidat_pii_en_attente():
     assert cas_usage.nombre_nouveaux == 9
     assert cas_usage.nombre_exclus_pii_en_attente == 1
     assert repository.items[identifiant_en_attente].split is None
+
+
+def test_decouper_splits_exclut_aussi_les_exemples_avec_candidat_pii_confirme():
+    """
+    Depuis le 11/09/2026, `obtenir_identifiants_pii_en_attente` couvre
+    aussi les identifiants portant un candidat de PII residuelle
+    CONFIRME (fuite non ambigue), pas seulement ceux encore en attente
+    de decision humaine : le meme mecanisme d'exclusion doit les
+    ecarter du decoupage.
+    """
+    exemples = [_exemple_anonymise("MediQAl") for _ in range(10)]
+    identifiant_confirme = exemples[0].identifiant
+    repository = FauxRepository(exemples)
+
+    cas_usage = DecouperSplitsUseCase(
+        repository=repository,
+        n=10,
+        graine_aleatoire=42,
+        obtenir_identifiants_pii_en_attente=lambda: {identifiant_confirme},
+    )
+    decompte = cas_usage.executer()
+
+    assert sum(decompte.values()) == 9
+    assert cas_usage.nombre_nouveaux == 9
+    assert cas_usage.nombre_exclus_pii_en_attente == 1
+    assert repository.items[identifiant_confirme].split is None
+
+
+def test_decouper_splits_exemple_deja_reparti_non_affecte_par_pii_confirme_ulterieur():
+    """
+    Meme garantie de stabilite pour le motif CONFIRME que pour le motif
+    "en attente" : un exemple deja reparti garde son split meme si un
+    candidat CONFIRME lui apparait lors d'une execution ulterieure.
+    """
+    exemples = [_exemple_anonymise("MediQAl") for _ in range(10)]
+    identifiant_deja_reparti = exemples[0].identifiant
+    repository = FauxRepository(exemples)
+
+    DecouperSplitsUseCase(repository=repository, n=10, graine_aleatoire=42).executer()
+    split_initial = repository.items[identifiant_deja_reparti].split
+    assert split_initial is not None
+
+    cas_usage = DecouperSplitsUseCase(
+        repository=repository,
+        n=None,
+        graine_aleatoire=42,
+        obtenir_identifiants_pii_en_attente=lambda: {identifiant_deja_reparti},
+    )
+    decompte = cas_usage.executer()
+
+    assert repository.items[identifiant_deja_reparti].split == split_initial
+    assert cas_usage.nombre_exclus_pii_en_attente == 0
+    assert sum(decompte.values()) == 10
 
 
 def test_decouper_splits_exemple_avec_decision_deja_prise_reste_eligible():

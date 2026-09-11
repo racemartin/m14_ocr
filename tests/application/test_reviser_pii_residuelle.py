@@ -308,6 +308,30 @@ def test_identifiants_a_exclure_publication_confirme_gagne_sur_pendant_revision_
     assert razons == {original.identifiant: "confirme"}
 
 
+def test_identifiants_a_exclure_publication_set_reprend_les_cles_du_dict():
+    """`identifiants_a_exclure_publication_set` doit renvoyer exactement les cles de `identifiants_a_exclure_publication`, peu importe le motif."""
+    verificateur = FauxVerificateurEntites({"Some Product": VerdictEntiteNommee.ENTITE_NON_PERTINENTE})
+    original_confirme = _exemple(symptomes="contact: jean@example.com")
+    anonymise_confirme = _anonymiser(original_confirme, "contact: jean@example.com")
+    original_en_attente = _exemple(symptomes="orig")
+    anonymise_en_attente = _anonymiser(original_en_attente, "Some Product was mentioned.")
+
+    cas_usage = ReviserPiiResiduelleUseCase(
+        repository_original=FauxRepository([original_confirme, original_en_attente]),
+        repository_anonymise=FauxRepository([anonymise_confirme, anonymise_en_attente]),
+        verificateur_entites=verificateur,
+        registre_echantillons=FauxRegistreEchantillons(
+            {STRATUM_PRINCIPAL: {original_confirme.identifiant, original_en_attente.identifiant}}
+        ),
+        decisions=FauxDecisions(),
+    )
+
+    assert cas_usage.identifiants_a_exclure_publication_set() == {
+        original_confirme.identifiant,
+        original_en_attente.identifiant,
+    }
+
+
 def test_candidats_en_attente_ignore_les_verdicts_deja_tranches():
     """Un candidat CONFIRME/FAUX_POSITIF_REGEX (regex+spaCy tranchent seuls) ne doit jamais apparaitre ici."""
     verificateur = FauxVerificateurEntites({})  # AUCUNE_ENTITE partout -> jamais REVISION_HUMAINE

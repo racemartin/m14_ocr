@@ -42,17 +42,20 @@ avertissement est trace via LogTool (pas une erreur). Si `--n` est
 omis, tous les exemples anonymises qui n'ont pas encore de split
 recoivent un split (mode "completer ce qui manque").
 
-EXCLUSION PII EN ATTENTE DE DECISION HUMAINE (10/09/2026, decision du
-capitaine). Par precaution, un exemple avec au moins un candidat de
-PII residuelle sans decision humaine persistee (VERDICT_REVISION_HUMAINE,
-cf. `reviser_pii_residuelle.py`) est exclu des candidats de CETTE
-execution -- plutot que de bloquer le pipeline en attendant une revue
-candidat par candidat. Ce script instancie donc les memes adaptateurs
-que `reviser_pii_residuelle.py verify` (`--original`, `--registre-echantillons`,
-`--decisions`, `--jeton-masque`, en plus de `--dataset` qui reste le
-fichier ANONYMISE) pour recalculer cet ensemble d'identifiants
-(`ReviserPiiResiduelleUseCase.identifiants_en_attente`) ; le nombre
-d'exemples exclus pour cette raison est affiche a la fin de l'execution.
+EXCLUSION PII CONFIRMEE OU EN ATTENTE DE DECISION HUMAINE (10/09/2026,
+etendue le 11/09/2026 aux candidats deja confirmes). Par precaution,
+un exemple avec au moins un candidat de PII residuelle CONFIRME
+(VERDICT_CONFIRME, fuite non ambigue) ou sans decision humaine
+persistee (VERDICT_REVISION_HUMAINE, cf. `reviser_pii_residuelle.py`)
+est exclu des candidats de CETTE execution, plutot que de bloquer le
+pipeline en attendant une revue candidat par candidat. Ce script
+instancie donc les memes adaptateurs que `reviser_pii_residuelle.py
+verify` (`--original`, `--registre-echantillons`, `--decisions`,
+`--jeton-masque`, en plus de `--dataset` qui reste le fichier
+ANONYMISE) pour recalculer cet ensemble d'identifiants
+(`ReviserPiiResiduelleUseCase.identifiants_a_exclure_publication_set`) ;
+le nombre d'exemples exclus pour cette raison est affiche a la fin de
+l'execution.
 """
 
 from __future__ import annotations
@@ -119,8 +122,9 @@ def main() -> None:
 
     # Meme adaptateurs que `reviser_pii_residuelle.py verify` : necessaires
     # pour recalculer (replay deterministe) les identifiants portant un
-    # candidat de PII residuelle sans decision humaine, et les exclure du
-    # decoupage par precaution (decision du capitaine, 10/09/2026).
+    # candidat de PII residuelle confirme ou sans decision humaine, et
+    # les exclure du decoupage par precaution (10/09/2026, etendu le
+    # 11/09/2026 aux candidats confirmes).
     revision_pii = ReviserPiiResiduelleUseCase(
         repository_original=JsonlDatasetRepository(arguments.original),
         repository_anonymise=repository,
@@ -141,7 +145,7 @@ def main() -> None:
             proportion_val=arguments.proportion_val,
             proportion_test=arguments.proportion_test,
             n=arguments.n,
-            obtenir_identifiants_pii_en_attente=revision_pii.identifiants_en_attente,
+            obtenir_identifiants_pii_en_attente=revision_pii.identifiants_a_exclure_publication_set,
         )
         decompte = cas_usage.executer()
     except Exception as erreur:
