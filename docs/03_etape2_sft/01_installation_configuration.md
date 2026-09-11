@@ -5,7 +5,7 @@
 > Les trois phases sans GPU de l'Étape 2 sont écrites et testées (voir
 > `02_etapes_cas_usage.md`) ; ce document en revanche décrit
 > spécifiquement l'Environnement B (GPU), qui reste entièrement à
-> provisionner : `training/sft_train.py` n'est pas encore écrit,
+> provisionner : `training/E2_04_sft_train.py` n'est pas encore écrit,
 > `recipes/sft_qwen3_lora.yaml` n'existe pas encore. Les commandes et
 > journaux ci-dessous restent des exemples illustratifs de ce qui est
 > attendu une fois ces deux éléments en place : ils ne sont pas
@@ -92,7 +92,7 @@ Deux sources sont possibles à ce jour :
 1. **HF Hub, dataset versionné (Livrable 1)** : prévu par le roadmap
    comme livrable de fin d'Étape 1, **pas encore réalisé**. C'est la
    source cible à terme (reproductible, versionnée, chargeable
-   directement dans `training/sft_train.py` via
+   directement dans `training/E2_04_sft_train.py` via
    `datasets.load_dataset`).
 2. **Fichiers locaux déjà produits** :
    `data/processed/dataset_pivot_anonymise.jsonl` découpé en splits
@@ -105,7 +105,7 @@ Deux sources sont possibles à ce jour :
 
 Cette dépendance n'est pas bloquante pour la planification (ce
 document), mais elle conditionne un choix d'implémentation réel :
-`training/sft_train.py` doit-il lire depuis HF Hub ou depuis
+`training/E2_04_sft_train.py` doit-il lire depuis HF Hub ou depuis
 `data/splits/*.jsonl` transférés manuellement dans l'Environnement B ?
 Voir `03_guide_implementation_pas_a_pas.md` §"Chargement du dataset"
 pour la proposition de conception (repository JSONL réutilisé en
@@ -157,7 +157,7 @@ explicitement `Qwen3-1.7B-Base` comme point de départ du SFT : passer
 ci-dessus) est nécessaire tant que le défaut n'est pas corrigé. Ce
 correctif est un changement de code d'une ligne, hors périmètre de ce
 document purement documentaire ; à traiter au moment où
-`training/sft_train.py` est effectivement écrit (`03_guide_implementation_pas_a_pas.md`).
+`training/E2_04_sft_train.py` est effectivement écrit (`03_guide_implementation_pas_a_pas.md`).
 
 **Décision (vérification manquante à ajouter, pas encore couverte par
 `check_env_gpu.py`)** : les quatre vérifications existantes confirment
@@ -171,7 +171,7 @@ cinquième vérification (`verifier_assistant_only_loss_reel`) qui
 applique la chat template sur un exemple à deux tours et contrôle que
 le masque produit correspond bien aux tokens du tour `assistant`
 attendu, plutôt que de supposer que la présence du flag suffit. À
-écrire en même temps que `training/sft_train.py` (voir
+écrire en même temps que `training/E2_04_sft_train.py` (voir
 `03_guide_implementation_pas_a_pas.md`), pas avant : le test n'a de
 sens qu'une fois un GPU/tokenizer réel disponible pour le vérifier.
 

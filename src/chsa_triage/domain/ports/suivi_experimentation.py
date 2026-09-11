@@ -2,7 +2,7 @@
 Port du suivi d'experimentation, partage par EntrainerSftUseCase et
 AjusterBoucleHyperparametresSftUseCase. Deux adaptateurs concrets
 prevus (`MlflowSuiviExperimentation`, `TensorboardSuiviExperimentation`),
-injectes par `training/sft_train.py` selon
+injectes par `training/E2_04_sft_train.py` selon
 `recipes/sft_qwen3_lora.yaml::suivi.backend` : ni les cas d'usage ni ce
 port ne connaissent le backend choisi.
 """

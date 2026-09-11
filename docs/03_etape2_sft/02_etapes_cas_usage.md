@@ -13,7 +13,7 @@
 > couvert par des tests réels (avec de faux adaptateurs en mémoire
 > pour les cas d'usage qui dépendent d'un port GPU) · **[CONCEPTION]**
 > = proposé ici, pas encore écrit, réservé à `TrlSftEntraineurAdapter`
-> et à `training/sft_train.py` (cf. légende complète de
+> et à `training/E2_04_sft_train.py` (cf. légende complète de
 > `docs/02_etape1_donnees/00_couverture_exigences_officielles.md`).
 
 ## Vue d'ensemble
@@ -45,7 +45,7 @@ découpage du roadmap (deux boîtes distinctes "Charger en 4-bit" et
 deux étapes. Elles restent des responsabilités internes de
 `TrlSftEntraineurAdapter` (constructeur, **pas encore écrit**, seul
 élément de ce document qui nécessite un GPU réel) et de l'assemblage de
-configuration que fera le point d'entrée `training/sft_train.py`
+configuration que fera le point d'entrée `training/E2_04_sft_train.py`
 (également pas encore écrit) à partir de `recipes/sft_qwen3_lora.yaml`
 (pas encore créé).
 
@@ -369,12 +369,12 @@ clôture). Tous deux sont testables en intégration réelle dès
 l'Environnement A (`mlflow`/`tensorboard` sont dans l'extra `local`,
 pas seulement `remote`) : `tests/infrastructure/test_mlflow_suivi_experimentation.py`,
 `tests/infrastructure/test_tensorboard_suivi_experimentation.py`.
-`training/sft_train.py` (pas encore écrit) injectera l'un des deux
+`training/E2_04_sft_train.py` (pas encore écrit) injectera l'un des deux
 selon `recipes/sft_qwen3_lora.yaml::suivi.backend`, sans que
 `EntrainerSftUseCase` ni `AjusterBoucleHyperparametresSftUseCase` n'aient
 à connaître lequel. Un adaptateur composite (loggant vers les deux à
 la fois) resterait possible sans changer le port, si le besoin se
-présente à l'implémentation de `training/sft_train.py`.
+présente à l'implémentation de `training/E2_04_sft_train.py`.
 
 ## Document suivant
 

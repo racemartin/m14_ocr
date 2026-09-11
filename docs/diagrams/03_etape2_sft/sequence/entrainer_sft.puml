@@ -1,12 +1,12 @@
 @startuml entrainer_sft
 !include ../../_common/estilo.iuml
 
-title Étape 2 : Diagramme de séquence\nEntraînement SFT-LoRA : toutes les classes ci-dessous sont écrites et testées, sauf TrlSftEntraineurAdapter et sft_train.py [CONCEPTION]
+title Étape 2 : Diagramme de séquence\nEntraînement SFT-LoRA : toutes les classes ci-dessous sont écrites et testées, sauf TrlSftEntraineurAdapter et E2_04_sft_train.py [CONCEPTION]
 
 actor "Développeur\n(Environnement B, GPU)" as Dev
 
 box "training" #F0EEE7
-  participant "sft_train.py\n[CONCEPTION]" as CLI
+  participant "E2_04_sft_train.py\n[CONCEPTION]" as CLI
 end box
 
 box "application/use_cases" #F0EEE7
@@ -30,7 +30,7 @@ end box
 
 autonumber "<b>0."
 
-Dev -> CLI : uv run python training/sft_train.py\n~-~-recette recipes/sft_qwen3_lora.yaml\n~-~-dataset data/splits/train.jsonl ~-~-validation data/splits/val.jsonl
+Dev -> CLI : uv run python training/E2_04_sft_train.py\n~-~-recette recipes/sft_qwen3_lora.yaml\n~-~-dataset data/splits/train.jsonl ~-~-validation data/splits/val.jsonl
 activate CLI
 
 note right of CLI

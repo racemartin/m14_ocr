@@ -129,13 +129,13 @@ dépendances déclarées en en-tête façon `uv script`, ou via
 hf jobs uv run --flavor t4-small \
   python -c "import torch; print(torch.cuda.get_device_name())"
 
-# Lancement réel du SFT (script fourni dans training/sft_train.py)
+# Lancement réel du SFT (script fourni dans training/E2_04_sft_train.py)
 hf jobs uv run \
   --flavor a10g-small \
   --timeout 6h \
   --with trl --with peft --with bitsandbytes --with unsloth \
   --secrets HF_TOKEN \
-  training/sft_train.py --config recipes/sft_qwen3_lora.yaml
+  training/E2_04_sft_train.py --config recipes/sft_qwen3_lora.yaml
 
 # Suivi
 hf jobs ps

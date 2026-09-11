@@ -19,11 +19,17 @@ if TYPE_CHECKING:  # pragma: no cover - uniquement pour les outils de typage
     from chsa_triage.infrastructure.adapters.chatml_formateur_adapter import (
         ChatMLFormateurAdapter,
     )
+    from chsa_triage.infrastructure.adapters.jsonl_checkpoint_repository import (
+        JsonlCheckpointRepository,
+    )
     from chsa_triage.infrastructure.adapters.jsonl_dataset_repository import (
         JsonlDatasetRepository,
     )
     from chsa_triage.infrastructure.adapters.jsonl_decisions_revision_humaine import (
         JsonlDecisionsRevisionHumaine,
+    )
+    from chsa_triage.infrastructure.adapters.jsonl_exemple_formate_repository import (
+        JsonlExempleFormateRepository,
     )
     from chsa_triage.infrastructure.adapters.jsonl_registre_echantillons_controle_qualite import (
         JsonlRegistreEchantillonsControleQualite,
@@ -49,6 +55,9 @@ if TYPE_CHECKING:  # pragma: no cover - uniquement pour les outils de typage
     from chsa_triage.infrastructure.adapters.tensorboard_suivi_experimentation import (
         TensorboardSuiviExperimentation,
     )
+    from chsa_triage.infrastructure.adapters.trl_sft_entraineur import (
+        TrlSftEntraineurAdapter,
+    )
     from chsa_triage.infrastructure.adapters.vllm_endpoint_inference_adapter import (
         VllmEndpointInferenceAdapter,
     )
@@ -58,8 +67,10 @@ if TYPE_CHECKING:  # pragma: no cover - uniquement pour les outils de typage
 
 __all__ = [
     "ChatMLFormateurAdapter",
+    "JsonlCheckpointRepository",
     "JsonlDatasetRepository",
     "JsonlDecisionsRevisionHumaine",
+    "JsonlExempleFormateRepository",
     "JsonlRegistreEchantillonsControleQualite",
     "LecteurCorpusFichierLocal",
     "LecteurCorpusHuggingFace",
@@ -68,6 +79,7 @@ __all__ = [
     "PresidioAnonymiseur",
     "SpacyVerificateurEntitesNommees",
     "TensorboardSuiviExperimentation",
+    "TrlSftEntraineurAdapter",
     "VllmEndpointInferenceAdapter",
     "YdataProfileur",
 ]
@@ -78,6 +90,10 @@ _CARTE_IMPORTS_PARESSEUX = {
         "chsa_triage.infrastructure.adapters.chatml_formateur_adapter",
         "ChatMLFormateurAdapter",
     ),
+    "JsonlCheckpointRepository": (
+        "chsa_triage.infrastructure.adapters.jsonl_checkpoint_repository",
+        "JsonlCheckpointRepository",
+    ),
     "JsonlDatasetRepository": (
         "chsa_triage.infrastructure.adapters.jsonl_dataset_repository",
         "JsonlDatasetRepository",
@@ -85,6 +101,10 @@ _CARTE_IMPORTS_PARESSEUX = {
     "JsonlDecisionsRevisionHumaine": (
         "chsa_triage.infrastructure.adapters.jsonl_decisions_revision_humaine",
         "JsonlDecisionsRevisionHumaine",
+    ),
+    "JsonlExempleFormateRepository": (
+        "chsa_triage.infrastructure.adapters.jsonl_exemple_formate_repository",
+        "JsonlExempleFormateRepository",
     ),
     "JsonlRegistreEchantillonsControleQualite": (
         "chsa_triage.infrastructure.adapters.jsonl_registre_echantillons_controle_qualite",
@@ -117,6 +137,10 @@ _CARTE_IMPORTS_PARESSEUX = {
     "TensorboardSuiviExperimentation": (
         "chsa_triage.infrastructure.adapters.tensorboard_suivi_experimentation",
         "TensorboardSuiviExperimentation",
+    ),
+    "TrlSftEntraineurAdapter": (
+        "chsa_triage.infrastructure.adapters.trl_sft_entraineur",
+        "TrlSftEntraineurAdapter",
     ),
     "VllmEndpointInferenceAdapter": (
         "chsa_triage.infrastructure.adapters.vllm_endpoint_inference_adapter",
