@@ -16,6 +16,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:  # pragma: no cover - uniquement pour les outils de typage
+    from chsa_triage.infrastructure.adapters.chatml_formateur_adapter import (
+        ChatMLFormateurAdapter,
+    )
     from chsa_triage.infrastructure.adapters.jsonl_dataset_repository import (
         JsonlDatasetRepository,
     )
@@ -34,11 +37,17 @@ if TYPE_CHECKING:  # pragma: no cover - uniquement pour les outils de typage
     from chsa_triage.infrastructure.adapters.llamacpp_inference_adapter import (
         LlamaCppInferenceAdapter,
     )
+    from chsa_triage.infrastructure.adapters.mlflow_suivi_experimentation import (
+        MlflowSuiviExperimentation,
+    )
     from chsa_triage.infrastructure.adapters.presidio_anonymiseur import (
         PresidioAnonymiseur,
     )
     from chsa_triage.infrastructure.adapters.spacy_verificateur_entites import (
         SpacyVerificateurEntitesNommees,
+    )
+    from chsa_triage.infrastructure.adapters.tensorboard_suivi_experimentation import (
+        TensorboardSuiviExperimentation,
     )
     from chsa_triage.infrastructure.adapters.vllm_endpoint_inference_adapter import (
         VllmEndpointInferenceAdapter,
@@ -48,20 +57,27 @@ if TYPE_CHECKING:  # pragma: no cover - uniquement pour les outils de typage
     )
 
 __all__ = [
+    "ChatMLFormateurAdapter",
     "JsonlDatasetRepository",
     "JsonlDecisionsRevisionHumaine",
     "JsonlRegistreEchantillonsControleQualite",
     "LecteurCorpusFichierLocal",
     "LecteurCorpusHuggingFace",
     "LlamaCppInferenceAdapter",
+    "MlflowSuiviExperimentation",
     "PresidioAnonymiseur",
     "SpacyVerificateurEntitesNommees",
+    "TensorboardSuiviExperimentation",
     "VllmEndpointInferenceAdapter",
     "YdataProfileur",
 ]
 
 # Correspondance nom expose -> (module, attribut) pour le chargement paresseux.
 _CARTE_IMPORTS_PARESSEUX = {
+    "ChatMLFormateurAdapter": (
+        "chsa_triage.infrastructure.adapters.chatml_formateur_adapter",
+        "ChatMLFormateurAdapter",
+    ),
     "JsonlDatasetRepository": (
         "chsa_triage.infrastructure.adapters.jsonl_dataset_repository",
         "JsonlDatasetRepository",
@@ -86,6 +102,10 @@ _CARTE_IMPORTS_PARESSEUX = {
         "chsa_triage.infrastructure.adapters.llamacpp_inference_adapter",
         "LlamaCppInferenceAdapter",
     ),
+    "MlflowSuiviExperimentation": (
+        "chsa_triage.infrastructure.adapters.mlflow_suivi_experimentation",
+        "MlflowSuiviExperimentation",
+    ),
     "PresidioAnonymiseur": (
         "chsa_triage.infrastructure.adapters.presidio_anonymiseur",
         "PresidioAnonymiseur",
@@ -93,6 +113,10 @@ _CARTE_IMPORTS_PARESSEUX = {
     "SpacyVerificateurEntitesNommees": (
         "chsa_triage.infrastructure.adapters.spacy_verificateur_entites",
         "SpacyVerificateurEntitesNommees",
+    ),
+    "TensorboardSuiviExperimentation": (
+        "chsa_triage.infrastructure.adapters.tensorboard_suivi_experimentation",
+        "TensorboardSuiviExperimentation",
     ),
     "VllmEndpointInferenceAdapter": (
         "chsa_triage.infrastructure.adapters.vllm_endpoint_inference_adapter",
