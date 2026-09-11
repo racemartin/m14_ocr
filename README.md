@@ -386,7 +386,8 @@ filtre sur `split != null`, retire les identifiants listes dans
 `data/processed/identifiants_a_exclure_publication.jsonl` (produit par
 l'etape 1), et, si le resultat filtre depasse `--taille`, le RECOUPE a
 exactement `--taille` par echantillonnage stratifie (type_exemple,
-source) avant d'ecrire dans `data/processed/dataset_sft_5000.jsonl` :
+source) avant d'ecrire dans `data/processed/dataset_chsa_triage_sft_anonymise_5000.jsonl`
+(le nom de sortie par defaut inclut la `--taille` reellement demandee) :
 la taille publiee correspond toujours a `--taille` demandee, jamais au
 surplus disponible apres filtrage. Publier uniquement ce sous-ensemble
 plutot que les 134 883 exemples du pivot complet reduit la surface
@@ -403,7 +404,7 @@ Exemples avec split (avant exclusion) : 10026
 Exclus (PII confirmee ou en attente de revision humaine) : 74
 Disponibles apres exclusion : 9952
 Recoupes par echantillonnage stratifie : -4952 (surplus au-dela de 5000)
-Ecrits dans data/processed/dataset_sft_5000.jsonl : 5000 exemple(s).
+Ecrits dans data/processed/dataset_chsa_triage_sft_anonymise_5000.jsonl : 5000 exemple(s).
 
 Repartition du sous-ensemble ecrit par strate (type_exemple, source) :
 Strate                                          Total           train             val            test
@@ -428,7 +429,7 @@ exclus de Git, voir le commentaire correspondant dans `.gitignore`) ;
 le fichier filtre de 5000 exemples est reproductible a tout moment a
 partir du pivot complet via les deux commandes ci-dessus.
 
-**Publication sur Hugging Face Hub.** Depot cible : `mombasstic/chsa-triage-sft-5000`,
+**Publication sur Hugging Face Hub.** Depot cible : `mombasstic/dataset_chsa_triage_sft_anonymise_5000`,
 prive par defaut, meme s'il ne contient que les 5000 exemples filtres
 et non le pivot complet : il s'agit toujours de texte medical
 anonymise, et la visibilite privee minimise l'exposition publique
@@ -442,18 +443,18 @@ de role "write" (`hf auth login`, voir
 
 ```bash
 # 1. Creer le depot (prive, type dataset) :
-hf repo create mombasstic/chsa-triage-sft-5000 --repo-type dataset --private
+hf repo create mombasstic/dataset_chsa_triage_sft_anonymise_5000 --repo-type dataset --private
 
 # 2. Publier le fichier de 5000 exemples :
-hf upload mombasstic/chsa-triage-sft-5000 data/processed/dataset_sft_5000.jsonl --repo-type dataset
+hf upload mombasstic/dataset_chsa_triage_sft_anonymise_5000 data/processed/dataset_chsa_triage_sft_anonymise_5000.jsonl --repo-type dataset
 
 # 3. Verifier la publication ET le nombre de lignes cote Hub (pas
 #    seulement en local) : le plus fiable est de retelecharger le
 #    fichier depuis le Hub puis de compter les lignes, sans dependre
 #    du "dataset viewer" de HF qui peut prendre du temps a traiter un
 #    fichier tout juste publie, surtout sur un depot prive.
-hf download mombasstic/chsa-triage-sft-5000 dataset_sft_5000.jsonl --repo-type dataset --local-dir /tmp/verificacion_hf
-wc -l /tmp/verificacion_hf/dataset_sft_5000.jsonl   # doit correspondre aux lignes du fichier local
+hf download mombasstic/dataset_chsa_triage_sft_anonymise_5000 dataset_chsa_triage_sft_anonymise_5000.jsonl --repo-type dataset --local-dir /tmp/verificacion_hf
+wc -l /tmp/verificacion_hf/dataset_chsa_triage_sft_anonymise_5000.jsonl   # doit correspondre aux lignes du fichier local
 ```
 
 **Limite de couverture connue :** l'exclusion ci-dessus ne peut porter
