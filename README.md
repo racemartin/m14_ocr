@@ -426,10 +426,35 @@ Le pivot anonymise complet (`dataset_pivot_anonymise.jsonl`) et le
 fichier d'exclusions restent locaux sous `data/processed/` (deja
 exclus de Git, voir le commentaire correspondant dans `.gitignore`) ;
 le fichier filtre de 5000 exemples est reproductible a tout moment a
-partir du pivot complet via les deux commandes ci-dessus. La
-publication sur Hugging Face Hub (nom du depot et visibilite encore a
-decider) reste une etape ulterieure, qui sera documentee separement
-une fois ces choix arretes.
+partir du pivot complet via les deux commandes ci-dessus.
+
+**Publication sur Hugging Face Hub.** Depot cible : `mombasstic/chsa-triage-sft-5000`,
+prive par defaut, meme s'il ne contient que les 5000 exemples filtres
+et non le pivot complet : il s'agit toujours de texte medical
+anonymise, et la visibilite privee minimise l'exposition publique
+tant que la couverture du controle qualite (§5) reste partielle (voir
+la limite de couverture ci-dessous). Le depot pourra etre rendu public
+plus tard depuis l'interface web de Hugging Face si souhaite.
+
+Nécessite une session Hugging Face ouverte au prealable avec un jeton
+de role "write" (`hf auth login`, voir
+`docs/01_environnement/00_guide_installation_environnement.md` §1.4).
+
+```bash
+# 1. Creer le depot (prive, type dataset) :
+hf repo create mombasstic/chsa-triage-sft-5000 --repo-type dataset --private
+
+# 2. Publier le fichier de 5000 exemples :
+hf upload mombasstic/chsa-triage-sft-5000 data/processed/dataset_sft_5000.jsonl --repo-type dataset
+
+# 3. Verifier la publication ET le nombre de lignes cote Hub (pas
+#    seulement en local) : le plus fiable est de retelecharger le
+#    fichier depuis le Hub puis de compter les lignes, sans dependre
+#    du "dataset viewer" de HF qui peut prendre du temps a traiter un
+#    fichier tout juste publie, surtout sur un depot prive.
+hf download mombasstic/chsa-triage-sft-5000 dataset_sft_5000.jsonl --repo-type dataset --local-dir /tmp/verificacion_hf
+wc -l /tmp/verificacion_hf/dataset_sft_5000.jsonl   # doit correspondre aux lignes du fichier local
+```
 
 **Limite de couverture connue :** l'exclusion ci-dessus ne peut porter
 que sur ce qui a deja ete AUDITE. Seul un sous-ensemble du pivot a ete
