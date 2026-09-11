@@ -6,7 +6,7 @@ title Anonymisation (Presidio) et contrôle qualité de la PII résiduelle\nDiag
 start
 
 partition "Étape 4 : Anonymisation (Presidio)" #FCEBE6 {
-  :interfaces/cli/anonymiser_dataset.py;
+  :interfaces/cli/E1_04_00_anonymiser_dataset.py;
   :AnonymiserDatasetUseCase.executer();
   :_anonymiser_exemple(exemple);
   :_anonymiser_messages\n(prompt / completion / chosen / rejected);
@@ -45,7 +45,7 @@ partition "Étape 4 : Anonymisation (Presidio)" #FCEBE6 {
 }
 
 partition "Étape 5 : Contrôle qualité (comparaison de 2 fichiers)" #F0EEE7 {
-  :interfaces/cli/controler_qualite_anonymisation.py;
+  :interfaces/cli/E1_04_02_controler_qualite_anonymisation.py;
   :Lit le pivot original +\ndataset_pivot_anonymise.jsonl;
   :ControlerQualiteAnonymisationUseCase.executer()\néchantillon_stratifie (type_exemple, source);
 

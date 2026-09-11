@@ -6,7 +6,7 @@ title Étape 1 : Diagramme de séquence\nTéléchargement d'un corpus depuis Hug
 actor "Développeur\n(ligne de commande)" as Dev
 
 box "interfaces/cli" #F0EEE7
-  participant "telecharger_corpus.py" as CLI
+  participant "E1_01_telecharger_corpus.py" as CLI
 end box
 
 box "infrastructure/adapters" #F0EEE7
@@ -19,7 +19,7 @@ end box
 
 autonumber "<b>0."
 
-Dev -> CLI : uv run python telecharger_corpus.py\n~-~-identifiant-hub ... ~-~-configuration ... ~-~-split ... ~-~-sortie ...
+Dev -> CLI : uv run python E1_01_telecharger_corpus.py\n~-~-identifiant-hub ... ~-~-configuration ... ~-~-split ... ~-~-sortie ...
 activate CLI
 
 note right of CLI

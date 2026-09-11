@@ -3,7 +3,7 @@ Entites du controle qualite d'anonymisation qui ne peuvent PAS etre
 calculees automatiquement : la decision d'une personne sur un candidat
 de PII residuelle que ni le regex ni la seconde opinion spaCy ne
 tranchent (`VERDICT_REVISION_HUMAINE`, cf.
-`application.use_cases.uc_03_02_controler_qualite_anonymisation`).
+`application.use_cases.E1_04_02_controler_qualite_anonymisation`).
 
 Aucune dependance externe ; comme le reste de `domain.model`, ces
 entites ne savent rien du format de fichier utilise pour les
@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from typing import NamedTuple
 
 # Les 3 listes de candidats de PII residuelle produites par
-# `ControleQualiteAnonymisation` (cf. uc_03_02) ; un candidat n'existe
+# `ControleQualiteAnonymisation` (cf. E1_04_02_controler_qualite_anonymisation) ; un candidat n'existe
 # que dans UNE de ces trois listes, jamais plusieurs a la fois.
 SOURCE_CANDIDATS_PII              = "candidats_pii"
 SOURCE_CANDIDATS_FAUX_POSITIFS    = "candidats_faux_positifs"

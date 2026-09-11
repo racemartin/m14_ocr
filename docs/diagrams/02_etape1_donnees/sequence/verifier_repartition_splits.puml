@@ -6,7 +6,7 @@ title Étape 1 : Diagramme de séquence\nVérification de la répartition des sp
 actor "Développeur\n(ligne de commande)" as Dev
 
 box "interfaces/cli" #F0EEE7
-  participant "verifier_repartition_splits.py" as CLI
+  participant "E1_05_01_verifier_repartition_splits.py" as CLI
 end box
 
 box "application" #F0EEE7
@@ -19,7 +19,7 @@ end box
 
 autonumber "<b>0."
 
-Dev -> CLI : uv run python verifier_repartition_splits.py\n~-~-dataset ...
+Dev -> CLI : uv run python E1_05_01_verifier_repartition_splits.py\n~-~-dataset ...
 activate CLI
 
 CLI -> Repo : new(chemin_dataset)
@@ -45,7 +45,7 @@ UC --> CLI : repartition\ndict[(type_exemple, source), dict[split, int]]
 deactivate UC
 
 note right of CLI
-  decouper_splits.py n'affiche que le total
+  E1_05_00_decouper_splits.py n'affiche que le total
   global par split. Ce script existe pour
   verifier la representativite par STRATE :
   une petite source (ex. FrenchMedMCQA) ne

@@ -12,11 +12,11 @@ from collections.abc import Iterable
 from dataclasses import replace
 from uuid import uuid4
 
-from chsa_triage.application.use_cases.uc_03_02_controler_qualite_anonymisation import (
+from chsa_triage.application.use_cases.E1_04_02_controler_qualite_anonymisation import (
     STRATUM_PRINCIPAL,
     STRATUM_SANS_ENTITE,
 )
-from chsa_triage.application.use_cases.uc_03_03_reviser_pii_residuelle import (
+from chsa_triage.application.use_cases.E1_04_01_reviser_pii_residuelle import (
     ReviserPiiResiduelleUseCase,
     texte_original_et_anonymise,
 )

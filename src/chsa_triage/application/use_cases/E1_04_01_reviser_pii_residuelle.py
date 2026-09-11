@@ -2,13 +2,13 @@
 Cas d'usage : fermer reellement l'exigence NF2 du cahier des charges
 ("anonymisation validee MANUELLEMENT, 0 PII residuelle sur echantillon
 de controle") en donnant a une personne le moyen de trancher les
-candidats que `controler_qualite_anonymisation.py` marque
+candidats que `E1_04_02_controler_qualite_anonymisation.py` marque
 `VERDICT_REVISION_HUMAINE` ; ni le regex ni la seconde opinion spaCy
 ne les tranchent seuls ; et de PERSISTER sa decision.
 
 Design "replay cumule" (09/09/2026) : a cause du
 muestreo incremental de `ControlerQualiteAnonymisationUseCase` (cf.
-uc_03_02), le rapport d'une execution donnee ne contient QUE les
+E1_04_02_controler_qualite_anonymisation), le rapport d'une execution donnee ne contient QUE les
 candidats du lot fraichement echantillonne ; il ne suffit donc pas de
 relire le dernier rapport JSON pour trouver TOUS les candidats en
 attente de revision humaine. Ce cas d'usage recalcule plutot la
@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from chsa_triage.application.use_cases.uc_03_02_controler_qualite_anonymisation import (
+from chsa_triage.application.use_cases.E1_04_02_controler_qualite_anonymisation import (
     JETON_MASQUE_DEFAUT,
     STRATUM_PRINCIPAL,
     STRATUM_SANS_ENTITE,
@@ -134,7 +134,7 @@ def texte_original_et_anonymise(
 @dataclass(slots=True)
 class ReviserPiiResiduelleUseCase:
     """
-    Orchestre le mode verification de `reviser_pii_residuelle.py` :
+    Orchestre le mode verification de `E1_04_01_reviser_pii_residuelle.py` :
     recalcule les candidats REVISION_HUMAINE sur tout ce qui a deja ete
     echantillonne pour le controle qualite, exclut ceux ayant deja une
     decision humaine, et persiste chaque nouvelle decision IMMEDIATEMENT.
@@ -206,7 +206,7 @@ class ReviserPiiResiduelleUseCase:
     def identifiants_a_exclure_publication(self) -> dict[str, str]:
         """
         Identifiants a exclure d'une publication (ex. sous-ensemble SFT,
-        cf. `interfaces/cli/reviser_pii_residuelle.py exporter`) : au
+        cf. `interfaces/cli/E1_04_01_reviser_pii_residuelle.py exporter`) : au
         moins un candidat VERDICT_CONFIRME (fuite non ambigue, jamais
         soumise a decision humaine), ou au moins un candidat
         VERDICT_REVISION_HUMAINE sans decision DECISION_ACCEPTE

@@ -6,15 +6,15 @@ charges : anonymisation validee MANUELLEMENT, 0 PII residuelle sur
 echantillon de controle).
 
 Avant ce script, `CandidatPiiResiduelle.verdict == VERDICT_REVISION_HUMAINE`
-(cf. `controler_qualite_anonymisation.py`) restait un cul-de-sac : ni
+(cf. `E1_04_02_controler_qualite_anonymisation.py`) restait un cul-de-sac : ni
 le regex ni la seconde opinion spaCy ne tranchent, et aucune decision
 de personne n'etait jamais persistee. Ce script ferme cet ecart avec
 trois modes :
 
 - `verify` : recalcule (replay deterministe, cf.
-  `uc_03_03_reviser_pii_residuelle.ReviserPiiResiduelleUseCase`) TOUS
+  `E1_04_01_reviser_pii_residuelle.ReviserPiiResiduelleUseCase`) TOUS
   les candidats REVISION_HUMAINE sur TOUT ce qui a deja ete echantillonne
-  par `controler_qualite_anonymisation.py` (les deux strates), exclut
+  par `E1_04_02_controler_qualite_anonymisation.py` (les deux strates), exclut
   ceux ayant deja une decision, et pour chaque candidat restant,
   demande interactivement d'accepter/rejeter/sauter ; la decision est
   persistee IMMEDIATEMENT apres chaque reponse (pas en fin de lot), donc
@@ -34,13 +34,13 @@ trois modes :
   dedans.
 
 Usage :
-    uv run python interfaces/cli/reviser_pii_residuelle.py verify \
+    uv run python interfaces/cli/E1_04_01_reviser_pii_residuelle.py verify \
         --dataset data/processed/dataset_pivot.jsonl \
         --anonymise data/processed/dataset_pivot_anonymise.jsonl
 
-    uv run python interfaces/cli/reviser_pii_residuelle.py modify --identifiant chsa-xxxxxxxx
+    uv run python interfaces/cli/E1_04_01_reviser_pii_residuelle.py modify --identifiant chsa-xxxxxxxx
 
-    uv run python interfaces/cli/reviser_pii_residuelle.py exporter \
+    uv run python interfaces/cli/E1_04_01_reviser_pii_residuelle.py exporter \
         --dataset data/processed/dataset_pivot.jsonl \
         --anonymise data/processed/dataset_pivot_anonymise.jsonl
 """
@@ -53,8 +53,8 @@ from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 
-from chsa_triage.application.use_cases.uc_03_02_controler_qualite_anonymisation import JETON_MASQUE_DEFAUT
-from chsa_triage.application.use_cases.uc_03_03_reviser_pii_residuelle import (
+from chsa_triage.application.use_cases.E1_04_02_controler_qualite_anonymisation import JETON_MASQUE_DEFAUT
+from chsa_triage.application.use_cases.E1_04_01_reviser_pii_residuelle import (
     RAISON_CONFIRME,
     CandidatARevoir,
     ReviserPiiResiduelleUseCase,

@@ -4,9 +4,9 @@ Point d'entree CLI, Etape 1, action "extraire le sous-ensemble SFT
 destine a la publication" (§9 du README).
 
 Filtre le pivot ANONYMISE (`--dataset`) sur les exemples deja repartis
-en split (`split is not None`, cf. `decouper_splits.py`), retire ceux
+en split (`split is not None`, cf. `E1_05_00_decouper_splits.py`), retire ceux
 listes dans `--exclusions` (produit par
-`reviser_pii_residuelle.py exporter`, cf. §6 et §9 du README :
+`E1_04_01_reviser_pii_residuelle.py exporter`, cf. §6 et §9 du README :
 identifiants portant un candidat VERDICT_CONFIRME ou
 VERDICT_REVISION_HUMAINE sans decision DECISION_ACCEPTE), et ecrit le
 resultat dans `--sortie`.
@@ -14,7 +14,7 @@ resultat dans `--sortie`.
 C'est une SOUSTRACTION, pas un nouveau muestreo : si le resultat, apres
 exclusion, est plus petit que `--taille`, ce script ne tente jamais de
 completer automatiquement le manque (ce role reste a
-`decouper_splits.py --n`, a relancer separement avec un `--n` plus
+`E1_05_00_decouper_splits.py --n`, a relancer separement avec un `--n` plus
 grand avant de reessayer l'extraction) ; il se contente d'indiquer
 clairement combien d'exemples restent et combien manquent.
 
@@ -24,11 +24,11 @@ stratifie (type_exemple, source) : la taille publiee correspond
 toujours a `--taille` demandee (jamais au surplus disponible).
 
 Usage :
-    uv run python interfaces/cli/reviser_pii_residuelle.py exporter \
+    uv run python interfaces/cli/E1_04_01_reviser_pii_residuelle.py exporter \
         --dataset data/processed/dataset_pivot.jsonl \
         --anonymise data/processed/dataset_pivot_anonymise.jsonl
 
-    uv run python interfaces/cli/extraire_sous_ensemble_sft.py \
+    uv run python interfaces/cli/E1_05_03_extraire_sous_ensemble_sft.py \
         --dataset data/processed/dataset_pivot_anonymise.jsonl \
         --exclusions data/processed/identifiants_a_exclure_publication.jsonl \
         --taille 5000
@@ -145,7 +145,7 @@ def main() -> None:
             "elargir le decoupage des splits d'abord, ex. :"
         )
         print(
-            f"  uv run python interfaces/cli/decouper_splits.py --dataset {arguments.dataset} "
+            f"  uv run python interfaces/cli/E1_05_00_decouper_splits.py --dataset {arguments.dataset} "
             f"--n {arguments.taille + cas_usage.nombre_exclus}"
         )
         print("puis relancer cette extraction.")

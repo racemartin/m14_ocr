@@ -7,7 +7,7 @@ start
 
 partition "Par corpus (MediQAl, FrenchMedMCQA, MedQuAD, UltraMedical-Preference)" {
   :Placer le corpus brut dans data/raw/;
-  :interfaces/cli/profiler_corpus.py\n(ProfilerCorpusUseCase);
+  :interfaces/cli/E1_02_profiler_corpus.py\n(ProfilerCorpusUseCase);
   note right
     Adaptateurs injectés :
     LecteurCorpusFichierLocal
@@ -19,23 +19,23 @@ partition "Par corpus (MediQAl, FrenchMedMCQA, MedQuAD, UltraMedical-Preference)
   else (non)
   endif
 
-  :interfaces/cli/construire_dataset_pivot.py\n(ConstruireDatasetPivotUseCase);
+  :interfaces/cli/E1_03_00_construire_dataset_pivot.py\n(ConstruireDatasetPivotUseCase);
   note right
     Mapper spécifique au corpus
-    (mappers_corpus.py) injecté
+    (E1_03_01_mappers_corpus.py) injecté
     ici, pas dans le port
   end note
 }
 
 :Dataset pivot consolidé\n(data/processed/dataset_pivot.jsonl);
 
-:interfaces/cli/anonymiser_dataset.py\n(AnonymiserDatasetUseCase);
+:interfaces/cli/E1_04_00_anonymiser_dataset.py\n(AnonymiserDatasetUseCase);
 note right
   Adaptateur : PresidioAnonymiseur
   Stratégie : replace / mask / redact
 end note
 
-:interfaces/cli/decouper_splits.py\n(DecouperSplitsUseCase);
+:interfaces/cli/E1_05_00_decouper_splits.py\n(DecouperSplitsUseCase);
 note right
   Test clinique isolé, jamais
   réutilisé en entraînement

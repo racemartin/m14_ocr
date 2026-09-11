@@ -1,13 +1,13 @@
 """Point d'entree du sous-paquet application.use_cases."""
 
-from chsa_triage.application.use_cases.uc_03_00_anonymiser_dataset import (
+from chsa_triage.application.use_cases.E1_04_00_anonymiser_dataset import (
     AnonymiserDatasetUseCase,
     StatistiquesSource,
 )
-from chsa_triage.application.use_cases.uc_02_construire_dataset_pivot import (
+from chsa_triage.application.use_cases.E1_03_00_construire_dataset_pivot import (
     ConstruireDatasetPivotUseCase,
 )
-from chsa_triage.application.use_cases.uc_03_02_controler_qualite_anonymisation import (
+from chsa_triage.application.use_cases.E1_04_02_controler_qualite_anonymisation import (
     STRATUM_PRINCIPAL,
     STRATUM_SANS_ENTITE,
     CandidatFauxPositifAnonymisation,
@@ -19,37 +19,37 @@ from chsa_triage.application.use_cases.uc_03_02_controler_qualite_anonymisation 
     cle_candidat_pii,
     controle_vers_dict,
 )
-from chsa_triage.application.use_cases.uc_03_02_controler_qualite_anonymisation import (
+from chsa_triage.application.use_cases.E1_04_02_controler_qualite_anonymisation import (
     formater_rapport_markdown as formater_rapport_controle_qualite_markdown,
 )
-from chsa_triage.application.use_cases.uc_03_03_reviser_pii_residuelle import (
+from chsa_triage.application.use_cases.E1_04_01_reviser_pii_residuelle import (
     CandidatARevoir,
     ReviserPiiResiduelleUseCase,
     candidats_a_revoir,
 )
-from chsa_triage.application.use_cases.uc_04_00_decouper_splits import (
+from chsa_triage.application.use_cases.E1_05_00_decouper_splits import (
     DecouperSplitsUseCase,
 )
-from chsa_triage.application.use_cases.uc_01_profiler_corpus import (
+from chsa_triage.application.use_cases.E1_02_profiler_corpus import (
     ProfilerCorpusUseCase,
 )
-from chsa_triage.application.use_cases.uc_03_01_rapport_anonymisation import (
+from chsa_triage.application.use_cases.E1_04_03_rapport_anonymisation import (
     ExecutionAnonymisation,
     RapportAnonymisationCumule,
     fusionner_execution,
     rapport_depuis_dict,
     rapport_vers_dict,
 )
-from chsa_triage.application.use_cases.uc_03_01_rapport_anonymisation import (
+from chsa_triage.application.use_cases.E1_04_03_rapport_anonymisation import (
     formater_rapport_markdown as formater_rapport_anonymisation_markdown,
 )
-from chsa_triage.application.use_cases.uc_03_01_rapport_anonymisation import (
+from chsa_triage.application.use_cases.E1_04_03_rapport_anonymisation import (
     formater_resume_console as formater_resume_anonymisation_console,
 )
-from chsa_triage.application.use_cases.uc_04_01_verifier_repartition_splits import (
+from chsa_triage.application.use_cases.E1_05_01_verifier_repartition_splits import (
     VerifierRepartitionSplitsUseCase,
 )
-from chsa_triage.application.use_cases.uc_04_02_extraire_sous_ensemble_sft import (
+from chsa_triage.application.use_cases.E1_05_03_extraire_sous_ensemble_sft import (
     ExtraireSousEnsembleSftUseCase,
     calculer_repartition_par_strate,
     formater_tableau_repartition,

@@ -3,7 +3,7 @@ STEP 02
 Point d'entree CLI, Etape 1, action "construire le dataset pivot".
 
 Usage :
-    uv run python interfaces/cli/construire_dataset_pivot.py \
+    uv run python interfaces/cli/E1_03_00_construire_dataset_pivot.py \
         --source data/raw/mediqal.jsonl \
         --corpus mediqal \
         --sortie data/processed/dataset_pivot.jsonl
@@ -13,7 +13,7 @@ ultramedical_preference.jsonl, 966 Mo, 5.8 Go de RAM disponibles) :
 sans lecture par blocs, `LecteurCorpusFichierLocal` charge tout le
 fichier source en DataFrame pandas d'un coup avant de le convertir en
 dicts, meme probleme deja documente et corrige cote
-`profiler_corpus.py --bloque`. Avec --taille-bloc N, la lecture du
+`E1_02_profiler_corpus.py --bloque`. Avec --taille-bloc N, la lecture du
 fichier source se fait par blocs de N lignes (pandas chunksize) :
 chaque bloc est converti puis mappe avant que le suivant soit charge,
 la memoire de pointe reste bornee par la taille du bloc. Les exemples
@@ -45,7 +45,7 @@ from chsa_triage.infrastructure.adapters import (
     LecteurCorpusFichierLocal,
 )
 from chsa_triage.infrastructure.adapters.jsonl_dataset_repository import ajouter_exemples_jsonl
-from interfaces.cli.mappers_corpus import MAPPERS_PAR_CORPUS
+from interfaces.cli.E1_03_01_mappers_corpus import MAPPERS_PAR_CORPUS
 from tools.rafael.log_tool import LogTool
 
 log = LogTool(origin="construire_dataset_pivot")

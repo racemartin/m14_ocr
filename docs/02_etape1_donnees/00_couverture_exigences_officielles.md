@@ -43,13 +43,13 @@ sur données réelles restant à faire · [A FAIRE] pas encore commencé.
 
 | Exigence officielle | Statut | Où le trouver |
 |---|---|---|
-| Collecter le corpus bilingue | [FAIT] Les 6 fichiers réels (4 sources, MediQAl en 3 fichiers) sont téléchargés dans `data/raw/` (`telecharger_corpus.py`) | `LecteurCorpusFichierLocal`, `LecteurCorpusHuggingFace`, `telecharger_corpus.py` ; cahier des charges §5.1 |
-| Nettoyer et structurer | [FAIT] `ProfilerCorpusUseCase` + adaptateur `ydata-profiling` **validés par smoke test réel** (voir section dédiée ci-dessous) ; les 6 fichiers réels sont profilés (`data/processed/rapports_profilage/`), y compris `ultramedical_preference.jsonl` (966 Mo) via l'option `--bloque` | `profiler_corpus.py` ; diagramme d'activité Étape 1 |
-| ≈5 000 paires SFT | [FAIT] Les 5 fichiers SFT (MediQAl-oeq/mcqu/mcqm, FrenchMedMCQA, MedQuAD) sont mappés et fusionnés dans `data/processed/dataset_pivot.jsonl` : **37 802 exemples SFT réels** (pivot régénéré le 08/09/2026 avec identifiants déterministes, 49 doublons exacts dédoublonnés sur les 37 851 d'origine; voir section dédiée), largement au-dessus des ≈5 000 attendus | `construire_dataset_pivot.py`, `mappers_corpus.py` |
+| Collecter le corpus bilingue | [FAIT] Les 6 fichiers réels (4 sources, MediQAl en 3 fichiers) sont téléchargés dans `data/raw/` (`E1_01_telecharger_corpus.py`) | `LecteurCorpusFichierLocal`, `LecteurCorpusHuggingFace`, `E1_01_telecharger_corpus.py` ; cahier des charges §5.1 |
+| Nettoyer et structurer | [FAIT] `ProfilerCorpusUseCase` + adaptateur `ydata-profiling` **validés par smoke test réel** (voir section dédiée ci-dessous) ; les 6 fichiers réels sont profilés (`data/processed/rapports_profilage/`), y compris `ultramedical_preference.jsonl` (966 Mo) via l'option `--bloque` | `E1_02_profiler_corpus.py` ; diagramme d'activité Étape 1 |
+| ≈5 000 paires SFT | [FAIT] Les 5 fichiers SFT (MediQAl-oeq/mcqu/mcqm, FrenchMedMCQA, MedQuAD) sont mappés et fusionnés dans `data/processed/dataset_pivot.jsonl` : **37 802 exemples SFT réels** (pivot régénéré le 08/09/2026 avec identifiants déterministes, 49 doublons exacts dédoublonnés sur les 37 851 d'origine; voir section dédiée), largement au-dessus des ≈5 000 attendus | `E1_03_00_construire_dataset_pivot.py`, `E1_03_01_mappers_corpus.py` |
 | Paires DPO validées cliniquement | [OUTILLAGE PRET] Mapper technique prêt **et corrigé** (`mapper_ultramedical_preference` extrayait mal chosen/rejected, voir section dédiée) et exécuté sur données réelles : **97 081 paires DPO réelles** (pivot régénéré le 08/09/2026, 12 272 doublons exacts dédoublonnés sur les 109 353 d'origine; voir section dédiée) ; la validation clinique par un expert est hors du périmètre purement technique et reste à planifier avec le CHSA | même fichier ; objectifs §3.2-3.3 |
-| Anonymisation + documentation RGPD | [FAIT] Adaptateur `PresidioAnonymiseur` **validé par smoke test réel** ; bug de performance O(n²) corrigé ; processus incrémental/reprenable (`--limite`, échantillonnage stratifié). **Refonte 08/09/2026** : identifiants déterministes (§ dédiée), dataset pivot **régénéré** avec dédoublonnage réel, et l'anonymisation écrit désormais dans un fichier **séparé** (`dataset_pivot_anonymise.jsonl`); le pivot original n'est plus jamais modifié. Chaque exécution génère automatiquement/fusionne un **rapport RGPD cumulé** (JSON + Markdown, `application/use_cases/uc_03_01_rapport_anonymisation.py`); remplace le calcul manuel ponctuel. Contrôle qualité désormais **automatisé** par comparaison de fichiers (`uc_03_02_controler_qualite_anonymisation.py`, regex + seconde opinion spaCy) plutôt qu'une relecture manuelle ponctuelle; voir § dédiée et `01_rapport_rgpd.md` | `AnonymiserDatasetUseCase` ; `ControlerQualiteAnonymisationUseCase` ; `docs/02_etape1_donnees/01_rapport_rgpd.md` ; cahier des charges NF2 |
+| Anonymisation + documentation RGPD | [FAIT] Adaptateur `PresidioAnonymiseur` **validé par smoke test réel** ; bug de performance O(n²) corrigé ; processus incrémental/reprenable (`--limite`, échantillonnage stratifié). **Refonte 08/09/2026** : identifiants déterministes (§ dédiée), dataset pivot **régénéré** avec dédoublonnage réel, et l'anonymisation écrit désormais dans un fichier **séparé** (`dataset_pivot_anonymise.jsonl`); le pivot original n'est plus jamais modifié. Chaque exécution génère automatiquement/fusionne un **rapport RGPD cumulé** (JSON + Markdown, `application/use_cases/E1_04_03_rapport_anonymisation.py`); remplace le calcul manuel ponctuel. Contrôle qualité désormais **automatisé** par comparaison de fichiers (`E1_04_02_controler_qualite_anonymisation.py`, regex + seconde opinion spaCy) plutôt qu'une relecture manuelle ponctuelle; voir § dédiée et `01_rapport_rgpd.md` | `AnonymiserDatasetUseCase` ; `ControlerQualiteAnonymisationUseCase` ; `docs/02_etape1_donnees/01_rapport_rgpd.md` ; cahier des charges NF2 |
 | Schéma de métadonnées | [FAIT] Défini **et implémenté** comme entité de domaine (`ExemplePivot`, `ConstantesVitales`) ; `identifiant` déterministe + `identifiant_source_brute` (traçabilité vers le registre brut d'origine) ajoutés le 08/09/2026 | `domain/model/exemple_pivot.py` ; cahier des charges §5.2 ; diagramme de paquets Étape 1 |
-| Splits train / val / test + éval clinique isolée | [OUTILLAGE PRET] `DecouperSplitsUseCase` implémenté et testé, découpage stratifié par (type_exemple, source), sous-échantillonnage optionnel (`--n`) ; opère désormais sur `dataset_pivot_anonymise.jsonl` (fichier de sortie séparé, cf. § dédiée) ; à relancer après chaque vague d'anonymisation supplémentaire | `decouper_splits.py` ; `verifier_repartition_splits.py` ; `tests/application/` |
+| Splits train / val / test + éval clinique isolée | [OUTILLAGE PRET] `DecouperSplitsUseCase` implémenté et testé, découpage stratifié par (type_exemple, source), sous-échantillonnage optionnel (`--n`) ; opère désormais sur `dataset_pivot_anonymise.jsonl` (fichier de sortie séparé, cf. § dédiée) ; à relancer après chaque vague d'anonymisation supplémentaire | `E1_05_00_decouper_splits.py` ; `E1_05_01_verifier_repartition_splits.py` ; `tests/application/` |
 
 ## Couverture des prérequis
 
@@ -78,8 +78,8 @@ sur données réelles restant à faire · [A FAIRE] pas encore commencé.
 > mockées.
 
 **Pipeline exécuté de bout en bout avec succès :**
-`profiler_corpus.py` → `construire_dataset_pivot.py` (2 corpus
-fusionnés) → `anonymiser_dataset.py` → `decouper_splits.py`.
+`E1_02_profiler_corpus.py` → `E1_03_00_construire_dataset_pivot.py` (2 corpus
+fusionnés) → `E1_04_00_anonymiser_dataset.py` → `E1_05_00_decouper_splits.py`.
 
 ### Deux bugs réels découverts et corrigés à cette occasion
 
@@ -133,13 +133,13 @@ section documente le profilage **réel** des 6 fichiers de
 
 ### Bug réel : OOM sur ultramedical_preference.jsonl (966 Mo)
 
-`profiler_corpus.py` sans option chargeait tout le fichier en memoire
+`E1_02_profiler_corpus.py` sans option chargeait tout le fichier en memoire
 (pandas DataFrame -> liste de dicts -> nouveau DataFrame pour
 `ydata-profiling`) : sur cette WSL2 a 5.8 Go de RAM, le processus
 etait tue par l'OOM killer Linux (confirme via `dmesg`, aucune trace
 Python puisque le kill est externe au processus). Corrige par l'ajout
 de `LecteurCorpusFichierLocal(taille_bloc=N)` (lecture pandas
-`chunksize`) et de l'option `--bloque N` de `profiler_corpus.py`, qui
+`chunksize`) et de l'option `--bloque N` de `E1_02_profiler_corpus.py`, qui
 produit un rapport `ydata-profiling` complet par bloc plutot qu'un
 seul rapport sur la totalite. **Limite assumee et documentee** :
 correlations et taux de doublons calcules par bloc, jamais sur la
@@ -180,8 +180,8 @@ dernier message de la liste.
 
 
 1. ~~Télécharger les 6 fichiers réels dans `data/raw/`.~~ Fait le
-   03/09/2026, refait le 07/09/2026 (`telecharger_corpus.py`).
-2. ~~Exécuter `profiler_corpus.py` sur chacun (rapport ydata-profiling).~~
+   03/09/2026, refait le 07/09/2026 (`E1_01_telecharger_corpus.py`).
+2. ~~Exécuter `E1_02_profiler_corpus.py` sur chacun (rapport ydata-profiling).~~
    Fait le 03/09/2026 pour les 6 fichiers (`ultramedical_preference.jsonl`
    via `--bloque`, voir section dédiée ci-dessus).
 3. ~~Écrire le mapper QCM manquant pour MediQAl mcqu/mcqm et corriger
@@ -251,7 +251,7 @@ réel : 595 exemples (split `train`), **0 rejet**.
 
 ## Construction du dataset pivot sur les 6 fichiers réels (07/09/2026)
 
-Pipeline `construire_dataset_pivot.py` exécuté pour de vrai sur les 6
+Pipeline `E1_03_00_construire_dataset_pivot.py` exécuté pour de vrai sur les 6
 fichiers de `data/raw/` (téléchargés dans cette session, comptes
 identiques à ceux déjà documentés) :
 
@@ -276,9 +276,9 @@ lecture par blocs, `LecteurCorpusFichierLocal` charge tout le fichier
 source en DataFrame pandas d'un coup; sur `ultramedical_preference.jsonl`
 (966 Mo, 109 353 enregistrements), ceci a provoqué un épuisement
 mémoire réel sur l'environnement de 5.8 Go de RAM disponible (déjà
-documenté côté `profiler_corpus.py --bloque`, mais pas encore côté
-`construire_dataset_pivot.py`). Option `--taille-bloc N` ajoutée à
-`construire_dataset_pivot.py`, même principe que `profiler_corpus.py`
+documenté côté `E1_02_profiler_corpus.py --bloque`, mais pas encore côté
+`E1_03_00_construire_dataset_pivot.py`). Option `--taille-bloc N` ajoutée à
+`E1_03_00_construire_dataset_pivot.py`, même principe que `E1_02_profiler_corpus.py`
 (lecture pandas par blocs de N lignes, mémoire de pointe bornée par la
 taille du bloc). Utilisée avec succès (`--taille-bloc 5000`) pour
 produire les 109 353 exemples DPO ci-dessus sans OOM.
@@ -358,7 +358,7 @@ prise le 08/09/2026, après évaluation; l'alternative
 est conservé dans le pivot ; les registres écartés sont archivés (pas
 silencieusement perdus) dans **`data/processed/doublons_supprimes.jsonl`**
 (12 321 lignes, format `ExemplePivot`, un fichier partagé entre les 6
-exécutions de `construire_dataset_pivot.py`, mode ajout).
+exécutions de `E1_03_00_construire_dataset_pivot.py`, mode ajout).
 
 **Investigation légère sur la cause des doublons UltraMedical-Preference**
 (hypothèse retenue : chevauchement entre/dans les datasets
@@ -384,7 +384,7 @@ qualité), pas nécessaire pour trancher la décision de dédoublonnage.
 
 ### Régénération complète du pivot (08/09/2026)
 
-Les 6 commandes de `construire_dataset_pivot.py` (§ README) ont été
+Les 6 commandes de `E1_03_00_construire_dataset_pivot.py` (§ README) ont été
 ré-exécutées depuis zéro sur les mêmes fichiers `data/raw/` (aucun
 re-téléchargement), avec les mappers mis à jour (identifiant
 déterministe) :
@@ -414,10 +414,10 @@ Sur le pivot régénéré (134 883 exemples, § précédente), le nouveau
 pipeline a été exécuté de bout en bout pour de vrai (pas un test) :
 
 ```bash
-uv run python interfaces/cli/anonymiser_dataset.py --dataset data/processed/dataset_pivot.jsonl --sortie data/processed/dataset_pivot_anonymise.jsonl --strategie replace --limite 5000
-uv run python interfaces/cli/controler_qualite_anonymisation.py --dataset data/processed/dataset_pivot.jsonl --anonymise data/processed/dataset_pivot_anonymise.jsonl --taille-echantillon 200
-uv run python interfaces/cli/decouper_splits.py --dataset data/processed/dataset_pivot_anonymise.jsonl
-uv run python interfaces/cli/verifier_repartition_splits.py --dataset data/processed/dataset_pivot_anonymise.jsonl
+uv run python interfaces/cli/E1_04_00_anonymiser_dataset.py --dataset data/processed/dataset_pivot.jsonl --sortie data/processed/dataset_pivot_anonymise.jsonl --strategie replace --limite 5000
+uv run python interfaces/cli/E1_04_02_controler_qualite_anonymisation.py --dataset data/processed/dataset_pivot.jsonl --anonymise data/processed/dataset_pivot_anonymise.jsonl --taille-echantillon 200
+uv run python interfaces/cli/E1_05_00_decouper_splits.py --dataset data/processed/dataset_pivot_anonymise.jsonl
+uv run python interfaces/cli/E1_05_01_verifier_repartition_splits.py --dataset data/processed/dataset_pivot_anonymise.jsonl
 ```
 
 **Anonymisation** (durée réelle mesurée : 57 min 48 s pour 5 000
@@ -468,12 +468,12 @@ rapport dans `data/processed/rapport_controle_qualite_anonymisation.{json,md}`) 
 (décision du capitaine, 10/09/2026)** : un `ExemplePivot` portant au
 moins un candidat de PII résiduelle encore SANS décision humaine
 persistée (`en attente de revision humaine` ci-dessus) est exclu par
-précaution du décrédelage `decouper_splits.py`, plutôt que de bloquer
+précaution du décrédelage `E1_05_00_decouper_splits.py`, plutôt que de bloquer
 le pipeline en attendant qu'une personne tranche chaque candidat un
 par un ; voir `DecouperSplitsUseCase.obtenir_identifiants_pii_en_attente`
 et `ReviserPiiResiduelleUseCase.identifiants_en_attente`. Cet exemple
 reste sans `split` (ni train, ni val, ni test) jusqu'à ce qu'une
-décision humaine soit prise (`reviser_pii_residuelle.py verify`) ou
+décision humaine soit prise (`E1_04_01_reviser_pii_residuelle.py verify`) ou
 que le candidat cesse d'exister après un reproces. Conséquence directe
 sur la lecture de l'exigence NF2 : **« 0 PII résiduelle validée
 manuellement »** ne couvre que les candidats ayant effectivement reçu
@@ -491,7 +491,7 @@ Cette exécution remplace la « première vague » historique (§
 ci-dessous, ancien pivot à identifiants aléatoires) sous le nouveau
 schéma reproductible. **142 204 exemples restaient dans l'ancien
 schéma ; il en reste désormais 129 883** (134 883 − 5 000) à traiter
-par des vagues ultérieures (`anonymiser_dataset.py --limite N` plus
+par des vagues ultérieures (`E1_04_00_anonymiser_dataset.py --limite N` plus
 grand, ou `full`).
 
 ## Anonymisation réelle (ANCIEN schéma, ids aléatoires) : bug de performance O(n²) corrigé, decision produit appliquée, premiere vague exécutée (07-08/09/2026)
@@ -508,7 +508,7 @@ grand, ou `full`).
 > d'anonymisation Presidio lui-même n'a pas changé, seul l'emplacement
 > d'écriture du résultat a changé.
 
-En préparant l'exécution de `anonymiser_dataset.py` sur le dataset
+En préparant l'exécution de `E1_04_00_anonymiser_dataset.py` sur le dataset
 pivot réel (147 204 exemples, 624 Mo), un second bug d'infrastructure
 réel a été découvert : `AnonymiserDatasetUseCase.executer()` appelait
 `self.repository.sauvegarder(exemple)` **à chaque itération** de la
@@ -545,13 +545,13 @@ champ `ExemplePivot.anonymise` (deja présent dans le schéma pivot)
 rend le processus nativement **incrémental et reprenable** :
 `AnonymiserDatasetUseCase` ne retraite jamais un exemple déjà
 `anonymise=True`. Un nouveau flag `--limite N` sur
-`anonymiser_dataset.py` (défaut **5000**, l'objectif chiffré de la
+`E1_04_00_anonymiser_dataset.py` (défaut **5000**, l'objectif chiffré de la
 mission) anonymise à chaque appel un **échantillon stratifié** par
 `(type_exemple, source)` de taille `N` parmi les exemples encore
 `anonymise=False` (méthode du plus grand reste pour les quotas par
 strate, tirage aléatoire seedé et reproductible) ; le reste du
 dataset n'est pas touché et attend un appel ultérieur avec un `N` plus
-grand ou `--limite full` (aucune limite). `decouper_splits.py` a été
+grand ou `--limite full` (aucune limite). `E1_05_00_decouper_splits.py` a été
 mis à jour en cohérence : découpage **stratifié** par
 `(type_exemple, source)` plutôt qu'un shuffle global (une petite
 source comme FrenchMedMCQA aurait pu se retrouver totalement absente
@@ -560,9 +560,9 @@ grande), et le même bug O(n²) corrigé (`sauvegarder_plusieurs` au lieu
 de `sauvegarder` par itération).
 
 **Première vague exécutée sur le dataset réel (08/09/2026)** :
-`anonymiser_dataset.py --limite 5000` (durée réelle mesurée :
+`E1_04_00_anonymiser_dataset.py --limite 5000` (durée réelle mesurée :
 **36 min 26 s**, cohérente avec l'estimation), puis
-`decouper_splits.py` sur les 5 000 exemples désormais anonymisés :
+`E1_05_00_decouper_splits.py` sur les 5 000 exemples désormais anonymisés :
 
 | Source | Anonymisés (sur cette vague) | Restants (`anonymise=False`) | Répartition split (train/val/test) |
 |---|---:|---:|---|
@@ -584,7 +584,7 @@ déjà fait; décision explicitement laissée ouverte sur *quand* et
 en fonction du risque de saturation/surapprentissage sur un
 sous-échantillon trop petit, cf. § dédiée dans le README).
 
-Vérification ajoutée après coup (`verifier_repartition_splits.py`) :
+Vérification ajoutée après coup (`E1_05_01_verifier_repartition_splits.py`) :
 chaque strate `(type_exemple, source)` respecte bien les proportions
 80/10/10 demandées, **dans chaque split**, pas seulement au global :
 
@@ -647,11 +647,11 @@ réels, pas des estimations :
   expérimental) : dataset accepté en l'état, avec réserve sur le
   sur-masquage bibliographique d'UltraMedical-Preference.
 
-## `--n` sur `decouper_splits.py` et vérification de la représentativité par strate (09/09/2026)
+## `--n` sur `E1_05_00_decouper_splits.py` et vérification de la représentativité par strate (09/09/2026)
 
 Besoin produit : pouvoir demander un dataset d'entraînement de taille
 N plutôt que de toujours repartir tout ce qui est anonymisé. `--n N`
-(optionnel) sur `decouper_splits.py`/`DecouperSplitsUseCase` prélève
+(optionnel) sur `E1_05_00_decouper_splits.py`/`DecouperSplitsUseCase` prélève
 d'abord un échantillon stratifié de taille N parmi les exemples
 anonymisés (même algorithme du plus grand reste que `--limite`),
 avant de répartir train/val/test dessus. Si N est omis ou ≥ au nombre
@@ -664,22 +664,22 @@ auparavant privé à `AnonymiserDatasetUseCase`, a été extrait dans
 `chsa_triage.application.echantillonnage.echantillon_stratifie` pour
 être réutilisé par les deux cas d'usage sans duplication.
 
-Un nouveau script `verifier_repartition_splits.py` (et son cas d'usage
+Un nouveau script `E1_05_01_verifier_repartition_splits.py` (et son cas d'usage
 `VerifierRepartitionSplitsUseCase`) relit le dataset pivot déjà reparti
 et affiche, par strate `(type_exemple, source)`, le décompte ET le
-pourcentage par split; `decouper_splits.py` n'affichait que le total
+pourcentage par split; `E1_05_00_decouper_splits.py` n'affichait que le total
 global, ce qui ne permettait pas de vérifier visuellement que la
 stratification restait représentative dans **chaque** split (voir
 tableau ci-dessus).
 
-## Croissance stable de `decouper_splits.py` : protection contre la fuite train/test à l'agrandissement (10/09/2026)
+## Croissance stable de `E1_05_00_decouper_splits.py` : protection contre la fuite train/test à l'agrandissement (10/09/2026)
 
 **Décision**, prise explicitement après comparaison de
 deux alternatives. Constat : dans le comportement décrit à la section
 précédente, `--n` prélevait un échantillon **frais** à chaque exécution
 et **réassignait le split de TOUS les exemples considérés** (que ce
 soit le sous-ensemble `--n` ou le dataset anonymisé entier). Relancer
-`decouper_splits.py` avec un `--n` différent (par exemple élargir de
+`E1_05_00_decouper_splits.py` avec un `--n` différent (par exemple élargir de
 5 000 à 10 000, ou omettre `--n` pour tout répartir) pouvait donc faire
 passer un exemple déjà vu de `train` à `test`; ou l'inverse; d'une
 exécution à l'autre. C'est une **fuite silencieuse** de données
@@ -698,7 +698,7 @@ split de tout exemple déjà vu et ne répartir que les exemples
 nouvellement candidats. Le choix retenu est (b).
 
 **Nouveau comportement** (`DecouperSplitsUseCase.executer`, cf.
-`src/chsa_triage/application/use_cases/uc_04_00_decouper_splits.py`) :
+`src/chsa_triage/application/use_cases/E1_05_00_decouper_splits.py`) :
 un exemple qui a déjà un `split` non nul (exécution antérieure) n'est
 **plus jamais réassigné**, quel que soit le `--n` demandé ensuite.
 `--n N` est désormais une taille **cible cumulée** : seuls
@@ -715,7 +715,7 @@ qu'encoger n'a pas de cas d'usage légitime ici (contrairement à
 agrandir, qui correspond au besoin produit réel de vagues successives
 d'anonymisation).
 
-`verifier_repartition_splits.py` n'a nécessité **aucune modification** :
+`E1_05_01_verifier_repartition_splits.py` n'a nécessité **aucune modification** :
 il relit simplement les splits déjà présents dans le fichier de sortie,
 quelle que soit la séquence d'exécutions `--n` qui les a produits; la
 garantie de stabilité vit entièrement côté écriture

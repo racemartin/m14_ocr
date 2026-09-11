@@ -94,7 +94,7 @@ Deux sources sont possibles à ce jour :
 2. **Fichiers locaux déjà produits** :
    `data/processed/dataset_pivot_anonymise.jsonl` découpé en splits
    (`data/splits/{train,val,test}.jsonl` via
-   `interfaces/cli/decouper_splits.py`) : au moment de l'écriture de
+   `interfaces/cli/E1_05_00_decouper_splits.py`) : au moment de l'écriture de
    ce document, **5 000 exemples anonymisés sur 134 883** (4 004
    train / 498 val / 498 test), le reste du dataset pivot restant à
    anonymiser par vagues successives (`--limite`, cf.

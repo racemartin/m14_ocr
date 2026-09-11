@@ -3,7 +3,7 @@ Adaptateur secondaire : persistance JSONL des decisions humaines sur
 les candidats de PII residuelle (`RegistreDecisionsRevisionHumaine`).
 
 A la difference du registre d'echantillons (append-only), une decision
-peut etre CORRIGEE (`reviser_pii_residuelle.py --modify`) ; meme
+peut etre CORRIGEE (`E1_04_01_reviser_pii_residuelle.py --modify`) ; meme
 mecanisme que `JsonlDatasetRepository.sauvegarder` : relit tout le
 fichier, fusionne par cle stable dans un dict, reecrit tout. Le volume
 de decisions humaines (borne par la taille des echantillons de

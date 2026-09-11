@@ -9,7 +9,7 @@ precedent qui mutait le pivot en place) : le pivot original reste
 intact pour toujours, ce qui permet (a) de regenerer/reutiliser le
 pivot source sans jamais perdre le texte original d'un exemple deja
 anonymise, et (b) un controle qualite a posteriori par simple
-comparaison de deux fichiers (cf. `controler_qualite_anonymisation.py`),
+comparaison de deux fichiers (cf. `E1_04_02_controler_qualite_anonymisation.py`),
 plutot qu'un enganche en direct dans la boucle d'anonymisation.
 """
 
@@ -103,7 +103,7 @@ class AnonymiserDatasetUseCase:
         Presidio/spaCy complete prendrait ~19h (cout NLP, pas I/O).
         Decision : ne pas trancher entre "echantillon" et
         "complet", mais rendre le processus incremental. `--limite`
-        (cf. `interfaces/cli/anonymiser_dataset.py`) permet de traiter
+        (cf. `interfaces/cli/E1_04_00_anonymiser_dataset.py`) permet de traiter
         le dataset par vagues successives, chacune stratifiee pour
         rester representative de toutes les (type_exemple, source).
         """

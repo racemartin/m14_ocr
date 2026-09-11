@@ -37,7 +37,7 @@ from chsa_triage.domain.ports.verificateur_entites import (  # port : seconde op
 from chsa_triage.application.echantillonnage import echantillon_stratifie  # tirage stratifie (type_exemple, source)
 
 # Modele pivot, ports du domaine et statistiques RGPD cumulees
-from chsa_triage.application.use_cases.uc_03_00_anonymiser_dataset import StatistiquesSource  # stats cumulees (Partie 1)
+from chsa_triage.application.use_cases.E1_04_00_anonymiser_dataset import StatistiquesSource  # stats cumulees (Partie 1)
 from chsa_triage.domain.model import (  # entite pivot comparee + cle stable des decisions humaines
     DECISION_ACCEPTE,
     DECISION_REJETE,
@@ -86,7 +86,7 @@ class CandidatPiiResiduelle:
     # plusieurs matches du meme type_motif dans le meme champ (confirme sur
     # donnees reelles : jusqu'a 17 matches de bigramme_capitalise dans un
     # seul champ chosen[0]) pour la cle stable de revision humaine (cf.
-    # `application.use_cases.uc_03_03_reviser_pii_residuelle.cle_candidat_pii` --
+    # `application.use_cases.E1_04_01_reviser_pii_residuelle.cle_candidat_pii` --
     # ce dataclass sert a la fois a `candidats_pii` et
     # `candidats_pii_sans_entite`, deux SOURCE_* differentes, donc la cle
     # complete ne peut pas etre calculee ici sans savoir dans quelle liste
@@ -204,7 +204,7 @@ class ControleQualiteAnonymisation:
     verificateur_entites             : VerificateurEntitesNommees
     max_exemples_par_source          : int = 10
     # None = pas de plafond ; necessaire pour `ReviserPiiResiduelleUseCase`
-    # (cf. uc_03_03) qui doit voir TOUS les candidats REVISION_HUMAINE, pas
+    # (cf. E1_04_01_reviser_pii_residuelle) qui doit voir TOUS les candidats REVISION_HUMAINE, pas
     # seulement les `max_faux_positifs_par_source` premiers par source
     # (plafond pense pour la LISIBILITE du rapport Markdown, pas pour la
     # completude de la revue humaine).
@@ -590,7 +590,7 @@ def formater_rapport_markdown(
     statut cumule des decisions humaines (acceptees/rejetees/encore en
     attente, toutes executions confondues) vit dans
     `data/processed/decisions_revision_humaine.jsonl`, tenu a jour par
-    `reviser_pii_residuelle.py` ; c'est la source de verite pour
+    `E1_04_01_reviser_pii_residuelle.py` ; c'est la source de verite pour
     affirmer "0 PII residuelle confirmee", pas ce rapport a lui seul.
 
     `decisions_par_cle` (optionnel, cle stable `CleCandidatRevision` ->
@@ -598,7 +598,7 @@ def formater_rapport_markdown(
     VERDICT_REVISION_HUMAINE de CETTE execution avec son statut de
     decision humaine, s'il en a deja une (typiquement rare pour un lot
     fraichement echantillonne ; une decision suppose une execution
-    prealable de `reviser_pii_residuelle.py`).
+    prealable de `E1_04_01_reviser_pii_residuelle.py`).
     """
     decisions_par_cle = decisions_par_cle or {}
 
@@ -625,7 +625,7 @@ def formater_rapport_markdown(
     lignes = [
         "# Rapport de controle qualite : anonymisation (comparaison original/anonymise)",
         "",
-        f"> Genere automatiquement le {horodatage} par `controler_qualite_anonymisation.py`, "
+        f"> Genere automatiquement le {horodatage} par `E1_04_02_controler_qualite_anonymisation.py`, "
         f"a partir de `{dataset_original}` (original) compare a `{dataset_anonymise}` (anonymise).",
         ">",
         f"> **Portee explicite** : {controle.nombre_exemples_observes} exemples compares, un "
@@ -676,7 +676,7 @@ def formater_rapport_markdown(
         f"tranchant) : **{total_revision_humaine}**, dont **{acceptes_pii}** deja acceptes (confirmes "
         f"non-PII par une personne), **{rejetes_pii}** deja rejetes (PII reelle confirmee), "
         f"**{en_attente_pii}** encore genuinement en attente d'une decision humaine "
-        f"(`reviser_pii_residuelle.py --verify`).",
+        f"(`E1_04_01_reviser_pii_residuelle.py --verify`).",
         "",
         "### Passages confirmes",
     ]
@@ -788,7 +788,7 @@ def cle_candidat_pii(source_liste: str, c: CandidatPiiResiduelle) -> CleCandidat
     SOURCE_CANDIDATS_PII ou SOURCE_CANDIDATS_PII_SANS_ENTITE selon la
     liste d'origine (le meme dataclass sert aux deux, cf. docstring de
     `CandidatPiiResiduelle.debut`). Reutilisee par
-    `application.use_cases.uc_03_03_reviser_pii_residuelle`.
+    `application.use_cases.E1_04_01_reviser_pii_residuelle`.
     """
     return CleCandidatRevision(source_liste, c.identifiant, c.champ, c.type_motif, c.debut, c.fin)
 

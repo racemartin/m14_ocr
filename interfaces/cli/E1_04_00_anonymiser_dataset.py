@@ -3,7 +3,7 @@ STEP 03
 Point d'entree CLI, Etape 1, action "anonymiser".
 
 Usage :
-    uv run python interfaces/cli/anonymiser_dataset.py \
+    uv run python interfaces/cli/E1_04_00_anonymiser_dataset.py \
         --dataset data/processed/dataset_pivot.jsonl \
         --sortie data/processed/dataset_pivot_anonymise.jsonl \
         --strategie replace \
@@ -20,7 +20,7 @@ reste `False` pour toujours sur le pivot source). Ce design permet
 (a) de toujours pouvoir regenerer le pivot sans perdre le texte
 original d'exemples deja anonymises, et (b) un controle qualite a
 posteriori par simple comparaison --dataset vs --sortie (cf.
-`controler_qualite_anonymisation.py`), sans enganche en direct dans la
+`E1_04_02_controler_qualite_anonymisation.py`), sans enganche en direct dans la
 boucle d'anonymisation.
 
 Option --limite (08/09/2026, decision produit suite a la mesure reelle
@@ -37,7 +37,7 @@ traite tout ce qui reste en une seule fois.
 Rapport RGPD automatique (le pipeline
 genere lui-meme ses indicateurs RGPD, de facon reproductible, plutot
 qu'un calcul manuel ponctuel) : CHAQUE execution ecrit un rapport RGPD
-CUMULE (JSON + Markdown, cf. `application/use_cases/uc_03_01_rapport_anonymisation.py`)
+CUMULE (JSON + Markdown, cf. `application/use_cases/E1_04_03_rapport_anonymisation.py`)
 qui FUSIONNE ses resultats avec ceux des executions precedentes.
 Ecrit par defaut sous `data/processed/` (gitignore, comme les fichiers
 pivot/anonymise) ; --rapport-json / --rapport-markdown pour surcharger

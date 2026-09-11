@@ -6,7 +6,7 @@ title Étape 1 : Diagramme de séquence\nProfilage d'un corpus (cas d'usage rée
 actor "Développeur\n(ligne de commande)" as Dev
 
 box "interfaces/cli" #F0EEE7
-  participant "profiler_corpus.py" as CLI
+  participant "E1_02_profiler_corpus.py" as CLI
 end box
 
 box "application" #F0EEE7
@@ -20,7 +20,7 @@ end box
 
 autonumber "<b>0."
 
-Dev -> CLI : uv run python profiler_corpus.py\n~-~-source ... ~-~-nom ... [~-~-bloque N]
+Dev -> CLI : uv run python E1_02_profiler_corpus.py\n~-~-source ... ~-~-nom ... [~-~-bloque N]
 activate CLI
 
 alt ~-~-bloque N fourni (evite l'OOM sur un gros corpus, cf. ultramedical_preference.jsonl 966 Mo)

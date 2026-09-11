@@ -6,7 +6,7 @@ l'anonymisation".
 Design fichier-a-fichier (08/09/2026 ; remplace un enganche en direct
 dans la boucle d'anonymisation) :
 compare le pivot ORIGINAL (--dataset, jamais modifie) au fichier
-ANONYMISE (--anonymise, sortie separee de `anonymiser_dataset.py`),
+ANONYMISE (--anonymise, sortie separee de `E1_04_00_anonymiser_dataset.py`),
 croises par `identifiant`. Puisque le pivot original n'est jamais
 mute, ce script peut se relancer a tout moment sur n'importe quelle
 tranche deja anonymisee, y compris retroactivement sur une vague
@@ -38,13 +38,13 @@ exclut du tirage les identifiants deja echantillonnes lors d'une
 execution precedente ; chaque execution ne compare que des
 identifiants NOUVEAUX, sur les deux strates. Les candidats
 "pendant_revision_humaine" qui en ressortent sont a trancher avec
-`reviser_pii_residuelle.py`, qui persiste la decision humaine dans
+`E1_04_01_reviser_pii_residuelle.py`, qui persiste la decision humaine dans
 --decisions (defaut `data/processed/decisions_revision_humaine.jsonl`) ;
 ce script-ci relit ce fichier pour annoter le rapport du statut de
 decision deja pris, sans jamais le modifier.
 
 Usage :
-    uv run python interfaces/cli/controler_qualite_anonymisation.py \
+    uv run python interfaces/cli/E1_04_02_controler_qualite_anonymisation.py \
         --dataset data/processed/dataset_pivot.jsonl \
         --anonymise data/processed/dataset_pivot_anonymise.jsonl \
         --taille-echantillon 200
@@ -62,7 +62,7 @@ from chsa_triage.application.use_cases import (
     controle_vers_dict,
     formater_rapport_controle_qualite_markdown,
 )
-from chsa_triage.application.use_cases.uc_03_01_rapport_anonymisation import rapport_depuis_dict
+from chsa_triage.application.use_cases.E1_04_03_rapport_anonymisation import rapport_depuis_dict
 from chsa_triage.infrastructure.adapters import (
     JsonlDatasetRepository,
     JsonlDecisionsRevisionHumaine,
@@ -138,7 +138,7 @@ def main() -> None:
     parser.add_argument(
         "--decisions",
         default=CHEMIN_DECISIONS_DEFAUT,
-        help="Fichier des decisions humaines persistees (cf. reviser_pii_residuelle.py), reutilise "
+        help="Fichier des decisions humaines persistees (cf. E1_04_01_reviser_pii_residuelle.py), reutilise "
              f"ici pour annoter le rapport du statut de decision des candidats REVISION_HUMAINE "
              f"(defaut {CHEMIN_DECISIONS_DEFAUT})",
     )
@@ -210,12 +210,12 @@ def main() -> None:
         log.LEVEL_5_WARNING(
             "controler_qualite_anonymisation",
             f"rapport RGPD cumule introuvable ({arguments.rapport_rgpd_json}) ; section 1 du rapport "
-            "de controle qualite restera vide, lancer anonymiser_dataset.py au moins une fois avant",
+            "de controle qualite restera vide, lancer E1_04_00_anonymiser_dataset.py au moins une fois avant",
         )
 
     horodatage = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
-    # Decisions humaines deja persistees (cf. reviser_pii_residuelle.py)
+    # Decisions humaines deja persistees (cf. E1_04_01_reviser_pii_residuelle.py)
     # reutilisees pour annoter, dans CE rapport, le statut de decision
     # des candidats REVISION_HUMAINE deja tranches par une personne.
     decisions_par_cle = {d.cle: d.decision for d in decisions.toutes()}

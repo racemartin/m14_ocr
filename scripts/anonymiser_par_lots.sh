@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Relance interfaces/cli/anonymiser_dataset.py en boucle par vagues
+# Relance interfaces/cli/E1_04_00_anonymiser_dataset.py en boucle par vagues
 # successives jusqu'a couverture complete du dataset pivot, sans avoir
 # a relancer la commande a la main a chaque vague.
 #
@@ -57,7 +57,7 @@ while true; do
     echo "=== Iteration ${ITERATION} : ${DEJA_TRAITES}/${TOTAL_PIVOT} traites avant ce lot ==="
 
     set +e
-    uv run python interfaces/cli/anonymiser_dataset.py \
+    uv run python interfaces/cli/E1_04_00_anonymiser_dataset.py \
         --dataset "${PIVOT}" --sortie "${SORTIE}" \
         --strategie "${STRATEGIE}" --limite "${TAILLE_LOT}" \
         2>&1 | tee "${LOG_FICHIER}"
@@ -65,7 +65,7 @@ while true; do
     set -e
 
     if [ "${CODE_SORTIE}" -ne 0 ]; then
-        echo "Erreur : anonymiser_dataset.py a echoue (code ${CODE_SORTIE}) a l'iteration ${ITERATION}. Voir ${LOG_FICHIER}." >&2
+        echo "Erreur : E1_04_00_anonymiser_dataset.py a echoue (code ${CODE_SORTIE}) a l'iteration ${ITERATION}. Voir ${LOG_FICHIER}." >&2
         exit "${CODE_SORTIE}"
     fi
 

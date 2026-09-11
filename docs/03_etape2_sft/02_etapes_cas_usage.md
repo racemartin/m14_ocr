@@ -4,10 +4,12 @@
 
 > Document de conception : aucun des cas d'usage, ports ou adaptateurs
 > nommés ci-dessous n'est encore écrit. Les noms suivent le patron
-> `uc_NN_verbe_objet` déjà utilisé par l'Étape 1
-> (`src/chsa_triage/application/use_cases/uc_01_...` à `uc_04_...`) en
-> continuant la numérotation globale du sous-paquet : pas une
-> numérotation propre à l'Étape 2. Statut, pour chaque ligne : **[CONCEPTION]**
+> `uc_NN_verbe_objet` initialement utilisé par l'Étape 1 avant son
+> renommage en `E1_NN[_MM]_verbe_objet.py` (voir
+> `src/chsa_triage/application/use_cases/`) ; cette proposition pour
+> l'Étape 2 continue la numérotation globale héritée (`uc_05_...`) et
+> n'a pas encore été retouchée pour suivre la nouvelle convention.
+> Statut, pour chaque ligne : **[CONCEPTION]**
 > = proposé et motivé ici, aucun code écrit ; il n'y a pas encore de
 > **[FAIT]** possible pour cette étape (cf. légende de
 > `docs/02_etape1_donnees/00_couverture_exigences_officielles.md`,

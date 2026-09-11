@@ -2,7 +2,7 @@
 Port de persistance du muestreo incremental du controle qualite
 d'anonymisation : quels `identifiant` ont deja ete tires dans un
 echantillon de controle qualite (par stratum), lors d'executions
-PRECEDENTES de `controler_qualite_anonymisation.py`.
+PRECEDENTES de `E1_04_02_controler_qualite_anonymisation.py`.
 
 Meme role, pour ce cas d'usage, que `RepositoryLectureEcriture.identifiants_existants()`
 pour `AnonymiserDatasetUseCase` : determiner "qu'est-ce qui a deja ete

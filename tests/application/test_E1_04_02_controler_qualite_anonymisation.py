@@ -12,8 +12,8 @@ from collections.abc import Iterable
 from dataclasses import replace
 from uuid import uuid4
 
-from chsa_triage.application.use_cases.uc_03_00_anonymiser_dataset import StatistiquesSource
-from chsa_triage.application.use_cases.uc_03_02_controler_qualite_anonymisation import (
+from chsa_triage.application.use_cases.E1_04_00_anonymiser_dataset import StatistiquesSource
+from chsa_triage.application.use_cases.E1_04_02_controler_qualite_anonymisation import (
     STRATUM_PRINCIPAL,
     STRATUM_SANS_ENTITE,
     VERDICT_CONFIRME,
