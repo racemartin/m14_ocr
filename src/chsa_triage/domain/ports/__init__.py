@@ -11,6 +11,14 @@ from chsa_triage.domain.ports.dataset_repository import (
 from chsa_triage.domain.ports.decisions_revision_humaine import (
     RegistreDecisionsRevisionHumaine,
 )
+from chsa_triage.domain.ports.entraineur_supervise import (
+    EntraineurSupervise,
+    MetriquesEntrainement,
+    ResultatEntrainementSFT,
+)
+from chsa_triage.domain.ports.formateur_conversation import (
+    FormateurConversation,
+)
 from chsa_triage.domain.ports.lecteur_corpus import LecteurCorpus
 from chsa_triage.domain.ports.moteur_inference import (
     MoteurInference,
@@ -20,6 +28,7 @@ from chsa_triage.domain.ports.profileur import Profileur, RapportProfilage
 from chsa_triage.domain.ports.registre_echantillons_controle_qualite import (
     RegistreEchantillonsControleQualite,
 )
+from chsa_triage.domain.ports.suivi_experimentation import SuiviExperimentation
 from chsa_triage.domain.ports.verificateur_entites import (
     VerdictEntiteNommee,
     VerificateurEntitesNommees,
@@ -28,7 +37,10 @@ from chsa_triage.domain.ports.verificateur_entites import (
 __all__ = [
     "Anonymiseur",
     "EntiteDetectee",
+    "EntraineurSupervise",
+    "FormateurConversation",
     "LecteurCorpus",
+    "MetriquesEntrainement",
     "MoteurInference",
     "Profileur",
     "RapportProfilage",
@@ -37,6 +49,8 @@ __all__ = [
     "ReponseModele",
     "RepositoryLectureEcriture",
     "ResultatAnonymisation",
+    "ResultatEntrainementSFT",
+    "SuiviExperimentation",
     "VerdictEntiteNommee",
     "VerificateurEntitesNommees",
 ]

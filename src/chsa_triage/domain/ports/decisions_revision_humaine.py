@@ -17,7 +17,10 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from chsa_triage.domain.model import CleCandidatRevision, DecisionRevisionHumaine
+from chsa_triage.domain.model.decision_revision_humaine import (
+    CleCandidatRevision,
+    DecisionRevisionHumaine,
+)
 
 
 class RegistreDecisionsRevisionHumaine(Protocol):

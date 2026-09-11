@@ -1,0 +1,32 @@
+modele_base: Qwen/Qwen3-1.7B-Base
+
+quantification:
+  bits: 4
+  type_quantification: nf4
+  double_quantification: true
+  dtype_calcul: bfloat16
+
+lora:
+  rang: 16
+  alpha: 32
+  dropout: 0.05
+  modules_cibles: [q_proj, k_proj, v_proj, o_proj]
+
+entrainement:
+  taux_apprentissage: 2.0e-4
+  nombre_epoques: 3
+  taille_lot: 4
+  packing: true
+  type_perte: chunked_nll
+  assistant_only_loss: true
+
+grille_hyperparametres:
+  # Grid restreint (Optuna explicitement ecarte pour ce POC, cf.
+  # roadmap et docs/03_etape2_sft/02_etapes_cas_usage.md) : utilise
+  # seulement si la premiere passe ne converge pas proprement.
+  taux_apprentissage: [1.0e-4, 2.0e-4, 5.0e-4]
+  rang: [8, 16, 32]
+
+suivi:
+  backend: mlflow   # ou tensorboard
+  nom_experience: chsa-triage-sft
