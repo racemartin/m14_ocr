@@ -1,49 +1,53 @@
 \newpage
 
-# Étape 2 : Étapes du pipeline et cas d'usage proposés
+# Étape 2 : Étapes du pipeline et cas d'usage
 
-> Document de conception : aucun des cas d'usage, ports ou adaptateurs
-> nommés ci-dessous n'est encore écrit. Les noms suivent le patron
-> `uc_NN_verbe_objet` initialement utilisé par l'Étape 1 avant son
-> renommage en `E1_NN[_MM]_verbe_objet.py` (voir
-> `src/chsa_triage/application/use_cases/`) ; cette proposition pour
-> l'Étape 2 continue la numérotation globale héritée (`uc_05_...`) et
-> n'a pas encore été retouchée pour suivre la nouvelle convention.
-> Statut, pour chaque ligne : **[CONCEPTION]**
-> = proposé et motivé ici, aucun code écrit ; il n'y a pas encore de
-> **[FAIT]** possible pour cette étape (cf. légende de
-> `docs/02_etape1_donnees/00_couverture_exigences_officielles.md`,
-> réservée aux exécutions réelles).
+> Les cas d'usage, ports et fonctions pures décrits ci-dessous sont
+> écrits et testés (221 tests en vert), à l'exception de
+> `TrlSftEntraineurAdapter` (§1) qui reste à écrire : c'est le seul
+> élément de ce document qui nécessite un GPU réel. Les fichiers de
+> cas d'usage suivent la convention `E2_NN_uc_verbe_objet.py` (`NN`
+> = ordre du pipeline, marqueur `_uc_` réservé aux classes de cas
+> d'usage, jamais présent dans les noms de classe eux-mêmes ; cf.
+> `AGENTS.md`). Statut, pour chaque ligne : **[FAIT]** = écrit et
+> couvert par des tests réels (avec de faux adaptateurs en mémoire
+> pour les cas d'usage qui dépendent d'un port GPU) · **[CONCEPTION]**
+> = proposé ici, pas encore écrit, réservé à `TrlSftEntraineurAdapter`
+> et à `training/sft_train.py` (cf. légende complète de
+> `docs/02_etape1_donnees/00_couverture_exigences_officielles.md`).
 
 ## Vue d'ensemble
 
-| Étape du roadmap | Cas d'usage / module proposé | Port(s) | Adaptateur(s) proposé(s) | Statut |
+| Étape du roadmap | Cas d'usage / module | Port(s) | Adaptateur(s) | Statut |
 |---|---|---|---|---|
 | Charger `Qwen3-1.7B-Base` en 4-bit NF4 | *(pas de cas d'usage dédié : voir §1 Décision)* | `EntraineurSupervise` | `TrlSftEntraineurAdapter` (charge le modèle dans son constructeur) | [CONCEPTION] |
-| Formater en ChatML + `assistant_only_loss` | `uc_05_00_formater_dataset_chatml.py` → `FormaterDatasetChatMLUseCase` | `FormateurConversation`, `RepositoryLectureEcriture` (×2) | `ChatMLFormateurAdapter`, `JsonlDatasetRepository` (réutilisé) | [CONCEPTION] |
-| Configurer `LoraConfig` | *(pas de cas d'usage dédié, assemblage de configuration : voir §1 Décision)* | (aucun) | `recipes/sft_qwen3_lora.yaml` → `ConfigurationLora` | [CONCEPTION] |
-| Lancer `SFTTrainer` | `uc_05_01_entrainer_sft.py` → `EntrainerSftUseCase` | `EntraineurSupervise`, `SuiviExperimentation` | `TrlSftEntraineurAdapter`, `MlflowSuiviExperimentation` (ou `TensorboardSuiviExperimentation`) | [CONCEPTION] |
-| Évaluer sur validation intermédiaire | fonction pure `application/verdict_convergence.py::evaluer_convergence` | (aucun port : lit la courbe déjà produite par `entrainer()`) | (aucun) | [CONCEPTION] |
-| Boucle d'ajustement d'hyperparamètres | `uc_05_02_ajuster_boucle_hyperparametres_sft.py` → `AjusterBoucleHyperparametresSftUseCase` | `EntraineurSupervise`, `SuiviExperimentation` | (réutilise ceux ci-dessus) | [CONCEPTION] |
-| Sauvegarder le checkpoint SFT-LoRA | `uc_05_03_sauvegarder_checkpoint_sft.py` → `SauvegarderCheckpointSftUseCase` | `RepositoryLectureEcriture` | `JsonlDatasetRepository` (réutilisé, 3ᵉ type d'entité) | [CONCEPTION] |
+| Formater en ChatML + `assistant_only_loss` | `E2_00_uc_formater_dataset_chatml.py` → `FormaterDatasetChatMLUseCase` | `FormateurConversation`, `RepositoryLectureEcriture` (×2) | `ChatMLFormateurAdapter`, `JsonlDatasetRepository` (réutilisé) | [FAIT] |
+| Configurer `LoraConfig` | *(pas de cas d'usage dédié, assemblage de configuration : voir §1 Décision)* | (aucun) | `recipes/sft_qwen3_lora.yaml` → `ConfigurationLora` | [FAIT] la dataclass (`domain/model/configuration_entrainement.py`) · [CONCEPTION] l'assemblage depuis la recette YAML (`recipes/` n'existe pas encore) |
+| Lancer `SFTTrainer` | `E2_01_uc_entrainer_sft.py` → `EntrainerSftUseCase` | `EntraineurSupervise`, `SuiviExperimentation` | `TrlSftEntraineurAdapter`, `MlflowSuiviExperimentation` (ou `TensorboardSuiviExperimentation`) | [FAIT] le cas d'usage (testé avec un faux `EntraineurSupervise`) · [CONCEPTION] `TrlSftEntraineurAdapter`, seul adaptateur GPU manquant |
+| Évaluer sur validation intermédiaire | fonction pure `application/verdict_convergence.py::evaluer_convergence` | (aucun port : lit la courbe déjà produite par `entrainer()`) | (aucun) | [FAIT] |
+| Boucle d'ajustement d'hyperparamètres | `E2_02_uc_ajuster_boucle_hyperparametres_sft.py` → `AjusterBoucleHyperparametresSftUseCase` | `EntraineurSupervise`, `SuiviExperimentation` | (réutilise ceux ci-dessus) | [FAIT] le cas d'usage · [CONCEPTION] dépend du même adaptateur GPU manquant que la ligne précédente |
+| Sauvegarder le checkpoint SFT-LoRA | `E2_03_uc_sauvegarder_checkpoint_sft.py` → `SauvegarderCheckpointSftUseCase` | `RepositoryLectureEcriture` | `JsonlDatasetRepository` (réutilisé, 3ᵉ type d'entité) | [FAIT] |
 
 Diagrammes correspondants :
 `docs/diagrams/03_etape2_sft/activite/pipeline_sft_lora.puml` (vue
 d'ensemble du flux, y compris le point de décision "Convergence
 saine ?"), `docs/diagrams/03_etape2_sft/sequence/entrainer_sft.puml`
-(interaction script → cas d'usage → adaptateurs) et
-`docs/diagrams/03_etape2_sft/paquets/sft_paquets.puml` (classes
-proposées et leurs dépendances).
+(interaction script → cas d'usage → adaptateurs),
+`docs/diagrams/03_etape2_sft/paquets/sft_paquets.puml` (modules et
+leurs dépendances) et `docs/diagrams/03_etape2_sft/paquets/classes_etape2.puml`
+(attributs/méthodes des classes réelles).
 
 ## 1. Charger le modèle quantifié + configurer LoRA : pas de cas d'usage dédié
 
 **Décision de conception** : contrairement à ce que suggère le
 découpage du roadmap (deux boîtes distinctes "Charger en 4-bit" et
-"Configurer LoraConfig"), aucun cas d'usage séparé n'est proposé pour
-ces deux étapes. Elles deviennent des responsabilités internes de
-`TrlSftEntraineurAdapter` (constructeur) et de l'assemblage de
-configuration fait par le point d'entrée `training/sft_train.py` à
-partir de `recipes/sft_qwen3_lora.yaml`.
+"Configurer LoraConfig"), aucun cas d'usage séparé n'existe pour ces
+deux étapes. Elles restent des responsabilités internes de
+`TrlSftEntraineurAdapter` (constructeur, **pas encore écrit**, seul
+élément de ce document qui nécessite un GPU réel) et de l'assemblage de
+configuration que fera le point d'entrée `training/sft_train.py`
+(également pas encore écrit) à partir de `recipes/sft_qwen3_lora.yaml`
+(pas encore créé).
 
 **Pourquoi** : le domaine ne peut pas représenter un modèle chargé
 (poids `torch`, tokenizer, éventuel wrapper PEFT) comme une simple
@@ -55,26 +59,32 @@ ReponseModele` : l'adaptateur (`LlamacppInferenceAdapter`,
 `VllmEndpointInferenceAdapter`) possède et charge le modèle en interne,
 l'application n'en voit jamais la représentation concrète. `PresidioAnonymiseur`
 suit le même principe (`AnalyzerEngine`/`AnonymizerEngine` construits
-dans son `__init__`, jamais exposés). `EntraineurSupervise` reprend ce
+dans son `__init__`, jamais exposés). `EntraineurSupervise` (le port,
+déjà écrit dans `domain/ports/entraineur_supervise.py`) reprend ce
 patron : `TrlSftEntraineurAdapter.__init__(identifiant_modele_base,
-configuration_quantification)` charge `BitsAndBytesConfig` + le modèle
-+ le tokenizer une fois, `entrainer(...)` reçoit une `ConfigurationLora`
-en paramètre (donnée pure, sérialisable, testable sans GPU) et
-applique `peft.LoraConfig` + `trl.SFTTrainer` en interne. Aucun objet
-`torch`/`transformers` ne traverse la frontière `application/domain`.
+configuration_quantification)` chargera `BitsAndBytesConfig` + le
+modèle + le tokenizer une fois, `entrainer(...)` reçoit une
+`ConfigurationLora` en paramètre (donnée pure, déjà écrite,
+sérialisable, testable sans GPU) et appliquera `peft.LoraConfig` +
+`trl.SFTTrainer` en interne. Aucun objet `torch`/`transformers` ne
+traversera la frontière `application/domain`.
 
-## 2. `uc_05_00_formater_dataset_chatml.py` : `FormaterDatasetChatMLUseCase`
+## 2. `E2_00_uc_formater_dataset_chatml.py` : `FormaterDatasetChatMLUseCase`
 
-Lit les `ExemplePivot` d'un split donné (`RepositoryLectureEcriture`,
+`executer(self, split: TypeSplit) -> int` lit les `ExemplePivot` du
+`split` demandé (`repository_pivot.lister(filtre={"split": split})`,
 réutilisation directe du port déjà utilisé partout en Étape 1 : c'est
 la preuve concrète de la promesse faite dans
 `docs/01_environnement/01_architecture_hexagonale.md` : "un port
 générique peut servir à n'importe quel type d'entité"), appelle
 `FormateurConversation.formater(exemple)` pour chacun, et persiste le
-résultat via une **seconde** instance du même port générique, paramétrée
-cette fois sur `ExempleFormate` plutôt que sur `ExemplePivot`.
+résultat en un seul appel `sauvegarder_plusieurs(...)` (jamais un
+`sauvegarder()` par item, cf. `AGENTS.md` sur le coût O(n²)) via une
+**seconde** instance du même port générique, paramétrée cette fois sur
+`ExempleFormate` plutôt que sur `ExemplePivot`. Retourne le nombre
+d'exemples formatés.
 
-Port proposé (`domain/ports/formateur_conversation.py`) :
+Port (`domain/ports/formateur_conversation.py`, écrit) :
 
 ```python
 @dataclass(frozen=True, slots=True)
@@ -90,15 +100,21 @@ class FormateurConversation(Protocol):
         ...
 ```
 
-`ChatMLFormateurAdapter` (proposé) enveloppe
-`AutoTokenizer.apply_chat_template` : c'est un des rares éléments de
-l'Étape 2 qui ne nécessite **pas** de GPU (juste le tokenizer,
-téléchargeable et exécutable en Environnement A) : voir
+`ChatMLFormateurAdapter` (`infrastructure/adapters/chatml_formateur_adapter.py`,
+écrit) enveloppe `AutoTokenizer.apply_chat_template` : c'est un des
+rares éléments de l'Étape 2 qui ne nécessite **pas** de GPU (juste le
+tokenizer, téléchargeable et exécutable en Environnement A) : voir
 `03_guide_implementation_pas_a_pas.md` pour la conséquence sur le plan
-de test (ce cas d'usage peut être testé en intégration réelle dès
-l'Environnement A, avant tout accès GPU).
+de test (ce cas d'usage est testé en intégration réelle dès
+l'Environnement A, `tests/infrastructure/test_chatml_formateur_adapter.py`,
+avant tout accès GPU). Le tokenizer est chargé paresseusement (au
+premier `formater()`, pas à la construction de l'adaptateur) ; le
+modèle par défaut est `Qwen/Qwen3-1.7B-Base` (`nom_modele`,
+configurable) ; `formater()` concatène les messages `prompt` puis
+`completion` de l'`ExemplePivot` avant de les rendre via le chat
+template natif du tokenizer.
 
-**Décision à prendre avant d'écrire ce cas d'usage** (écart identifié
+**Décision encore ouverte** (écart identifié
 en `00_introduction_concepts.md` §"Point de vigilance") : le format de
 sortie cible du projet (`<think>...</think>` + JSON strict
 `niveau`/`categorie`/`ressources_estimees`, cahier des charges F3-F4)
@@ -124,19 +140,31 @@ Trois options, non tranchées ici :
 
 Cette décision conditionne directement l'implémentation de
 `ChatMLFormateurAdapter` (le `system` prompt du gabarit ChatML change
-selon l'option retenue) : à trancher avant d'écrire uc_05_00, pas
-pendant.
+selon l'option retenue) : `ChatMLFormateurAdapter` est déjà écrit,
+mais ne tranche encore aucune de ces trois options (il rend tel quel
+le contenu `prompt`/`completion` existant, sans injecter de `system`
+prompt ni de format `<think>`+JSON) : reste à trancher avant que le
+formatage ChatML produise des exemples réellement alignés sur le
+format de sortie cible.
 
-## 3. `uc_05_01_entrainer_sft.py` : `EntrainerSftUseCase`
+## 3. `E2_01_uc_entrainer_sft.py` : `EntrainerSftUseCase`
 
-Orchestration d'un run d'entraînement unique : appelle
-`SuiviExperimentation.demarrer_run(...)`, délègue l'entraînement à
+Orchestration d'un run d'entraînement unique, via la méthode
+`entrainer(dataset_train, dataset_validation, config_lora,
+hyperparametres, nom_run=NOM_RUN_PAR_DEFAUT)` (nommée `entrainer`, pas
+`executer` comme les autres cas d'usage de cette étape, pour rester
+proche du vocabulaire du port qu'elle orchestre) : appelle
+`SuiviExperimentation.demarrer_run(nom_run, parametres_run)` (les
+paramètres du run sont `{**asdict(config_lora),
+**asdict(hyperparametres)}`), délègue l'entraînement à
 `EntraineurSupervise.entrainer(dataset_train, dataset_validation,
 config_lora, hyperparametres)`, relaie chaque métrique de la courbe
-retournée vers `SuiviExperimentation.logger_metrique(...)`, puis
-`terminer_run()`.
+retournée vers `SuiviExperimentation.logger_metrique(...)` (une
+entrée `perte_train` et `norme_gradient` par point, plus
+`perte_validation` quand elle n'est pas `None`), puis `terminer_run()`.
+Retourne le `ResultatEntrainementSFT` inchangé.
 
-Port proposé (`domain/ports/entraineur_supervise.py`) :
+Port (`domain/ports/entraineur_supervise.py`, écrit) :
 
 ```python
 @dataclass(frozen=True, slots=True)
@@ -161,12 +189,17 @@ class EntraineurSupervise(Protocol):
     ) -> ResultatEntrainementSFT: ...
 ```
 
-`TrlSftEntraineurAdapter` (proposé,
-`infrastructure/adapters/trl_sft_entraineur.py`) est le seul point du
+`TrlSftEntraineurAdapter` (**pas encore écrit**,
+`infrastructure/adapters/trl_sft_entraineur.py`) sera le seul point du
 projet qui importe `trl`, `peft`, `bitsandbytes`, potentiellement
 `unsloth`/`liger_kernel` : cohérent avec la règle "seule
 `infrastructure/adapters` importe des bibliothèques externes"
-(`docs/01_environnement/01_architecture_hexagonale.md` §2).
+(`docs/01_environnement/01_architecture_hexagonale.md` §2). En
+attendant, `EntrainerSftUseCase` est testé
+(`tests/application/test_E2_01_uc_entrainer_sft.py`) avec un faux
+`EntraineurSupervise` en mémoire : toute la logique d'orchestration
+(démarrage/clôture du run, relais des métriques) est donc déjà
+validée indépendamment de ce futur adaptateur GPU.
 
 ## 4. Évaluation de convergence : fonction pure, pas un cas d'usage
 
@@ -186,22 +219,65 @@ class VerdictConvergence(str, Enum):
 Ce module ne dépend d'aucun port, exactement comme
 `application/echantillonnage.py` et
 `application/detection_pii_residuelle.py` en Étape 1 : logique pure,
-testable sans aucun adaptateur ni GPU, en Environnement A. Le seuil
-exact séparant "sain" de "surapprentissage" (ex. delta de perte
-validation sur les N derniers pas) est un paramètre à calibrer une
-fois une vraie courbe observée, pas à figer ici.
+écrite et testée sans aucun adaptateur ni GPU, en Environnement A
+(`tests/application/test_verdict_convergence.py`). Ordre de priorité
+réel du diagnostic : `INSTABLE` (perte/norme de gradient NaN ou
+infinie n'importe où dans la courbe, ou ratio de norme de gradient
+dernier/premier pas au-delà de `SEUIL_RATIO_DIVERGENCE_GRADIENT`
+combiné à une perte d'entraînement qui remonte) prime sur
+`SOUS_APPRENTISSAGE` (baisse relative de la perte d'entraînement
+entre premier et dernier pas sous
+`SEUIL_BAISSE_TRAIN_RELATIVE_MINIMALE`), qui prime sur
+`SURAPPRENTISSAGE` (hausse de la perte de validation au-delà de
+`SEUIL_HAUSSE_VALIDATION_SURAPPRENTISSAGE` sur les
+`FENETRE_PAS_VALIDATION` derniers points mesurés) ; sinon `SAINE`. Les
+quatre constantes de seuil sont documentées dans le module comme
+**provisoires** : aucune vraie courbe d'entraînement n'a encore été
+observée (`TrlSftEntraineurAdapter` n'existe pas encore), elles
+devront être recalibrées après un premier run réel.
 
-## 5. `uc_05_02_ajuster_boucle_hyperparametres_sft.py` : `AjusterBoucleHyperparametresSftUseCase`
+## 5. `E2_02_uc_ajuster_boucle_hyperparametres_sft.py` : `AjusterBoucleHyperparametresSftUseCase`
 
-Boucle bornée : appelle `EntrainerSftUseCase`, passe la courbe
-résultante à `evaluer_convergence`, et si le verdict n'est pas
-`SAINE`, tire le prochain jeu d'hyperparamètres depuis
+Boucle bornée, `executer(dataset_train, dataset_validation,
+config_lora, hyperparametres_initiaux, nom_run=NOM_RUN_PAR_DEFAUT)` :
+matérialise `dataset_train`/`dataset_validation` en listes (un
+`Iterable` épuisable ne survivrait pas à un second passage), puis pour
+chaque essai (le premier avec `hyperparametres_initiaux`) appelle
+`EntrainerSftUseCase.entrainer(...)`, passe la courbe résultante à
+`evaluer_convergence`, et si le verdict n'est pas `SAINE`, tire le
+prochain jeu d'hyperparamètres depuis
 `application/grille_hyperparametres.py::candidat_suivant(grille,
 historique)` (grille restreinte définie dans
 `recipes/sft_qwen3_lora.yaml`, cf. `01_installation_configuration.md`
 §6) et relance. S'arrête soit sur `SAINE`, soit sur épuisement de la
-grille (retourne alors le meilleur run observé, jamais une erreur
-silencieuse).
+grille (`candidat_suivant` retourne `None`), et retourne alors, dans
+tous les cas, un `ResultatBoucleAjustement(meilleur_essai, essais)` :
+`essais` trace tous les essais effectués (`EssaiHyperparametres`,
+un triplet hyperparamètres/résultat/verdict), `meilleur_essai` est
+choisi par `_cle_classement` : un essai `SAINE` est **toujours**
+préféré à un essai non `SAINE`, quelle que soit sa perte finale ; à
+égalité de statut, la perte du dernier point de la courbe la plus
+basse gagne (perte de validation si disponible à ce point, sinon
+perte d'entraînement). Jamais d'erreur silencieuse même si la grille
+s'épuise sans qu'aucun essai ne converge.
+
+`application/grille_hyperparametres.py::candidat_suivant(grille:
+Sequence[HyperparametresEntrainement], historique:
+Sequence[HyperparametresEntrainement]) -> HyperparametresEntrainement | None`
+retourne le premier élément de `grille` absent de `historique`
+(comparaison par égalité de valeur, `HyperparametresEntrainement`
+étant `frozen=True`), ou `None` si la grille est épuisée. **Précision
+de conception** (le docstring du module la documente explicitement,
+non fixée par ce document au moment où il a été écrit) : `grille` est
+une séquence déjà entièrement étalée (le produit cartésien des axes
+de `recipes/sft_qwen3_lora.yaml::grille_hyperparametres` est calculé
+en amont par l'appelant, pas par `candidat_suivant`). Point resté
+ouvert : l'axe `rang` de la grille pilote `ConfigurationLora`, pas
+`HyperparametresEntrainement` ; `AjusterBoucleHyperparametresSftUseCase`
+reçoit un `config_lora` fixe et ne le fait pas varier d'un essai à
+l'autre dans cette phase (faire varier `rang` en boucle suppose de
+faire varier `config_lora` en parallèle de `grille`, ce qui reste à
+trancher).
 
 **Décision (pourquoi une grille restreinte et pas Optuna)** : le
 roadmap écarte explicitement Optuna pour ce POC ("Optuna ecarte du
@@ -213,17 +289,24 @@ grille de quelques combinaisons `(taux_apprentissage, rang)` choisies
 à la main, déclenchée seulement si le premier run ne converge pas, est
 proportionnée au budget disponible.
 
-## 6. `uc_05_03_sauvegarder_checkpoint_sft.py` : `SauvegarderCheckpointSftUseCase`
+## 6. `E2_03_uc_sauvegarder_checkpoint_sft.py` : `SauvegarderCheckpointSftUseCase`
 
-Les poids de l'adaptateur LoRA lui-même sont écrits sur disque par
+Les poids de l'adaptateur LoRA lui-même seront écrits sur disque par
 `peft`/`trl` directement (`chemin_checkpoint` retourné par
 `entrainer()`) : ce cas d'usage ne les manipule pas. Son rôle est de
 persister un **enregistrement de métadonnées** décrivant ce
-checkpoint, via une troisième instance de
-`RepositoryLectureEcriture` (après `ExemplePivot` et `ExempleFormate`
-: même port générique, troisième type d'entité).
+checkpoint, via `executer(identifiant, chemin, modele_base,
+configuration_lora, hyperparametres, metriques_finales,
+verdict_convergence)`, qui construit un `CheckpointEntraine`
+(l'horodatage vient d'une `horloge: Callable[[], str]` injectable,
+`datetime.now(timezone.utc).isoformat()` par défaut, pour rester
+testable sans dépendre de l'heure réelle) et le persiste via une
+troisième instance de `RepositoryLectureEcriture` (après `ExemplePivot`
+et `ExempleFormate` : même port générique, troisième type d'entité).
+Retourne le `CheckpointEntraine` construit, pour usage immédiat par
+l'appelant.
 
-Domaine proposé (`domain/model/checkpoint_entraine.py`) :
+Domaine (`domain/model/checkpoint_entraine.py`, écrit) :
 
 ```python
 @dataclass(frozen=True, slots=True)
@@ -273,14 +356,25 @@ class SuiviExperimentation(Protocol):
     def terminer_run(self) -> None: ...
 ```
 
-Deux adaptateurs proposés, un par backend mentionné au roadmap
-(`MlflowSuiviExperimentation`, `TensorboardSuiviExperimentation`) :
-`training/sft_train.py` en injecte un des deux selon
-`recipes/sft_qwen3_lora.yaml::suivi.backend`, sans que
+Deux adaptateurs écrits, un par backend mentionné au roadmap.
+`MlflowSuiviExperimentation(uri_tracking)` appelle `mlflow.set_tracking_uri`
+dans `__post_init__`, puis `mlflow.start_run`/`log_params`,
+`mlflow.log_metric(..., step=etape)`, `mlflow.end_run()` (MLflow ≥ 3
+refuse le backend fichier brut par défaut : utiliser un backend
+`sqlite:///chemin/mlflow.db` ou exporter `MLFLOW_ALLOW_FILE_STORE=true`,
+cf. le docstring du module). `TensorboardSuiviExperimentation(repertoire_logs)`
+ouvre un `SummaryWriter` distinct par run sous
+`repertoire_logs/<nom>` (`add_scalar`/`add_text`, `close()` à la
+clôture). Tous deux sont testables en intégration réelle dès
+l'Environnement A (`mlflow`/`tensorboard` sont dans l'extra `local`,
+pas seulement `remote`) : `tests/infrastructure/test_mlflow_suivi_experimentation.py`,
+`tests/infrastructure/test_tensorboard_suivi_experimentation.py`.
+`training/sft_train.py` (pas encore écrit) injectera l'un des deux
+selon `recipes/sft_qwen3_lora.yaml::suivi.backend`, sans que
 `EntrainerSftUseCase` ni `AjusterBoucleHyperparametresSftUseCase` n'aient
 à connaître lequel. Un adaptateur composite (loggant vers les deux à
 la fois) resterait possible sans changer le port, si le besoin se
-présente à l'implémentation.
+présente à l'implémentation de `training/sft_train.py`.
 
 ## Document suivant
 

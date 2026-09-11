@@ -2,55 +2,55 @@
 !pragma layout smetana
 !include ../../_common/estilo.iuml
 
-title Étape 2 : Diagramme de paquets (proposition de conception)\nModules/classes proposés pour le SFT-LoRA et leur relation à l'existant (Étape 1)
+title Étape 2 : Diagramme de paquets\nModules/classes du SFT-LoRA et leur relation à l'existant (Étape 1) : [FAIT] sauf TrlSftEntraineurAdapter et training/sft_train.py [CONCEPTION]
 
-package "training\n(nouveau, analogue à interfaces/cli pour l'Étape 2)" as TRAINING {
+package "training\n(analogue à interfaces/cli pour l'Étape 2)\n[CONCEPTION] pas encore écrit" as TRAINING {
   class sft_train
 }
 
 package "application" as APPLICATION {
   package "use_cases" {
-    class FormaterDatasetChatMLUseCase
-    class EntrainerSftUseCase
-    class AjusterBoucleHyperparametresSftUseCase
-    class SauvegarderCheckpointSftUseCase
+    class FormaterDatasetChatMLUseCase <<E2_00, FAIT>>
+    class EntrainerSftUseCase <<E2_01, FAIT>>
+    class AjusterBoucleHyperparametresSftUseCase <<E2_02, FAIT>>
+    class SauvegarderCheckpointSftUseCase <<E2_03, FAIT>>
   }
-  class "verdict_convergence\n(fonction pure)" as VerdictFn
-  class "grille_hyperparametres\n(fonction pure)" as GrilleFn
+  class "verdict_convergence\n(fonction pure)" as VerdictFn <<FAIT>>
+  class "grille_hyperparametres\n(fonction pure)" as GrilleFn <<FAIT>>
 }
 
 package "domain\n(zéro dépendance externe)" as DOMAIN {
   package "model" {
     class ExemplePivot <<existant, Étape 1>>
-    class ExempleFormate <<nouveau>>
-    class ConfigurationQuantification <<nouveau>>
-    class ConfigurationLora <<nouveau>>
-    class HyperparametresEntrainement <<nouveau>>
-    class MetriquesEntrainement <<nouveau>>
-    class CheckpointEntraine <<nouveau>>
-    enum VerdictConvergence <<nouveau>>
+    class ExempleFormate <<FAIT>>
+    class ConfigurationQuantification <<FAIT>>
+    class ConfigurationLora <<FAIT>>
+    class HyperparametresEntrainement <<FAIT>>
+    class MetriquesEntrainement <<FAIT>>
+    class CheckpointEntraine <<FAIT>>
+    enum VerdictConvergence <<FAIT>>
   }
   package "ports" {
     interface RepositoryLectureEcriture <<existant, Étape 1>>
-    interface FormateurConversation <<nouveau>>
-    interface EntraineurSupervise <<nouveau>>
-    interface SuiviExperimentation <<nouveau>>
-    class ResultatEntrainementSFT <<nouveau>>
+    interface FormateurConversation <<FAIT>>
+    interface EntraineurSupervise <<FAIT>>
+    interface SuiviExperimentation <<FAIT>>
+    class ResultatEntrainementSFT <<FAIT>>
   }
 }
 
 package "infrastructure" as INFRASTRUCTURE {
   package "adapters" {
     class JsonlDatasetRepository <<existant, Étape 1>>
-    class ChatMLFormateurAdapter <<nouveau>>
-    class TrlSftEntraineurAdapter <<nouveau>>
-    class MlflowSuiviExperimentation <<nouveau>>
-    class TensorboardSuiviExperimentation <<nouveau>>
+    class ChatMLFormateurAdapter <<FAIT>>
+    class TrlSftEntraineurAdapter <<CONCEPTION>>
+    class MlflowSuiviExperimentation <<FAIT>>
+    class TensorboardSuiviExperimentation <<FAIT>>
   }
 }
 
 ' ----------------------------------------------------------------------
-' Dependances proposees
+' Dependances reelles (training/sft_train.py restant a ecrire)
 ' ----------------------------------------------------------------------
 
 sft_train ..> JsonlDatasetRepository
@@ -100,27 +100,27 @@ TensorboardSuiviExperimentation ..|> SuiviExperimentation
 note bottom of RepositoryLectureEcriture
   Réutilisé pour 3 types d'entités au total :
   ExemplePivot (Étape 1), ExempleFormate et
-  CheckpointEntraine (Étape 2, ci-dessus) --
+  CheckpointEntraine (Étape 2, ci-dessus) ;
   aucune méthode ajoutée au port existant.
 end note
 
 note right of TrlSftEntraineurAdapter
-  Seul module du projet qui importerait
-  trl / peft / bitsandbytes / unsloth /
-  liger_kernel. Charge le modèle quantifié
-  et construit LoraConfig dans son
-  constructeur, jamais exposé au-dessus
-  de la frontière domain/application
-  (02_etapes_cas_usage.md §1).
+  [CONCEPTION] Pas encore écrit. Sera le seul
+  module du projet qui importera trl / peft /
+  bitsandbytes / unsloth / liger_kernel.
+  Chargera le modèle quantifié et construira
+  LoraConfig dans son constructeur, jamais
+  exposé au-dessus de la frontière
+  domain/application (02_etapes_cas_usage.md §1).
 end note
 
 note bottom of sft_train
-  Analogue de interfaces/cli/*.py pour
-  l'Étape 1, mais placé dans training/
-  (exécuté via HF Jobs / Spaces Dev Mode,
-  cf. docs/01_environnement), pas dans
-  interfaces/cli/, qui reste réservé aux
-  scripts sans dépendance GPU.
+  [CONCEPTION] Pas encore écrit. Analogue de
+  interfaces/cli/*.py pour l'Étape 1, mais
+  placé dans training/ (exécuté via HF Jobs /
+  Spaces Dev Mode, cf. docs/01_environnement),
+  pas dans interfaces/cli/, qui reste réservé
+  aux scripts sans dépendance GPU.
 end note
 
 @enduml

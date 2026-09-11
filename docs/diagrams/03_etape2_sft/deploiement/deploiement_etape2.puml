@@ -2,7 +2,7 @@
 !pragma layout smetana
 !include ../../_common/estilo.iuml
 
-title Étape 2 : Diagramme de déploiement (proposition de conception)\nEnvironnement B (distant, GPU), entraînement SFT-LoRA
+title Étape 2 : Diagramme de déploiement\nEnvironnement B (distant, GPU), entraînement SFT-LoRA : reste entièrement [CONCEPTION], seule partie de l'Étape 2 non encore provisionnée
 
 cloud "Hugging Face Hub" as HFHUB {
   artifact "Qwen3-1.7B-Base\n(poids publics)" as MODELE
@@ -13,10 +13,10 @@ cloud "Hugging Face Hub" as HFHUB {
 node "Spaces Dev Mode / HF Jobs (GPU A10G ou T4)\nEnvironnement B" as REMOTE {
 
   node "Environnement uv (--extra remote)" as VENV {
-    component "training/sft_train.py\n(point d'entree)" as CLI
-    component "chsa_triage.application" as APP
-    component "chsa_triage.domain" as DOM
-    component "chsa_triage.infrastructure.adapters" as INFRA
+    component "training/sft_train.py\n(point d'entree)\n[CONCEPTION] pas encore ecrit" as CLI
+    component "chsa_triage.application\n[FAIT] E2_00-E2_03, verdict_convergence,\ngrille_hyperparametres" as APP
+    component "chsa_triage.domain\n[FAIT]" as DOM
+    component "chsa_triage.infrastructure.adapters\n[FAIT] chatml/mlflow/tensorboard\n[CONCEPTION] trl_sft_entraineur" as INFRA
     component "transformers + bitsandbytes\n(BitsAndBytesConfig 4-bit NF4)" as HF
     component "peft (LoraConfig)" as PEFT
     component "trl (SFTTrainer)" as TRL

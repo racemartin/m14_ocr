@@ -1,12 +1,12 @@
 @startuml entrainer_sft
 !include ../../_common/estilo.iuml
 
-title Étape 2 : Diagramme de séquence (proposition de conception)\nEntraînement SFT-LoRA, aucune classe ci-dessous n'est encore écrite
+title Étape 2 : Diagramme de séquence\nEntraînement SFT-LoRA : toutes les classes ci-dessous sont écrites et testées, sauf TrlSftEntraineurAdapter et sft_train.py [CONCEPTION]
 
 actor "Développeur\n(Environnement B, GPU)" as Dev
 
 box "training" #F0EEE7
-  participant "sft_train.py" as CLI
+  participant "sft_train.py\n[CONCEPTION]" as CLI
 end box
 
 box "application/use_cases" #F0EEE7
@@ -18,12 +18,13 @@ end box
 
 box "application" #F0EEE7
   participant "verdict_convergence" as Verdict
+  participant "grille_hyperparametres" as Grille
 end box
 
 box "infrastructure/adapters" #F0EEE7
   participant "JsonlDatasetRepository" as Repo
   participant "ChatMLFormateurAdapter" as Formateur
-  participant "TrlSftEntraineurAdapter" as Entraineur
+  participant "TrlSftEntraineurAdapter\n[CONCEPTION]" as Entraineur
   participant "MlflowSuiviExperimentation" as Suivi
 end box
 
@@ -40,18 +41,23 @@ note right of CLI
   (02_etapes_cas_usage.md §1)
 end note
 
-CLI -> Repo : new(chemin=dataset train)
-CLI -> Repo : new(chemin=dataset validation)
-CLI -> Formateur : new()
-CLI -> UCFormat : new(repository_source, repository_sortie, formateur)
+CLI -> Repo : new(chemin=dataset pivot)
+CLI -> Repo : new(chemin=dataset formaté)
+CLI -> Formateur : new(nom_modele="Qwen/Qwen3-1.7B-Base")
+CLI -> UCFormat : new(repository_pivot, repository_formate, formateur)
 
-CLI -> UCFormat : executer()
+CLI -> UCFormat : executer(split=TypeSplit.TRAIN)
 activate UCFormat
-UCFormat -> Repo : lister()
+UCFormat -> Repo : lister(filtre={"split": split})
 Repo --> UCFormat : list[ExemplePivot]
 loop pour chaque ExemplePivot
   UCFormat -> Formateur : formater(exemple)
   activate Formateur
+  note right of Formateur
+    [FAIT] tokenizer chargé paresseusement
+    (1er appel), apply_chat_template sur
+    prompt+completion concaténés
+  end note
   Formateur --> UCFormat : ExempleFormate
   deactivate Formateur
 end
@@ -60,8 +66,8 @@ UCFormat --> CLI : nombre_formates
 deactivate UCFormat
 
 note right of CLI
-  ChatMLFormateurAdapter n'a besoin que du
-  tokenizer (pas du modèle complet), seul
+  [FAIT] ChatMLFormateurAdapter n'a besoin que
+  du tokenizer (pas du modèle complet), seul
   cas d'usage de cette étape testable en
   intégration réelle dès l'Environnement A,
   cf. 03_guide_implementation_pas_a_pas.md
@@ -69,28 +75,33 @@ end note
 
 CLI -> Entraineur : new(modele_base="Qwen/Qwen3-1.7B-Base",\nconfiguration_quantification)
 note right of Entraineur
-  Charge BitsAndBytesConfig 4-bit NF4 +
-  AutoModelForCausalLM + tokenizer une
-  seule fois, dans le constructeur,
+  [CONCEPTION] Chargera BitsAndBytesConfig
+  4-bit NF4 + AutoModelForCausalLM + tokenizer
+  une seule fois, dans le constructeur,
   jamais exposé à l'application
   (même principe que PresidioAnonymiseur
   et les adaptateurs MoteurInference)
 end note
 
-CLI -> Suivi : new(nom_experience="chsa-triage-sft")
-CLI -> UCTrain : new(entraineur, suivi)
-CLI -> UCBoucle : new(entrainer_use_case=UCTrain,\ngrille_hyperparametres)
+CLI -> Suivi : new(uri_tracking)
+CLI -> UCTrain : new(entraineur=Entraineur, suivi=Suivi)
+CLI -> UCBoucle : new(cas_usage_entrainement=UCTrain,\ngrille=grille_hyperparametres)
 
-CLI -> UCBoucle : executer(dataset_train, dataset_validation,\nconfig_lora, hyperparametres_initiaux)
+CLI -> UCBoucle : executer(dataset_train, dataset_validation,\nconfig_lora, hyperparametres_initiaux, nom_run)
 activate UCBoucle
+note right of UCBoucle
+  [FAIT] matérialise dataset_train/dataset_validation
+  en listes (un Iterable épuisable ne survivrait
+  pas à un second passage sur plusieurs essais)
+end note
 
-UCBoucle -> UCTrain : executer(dataset_train, dataset_validation,\nconfig_lora, hyperparametres)
+UCBoucle -> UCTrain : entrainer(dataset_train, dataset_validation,\nconfig_lora, candidat, nom_run_essai)
 activate UCTrain
-UCTrain -> Suivi : demarrer_run(nom, parametres)
+UCTrain -> Suivi : demarrer_run(nom_run_essai, parametres_run)
 UCTrain -> Entraineur : entrainer(dataset_train, dataset_validation,\nconfig_lora, hyperparametres)
 activate Entraineur
 note right of Entraineur
-  peft.LoraConfig + trl.SFTTrainer
+  [CONCEPTION] peft.LoraConfig + trl.SFTTrainer
   (packing=True, loss_type=chunked_nll,
   assistant_only_loss=True), puis .train()
 end note
@@ -108,29 +119,41 @@ activate Verdict
 Verdict --> UCBoucle : VerdictConvergence
 deactivate Verdict
 
-alt VerdictConvergence != SAINE et grille non épuisée
-  UCBoucle -> UCBoucle : candidat_suivant(grille, historique)
-  note right of UCBoucle
-    Grille restreinte (lr, r) définie dans
-    la recette ; Optuna écarté pour ce POC
-    (roadmap, Phase 3)
+UCBoucle -> UCBoucle : essais.append(EssaiHyperparametres(\ncandidat, resultat, verdict))
+
+alt VerdictConvergence != SAINE
+  UCBoucle -> Grille : candidat_suivant(grille, historique)
+  activate Grille
+  note right of Grille
+    [FAIT] retourne le 1er élément de grille
+    absent de historique, ou None si épuisée ;
+    grille = séquence déjà étalée (produit
+    cartésien calculé en amont par l'appelant)
   end note
-  UCBoucle -> UCTrain : executer(... nouveaux hyperparametres)
-  note right: relance (boucle bornée par la taille de la grille)
-else SAINE, ou grille épuisée
-  UCBoucle --> UCBoucle : retient le meilleur ResultatEntrainementSFT observé
+  Grille --> UCBoucle : HyperparametresEntrainement | None
+  deactivate Grille
+  alt candidat is not None (grille non épuisée)
+    UCBoucle -> UCTrain : entrainer(... nouveau candidat)
+    note right: relance (boucle bornée par la taille de la grille)
+  else grille épuisée
+    UCBoucle -> UCBoucle : sort de la boucle
+  end
+else SAINE
+  UCBoucle -> UCBoucle : sort de la boucle
 end
 
-UCBoucle --> CLI : ResultatEntrainementSFT (retenu), VerdictConvergence
+UCBoucle -> UCBoucle : meilleur = min(essais, key=_cle_classement)\n(SAINE toujours préféré ; à égalité,\nperte finale la plus basse gagne)
+UCBoucle --> CLI : ResultatBoucleAjustement\n(meilleur_essai, essais)
 deactivate UCBoucle
 
 CLI -> UCSave : new(repository_checkpoints)
-CLI -> UCSave : executer(resultat, config_lora, hyperparametres, verdict)
+CLI -> UCSave : executer(identifiant, chemin, modele_base,\nconfiguration_lora, hyperparametres,\nmetriques_finales, verdict_convergence)
 activate UCSave
+UCSave -> UCSave : horloge() -> horodatage UTC ISO
 UCSave -> Repo : sauvegarder(CheckpointEntraine)
 note right of Repo
   data/processed/checkpoints_sft.jsonl
-  (métadonnées ; les poids LoRA sont déjà
+  (métadonnées ; les poids LoRA seront déjà
   sur disque, écrits par trl/peft)
 end note
 UCSave --> CLI : CheckpointEntraine

@@ -2,14 +2,20 @@
 
 # Étape 2 : Introduction aux concepts (SFT + LoRA)
 
-> Ce document planifie l'Étape 2 avant toute implémentation : aucun
-> script cité n'existe encore dans le dépôt (`training/` n'est pas
-> créé), aucune bibliothèque d'entraînement n'a été installée, aucun
-> poids de `Qwen3-1.7B-Base` n'a été téléchargé. Contrairement à
-> `docs/02_etape1_donnees/`, qui documente du code réel et des
-> exécutions réelles, les commandes et journaux montrés ici sont des
-> exemples illustratifs de ce qui est attendu une fois le code écrit,
-> pas des résultats mesurés.
+> Les trois phases sans GPU de l'Étape 2 (domaine, application, cas
+> d'usage `E2_00` à `E2_03`, adaptateurs `ChatMLFormateurAdapter`,
+> `MlflowSuiviExperimentation`, `TensorboardSuiviExperimentation`) sont
+> écrites et testées (221 tests en vert au moment de l'écriture). Ce
+> document reste toutefois majoritairement conceptuel : il explique
+> le "quoi"/"pourquoi" des techniques (SFT, LoRA, quantification 4-bit,
+> ChatML, packing, grad norm) plutôt que le code lui-même, cf.
+> `02_etapes_cas_usage.md` pour la correspondance avec les fichiers
+> réels. Ce qui reste non écrit et nécessite un GPU réel :
+> `infrastructure/adapters/trl_sft_entraineur.py` et
+> `training/sft_train.py` (aucun poids de `Qwen3-1.7B-Base` n'a encore
+> été téléchargé, aucune bibliothèque d'entraînement GPU exécutée) :
+> les commandes/journaux les concernant, montrés ici, restent des
+> exemples illustratifs, pas des résultats mesurés.
 
 Public visé : quelqu'un qui connaît le machine learning mais n'a
 jamais fait de fine-tuning de grand modèle de langage. Chaque concept
@@ -237,8 +243,9 @@ dataset pivot actuel (MediQAl, FrenchMedMCQA, MedQuAD) sont des
 réponses en langage naturel issues des corpus sources : **aucune
 n'est déjà au format `<think>` + JSON triage attendu**. C'est un écart
 réel entre les données disponibles et le format de sortie final, pas
-une supposition : il doit être tranché avant d'écrire le formateur
-ChatML (uc_05_00, cf. `02_etapes_cas_usage.md` §"Décision à prendre").
+une supposition : il reste ouvert malgré l'écriture du formateur
+ChatML (`E2_00_uc_formater_dataset_chatml.py`, cf.
+`02_etapes_cas_usage.md` §"Décision à prendre").
 
 ## Document suivant
 

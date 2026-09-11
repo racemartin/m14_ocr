@@ -2,11 +2,14 @@
 
 # Étape 2 : Installation et configuration
 
-> Comme pour `00_introduction_concepts.md`, ce document planifie
-> l'Étape 2 avant toute implémentation. Les commandes et journaux
-> ci-dessous sont des exemples illustratifs de ce qui est attendu une
-> fois `training/sft_train.py` écrit et l'Environnement B provisionné
-> : ils ne sont pas exécutés ni mesurés à ce stade.
+> Les trois phases sans GPU de l'Étape 2 sont écrites et testées (voir
+> `02_etapes_cas_usage.md`) ; ce document en revanche décrit
+> spécifiquement l'Environnement B (GPU), qui reste entièrement à
+> provisionner : `training/sft_train.py` n'est pas encore écrit,
+> `recipes/sft_qwen3_lora.yaml` n'existe pas encore. Les commandes et
+> journaux ci-dessous restent des exemples illustratifs de ce qui est
+> attendu une fois ces deux éléments en place : ils ne sont pas
+> exécutés ni mesurés à ce stade.
 
 ## 1. Quel environnement pour cette étape
 
