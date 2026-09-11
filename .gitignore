@@ -43,3 +43,6 @@ data/splits/*
 # Notes de travail locales, non versionnees
 docs/01_environnement/M14 Support de presentation_V2.pptx.pdf
 docs/03_etape2_sft/Blueprint_SFT_Médical.pdf
+
+# Exports PDF locaux des documents Markdown (generes a la lecture, pas versionnes)
+*.md.pdf
