@@ -1,7 +1,7 @@
 @startuml pipeline_sft_lora
 !include ../../_common/estilo.iuml
 
-title Étape 2 : Pipeline SFT + LoRA (proposition de conception)\nDiagramme d'activité, aucun code encore écrit, cf. docs/03_etape2_sft/
+title Étape 2 : Pipeline SFT + LoRA\nDiagramme d'activité : E2_00 à E2_03 écrits et testés (cf. docs/03_etape2_sft/), seule la partition GPU reste à écrire
 
 start
 
@@ -22,52 +22,58 @@ note right
   01_installation_configuration.md §4
 end note
 
-partition "training/sft_train.py (Environnement B, GPU)" #E8F0F5 {
+partition "training/sft_train.py (Environnement B, GPU)\n[CONCEPTION] point d'entrée pas encore écrit" #E8F0F5 {
 
-  :uc_05_00_formater_dataset_chatml.py\n(FormaterDatasetChatMLUseCase);
+  :E2_00_uc_formater_dataset_chatml.py\n(FormaterDatasetChatMLUseCase.executer(split));
   note right
-    Port : FormateurConversation
-    Adaptateur proposé : ChatMLFormateurAdapter
+    [FAIT] Port : FormateurConversation
+    Adaptateur : ChatMLFormateurAdapter
     (apply_chat_template,
     add_generation_prompt=False)
+    Testable sans GPU, Environnement A
   end note
 
   :Charger Qwen3-1.7B-Base en 4-bit NF4\n+ configurer LoraConfig;
   note right
-    Pas de cas d'usage dédié : responsabilité
-    interne de TrlSftEntraineurAdapter
-    (constructeur) + assemblage de
-    recipes/sft_qwen3_lora.yaml. Voir
-    02_etapes_cas_usage.md §1 (décision).
+    [CONCEPTION] Pas de cas d'usage dédié :
+    responsabilité interne de
+    TrlSftEntraineurAdapter (constructeur,
+    pas encore écrit) + assemblage de
+    recipes/sft_qwen3_lora.yaml (pas encore
+    créé). Voir 02_etapes_cas_usage.md §1.
   end note
 
-  :uc_05_01_entrainer_sft.py\n(EntrainerSftUseCase);
+  :E2_01_uc_entrainer_sft.py\n(EntrainerSftUseCase.entrainer(...));
   note right
-    Port : EntraineurSupervise
-    (packing=True, loss_type=chunked_nll)
-    Suivi : SuiviExperimentation
-    (MLflow / TensorBoard : loss, grad norm)
+    [FAIT] le cas d'usage (testé avec un faux
+    EntraineurSupervise) ; [CONCEPTION]
+    TrlSftEntraineurAdapter (packing=True,
+    loss_type=chunked_nll), seul adaptateur
+    GPU manquant. Suivi : SuiviExperimentation
+    [FAIT] (MlflowSuiviExperimentation /
+    TensorboardSuiviExperimentation : loss,
+    grad norm)
   end note
 
   :evaluer_convergence(courbe_metriques)\n(application/verdict_convergence.py);
   note right
-    Fonction pure, aucun port : lit la
+    [FAIT] Fonction pure, aucun port : lit la
     courbe déjà produite par entrainer()
   end note
 
   if (Convergence saine ?) then (non : surapprentissage / sous-apprentissage / instable)
-    :uc_05_02_ajuster_boucle_hyperparametres_sft.py\n(grille restreinte : lr, r, alpha);
-    note right: Optuna écarté pour ce POC (roadmap, Phase 3)
+    :E2_02_uc_ajuster_boucle_hyperparametres_sft.py\n(AjusterBoucleHyperparametresSftUseCase,\ngrille restreinte : lr, rang);
+    note right: [FAIT] le cas d'usage ; Optuna écarté pour ce POC (roadmap, Phase 3)
     -> Relancer l'entraînement;
-    :uc_05_01_entrainer_sft.py\n(EntrainerSftUseCase);
+    :E2_01_uc_entrainer_sft.py\n(EntrainerSftUseCase.entrainer(...));
   else (oui)
   endif
 
-  :uc_05_03_sauvegarder_checkpoint_sft.py\n(SauvegarderCheckpointSftUseCase);
+  :E2_03_uc_sauvegarder_checkpoint_sft.py\n(SauvegarderCheckpointSftUseCase.executer(...));
   note right
-    Persiste CheckpointEntraine (métadonnées)
+    [FAIT] Persiste CheckpointEntraine (métadonnées)
     via RepositoryLectureEcriture : les poids
-    LoRA eux-mêmes sont écrits par trl/peft
+    LoRA eux-mêmes seront écrits par trl/peft
   end note
 }
 

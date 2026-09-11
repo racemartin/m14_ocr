@@ -1,0 +1,204 @@
+@startuml classes_etape2
+!pragma layout smetana
+!include ../../_common/estilo.iuml
+
+title Étape 2 : Diagramme de classes\nClasses réelles du SFT-LoRA (domaine, ports, application, infrastructure) : [FAIT] sauf TrlSftEntraineurAdapter [CONCEPTION]
+
+package "domain.model" as MODEL {
+  class ExempleFormate {
+    +identifiant: str
+    +texte: str
+  }
+  class ConfigurationQuantification {
+    +bits: int
+    +type_quantification: str
+    +double_quantification: bool
+    +dtype_calcul: str
+  }
+  class ConfigurationLora {
+    +rang: int
+    +alpha: int
+    +dropout: float
+    +modules_cibles: tuple[str, ...]
+  }
+  class HyperparametresEntrainement {
+    +taux_apprentissage: float
+    +nombre_epoques: int
+    +taille_lot: int
+    +packing: bool
+    +type_perte: str
+  }
+  class CheckpointEntraine {
+    +identifiant: str
+    +chemin: str
+    +modele_base: str
+    +configuration_lora: ConfigurationLora
+    +hyperparametres: HyperparametresEntrainement
+    +metriques_finales: MetriquesEntrainement
+    +verdict_convergence: VerdictConvergence
+    +horodatage: str
+  }
+  enum VerdictConvergence {
+    SAINE
+    SURAPPRENTISSAGE
+    SOUS_APPRENTISSAGE
+    INSTABLE
+  }
+
+  CheckpointEntraine *-- ConfigurationLora
+  CheckpointEntraine *-- HyperparametresEntrainement
+  CheckpointEntraine --> VerdictConvergence
+}
+
+package "domain.ports" as PORTS {
+  class MetriquesEntrainement {
+    +etape: int
+    +perte_train: float
+    +perte_validation: float | None
+    +norme_gradient: float
+  }
+  class ResultatEntrainementSFT {
+    +chemin_checkpoint: str
+    +courbe_metriques: tuple[MetriquesEntrainement, ...]
+  }
+  interface FormateurConversation {
+    +formater(exemple: ExemplePivot) : ExempleFormate
+  }
+  interface EntraineurSupervise {
+    +entrainer(dataset_train, dataset_validation,\nconfig_lora, hyperparametres) : ResultatEntrainementSFT
+  }
+  interface SuiviExperimentation {
+    +demarrer_run(nom, parametres)
+    +logger_metrique(nom, valeur, etape)
+    +terminer_run()
+  }
+
+  ResultatEntrainementSFT *-- MetriquesEntrainement
+  EntraineurSupervise ..> ExempleFormate
+  EntraineurSupervise ..> ResultatEntrainementSFT
+  FormateurConversation ..> ExempleFormate
+
+  CheckpointEntraine ..> MetriquesEntrainement
+}
+
+package "application" as APPLICATION {
+  class "verdict_convergence" as VerdictFn <<module, fonction pure>> {
+    +evaluer_convergence(courbe) : VerdictConvergence
+    -_est_instable(courbe) : bool
+    -_baisse_relative(initiale, finale) : float
+    -_surapprentissage(courbe) : bool
+  }
+  class "grille_hyperparametres" as GrilleFn <<module, fonction pure>> {
+    +candidat_suivant(grille, historique) : HyperparametresEntrainement | None
+  }
+
+  VerdictFn ..> MetriquesEntrainement
+  VerdictFn ..> VerdictConvergence
+  GrilleFn ..> HyperparametresEntrainement
+}
+
+package "application.use_cases" as USECASES {
+  class FormaterDatasetChatMLUseCase <<E2_00>> {
+    +repository_pivot: RepositoryLectureEcriture
+    +repository_formate: RepositoryLectureEcriture
+    +formateur: FormateurConversation
+    +executer(split: TypeSplit) : int
+  }
+  class EntrainerSftUseCase <<E2_01>> {
+    +entraineur: EntraineurSupervise
+    +suivi: SuiviExperimentation
+    +entrainer(dataset_train, dataset_validation,\nconfig_lora, hyperparametres, nom_run) : ResultatEntrainementSFT
+  }
+  class EssaiHyperparametres <<E2_02>> {
+    +hyperparametres: HyperparametresEntrainement
+    +resultat: ResultatEntrainementSFT
+    +verdict: VerdictConvergence
+  }
+  class ResultatBoucleAjustement <<E2_02>> {
+    +meilleur_essai: EssaiHyperparametres
+    +essais: tuple[EssaiHyperparametres, ...]
+  }
+  class AjusterBoucleHyperparametresSftUseCase <<E2_02>> {
+    +cas_usage_entrainement: EntrainerSftUseCase
+    +grille: Sequence[HyperparametresEntrainement]
+    +executer(dataset_train, dataset_validation,\nconfig_lora, hyperparametres_initiaux, nom_run) : ResultatBoucleAjustement
+    -_cle_classement(essai) : tuple[int, float]
+    -_perte_finale(resultat) : float
+  }
+  class SauvegarderCheckpointSftUseCase <<E2_03>> {
+    +repository_checkpoints: RepositoryLectureEcriture
+    +horloge: Callable[[], str]
+    +executer(identifiant, chemin, modele_base,\nconfiguration_lora, hyperparametres,\nmetriques_finales, verdict_convergence) : CheckpointEntraine
+  }
+
+  FormaterDatasetChatMLUseCase --> ExemplePivot
+  FormaterDatasetChatMLUseCase --> ExempleFormate
+  FormaterDatasetChatMLUseCase --> FormateurConversation
+  FormaterDatasetChatMLUseCase --> RepositoryLectureEcriture
+
+  EntrainerSftUseCase --> EntraineurSupervise
+  EntrainerSftUseCase --> SuiviExperimentation
+
+  AjusterBoucleHyperparametresSftUseCase --> EntrainerSftUseCase
+  AjusterBoucleHyperparametresSftUseCase --> VerdictFn
+  AjusterBoucleHyperparametresSftUseCase --> GrilleFn
+  AjusterBoucleHyperparametresSftUseCase --> ResultatBoucleAjustement
+  ResultatBoucleAjustement *-- EssaiHyperparametres
+
+  SauvegarderCheckpointSftUseCase --> CheckpointEntraine
+  SauvegarderCheckpointSftUseCase --> RepositoryLectureEcriture
+
+  class ExemplePivot <<existant, Étape 1>>
+  interface RepositoryLectureEcriture <<existant, Étape 1>>
+}
+
+package "infrastructure.adapters" as ADAPTERS {
+  class ChatMLFormateurAdapter {
+    +nom_modele: str = "Qwen/Qwen3-1.7B-Base"
+    -_tokenizer: Any
+    -_obtenir_tokenizer()
+    +formater(exemple: ExemplePivot) : ExempleFormate
+  }
+  class MlflowSuiviExperimentation {
+    +uri_tracking: str
+    -_run_actif: Any
+    +demarrer_run(nom, parametres)
+    +logger_metrique(nom, valeur, etape)
+    +terminer_run()
+  }
+  class TensorboardSuiviExperimentation {
+    +repertoire_logs: str
+    -_writer: Any
+    +demarrer_run(nom, parametres)
+    +logger_metrique(nom, valeur, etape)
+    +terminer_run()
+  }
+  class TrlSftEntraineurAdapter <<CONCEPTION, pas encore écrit>> {
+    +entrainer(dataset_train, dataset_validation,\nconfig_lora, hyperparametres) : ResultatEntrainementSFT
+  }
+  class JsonlDatasetRepository <<existant, Étape 1>>
+
+  ChatMLFormateurAdapter ..|> FormateurConversation
+  MlflowSuiviExperimentation ..|> SuiviExperimentation
+  TensorboardSuiviExperimentation ..|> SuiviExperimentation
+  TrlSftEntraineurAdapter ..|> EntraineurSupervise
+  JsonlDatasetRepository ..|> RepositoryLectureEcriture
+}
+
+note bottom of RepositoryLectureEcriture
+  Réutilisé pour 3 types d'entités au total :
+  ExemplePivot (Étape 1), ExempleFormate et
+  CheckpointEntraine (Étape 2) ; aucune méthode
+  ajoutée au port existant.
+end note
+
+note right of TrlSftEntraineurAdapter
+  Seul élément non couvert par les 221 tests
+  actuels : nécessite un GPU réel
+  (Environnement B). Chargera le modèle
+  quantifié et construira LoraConfig dans son
+  constructeur, jamais exposé au-dessus de la
+  frontière domain/application.
+end note
+
+@enduml
