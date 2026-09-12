@@ -320,7 +320,7 @@ uv run python interfaces/cli/E1_05_01_verifier_repartition_splits.py --dataset d
 
 `E1_04_00_anonymiser_dataset.py` affiche une barre de progression `tqdm` pendant le traitement (peut durer plusieurs dizaines de minutes sur un gros dataset).
 
-### 9. Extraction du sous-ensemble SFT (jusqu'a 5000 exemples, pour publication Hugging Face)
+### 9. Extraction du sous-ensemble SFT (5000 exemples, pour publication Hugging Face)
 
 Deux etapes : exporter les identifiants a exclure (candidats de PII
 residuelle confirmes ou en attente), puis soustraire ce fichier du
@@ -332,13 +332,21 @@ filtrait auparavant que sur `split != null`, sans filtrer
 deux types (SFT et DPO) dans le meme fichier anonymise, donc des
 exemples DPO (ex. UltraMedical-Preference, `chosen`/`rejected`
 renseignes, `completion` vide) se retrouvaient dans le sous-ensemble
-cense n'etre que du SFT. Le filtre `type_exemple == TypeExemple.SFT`
-est maintenant explicite, avant tout comptage/exclusion/recoupe (idem
-pour `FormaterDatasetChatMLUseCase`, §Etape 2). Consequence directe :
-la taille reellement ecrite depend du nombre d'exemples PUREMENT SFT
-deja repartis en split, pas du pool total (SFT+DPO) comme avant ;
-`--taille` reste un PLAFOND, jamais un nombre garanti (cf. `manque`
-ci-dessous).
+cense n'etre que du SFT (constate : un fichier de 5000 lignes etait
+72% DPO). Le filtre `type_exemple == TypeExemple.SFT` est maintenant
+explicite, avant tout comptage/exclusion/recoupe (idem pour
+`FormaterDatasetChatMLUseCase`, §Etape 2). Consequence directe : la
+taille reellement ecrite depend du nombre d'exemples PUREMENT SFT deja
+repartis en split, pas du pool total (SFT+DPO) comme avant ; `--taille`
+reste un PLAFOND, jamais un nombre garanti (cf. `manque` ci-dessous) :
+si le pivot anonymise n'a encore couvert qu'une fraction du corpus
+complet (vagues incrementales de `E1_04_00_anonymiser_dataset.py`,
+§4), le pool SFT disponible peut etre plus petit que `--taille` et le
+fichier ecrit contiendra alors HONNETEMENT moins de lignes (renommer
+le fichier de sortie pour que son nom reflete ce compte reel, cf.
+`chemin_sortie_defaut`). Sur le pivot COMPLETEMENT anonymise et
+reparti (134 883 exemples, 37 802 SFT/97 081 DPO, §4/§7), le pool SFT
+disponible large permet d'atteindre les 5000 demandes sans y toucher.
 
 ```bash
 # 1. Export non interactif (lecture seule) des identifiants a exclure :
@@ -363,71 +371,56 @@ uv run python interfaces/cli/E1_05_02_extraire_sous_ensemble_sft.py \
     --taille 5000
 ```
 
-Exemple reel (12/09/2026, apres correction du filtre `type_exemple`),
-sur l'etat courant du pivot anonymise (5000 exemples anonymises au
-total dont 1401 SFT/3599 DPO, aucun identifiant exclu pour PII a ce
-jour, cf. limite de couverture ci-dessous) :
+Exemple reel (12/09/2026, apres correction du filtre `type_exemple` ET
+apres avoir complete l'anonymisation/le decoupage sur les 134 883
+exemples du pivot, §4/§7 ; controle qualite §5 elargi a 1350
+identifiants echantillonnes cumules, dont 444 de sources SFT, avant
+cette extraction) :
 
 ```
-Exemples avec split (avant exclusion) : 1401
-Exclus (PII confirmee ou en attente de revision humaine) : 0
-Disponibles apres exclusion : 1401
-Ecrits dans data/processed/dataset_chsa_triage_sft_anonymise_1401.jsonl : 1401 exemple(s).
+Exemples avec split (avant exclusion) : 37772
+Exclus (PII confirmee ou en attente de revision humaine) : 10
+Disponibles apres exclusion : 37762
+Recoupes par echantillonnage stratifie : -32762 (surplus au-dela de 5000)
+Ecrits dans data/processed/dataset_chsa_triage_sft_anonymise_5000.jsonl : 5000 exemple(s).
 
 Repartition du sous-ensemble ecrit par strate (type_exemple, source) :
 Strate                                          Total           train             val            test
-sft/FrenchMedMCQA                                  22      18 (81.8%)       2 ( 9.1%)       2 ( 9.1%)
-sft/MedQuAD                                       606     486 (80.2%)      60 ( 9.9%)      60 ( 9.9%)
-sft/MediQAl                                       773     619 (80.1%)      77 (10.0%)      77 (10.0%)
-
-ATTENTION : 1401 exemple(s) disponibles pour 5000 demandes.
-Il manque 3599 exemple(s) apres exclusion des PII confirmees/en attente.
+sft/FrenchMedMCQA                                  79      61 (77.2%)      10 (12.7%)       8 (10.1%)
+sft/MedQuAD                                      2161    1702 (78.8%)     216 (10.0%)     243 (11.2%)
+sft/MediQAl                                      2760    2220 (80.4%)     257 ( 9.3%)     283 (10.3%)
+Taille cible atteinte (5000 == 5000).
 ```
 
-Note bien : plus aucune strate `dpo/UltraMedical-Preference` dans le
-tableau ci-dessus, contrairement a avant la correction. Le nom de
-sortie par defaut inclut la taille REELLEMENT ecrite (`chemin_sortie_defaut`
-dans `interfaces/cli/E1_05_02_extraire_sous_ensemble_sft.py` prend `--taille`,
-mais le decompte ci-dessus montre que `--taille` est un plafond : si
-le pool SFT disponible est plus petit, le fichier ecrit contient moins
-de lignes que `--taille`, et il faut renommer le fichier a la main
-pour que son nom reflete le compte reel, cf. le nom `..._1401.jsonl`
-ci-dessus).
-
-Le pivot anonymise complet peut contenir bien plus d'exemples SFT que
-le nombre ecrit ici, une fois plus de vagues d'anonymisation et de
-`E1_05_00_decouper_splits.py --n <N>` executees (§4, §7) : `E1_05_02_extraire_sous_ensemble_sft.py`
-filtre sur `type_exemple == SFT` et `split != null`, retire les
-identifiants listes dans `data/processed/identifiants_a_exclure_publication.jsonl`
-(produit par l'etape 1), et, si le resultat filtre depasse `--taille`,
-le RECOUPE a exactement `--taille` par echantillonnage stratifie
-(type_exemple, source). La taille publiee ne depasse donc jamais
-`--taille`, mais peut lui etre INFERIEURE si le pool SFT disponible
-est plus petit ; publier uniquement ce sous-ensemble plutot que les
-134 883 exemples du pivot complet reduit la surface d'exposition
-publique de donnees issues des corpus sources.
+Note bien : aucune strate `dpo/UltraMedical-Preference` dans le
+tableau ci-dessus, contrairement a avant la correction (confirme aussi
+par `grep -c '"type_exemple": "dpo"' data/processed/dataset_chsa_triage_sft_anonymise_5000.jsonl`
+retournant 0).
 
 Si le resultat, apres exclusion, contient MOINS d'exemples que
-`--taille` (cas ci-dessus), `E1_05_02_extraire_sous_ensemble_sft.py` ne tente
-jamais de completer automatiquement (ce n'est qu'un filtre/une
-soustraction, pas un nouveau muestreo) : il affiche clairement combien
-d'exemples restent et combien manquent, et suggere d'elargir le
-decoupage des splits d'abord (`E1_05_00_decouper_splits.py --n <taille plus
-grande>`, §7) avant de relancer l'extraction ; mais tant que le pool
-SFT lui-meme (avant tout split) reste petit, elargir `--n` n'ajoutera
-que des exemples DPO supplementaires au fichier repart, sans changer
-le compte SFT disponible.
+`--taille` (cas rencontre plus tot dans cette meme investigation,
+lorsque seule une fraction du pivot avait ete anonymisee),
+`E1_05_02_extraire_sous_ensemble_sft.py` ne tente jamais de completer
+automatiquement (ce n'est qu'un filtre/une soustraction, pas un
+nouveau muestreo) : il affiche clairement combien d'exemples restent
+et combien manquent, et suggere d'elargir l'anonymisation
+(`E1_04_00_anonymiser_dataset.py --limite <N>`, §4) puis le decoupage
+des splits (`E1_05_00_decouper_splits.py --n <N>` ou sans `--n` pour
+tout completer, §7) avant de relancer l'extraction ; elargir seulement
+`--n` sans avoir d'abord anonymise davantage n'ajoute pas de nouveaux
+exemples SFT si le pool SFT anonymise lui-meme est deja epuise.
 
 Le pivot anonymise complet (`dataset_pivot_anonymise.jsonl`) et le
 fichier d'exclusions restent locaux sous `data/processed/` (deja
 exclus de Git, voir le commentaire correspondant dans `.gitignore`) ;
-le fichier filtre SFT est reproductible a tout moment a partir du
-pivot complet via les deux commandes ci-dessus.
+le fichier filtre de 5000 exemples est reproductible a tout moment a
+partir du pivot complet via les deux commandes ci-dessus.
 
-**Publication sur Hugging Face Hub.** Depot cible : `mombasstic/dataset_chsa_triage_sft_anonymise_1401`
+**Publication sur Hugging Face Hub.** Depot cible : `mombasstic/dataset_chsa_triage_sft_anonymise_5000`
 (le suffixe numerique doit toujours correspondre au compte REEL du
-fichier publie, pas a `--taille`), prive par defaut, meme s'il ne
-contient qu'un sous-ensemble filtre et non le pivot complet : il
+fichier publie, pas seulement a `--taille` demande : verifier que les
+deux correspondent avant publication), prive par defaut, meme s'il ne
+contient que les 5000 exemples filtres et non le pivot complet : il
 s'agit toujours de texte medical anonymise, et la visibilite privee
 minimise l'exposition publique tant que la couverture du controle
 qualite (§5) reste partielle (voir la limite de couverture
@@ -440,25 +433,26 @@ de role "write" (`hf auth login`, voir
 
 ```bash
 # 1. Creer le depot (prive, type dataset) :
-hf repo create mombasstic/dataset_chsa_triage_sft_anonymise_1401 --repo-type dataset --private
+hf repo create mombasstic/dataset_chsa_triage_sft_anonymise_5000 --repo-type dataset --private
 
-# 2. Publier le fichier filtre :
-hf upload mombasstic/dataset_chsa_triage_sft_anonymise_1401 data/processed/dataset_chsa_triage_sft_anonymise_1401.jsonl --repo-type dataset
+# 2. Publier le fichier de 5000 exemples :
+hf upload mombasstic/dataset_chsa_triage_sft_anonymise_5000 data/processed/dataset_chsa_triage_sft_anonymise_5000.jsonl --repo-type dataset
 
 # 3. Verifier la publication ET le nombre de lignes cote Hub (pas
 #    seulement en local) : le plus fiable est de retelecharger le
 #    fichier depuis le Hub puis de compter les lignes, sans dependre
 #    du "dataset viewer" de HF qui peut prendre du temps a traiter un
 #    fichier tout juste publie, surtout sur un depot prive.
-hf download mombasstic/dataset_chsa_triage_sft_anonymise_1401 dataset_chsa_triage_sft_anonymise_1401.jsonl --repo-type dataset --local-dir /tmp/verificacion_hf
-wc -l /tmp/verificacion_hf/dataset_chsa_triage_sft_anonymise_1401.jsonl   # doit correspondre aux lignes du fichier local
+hf download mombasstic/dataset_chsa_triage_sft_anonymise_5000 dataset_chsa_triage_sft_anonymise_5000.jsonl --repo-type dataset --local-dir /tmp/verificacion_hf
+wc -l /tmp/verificacion_hf/dataset_chsa_triage_sft_anonymise_5000.jsonl   # doit correspondre aux lignes du fichier local
 ```
 
 **Limite de couverture connue :** l'exclusion ci-dessus ne peut porter
 que sur ce qui a deja ete AUDITE. Seul un sous-ensemble du pivot a ete
-echantillonne par le controle qualite (§5) a ce jour ; un exemple
-jamais echantillonne peut donc encore contenir une PII residuelle non
-detectee, meme apres l'etape 1. Augmenter la couverture de
+echantillonne par le controle qualite (§5, 1350 identifiants cumules
+sur 134 883 a ce jour, ~1%) ; un exemple jamais echantillonne peut
+donc encore contenir une PII residuelle non detectee, meme apres
+l'etape 1. Augmenter la couverture de
 `E1_04_02_controler_qualite_anonymisation.py` (§5) avant publication reduit ce
 risque, mais ne l'elimine pas completement sans audit exhaustif.
 
