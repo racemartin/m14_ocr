@@ -72,11 +72,15 @@ traversera la frontière `application/domain`.
 ## 2. `E2_00_uc_formater_dataset_chatml.py` : `FormaterDatasetChatMLUseCase`
 
 `executer(self, split: TypeSplit) -> int` lit les `ExemplePivot` du
-`split` demandé (`repository_pivot.lister(filtre={"split": split})`,
-réutilisation directe du port déjà utilisé partout en Étape 1 : c'est
-la preuve concrète de la promesse faite dans
-`docs/01_environnement/01_architecture_hexagonale.md` : "un port
-générique peut servir à n'importe quel type d'entité"), appelle
+`split` demandé, filtrés aussi sur `type_exemple == TypeExemple.SFT`
+(`repository_pivot.lister(filtre={"split": split, "type_exemple": TypeExemple.SFT})`,
+correction du 12/09/2026 : ce cas d'usage prépare des données
+d'entraînement SFT, un `ExemplePivot` DPO n'a pas de `completion`, cf.
+AGENTS.md et README §9 pour le même trou trouvé dans
+`ExtraireSousEnsembleSftUseCase`. Réutilisation directe du port déjà
+utilisé partout en Étape 1 : c'est la preuve concrète de la promesse
+faite dans `docs/01_environnement/01_architecture_hexagonale.md` :
+"un port générique peut servir à n'importe quel type d'entité"), appelle
 `FormateurConversation.formater(exemple)` pour chacun, et persiste le
 résultat en un seul appel `sauvegarder_plusieurs(...)` (jamais un
 `sauvegarder()` par item, cf. `AGENTS.md` sur le coût O(n²)) via une

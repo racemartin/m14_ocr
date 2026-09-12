@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from chsa_triage.domain.model.enums import TypeSplit
+from chsa_triage.domain.model.enums import TypeExemple, TypeSplit
 from chsa_triage.domain.ports.dataset_repository import RepositoryLectureEcriture
 from chsa_triage.domain.ports.formateur_conversation import FormateurConversation
 
@@ -30,14 +30,19 @@ class FormaterDatasetChatMLUseCase:
 
     def executer(self, split: TypeSplit) -> int:
         """
-        Lit tous les `ExemplePivot` du `split` demande, les rend en
-        ChatML via `self.formateur`, et persiste le resultat en une
-        seule operation (`sauvegarder_plusieurs`, jamais un
-        `sauvegarder()` par item, cf. AGENTS.md sur le cout O(n^2) de
+        Lit tous les `ExemplePivot` de type `TypeExemple.SFT` du
+        `split` demande (ce cas d'usage prepare des donnees
+        d'entrainement SFT ; un `ExemplePivot` DPO n'a pas de
+        `completion`, cf. AGENTS.md), les rend en ChatML via
+        `self.formateur`, et persiste le resultat en une seule
+        operation (`sauvegarder_plusieurs`, jamais un `sauvegarder()`
+        par item, cf. AGENTS.md sur le cout O(n^2) de
         `JsonlDatasetRepository.sauvegarder`). Retourne le nombre
         d'exemples formates.
         """
-        candidats = list(self.repository_pivot.lister(filtre={"split": split}))
+        candidats = list(
+            self.repository_pivot.lister(filtre={"split": split, "type_exemple": TypeExemple.SFT})
+        )
         exemples_formates = [self.formateur.formater(exemple) for exemple in candidats]
         self.repository_formate.sauvegarder_plusieurs(exemples_formates)
         return len(exemples_formates)
