@@ -71,6 +71,42 @@ def _exemple(split: TypeSplit | None) -> ExemplePivot:
     )
 
 
+def _exemple_dpo(split: TypeSplit | None) -> ExemplePivot:
+    cle = uuid4().hex
+    return ExemplePivot(
+        identifiant=ExemplePivot.nouvel_identifiant("UltraMedical-Preference", cle),
+        identifiant_source_brute=cle,
+        source="UltraMedical-Preference",
+        type_exemple=TypeExemple.DPO,
+        langue=Langue.ANGLAIS,
+        prompt=(Message(role="user", contenu="Question ?"),),
+        chosen=(Message(role="assistant", contenu="Bonne reponse."),),
+        rejected=(Message(role="assistant", contenu="Mauvaise reponse."),),
+        split=split,
+    )
+
+
+def test_formater_dataset_chatml_exclut_les_exemples_dpo():
+    """
+    Reproduit le trou du 12/09/2026 : `executer()` ne filtrait que sur
+    `split`, sans filtrer `type_exemple`, laissant passer des
+    `ExemplePivot` DPO (`completion` vide) dans le rendu ChatML SFT.
+    """
+    exemples_sft = [_exemple(TypeSplit.TRAIN) for _ in range(2)]
+    exemples_dpo = [_exemple_dpo(TypeSplit.TRAIN) for _ in range(3)]
+    repository_pivot = FauxRepository(exemples_sft + exemples_dpo)
+    repository_formate = FauxRepository()
+    formateur = FauxFormateurConversation()
+
+    cas_usage = FormaterDatasetChatMLUseCase(
+        repository_pivot=repository_pivot, repository_formate=repository_formate, formateur=formateur
+    )
+    nombre = cas_usage.executer(TypeSplit.TRAIN)
+
+    assert nombre == 2
+    assert set(repository_formate.items) == {e.identifiant for e in exemples_sft}
+
+
 def test_formater_dataset_chatml_ne_traite_que_le_split_demande():
     exemples_train = [_exemple(TypeSplit.TRAIN) for _ in range(3)]
     exemples_val = [_exemple(TypeSplit.VALIDATION) for _ in range(2)]

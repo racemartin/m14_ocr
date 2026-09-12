@@ -19,6 +19,16 @@ a exactement `taille_cible` par echantillonnage stratifie
 `AnonymiserDatasetUseCase`/`DecouperSplitsUseCase`), pour que la
 taille publiee corresponde toujours a ce qui a ete demande au lieu de
 publier tout le surplus disponible.
+
+Correction (12/09/2026) : le filtre initial ne portait que sur
+`split is not None`, sans filtrer `type_exemple`. `DecouperSplitsUseCase`
+repartit A DESSEIN les deux types (SFT et DPO) en splits coherents
+(cf. AGENTS.md), donc un `ExemplePivot` de type DPO (ex.
+UltraMedical-Preference, `chosen`/`rejected` renseignes, `completion`
+vide) pouvait se retrouver dans le sous-ensemble "SFT" publie. Ce cas
+d'usage ne doit produire QUE des exemples `TypeExemple.SFT` ; le
+filtre est maintenant explicite (`e.type_exemple == TypeExemple.SFT`)
+avant tout comptage/exclusion/recoupe.
 """
 
 from __future__ import annotations
@@ -27,6 +37,7 @@ from dataclasses import dataclass, field
 
 from chsa_triage.application.echantillonnage import echantillon_stratifie
 from chsa_triage.domain.model import ExemplePivot
+from chsa_triage.domain.model.enums import TypeExemple
 from chsa_triage.domain.ports import RepositoryLectureEcriture
 
 ORDRE_SPLITS = ("train", "val", "test")
@@ -34,7 +45,7 @@ ORDRE_SPLITS = ("train", "val", "test")
 
 @dataclass(slots=True)
 class ExtraireSousEnsembleSftUseCase:
-    """Filtre les exemples deja repartis en split, moins les identifiants exclus, recoupe a `taille_cible`."""
+    """Filtre les exemples SFT deja repartis en split, moins les identifiants exclus, recoupe a `taille_cible`."""
 
     repository             : RepositoryLectureEcriture
     identifiants_a_exclure : frozenset[str] = frozenset()
@@ -47,15 +58,19 @@ class ExtraireSousEnsembleSftUseCase:
 
     def executer(self) -> list[ExemplePivot]:
         """
-        Retourne les exemples `split is not None` dont l'identifiant
-        n'est PAS dans `identifiants_a_exclure`, recoupes a
-        `taille_cible` par echantillonnage stratifie (type_exemple,
-        source) si le resultat filtre en contient plus. N'assigne, ne
-        modifie ni ne persiste jamais rien (pure lecture) : le
-        resultat est a ecrire par l'appelant (cf.
+        Retourne les exemples `type_exemple == TypeExemple.SFT` avec
+        `split is not None` dont l'identifiant n'est PAS dans
+        `identifiants_a_exclure`, recoupes a `taille_cible` par
+        echantillonnage stratifie (type_exemple, source) si le
+        resultat filtre en contient plus. N'assigne, ne modifie ni ne
+        persiste jamais rien (pure lecture) : le resultat est a ecrire
+        par l'appelant (cf.
         `interfaces/cli/E1_05_02_extraire_sous_ensemble_sft.py`).
         """
-        avec_split = [e for e in self.repository.lister() if e.split is not None]
+        avec_split = [
+            e for e in self.repository.lister()
+            if e.split is not None and e.type_exemple == TypeExemple.SFT
+        ]
         self.nombre_avec_split = len(avec_split)
 
         resultat = [e for e in avec_split if e.identifiant not in self.identifiants_a_exclure]

@@ -58,6 +58,22 @@ def _exemple(source: str = "MediQAl", avec_split: bool = True) -> ExemplePivot:
     return exemple
 
 
+def _exemple_dpo(source: str = "UltraMedical-Preference", avec_split: bool = True) -> ExemplePivot:
+    exemple = ExemplePivot(
+        identifiant=ExemplePivot.nouvel_identifiant(source, uuid4().hex),
+        source=source,
+        type_exemple=TypeExemple.DPO,
+        langue=Langue.ANGLAIS,
+        prompt=(Message(role="user", contenu="Question ?"),),
+        chosen=(Message(role="assistant", contenu="Bonne reponse."),),
+        rejected=(Message(role="assistant", contenu="Mauvaise reponse."),),
+    )
+    exemple = replace(exemple, anonymise=True)
+    if avec_split:
+        exemple = replace(exemple, split=TypeSplit.TRAIN)
+    return exemple
+
+
 def _pool_stratifie_80_10_10(compositions: dict[str, int]) -> list[ExemplePivot]:
     """
     Construit un pool d'exemples avec split deja assigne, ~80/10/10
@@ -100,6 +116,27 @@ def test_extraction_ignore_les_exemples_sans_split():
     assert cas_usage.nombre_avec_split == 5
     assert cas_usage.nombre_exclus == 0
     assert cas_usage.manque == 0
+
+
+def test_extraction_exclut_les_exemples_dpo():
+    """
+    Reproduit le trou du 12/09/2026 : `executer()` ne filtrait que sur
+    `split is not None`, sans filtrer `type_exemple`, laissant passer
+    des `ExemplePivot` DPO (ex. UltraMedical-Preference, `chosen`/
+    `rejected` renseignes, `completion` vide) dans le sous-ensemble
+    "SFT" publie.
+    """
+    exemples_sft = [_exemple(avec_split=True) for _ in range(3)]
+    exemples_dpo = [_exemple_dpo(avec_split=True) for _ in range(4)]
+    repository = FauxRepository(exemples_sft + exemples_dpo)
+
+    cas_usage = ExtraireSousEnsembleSftUseCase(repository=repository, taille_cible=10)
+    resultat = cas_usage.executer()
+
+    assert len(resultat) == 3
+    assert all(e.type_exemple == TypeExemple.SFT for e in resultat)
+    assert cas_usage.nombre_avec_split == 3
+    assert cas_usage.manque == 7
 
 
 def test_extraction_exclut_les_identifiants_listes():
