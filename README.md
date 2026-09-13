@@ -483,13 +483,15 @@ hf repo create mombasstic/chsa-triage-sft-monitor --repo-type space --space_sdk 
 #    monitoring/requirements.txt (streamlit, huggingface_hub UNIQUEMENT :
 #    PAS le pyproject.toml complet du projet, qui installerait
 #    torch/trl/peft inutilement) doit atterrir a la RACINE du Space
-#    (HF Spaces l'exige). Le Space a aussi besoin de son propre
-#    README.md avec un frontmatter YAML (`sdk: streamlit`,
-#    `app_file: monitoring/app_suivi_entrainement.py`), a ecrire a part.
+#    (HF Spaces l'exige), de meme que le README.md du Space (frontmatter
+#    YAML `sdk: streamlit`, `app_file: monitoring/app_suivi_entrainement.py`) :
+#    monitoring/README_space.md est PRET A COPIER tel quel, aucune
+#    redaction manuelle necessaire.
 hf upload mombasstic/chsa-triage-sft-monitor monitoring/ monitoring/ --repo-type space
 hf upload mombasstic/chsa-triage-sft-monitor src/chsa_triage/domain/ src/chsa_triage/domain/ --repo-type space
 hf upload mombasstic/chsa-triage-sft-monitor src/chsa_triage/application/verdict_convergence.py src/chsa_triage/application/verdict_convergence.py --repo-type space
 hf upload mombasstic/chsa-triage-sft-monitor monitoring/requirements.txt requirements.txt --repo-type space
+hf upload mombasstic/chsa-triage-sft-monitor monitoring/README_space.md README.md --repo-type space
 
 # 4. Lancer l'entrainement en pointant vers le depot de metriques
 #    cree a l'etape 1, pour que le Space ait des donnees a lire :
