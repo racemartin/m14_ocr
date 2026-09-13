@@ -19,6 +19,9 @@ if TYPE_CHECKING:  # pragma: no cover - uniquement pour les outils de typage
     from chsa_triage.infrastructure.adapters.chatml_formateur_adapter import (
         ChatMLFormateurAdapter,
     )
+    from chsa_triage.infrastructure.adapters.hf_dataset_suivi_experimentation import (
+        HfDatasetSuiviExperimentation,
+    )
     from chsa_triage.infrastructure.adapters.jsonl_checkpoint_repository import (
         JsonlCheckpointRepository,
     )
@@ -67,6 +70,7 @@ if TYPE_CHECKING:  # pragma: no cover - uniquement pour les outils de typage
 
 __all__ = [
     "ChatMLFormateurAdapter",
+    "HfDatasetSuiviExperimentation",
     "JsonlCheckpointRepository",
     "JsonlDatasetRepository",
     "JsonlDecisionsRevisionHumaine",
@@ -89,6 +93,10 @@ _CARTE_IMPORTS_PARESSEUX = {
     "ChatMLFormateurAdapter": (
         "chsa_triage.infrastructure.adapters.chatml_formateur_adapter",
         "ChatMLFormateurAdapter",
+    ),
+    "HfDatasetSuiviExperimentation": (
+        "chsa_triage.infrastructure.adapters.hf_dataset_suivi_experimentation",
+        "HfDatasetSuiviExperimentation",
     ),
     "JsonlCheckpointRepository": (
         "chsa_triage.infrastructure.adapters.jsonl_checkpoint_repository",

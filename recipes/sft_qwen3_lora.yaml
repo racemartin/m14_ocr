@@ -28,5 +28,11 @@ grille_hyperparametres:
   rang: [8, 16, 32]
 
 suivi:
-  backend: mlflow   # ou tensorboard
+  # mlflow | tensorboard | hf_dataset (visualisation EN VIVO depuis un
+  # Space Streamlit distant, cf. monitoring/app_suivi_entrainement.py
+  # et README "Suivi d'entrainement en vivo") ; pour activer hf_dataset :
+  #   backend: hf_dataset
+  # puis lancer training/E2_04_sft_train.py avec
+  #   --suivi-hf-repo mombasstic/chsa-triage-sft-metrics
+  backend: mlflow
   nom_experience: chsa-triage-sft
