@@ -71,6 +71,7 @@ from chsa_triage.domain.model.configuration_entrainement import (
 from chsa_triage.domain.model.enums import TypeSplit
 from chsa_triage.infrastructure.adapters import (
     ChatMLFormateurAdapter,
+    HfDatasetSuiviExperimentation,
     JsonlCheckpointRepository,
     JsonlDatasetRepository,
     JsonlExempleFormateRepository,
@@ -86,6 +87,7 @@ CHEMIN_DATASET_FORMATE_DEFAUT = "data/processed/dataset_formate.jsonl"
 CHEMIN_CHECKPOINTS_DEFAUT     = "data/processed/checkpoints_sft.jsonl"
 URI_SUIVI_MLFLOW_DEFAUT       = "sqlite:///data/processed/mlflow.db"
 REPERTOIRE_SUIVI_TENSORBOARD_DEFAUT = "data/processed/tensorboard_logs"
+REPERTOIRE_SUIVI_HF_LOCAL_DEFAUT    = "data/processed/suivi_hf_dataset"
 REPERTOIRE_CHECKPOINTS_SORTIE_DEFAUT = "outputs/sft-lora"
 
 
@@ -140,7 +142,14 @@ def _construire_suivi(recette_suivi: dict, arguments: argparse.Namespace):
         return MlflowSuiviExperimentation(uri_tracking=arguments.suivi_uri)
     if backend == "tensorboard":
         return TensorboardSuiviExperimentation(repertoire_logs=arguments.suivi_repertoire)
-    raise ValueError(f"backend de suivi inconnu dans la recette : {backend!r} (attendu mlflow|tensorboard)")
+    if backend == "hf_dataset":
+        if not arguments.suivi_hf_repo:
+            raise SystemExit("suivi.backend=hf_dataset necessite --suivi-hf-repo (ex. mombasstic/chsa-triage-sft-metrics)")
+        return HfDatasetSuiviExperimentation(
+            repo_id=arguments.suivi_hf_repo,
+            repertoire_local=arguments.suivi_hf_repertoire_local,
+        )
+    raise ValueError(f"backend de suivi inconnu dans la recette : {backend!r} (attendu mlflow|tensorboard|hf_dataset)")
 
 
 def main() -> None:
@@ -170,6 +179,17 @@ def main() -> None:
         "--suivi-repertoire",
         default=REPERTOIRE_SUIVI_TENSORBOARD_DEFAUT,
         help="Repertoire de logs TensorBoard si suivi.backend=tensorboard",
+    )
+    parser.add_argument(
+        "--suivi-hf-repo",
+        default=None,
+        help="Repo dataset HF (ex. mombasstic/chsa-triage-sft-metrics) si suivi.backend=hf_dataset, "
+             "lu en vivo par monitoring/app_suivi_entrainement.py (cf. README)",
+    )
+    parser.add_argument(
+        "--suivi-hf-repertoire-local",
+        default=REPERTOIRE_SUIVI_HF_LOCAL_DEFAUT,
+        help=f"Repertoire de travail local synchronise vers --suivi-hf-repo (defaut {REPERTOIRE_SUIVI_HF_LOCAL_DEFAUT})",
     )
     parser.add_argument(
         "--assistant-only-loss",

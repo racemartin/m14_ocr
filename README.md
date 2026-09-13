@@ -456,6 +456,56 @@ l'etape 1. Augmenter la couverture de
 `E1_04_02_controler_qualite_anonymisation.py` (§5) avant publication reduit ce
 risque, mais ne l'elimine pas completement sans audit exhaustif.
 
+## Suivi d'entrainement en vivo (Étape 2 : dashboard Streamlit)
+
+Pendant un run SFT-LoRA reel (Environnement B, GPU sur HF Jobs),
+`training/E2_04_sft_train.py --suivi-hf-repo <repo>` (recette
+`suivi.backend: hf_dataset`) publie la courbe de perte train/validation
+en continu vers un dataset Hugging Face Hub, lu EN VIVO par un
+dashboard Streamlit deploye a part sur un Space
+(`monitoring/app_suivi_entrainement.py`). Aucune de ces commandes n'a
+ete executee reellement (aucune credential HF disponible ici) : elles
+sont documentees, verifiees dans leur syntaxe (`hf repo create --help`,
+`hf upload --help`), mais **NON EXECUTEES/NON VERIFIEES en reseau
+reel**.
+
+```bash
+# 1. Creer le depot dataset qui recevra les metriques (prive) :
+hf repo create mombasstic/chsa-triage-sft-metrics --repo-type dataset --private
+
+# 2. Creer le Space Streamlit qui les visualise (prive) :
+hf repo create mombasstic/chsa-triage-sft-monitor --repo-type space --space_sdk streamlit --private
+
+# 3. Publier le code du dashboard sur le Space : au minimum
+#    monitoring/, src/chsa_triage/domain/ et
+#    src/chsa_triage/application/verdict_convergence.py (logique de
+#    verdict reutilisee telle quelle, zero dependance externe).
+#    monitoring/requirements.txt (streamlit, huggingface_hub UNIQUEMENT :
+#    PAS le pyproject.toml complet du projet, qui installerait
+#    torch/trl/peft inutilement) doit atterrir a la RACINE du Space
+#    (HF Spaces l'exige). Le Space a aussi besoin de son propre
+#    README.md avec un frontmatter YAML (`sdk: streamlit`,
+#    `app_file: monitoring/app_suivi_entrainement.py`), a ecrire a part.
+hf upload mombasstic/chsa-triage-sft-monitor monitoring/ monitoring/ --repo-type space
+hf upload mombasstic/chsa-triage-sft-monitor src/chsa_triage/domain/ src/chsa_triage/domain/ --repo-type space
+hf upload mombasstic/chsa-triage-sft-monitor src/chsa_triage/application/verdict_convergence.py src/chsa_triage/application/verdict_convergence.py --repo-type space
+hf upload mombasstic/chsa-triage-sft-monitor monitoring/requirements.txt requirements.txt --repo-type space
+
+# 4. Lancer l'entrainement en pointant vers le depot de metriques
+#    cree a l'etape 1, pour que le Space ait des donnees a lire :
+uv run python training/E2_04_sft_train.py \
+    --recette recipes/sft_qwen3_lora.yaml \
+    --dataset data/processed/dataset_pivot_anonymise.jsonl \
+    --suivi-hf-repo mombasstic/chsa-triage-sft-metrics
+```
+
+Smoke test local (verifie, sans reseau, contre un JSONL de fixture) :
+`uv run streamlit run monitoring/app_suivi_entrainement.py` (necessite
+`uv sync --extra web --extra local`, groupes `streamlit`/`huggingface_hub`).
+La logique pure (parsing JSONL, pivot, verdict de convergence) est
+testee dans `tests/monitoring/test_app_suivi_entrainement.py`, sans
+Streamlit ni reseau.
+
 ## Structure (architecture hexagonale)
 
 ```
