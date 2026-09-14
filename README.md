@@ -526,6 +526,44 @@ Streamlit ni reseau. `data/demos/chsa-triage-sft-metrics-fake.json`
 (graphique, cartes, verdict en direct) sans attendre un run GPU reel,
 une fois publie sur le depot de metriques.
 
+### Historique complet dans un MLflow local (importateur)
+
+Le dashboard Streamlit ne montre que le run selectionne, en vivo,
+depuis un Space distant : pour parcourir l'HISTORIQUE COMPLET de tous
+les runs (SFT, et DPO plus tard, meme mecanisme) avec l'interface MLflow
+habituelle (comparaison de runs, tri par metrique, etc.), sans monter
+de serveur MLflow distant (ecarte : aurait exige Postgres + Docker +
+authentification d'un Space prive, trop d'infrastructure pour ce POC),
+`monitoring/importer_mlflow_local.py` telecharge les runs du meme
+depot dataset HF et les reproduit dans un MLflow LOCAL (SQLite), via
+l'adaptateur `MlflowSuiviExperimentation` deja utilise par
+`training/E2_04_sft_train.py` (`suivi.backend: mlflow`). Idempotent :
+relancer la commande n'importe que les runs pas encore presents dans
+ce MLflow local (`--forcer` pour reimporter).
+
+```bash
+# Rafraichir le MLflow local (par defaut : ~/.chsa-triage/mlflow.db) :
+uv run python monitoring/importer_mlflow_local.py
+
+# Ouvrir l'interface MLflow sur ce meme fichier :
+uv run mlflow ui --backend-store-uri sqlite:///$HOME/.chsa-triage/mlflow.db
+```
+
+La frontiere reseau HF Hub (`HfApi.list_repo_files`/`hf_hub_download`)
+est partagee avec le dashboard dans `monitoring/hf_dataset_runs.py`,
+pour ne pas la dupliquer entre les deux. Verifie de bout en bout SANS
+reseau HF reel (le depot `mombasstic/chsa-triage-sft-metrics` necessite
+une authentification HF non disponible ici, cf. plus haut) en
+alimentant directement la logique d'import avec le contenu de
+`data/demos/chsa-triage-sft-metrics-fake.json` : les 31 etapes
+apparaissent bien dans le MLflow local (metriques + parametres
+relisibles via `MlflowClient`), et une seconde execution n'importe
+rien de plus (idempotence confirmee). Tests :
+`tests/monitoring/test_importer_mlflow_local.py` (integration MLflow
+reelle sur sqlite temporaire, source HF injectee) et
+`tests/monitoring/test_hf_dataset_runs.py` (frontiere HF Hub,
+`HfApi`/`hf_hub_download` remplaces).
+
 ## Structure (architecture hexagonale)
 
 ```

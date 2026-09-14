@@ -16,7 +16,10 @@ de cas d'usage E1/E2) : meme critere que
 prefixe `E1_`/`E2_` sur ce fichier (cf. AGENTS.md).
 
 Toute la logique pure (parsing, pivot, verdict) est dans
-`logica_suivi_entrainement.py`, testee sans Streamlit ni reseau.
+`logica_suivi_entrainement.py`, testee sans Streamlit ni reseau. La
+frontiere reseau HF Hub (lister/telecharger) est dans
+`hf_dataset_runs.py`, partagee avec l'importateur MLflow local
+(`importer_mlflow_local.py`).
 
 Smoke test manuel (sans reseau, contre un JSONL de fixture local) :
     uv run streamlit run monitoring/app_suivi_entrainement.py
@@ -38,18 +41,19 @@ sys.path.insert(0, str(_RACINE_PROJET))
 sys.path.insert(0, str(_RACINE_PROJET / "src"))
 
 import streamlit as st
-from huggingface_hub import HfApi, hf_hub_download
 from huggingface_hub.errors import EntryNotFoundError
 
+from monitoring.hf_dataset_runs import (
+    REPO_ID_PAR_DEFAUT,
+    lister_runs,
+    telecharger_texte_metriques,
+)
 from monitoring.logica_suivi_entrainement import (
-    NOM_FICHIER_METRIQUES,
     analyser_jsonl_metriques,
     evaluer_convergence_en_vivo,
-    extraire_noms_runs,
     pivoter_par_etape,
 )
 
-REPO_ID_PAR_DEFAUT = "mombasstic/chsa-triage-sft-metrics"
 INTERVALLE_AUTO_ACTUALISATION_SECONDES = 15
 
 _COULEUR_PAR_VERDICT = {
@@ -60,18 +64,8 @@ _COULEUR_PAR_VERDICT = {
 }
 
 
-def _lister_runs(repo_id: str) -> list[str]:
-    chemins = HfApi().list_repo_files(repo_id=repo_id, repo_type="dataset")
-    return extraire_noms_runs(chemins)
-
-
 def _telecharger_tableau_metriques(repo_id: str, nom_run: str) -> list[dict]:
-    chemin_local = hf_hub_download(
-        repo_id=repo_id,
-        repo_type="dataset",
-        filename=f"{nom_run}/{NOM_FICHIER_METRIQUES}",
-    )
-    texte = Path(chemin_local).read_text(encoding="utf-8")
+    texte = telecharger_texte_metriques(repo_id, nom_run)
     return pivoter_par_etape(analyser_jsonl_metriques(texte))
 
 
@@ -113,7 +107,7 @@ def main() -> None:
     with st.sidebar:
         repo_id = st.text_input("Depot dataset HF", value=REPO_ID_PAR_DEFAUT)
         try:
-            runs = _lister_runs(repo_id)
+            runs = lister_runs(repo_id)
         except Exception as erreur:  # noqa: BLE001 - frontiere UI : ne jamais crasher le dashboard sur une erreur reseau/HF Hub
             st.error(f"Impossible de lister les runs de {repo_id} : {erreur}")
             return
