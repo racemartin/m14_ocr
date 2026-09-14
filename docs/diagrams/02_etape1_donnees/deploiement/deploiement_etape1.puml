@@ -23,13 +23,15 @@ node "Poste local (WSL2, 5 Go RAM)" as LOCAL {
   }
 
   database "data/raw/\n(*.jsonl, *.csv)" as RAW
-  database "data/processed/\ndataset_pivot.jsonl" as PROCESSED
+  database "data/processed/\ndataset_pivot.jsonl\n(ORIGINAL, jamais modifié après écriture)" as PIVOT
+  database "data/processed/\ndataset_pivot_anonymise.jsonl\n(fichier SÉPARÉ, depuis 08/09/2026)" as ANONYMISE
   database "data/processed/\nrapports_profilage/*.html" as RAPPORTS
 }
 
 node "MLflow (local ou hébergé)" as MLFLOW
 
-HFHUB --> RAW : téléchargement manuel\n(huggingface-cli download)
+HFHUB --> CLI : E1_01_telecharger_corpus.py\n(LecteurCorpusHuggingFace,\nhuggingface_hub.load_dataset())
+CLI --> RAW : écrit
 CLI --> APP
 APP --> DOM
 APP --> INFRA
@@ -37,16 +39,31 @@ INFRA --> SPACY
 INFRA --> PRESIDIO
 INFRA --> YDATA
 INFRA --> RAW : lecture
-INFRA --> PROCESSED : lecture/écriture
+INFRA --> PIVOT : écriture (une seule fois,\nconstruction du pivot)
+INFRA --> PIVOT : lecture seule\n(anonymisation, jamais réécrit)
+INFRA --> ANONYMISE : écriture (sortie séparée\nde l'anonymisation, incrémentale)\net des splits (train/val/test)
 YDATA --> RAPPORTS : génère
 INFRA ..> MLFLOW : (optionnel) log de statistiques
-PROCESSED --> HFHUB : push_to_hub()\n(Livrable 1, hors périmètre\nde ce diagramme, Étape 4)
+ANONYMISE --> HFHUB : push_to_hub()\n(Livrable 1, hors périmètre\nde ce diagramme, Étape 4)
 
 note bottom of LOCAL
   Aucune dépendance GPU dans cet
   environnement (cf. docs/01_environnement).
   torch / unsloth / vllm ne sont PAS
   installés ici.
+end note
+
+note right of ANONYMISE
+  PIVOT et ANONYMISE sont deux fichiers
+  SÉPARÉS depuis le 08/09/2026 (avant : un
+  seul fichier muté en place). "Déjà
+  anonymisé" se détermine par la présence
+  de l'identifiant dans ANONYMISE, jamais
+  par un champ du pivot original, qui reste
+  intact pour permettre un contrôle qualité
+  par diff original vs. anonymisé.
+  decouper_splits.py/verifier_repartition_splits.py
+  pointent sur ANONYMISE, jamais sur PIVOT.
 end note
 
 @enduml

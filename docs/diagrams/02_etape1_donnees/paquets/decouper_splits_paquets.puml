@@ -1,8 +1,7 @@
 @startuml decouper_splits_paquets
-!pragma layout smetana
 !include ../../_common/estilo.iuml
 
-title Étape 1 : Diagramme de paquets\nCe qui est en jeu au lancement des 2 commandes decouper_splits / verifier_repartition_splits
+title Étape 1 : Diagramme de paquets\nCe qui est en jeu au lancement de decouper_splits / verifier_repartition_splits\n(le premier depend desormais de reviser_pii_residuelle, cf. note)
 
 package "interfaces\n(adaptateurs primaires)" as INTERFACES {
   package "cli" {
@@ -15,6 +14,7 @@ package "application" as APPLICATION {
   package "use_cases" {
     class DecouperSplitsUseCase
     class VerifierRepartitionSplitsUseCase
+    class ReviserPiiResiduelleUseCase
   }
   class echantillon_stratifie
 }
@@ -23,15 +23,21 @@ package "domain\n(zéro dépendance externe)" as DOMAIN {
   package "model" {
     class ExemplePivot
     class TypeSplit
+    class CleCandidatRevision
   }
   package "ports" {
     interface RepositoryLectureEcriture
+    interface VerificateurEntitesNommees
+    interface RegistreDecisionsRevisionHumaine
   }
 }
 
 package "infrastructure" as INFRASTRUCTURE {
   package "adapters" {
     class JsonlDatasetRepository
+    class SpacyVerificateurEntitesNommees
+    class JsonlRegistreEchantillonsControleQualite
+    class JsonlDecisionsRevisionHumaine
   }
 }
 
@@ -41,6 +47,7 @@ package "infrastructure" as INFRASTRUCTURE {
 
 decouper_splits ..> JsonlDatasetRepository
 decouper_splits ..> DecouperSplitsUseCase
+decouper_splits ..> ReviserPiiResiduelleUseCase : construit (memes adaptateurs\nque reviser_pii_residuelle.py verify)
 
 verifier_repartition_splits ..> JsonlDatasetRepository
 verifier_repartition_splits ..> VerifierRepartitionSplitsUseCase
@@ -49,17 +56,42 @@ DecouperSplitsUseCase --> echantillon_stratifie
 DecouperSplitsUseCase --> ExemplePivot
 DecouperSplitsUseCase --> TypeSplit
 DecouperSplitsUseCase --> RepositoryLectureEcriture
+DecouperSplitsUseCase --> ReviserPiiResiduelleUseCase : obtenir_identifiants_pii_en_attente\n= identifiants_a_exclure_publication_set\n(10/09/2026, etendu 11/09/2026)
+
+ReviserPiiResiduelleUseCase --> RepositoryLectureEcriture
+ReviserPiiResiduelleUseCase --> VerificateurEntitesNommees
+ReviserPiiResiduelleUseCase --> RegistreDecisionsRevisionHumaine
+ReviserPiiResiduelleUseCase --> CleCandidatRevision
 
 VerifierRepartitionSplitsUseCase --> RepositoryLectureEcriture
 
 echantillon_stratifie --> ExemplePivot
 
 JsonlDatasetRepository ..|> RepositoryLectureEcriture
+SpacyVerificateurEntitesNommees ..|> VerificateurEntitesNommees
+JsonlDecisionsRevisionHumaine ..|> RegistreDecisionsRevisionHumaine
 
 note right of VerifierRepartitionSplitsUseCase
   E1_05_01_verifier_repartition_splits.py n'importe
   aucun echantillonnage : lecture seule pour verifier
   une repartition deja faite, pas de parametre --n
+end note
+
+note right of ReviserPiiResiduelleUseCase
+  Depuis le 10/09/2026 (etendu 11/09/2026) :
+  decouper_splits.py construit ce cas d'usage
+  avec les MEMES adaptateurs que
+  E1_04_01_reviser_pii_residuelle.py verify
+  (~-~-original, ~-~-registre-echantillons,
+  ~-~-decisions, ~-~-jeton-masque) pour rejouer
+  quels identifiants ont un candidat PII
+  CONFIRME ou encore SANS decision humaine,
+  et les exclure du decoupage par precaution.
+  E1_05_02_extraire_sous_ensemble_sft.py
+  consomme ensuite le fichier d'exclusions
+  produit par reviser_pii_residuelle.py exporter,
+  meme famille de commandes, non detaille ici
+  (cf. AGENTS.md).
 end note
 
 @enduml

@@ -11,6 +11,7 @@ end box
 
 box "application" #F0EEE7
   participant "DecouperSplitsUseCase" as UC
+  participant "ReviserPiiResiduelleUseCase" as UCRevision
 end box
 
 box "infrastructure/adapters" #F0EEE7
@@ -19,67 +20,89 @@ end box
 
 autonumber "<b>0."
 
-Dev -> CLI : uv run python E1_05_00_decouper_splits.py\n~-~-dataset ... [~-~-graine 42 ~-~-proportion-val 0.10 ~-~-proportion-test 0.10 ~-~-n 5000]
+Dev -> CLI : uv run python E1_05_00_decouper_splits.py\n~-~-dataset dataset_pivot_anonymise.jsonl ~-~-original dataset_pivot.jsonl\n[~-~-graine 42 ~-~-proportion-val 0.10 ~-~-proportion-test 0.10 ~-~-n 5000]\n~-~-registre-echantillons ... ~-~-decisions ... ~-~-jeton-masque ...
 activate CLI
 
-CLI -> Repo : new(chemin_dataset)
-CLI -> UC : new(repository, graine, proportion_val, proportion_test, n)
+note right of CLI
+  ~-~-n est une taille CIBLE CUMULEE, pas un
+  tirage frais (10/09/2026) : un exemple deja
+  reparti (split non nul) N'EST JAMAIS reassigne
+  par une execution ulterieure, meme si ~-~-n
+  change. Remplace un design ou chaque execution
+  recalculait TOUT le decoupage depuis zero,
+  ce qui pouvait deplacer un exemple de train a
+  test (ou l'inverse) d'une execution a l'autre :
+  une fuite train/test.
+end note
 
-opt --n fourni
-  CLI -> Repo : compter(filtre={anonymise: True})
-  activate Repo
-  Repo --> CLI : disponible
-  deactivate Repo
-  note right of CLI
-    Si n >= disponible : aucune erreur,
-    avertissement trace via LogTool --
-    tous les exemples anonymises seront
-    repartis quand meme (n ignore pour
-    cette execution).
-  end note
-end
+CLI -> Repo : new(chemin_dataset)
+CLI -> UCRevision : new(repository_original, repository_anonymise=repository,\nverificateur_entites, registre_echantillons, decisions, jeton_masque)
+note right of CLI
+  Memes adaptateurs que
+  E1_04_01_reviser_pii_residuelle.py verify :
+  necessaires pour rejouer (replay deterministe)
+  quels identifiants portent un candidat de PII
+  residuelle CONFIRME ou encore SANS decision
+  humaine, et les exclure du decoupage par
+  precaution (10/09/2026, etendu 11/09/2026).
+end note
+CLI -> UC : new(repository, graine, proportion_val, proportion_test, n,\nobtenir_identifiants_pii_en_attente=UCRevision.identifiants_a_exclure_publication_set)
 
 CLI -> UC : executer()
 activate UC
 
 UC -> Repo : lister(filtre={anonymise: True})
 activate Repo
-Repo --> UC : list[ExemplePivot] (anonymises)
+Repo --> UC : list[ExemplePivot] (tous les anonymises)
 deactivate Repo
 
-alt n is not None and n < len(exemples)
-  UC -> UC : echantillon_stratifie(exemples, n, graine)
+UC -> UC : deja_assignes = [e pour e si e.split n'est pas None]\ncandidats = [e pour e si e.split est None]
+note right of UC
+  Seuls les `candidats` (sans split) sont
+  concernes par tout ce qui suit ;
+  `deja_assignes` n'est JAMAIS retouche.
+end note
+
+UC -> UCRevision : identifiants_a_exclure_publication_set()
+activate UCRevision
+UCRevision --> UC : set[str]\n(candidats PII CONFIRME ou encore\nsans decision humaine persistee)
+deactivate UCRevision
+UC -> UC : candidats -= identifiants_en_attente\n(nombre_exclus_pii_en_attente = ce qui a ete retire)
+note right of UC
+  Exclusion par precaution, jamais un blocage :
+  un candidat exclu cette execution pourra
+  recevoir un split lors d'une execution FUTURE
+  des qu'une decision humaine existe.
+end note
+
+alt n is None
+  UC -> UC : nouveaux_candidats = candidats (tout completer)
+else n <= len(deja_assignes)
+  UC -> UC : nouveaux_candidats = [] (rien de nouveau,\nreduire un decoupage existant non supporte)
+else n_a_prelever = n - len(deja_assignes) < len(candidats)
+  UC -> UC : echantillon_stratifie(candidats, n_a_prelever, graine)
   note right of UC
     Sous-echantillonnage stratifie (type_exemple,
-    source) avant repartition, meme algorithme
-    (methode du plus grand reste) que dans
-    anonymiser_dataset.puml, factorise dans
-    chsa_triage.application.echantillonnage
+    source), methode du plus grand reste,
+    factorise dans chsa_triage.application.echantillonnage
   end note
-else n est None ou >= au nombre disponible
-  UC -> UC : (aucun sous-echantillonnage --\ntous les exemples anonymises sont repartis)
+else n_a_prelever >= len(candidats)
+  UC -> UC : nouveaux_candidats = candidats (tout prendre)
 end
 
-UC -> UC : groupe par (type_exemple, source)
+UC -> UC : groupe nouveaux_candidats par (type_exemple, source)
 note right of UC
-  08/09/2026 : decoupage stratifie, plus
-  un shuffle global. Un shuffle pur
-  sous-representerait les petites sources
-  (ex. FrenchMedMCQA) dans test/val face
-  aux grandes (ex. UltraMedical-Preference,
-  ~180x plus grande), chaque strate est
-  decoupee independamment selon les memes
-  proportions, garantissant train/val/test
-  representatifs de toutes les (type_exemple,
-  source).
+  08/09/2026 : decoupage stratifie, pas un
+  shuffle global. Un shuffle pur sous-
+  representerait les petites sources
+  (ex. FrenchMedMCQA) face aux grandes
+  (ex. UltraMedical-Preference, ~180x plus
+  grande) ; chaque strate est decoupee
+  independamment selon les memes proportions.
 end note
 
 loop pour chaque strate (type_exemple, source), triee
   UC -> UC : random.Random(graine).shuffle(strate)
-  note right of UC
-    Melange deterministe (graine fixe) :
-    reproductible d'une execution a l'autre
-  end note
   UC -> UC : calcule n_test = n_strate * proportion_test\ncalcule n_val = n_strate * proportion_val
 
   loop pour chaque exemple de la strate (ordre melange)
@@ -91,12 +114,13 @@ UC -> Repo : sauvegarder_plusieurs(exemples_avec_split)
 activate Repo
 note right of Repo
   08/09/2026 : meme bug O(n^2) corrige que
-  dans AnonymiserDatasetUseCase --
-  sauvegarder() par iteration relisait/
-  reecrivait tout le fichier JSONL a
-  chaque exemple. sauvegarder_plusieurs
-  fait la fusion par identifiant en une
-  seule lecture/ecriture.
+  dans AnonymiserDatasetUseCase : sauvegarder()
+  par iteration relisait/reecrivait tout le
+  fichier JSONL a chaque exemple.
+  sauvegarder_plusieurs fait la fusion par
+  identifiant en une seule lecture/ecriture ;
+  seuls les nouveaux_candidats sont ecrits,
+  deja_assignes reste physiquement inchange.
 end note
 Repo -> Repo : lit le fichier JSONL, fusionne\npar identifiant, reecrit une seule fois
 Repo --> UC : (écriture terminée)
@@ -107,10 +131,10 @@ note over UC
   TEST_CLINIQUE n'est jamais reutilise en entrainement
 end note
 
-UC --> CLI : decompte {train: N, validation: N, test_clinique: N}
+UC --> CLI : decompte {train: N, validation: N, test_clinique: N}\n(total CUMULE) ; cas_usage.nombre_deja_assignes /\n.nombre_nouveaux / .nombre_exclus_pii_en_attente\ndistinguent cette execution des precedentes
 deactivate UC
 
-CLI --> Dev : "Repartition des splits : ..."
+CLI --> Dev : "Nouveaux repartis cette execution : ...\nDeja assignes (executions anterieures) : ...\nExclus (PII en attente) : ...\nRepartition cumulee : ..."
 deactivate CLI
 
 @enduml

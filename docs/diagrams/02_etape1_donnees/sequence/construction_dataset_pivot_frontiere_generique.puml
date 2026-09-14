@@ -68,10 +68,12 @@ loop pour chaque enregistrement brut
   Mappers --> UC : ExemplePivot | None
   deactivate Mappers
 
-  alt enregistrement valide
-    UC -> UC : ajoute ExemplePivot à la liste
-  else enregistrement incomplet
+  alt enregistrement invalide
     UC -> UC : ignore (mapper retourne None)
+  else identifiant déjà vu (doublon exact)
+    UC -> UC : ajoute ExemplePivot à self.doublons\n(08/09/2026, identifiant deterministe)
+  else enregistrement valide et inédit
+    UC -> UC : ajoute ExemplePivot à la liste
   end
 end
 
@@ -81,10 +83,14 @@ Repo -> Repo : sérialise chaque ExemplePivot en JSON
 Repo --> UC : (écriture terminée)
 deactivate Repo
 
-UC --> CLI : nombre_exemples
+UC --> CLI : nombre_exemples\n(cas_usage.doublons expose les ecartes)
 deactivate UC
 
-CLI --> Dev : "N exemples pivot écrits dans ..."
+opt cas_usage.doublons non vide
+  CLI -> CLI : ajouter_exemples_jsonl(--doublons, cas_usage.doublons)\n(archive, jamais perdu silencieusement)
+end
+
+CLI --> Dev : "N exemples pivot écrits dans ...\n(+ M doublons écartés, archivés)"
 deactivate CLI
 
 @enduml
