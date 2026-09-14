@@ -2,9 +2,9 @@
 !pragma layout smetana
 !include ../../_common/estilo.iuml
 
-title Étape 2 : Diagramme de paquets\nModules/classes du SFT-LoRA et leur relation à l'existant (Étape 1) : [FAIT] sauf TrlSftEntraineurAdapter et training/E2_04_sft_train.py [CONCEPTION]
+title Étape 2 : Diagramme de paquets\nModules/classes du SFT-LoRA et leur relation à l'existant (Étape 1) : [FAIT] (réel), y compris TrlSftEntraineurAdapter et training/E2_04_sft_train.py (jamais exécutés sur GPU réel, cf. notes)
 
-package "training\n(analogue à interfaces/cli pour l'Étape 2)\n[CONCEPTION] pas encore écrit" as TRAINING {
+package "training\n(analogue à interfaces/cli pour l'Étape 2)\n[FAIT] écrit, jamais exécuté sur GPU réel" as TRAINING {
   class sft_train
 }
 
@@ -43,14 +43,21 @@ package "infrastructure" as INFRASTRUCTURE {
   package "adapters" {
     class JsonlDatasetRepository <<existant, Étape 1>>
     class ChatMLFormateurAdapter <<FAIT>>
-    class TrlSftEntraineurAdapter <<CONCEPTION>>
+    class TrlSftEntraineurAdapter <<FAIT, jamais exécuté sur GPU réel>>
     class MlflowSuiviExperimentation <<FAIT>>
     class TensorboardSuiviExperimentation <<FAIT>>
+    class HfDatasetSuiviExperimentation <<FAIT>>
   }
 }
 
+package "monitoring\n(hors training/ et interfaces/cli/, cf. AGENTS.md)" as MONITORING {
+  class app_suivi_entrainement <<FAIT, dashboard Streamlit>>
+  class importer_mlflow_local <<FAIT, CLI locale>>
+  class hf_dataset_runs <<FAIT, frontière réseau HF Hub partagée>>
+}
+
 ' ----------------------------------------------------------------------
-' Dependances reelles (training/E2_04_sft_train.py restant a ecrire)
+' Dependances reelles (training/E2_04_sft_train.py)
 ' ----------------------------------------------------------------------
 
 sft_train ..> JsonlDatasetRepository
@@ -96,6 +103,14 @@ ChatMLFormateurAdapter ..|> FormateurConversation
 TrlSftEntraineurAdapter ..|> EntraineurSupervise
 MlflowSuiviExperimentation ..|> SuiviExperimentation
 TensorboardSuiviExperimentation ..|> SuiviExperimentation
+HfDatasetSuiviExperimentation ..|> SuiviExperimentation
+
+sft_train ..> HfDatasetSuiviExperimentation : suivi.backend: hf_dataset
+
+app_suivi_entrainement ..> hf_dataset_runs
+importer_mlflow_local ..> hf_dataset_runs
+importer_mlflow_local ..> MlflowSuiviExperimentation : reproduit les runs\ntéléchargés (sqlite:///... local)
+hf_dataset_runs ..> HfDatasetSuiviExperimentation : lit le même dépôt dataset HF\n(NOM_FICHIER_METRIQUES partagé)
 
 note bottom of RepositoryLectureEcriture
   Réutilisé pour 3 types d'entités au total :
@@ -105,22 +120,38 @@ note bottom of RepositoryLectureEcriture
 end note
 
 note right of TrlSftEntraineurAdapter
-  [CONCEPTION] Pas encore écrit. Sera le seul
-  module du projet qui importera trl / peft /
+  [FAIT] Écrit et vérifié SANS GPU (signatures
+  trl/peft/bitsandbytes inspectées, jamais
+  exécuté sur une vraie session GPU à ce jour).
+  Seul module du projet qui importe trl / peft /
   bitsandbytes / unsloth / liger_kernel.
-  Chargera le modèle quantifié et construira
+  Charge le modèle quantifié et construit
   LoraConfig dans son constructeur, jamais
   exposé au-dessus de la frontière
   domain/application (02_etapes_cas_usage.md §1).
 end note
 
 note bottom of sft_train
-  [CONCEPTION] Pas encore écrit. Analogue de
-  interfaces/cli/*.py pour l'Étape 1, mais
-  placé dans training/ (exécuté via HF Jobs /
-  Spaces Dev Mode, cf. docs/01_environnement),
-  pas dans interfaces/cli/, qui reste réservé
-  aux scripts sans dépendance GPU.
+  [FAIT] Écrit, jamais exécuté sur GPU réel
+  (pas d'Environnement B disponible à ce jour).
+  Analogue de interfaces/cli/*.py pour l'Étape 1,
+  mais placé dans training/ (exécuté via HF Jobs,
+  cf. docs/01_environnement), pas dans
+  interfaces/cli/, qui reste réservé aux scripts
+  sans dépendance GPU. AUCUN Docker : HF Jobs
+  fournit directement un conteneur GPU éphémère,
+  sans Dockerfile propre au projet (Docker n'est
+  requis qu'à l'Étape 4, cf. deploiement_etape2.puml).
+end note
+
+note bottom of MONITORING
+  [FAIT] app_suivi_entrainement.py (Space
+  Streamlit distant, lit le dépôt HF en vivo) et
+  importer_mlflow_local.py (tourne sur la machine
+  LOCALE du développeur, alimente un MLflow local
+  SQLite) : deux lecteurs passifs indépendants du
+  même dépôt dataset HF, jamais un serveur MLflow
+  partagé (cf. deploiement_etape2.puml).
 end note
 
 @enduml

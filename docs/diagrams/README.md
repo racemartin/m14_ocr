@@ -24,13 +24,17 @@ docs/diagrams/
 │   │                                 paquets en jeu pour decouper_splits/verifier_repartition_splits
 │   └── deploiement/                 environnement local (WSL2, uv)
 ├── 03_etape2_sft/
-│   ├── activite/                  pipeline SFT (conceptuel, avec le point de
+│   ├── activite/                  pipeline SFT (reel, avec le point de
 │   │                                decision "convergence saine ?")
 │   ├── sequence/                   entrainement SFT : script training/E2_04_sft_train.py,
-│   │                                cas d'usage et adaptateurs proposes (conceptuel)
-│   ├── paquets/                     classes/ports proposes pour le SFT-LoRA et leur
-│   │                                 relation aux paquets reels de l'Etape 1 (conceptuel)
-│   └── deploiement/                infrastructure HF Jobs / Dev Mode (conceptuel)
+│   │                                cas d'usage et adaptateurs reels (reel)
+│   ├── paquets/                     classes/ports reels du SFT-LoRA, y compris le
+│   │                                 paquet monitoring/ (dashboard + importateur
+│   │                                 MLflow local), et leur relation aux paquets
+│   │                                 reels de l'Etape 1 (reel)
+│   └── deploiement/                HF Jobs (entrainement) + Space Streamlit (suivi
+│                                      en vivo) + machine locale (historique
+│                                      MLflow/SQLite) (reel)
 ├── 04_etape3_dpo/
 │   ├── activite/                  pipeline DPO (conceptuel)
 │   └── deploiement/                infrastructure HF Jobs (conceptuel)
@@ -47,20 +51,21 @@ docs/diagrams/
 | 00 : Vue d'ensemble | [FAIT] | N/A | N/A | N/A |
 | 01 : Environnement | N/A | N/A | [FAIT] (réel) | N/A |
 | 02 : Étape 1 (données) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel) |
-| 03 : Étape 2 (SFT) | [FAIT] (conceptuel) | [FAIT] (conceptuel) | [FAIT] (conceptuel) | [FAIT] (conceptuel) |
+| 03 : Étape 2 (SFT) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel) |
 | 04 : Étape 3 (DPO) | [FAIT] (conceptuel) | [A FAIRE] | [A FAIRE] | [FAIT] (conceptuel) |
 | 05 : Étape 4 (déploiement) | [FAIT] (conceptuel) | [FAIT] (conceptuel) | [A FAIRE] | [FAIT] (conceptuel) |
 
 **« réel »** = généré à partir du code effectivement écrit
-(`src/chsa_triage/`, `interfaces/cli/`).
+(`src/chsa_triage/`, `interfaces/cli/`, `training/`, `monitoring/`).
 **« conceptuel »** = anticipe une architecture qui n'est pas encore
-codée (`training/*.py`, `interfaces/api/`, `interfaces/web/`), à
-mettre à jour dès que le code correspondant existe. Les diagrammes de
-séquence et de paquets de l'Étape 2 (SFT) sont passés de [A FAIRE] à
-[FAIT] (conceptuel) une fois la proposition de conception documentée
-dans `docs/03_etape2_sft/` (ports, cas d'usage et adaptateurs
-proposés, aucun encore codé), à remplacer par la version « réelle »
-une fois `training/E2_04_sft_train.py` effectivement écrit.
+codée (`interfaces/api/`, `interfaces/web/`), à mettre à jour dès que
+le code correspondant existe. Les diagrammes de l'Étape 2 (SFT) sont
+passés de « conceptuel » à « réel » le 14/09/2026 une fois
+`training/E2_04_sft_train.py` et `TrlSftEntraineurAdapter` effectivement
+écrits (vérifiés SANS GPU, jamais exécutés sur une vraie session GPU,
+cf. notes des diagrammes de séquence/paquets/activité) et le paquet
+`monitoring/` (dashboard Streamlit + importateur MLflow local)
+ajouté au diagramme de paquets.
 **[A FAIRE]** = pas encore produit : les diagrammes de séquence et de
 paquets du DPO (Étape 3) restent à faire, aucune proposition de
 conception équivalente n'ayant encore été documentée pour cette étape ;
@@ -71,9 +76,13 @@ documentée pour eux, sur le même principe que l'Étape 2).
 ## Régénérer les diagrammes
 
 ```bash
-# Un seul fichier
+# Un seul fichier (invocations séparées : combiner -tpng -tsvg -tpdf dans
+# un seul appel ne génère silencieusement que le dernier format demandé,
+# cf. AGENTS.md pour les contournements spécifiques à cette machine)
 cd docs/diagrams/<etape>/<type>
-plantuml -tpng -tsvg -tpdf <nom>.puml
+plantuml -tpng <nom>.puml
+plantuml -tsvg <nom>.puml
+plantuml -tpdf <nom>.puml
 
 # Tous les diagrammes du projet
 cd docs/diagrams

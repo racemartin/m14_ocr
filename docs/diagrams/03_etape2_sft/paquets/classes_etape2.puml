@@ -2,7 +2,7 @@
 !pragma layout smetana
 !include ../../_common/estilo.iuml
 
-title Étape 2 : Diagramme de classes\nClasses réelles du SFT-LoRA (domaine, ports, application, infrastructure) : [FAIT] sauf TrlSftEntraineurAdapter [CONCEPTION]
+title Étape 2 : Diagramme de classes\nClasses réelles du SFT-LoRA (domaine, ports, application, infrastructure) : [FAIT], y compris TrlSftEntraineurAdapter (jamais exécuté sur GPU réel, cf. note)
 
 package "domain.model" as MODEL {
   class ExempleFormate {
@@ -173,7 +173,7 @@ package "infrastructure.adapters" as ADAPTERS {
     +logger_metrique(nom, valeur, etape)
     +terminer_run()
   }
-  class TrlSftEntraineurAdapter <<CONCEPTION, pas encore écrit>> {
+  class TrlSftEntraineurAdapter <<FAIT, jamais exécuté sur GPU réel>> {
     +entrainer(dataset_train, dataset_validation,\nconfig_lora, hyperparametres) : ResultatEntrainementSFT
   }
   class JsonlDatasetRepository <<existant, Étape 1>>
@@ -193,12 +193,14 @@ note bottom of RepositoryLectureEcriture
 end note
 
 note right of TrlSftEntraineurAdapter
-  Seul élément non couvert par les 221 tests
-  actuels : nécessite un GPU réel
-  (Environnement B). Chargera le modèle
-  quantifié et construira LoraConfig dans son
-  constructeur, jamais exposé au-dessus de la
-  frontière domain/application.
+  Écrit et vérifié SANS GPU (263 tests au
+  moment de cette mise à jour, cf. AGENTS.md) ;
+  seul élément qui nécessite encore un GPU réel
+  (Environnement B) pour une vérification
+  complète. Charge le modèle quantifié et
+  construit LoraConfig dans son constructeur,
+  jamais exposé au-dessus de la frontière
+  domain/application.
 end note
 
 @enduml

@@ -1,7 +1,7 @@
 @startuml pipeline_sft_lora
 !include ../../_common/estilo.iuml
 
-title Étape 2 : Pipeline SFT + LoRA\nDiagramme d'activité : E2_00 à E2_03 écrits et testés (cf. docs/03_etape2_sft/), seule la partition GPU reste à écrire
+title Étape 2 : Pipeline SFT + LoRA\nDiagramme d'activité : E2_00 à E2_03 et TrlSftEntraineurAdapter/E2_04_sft_train.py écrits et testés (jamais exécutés sur GPU réel, cf. docs/03_etape2_sft/)
 
 start
 
@@ -22,7 +22,7 @@ note right
   01_installation_configuration.md §4
 end note
 
-partition "training/E2_04_sft_train.py (Environnement B, GPU)\n[CONCEPTION] point d'entrée pas encore écrit" #E8F0F5 {
+partition "training/E2_04_sft_train.py (Environnement B, GPU)\n[FAIT] écrit, jamais exécuté sur GPU réel" #E8F0F5 {
 
   :E2_00_uc_formater_dataset_chatml.py\n(FormaterDatasetChatMLUseCase.executer(split));
   note right
@@ -35,23 +35,25 @@ partition "training/E2_04_sft_train.py (Environnement B, GPU)\n[CONCEPTION] poin
 
   :Charger Qwen3-1.7B-Base en 4-bit NF4\n+ configurer LoraConfig;
   note right
-    [CONCEPTION] Pas de cas d'usage dédié :
+    [FAIT] Pas de cas d'usage dédié :
     responsabilité interne de
-    TrlSftEntraineurAdapter (constructeur,
-    pas encore écrit) + assemblage de
-    recipes/sft_qwen3_lora.yaml (pas encore
-    créé). Voir 02_etapes_cas_usage.md §1.
+    TrlSftEntraineurAdapter (constructeur) +
+    assemblage de recipes/sft_qwen3_lora.yaml.
+    Vérifié SANS GPU, jamais exécuté sur une
+    vraie session GPU. Voir 02_etapes_cas_usage.md §1.
   end note
 
   :E2_01_uc_entrainer_sft.py\n(EntrainerSftUseCase.entrainer(...));
   note right
     [FAIT] le cas d'usage (testé avec un faux
-    EntraineurSupervise) ; [CONCEPTION]
+    EntraineurSupervise) ; [FAIT] aussi
     TrlSftEntraineurAdapter (packing=True,
-    loss_type=chunked_nll), seul adaptateur
-    GPU manquant. Suivi : SuiviExperimentation
-    [FAIT] (MlflowSuiviExperimentation /
-    TensorboardSuiviExperimentation : loss,
+    loss_type=chunked_nll), vérifié SANS GPU,
+    jamais exécuté sur une vraie session GPU.
+    Suivi : SuiviExperimentation [FAIT]
+    (MlflowSuiviExperimentation /
+    TensorboardSuiviExperimentation /
+    HfDatasetSuiviExperimentation : loss,
     grad norm)
   end note
 

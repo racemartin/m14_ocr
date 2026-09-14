@@ -1,12 +1,12 @@
 @startuml entrainer_sft
 !include ../../_common/estilo.iuml
 
-title Étape 2 : Diagramme de séquence\nEntraînement SFT-LoRA : toutes les classes ci-dessous sont écrites et testées, sauf TrlSftEntraineurAdapter et E2_04_sft_train.py [CONCEPTION]
+title Étape 2 : Diagramme de séquence\nEntraînement SFT-LoRA : toutes les classes ci-dessous sont écrites et testées, y compris TrlSftEntraineurAdapter et E2_04_sft_train.py (jamais exécutés sur GPU réel)
 
 actor "Développeur\n(Environnement B, GPU)" as Dev
 
 box "training" #F0EEE7
-  participant "E2_04_sft_train.py\n[CONCEPTION]" as CLI
+  participant "E2_04_sft_train.py\n[FAIT] jamais exécuté sur GPU réel" as CLI
 end box
 
 box "application/use_cases" #F0EEE7
@@ -24,7 +24,7 @@ end box
 box "infrastructure/adapters" #F0EEE7
   participant "JsonlDatasetRepository" as Repo
   participant "ChatMLFormateurAdapter" as Formateur
-  participant "TrlSftEntraineurAdapter\n[CONCEPTION]" as Entraineur
+  participant "TrlSftEntraineurAdapter\n[FAIT] jamais exécuté sur GPU réel" as Entraineur
   participant "MlflowSuiviExperimentation" as Suivi
 end box
 
@@ -75,12 +75,14 @@ end note
 
 CLI -> Entraineur : new(modele_base="Qwen/Qwen3-1.7B-Base",\nconfiguration_quantification)
 note right of Entraineur
-  [CONCEPTION] Chargera BitsAndBytesConfig
+  [FAIT] Charge BitsAndBytesConfig
   4-bit NF4 + AutoModelForCausalLM + tokenizer
   une seule fois, dans le constructeur,
   jamais exposé à l'application
   (même principe que PresidioAnonymiseur
-  et les adaptateurs MoteurInference)
+  et les adaptateurs MoteurInference).
+  Vérifié SANS GPU (signatures inspectées),
+  jamais exécuté sur une vraie session GPU.
 end note
 
 CLI -> Suivi : new(uri_tracking)
@@ -101,7 +103,7 @@ UCTrain -> Suivi : demarrer_run(nom_run_essai, parametres_run)
 UCTrain -> Entraineur : entrainer(dataset_train, dataset_validation,\nconfig_lora, hyperparametres)
 activate Entraineur
 note right of Entraineur
-  [CONCEPTION] peft.LoraConfig + trl.SFTTrainer
+  [FAIT] peft.LoraConfig + trl.SFTTrainer
   (packing=True, loss_type=chunked_nll,
   assistant_only_loss=True), puis .train()
 end note

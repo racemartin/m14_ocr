@@ -20,8 +20,22 @@ end box
 
 autonumber "<b>0."
 
-Dev -> CLI : uv run python E1_04_00_anonymiser_dataset.py\n~-~-dataset ... ~-~-strategie replace|mask|redact\n~-~-limite 5000|full
+Dev -> CLI : uv run python E1_04_00_anonymiser_dataset.py\n~-~-dataset dataset_pivot.jsonl ~-~-sortie dataset_pivot_anonymise.jsonl\n~-~-strategie replace|mask|redact ~-~-limite 5000|full
 activate CLI
+
+note right of CLI
+  Design source/sortie SEPARES (08/09/2026,
+  remplace un design precedent qui mutait le
+  pivot en place) : ~-~-dataset (le pivot
+  original) n'est JAMAIS modifie, lu seul.
+  Le resultat anonymise va dans ~-~-sortie, un
+  fichier SEPARE. "Deja traite" se determine
+  par la presence de l'identifiant dans
+  ~-~-sortie (repository_sortie.identifiants_existants()),
+  PAS par le champ ExemplePivot.anonymise du
+  pivot source (qui reste False pour toujours
+  sur le pivot original).
+end note
 
 note right of CLI
   ~-~-limite (08/09/2026, decision produit) :
@@ -29,16 +43,18 @@ note right of CLI
   dataset pivot -> anonymisation complete
   ~19h (cout NLP Presidio/spaCy, pas I/O).
   Plutot que choisir entre "echantillon"
-  et "complet", le champ ExemplePivot.anonymise
+  et "complet", ce design source/sortie separe
   rend le processus incremental/reprenable :
   chaque appel traite au plus ~-~-limite
-  exemples parmi ceux encore anonymise=False,
-  le reste attend un appel ulterieur.
+  exemples parmi ceux dont l'identifiant n'est
+  pas encore dans ~-~-sortie, le reste attend
+  un appel ulterieur.
 end note
 
-CLI -> Repo : new(chemin_dataset)
+CLI -> Repo : repository_source = new(chemin_dataset)
+CLI -> Repo : repository_sortie = new(chemin_sortie)
 CLI -> Anonymiseur : new(strategie)
-CLI -> UC : new(repository, anonymiseur, limite)
+CLI -> UC : new(repository_source, repository_sortie,\nanonymiseur, limite)
 
 CLI -> UC : executer(envelopper_iterable=...)
 activate UC
@@ -54,10 +70,15 @@ note right of CLI
   hexagonale.
 end note
 
-UC -> Repo : lister(filtre={anonymise: False})
+UC -> Repo : repository_sortie.identifiants_existants()
 activate Repo
-Repo --> UC : list[ExemplePivot] (candidats non anonymises)
+Repo --> UC : set[str] (identifiants deja dans ~-~-sortie)
 deactivate Repo
+UC -> Repo : repository_source.lister()
+activate Repo
+Repo --> UC : list[ExemplePivot] (pivot ORIGINAL complet)
+deactivate Repo
+UC -> UC : candidats = exemples dont l'identifiant\nn'est PAS dans repository_sortie
 
 alt limite is None (full) ou limite >= len(candidats)
   UC -> UC : a_traiter = candidats (tous)
@@ -106,21 +127,22 @@ loop pour chaque ExemplePivot de iterable
   UC -> UC : ajoute exemple_anonymise a la liste
 end
 
-UC -> Repo : sauvegarder_plusieurs(exemples_anonymises)
+UC -> Repo : repository_sortie.sauvegarder_plusieurs(exemples_anonymises)
 activate Repo
 note right of Repo
-  07/09/2026 : bug O(n^2) corrige --
-  sauvegarder() par iteration relisait/
-  reecrivait tout le fichier JSONL a
-  CHAQUE exemple (infaisable sur 147204
-  exemples/624 Mo). sauvegarder_plusieurs
-  fait la meme fusion par identifiant en
-  une seule lecture/ecriture. Les exemples
-  non selectionnes par ~-~-limite restent
-  inchanges (anonymise=False) dans le
-  fichier, prets pour un appel ulterieur.
+  07/09/2026 : bug O(n^2) corrige : sauvegarder()
+  par iteration relisait/reecrivait tout le
+  fichier JSONL a CHAQUE exemple (infaisable sur
+  147204 exemples/624 Mo). sauvegarder_plusieurs
+  fait la meme fusion par identifiant en une
+  seule lecture/ecriture, sur le fichier de
+  SORTIE uniquement : repository_source
+  (le pivot original) n'est jamais ecrit. Les
+  candidats non selectionnes par ~-~-limite
+  n'apparaissent simplement pas encore dans
+  ~-~-sortie, prets pour un appel ulterieur.
 end note
-Repo -> Repo : lit le fichier JSONL, fusionne\npar identifiant, reecrit une seule fois
+Repo -> Repo : lit le fichier de sortie JSONL,\nfusionne par identifiant, reecrit une seule fois
 Repo --> UC : (écriture terminée)
 deactivate Repo
 

@@ -10,7 +10,9 @@ note right #FDF6EC
   Fonction PARTAGÉE (chsa_triage.application.echantillonnage)
   Appelée depuis :
   - AnonymiserDatasetUseCase (paramètre --limite)
+  - ControlerQualiteAnonymisationUseCase (échantillon de contrôle qualité)
   - DecouperSplitsUseCase (paramètre --n)
+  - ExtraireSousEnsembleSftUseCase (troncature au-delà de --taille, 11/09/2026)
   Extraite pour éviter de dupliquer l'algorithme
 end note
 :rng = random.Random(graine_aleatoire);

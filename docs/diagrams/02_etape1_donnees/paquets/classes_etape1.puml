@@ -1,4 +1,5 @@
 @startuml classes_etape1
+!pragma layout smetana
 !include ../../_common/estilo.iuml
 
 title Étape 1 : Diagramme de paquets\nClasses impliquées dans la préparation des données
@@ -79,16 +80,34 @@ package "application.use_cases" as USECASES {
     +executer(mapper) : int
   }
   class AnonymiserDatasetUseCase {
-    +repository: RepositoryLectureEcriture
+    +repository_source: RepositoryLectureEcriture
+    +repository_sortie: RepositoryLectureEcriture
     +anonymiseur: Anonymiseur
+    +limite: int | None
     +executer() : int
   }
+  note right of AnonymiserDatasetUseCase
+    08/09/2026 : repository_source (pivot original,
+    jamais ecrit) et repository_sortie (fichier
+    ANONYMISE separe) sont deux fichiers distincts,
+    plus un seul repository partage. "Deja traite"
+    se determine par presence dans repository_sortie,
+    pas par un champ mute sur le pivot source.
+  end note
   class DecouperSplitsUseCase {
     +repository: RepositoryLectureEcriture
     +proportion_val: float
     +proportion_test: float
+    +n: int | None
+    +obtenir_identifiants_pii_en_attente: Callable[[], set[str]]
     +executer() : dict
   }
+  note right of DecouperSplitsUseCase
+    Detail complet (exclusion PII, semantique
+    cumulative de --n) : cf.
+    decouper_splits_paquets.puml, plus a jour
+    que cette vue d'ensemble simplifiee.
+  end note
 
   USECASES ..> MODEL
   USECASES ..> PORTS

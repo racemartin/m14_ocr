@@ -42,7 +42,7 @@ note right of Lecteur
   pandas par blocs de N lignes plutot
   que tout le fichier source d'un coup.
   Requis sur ultramedical_preference.jsonl
-  (966 Mo, 109353 enregistrements) --
+  (966 Mo, 109353 enregistrements) :
   OOM reel confirme sans cette option
   sur 5.8 Go de RAM disponibles.
 end note
@@ -65,10 +65,19 @@ loop pour chaque enregistrement brut
     mapper est injecté par interfaces/cli
   end note
 
-  alt enregistrement valide
-    UC -> UC : ajoute ExemplePivot à la liste
-  else enregistrement incomplet
+  alt enregistrement invalide
     UC -> UC : ignore (mapper retourne None)
+  else identifiant déjà vu (doublon exact)
+    UC -> UC : ajoute ExemplePivot à self.doublons\n(08/09/2026 : identifiant deterministe,\ndoublons reels trouves sur les donnees reelles)
+    note right of UC
+      Le premier exemple portant cet
+      identifiant reste dans le pivot ;
+      les suivants sont ecartes, jamais
+      silencieusement perdus (archives
+      par le CLI, cf. ci-dessous)
+    end note
+  else enregistrement valide et inédit
+    UC -> UC : ajoute ExemplePivot à la liste
   end
 end
 
@@ -78,10 +87,19 @@ Repo -> Repo : sérialise chaque ExemplePivot en JSON
 Repo --> UC : (écriture terminée)
 deactivate Repo
 
-UC --> CLI : nombre_exemples
+UC --> CLI : nombre_exemples\n(cas_usage.doublons expose les ecartes)
 deactivate UC
 
-CLI --> Dev : "N exemples pivot écrits dans ..."
+opt cas_usage.doublons non vide
+  CLI -> CLI : ajouter_exemples_jsonl(--doublons, cas_usage.doublons)
+  note right of CLI
+    data/processed/doublons_supprimes.jsonl
+    (defaut) : archive en mode ajout,
+    jamais perdu silencieusement
+  end note
+end
+
+CLI --> Dev : "N exemples pivot écrits dans ...\n(+ M doublons écartés, archivés dans ...)"
 deactivate CLI
 
 @enduml
