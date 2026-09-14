@@ -493,8 +493,23 @@ hf upload mombasstic/chsa-triage-sft-monitor src/chsa_triage/application/verdict
 hf upload mombasstic/chsa-triage-sft-monitor monitoring/requirements.txt requirements.txt --repo-type space
 hf upload mombasstic/chsa-triage-sft-monitor monitoring/README_space.md README.md --repo-type space
 
-# 4. Lancer l'entrainement en pointant vers le depot de metriques
-#    cree a l'etape 1, pour que le Space ait des donnees a lire :
+# 4. (Optionnel mais recommande avant tout run GPU reel) Verifier le
+#    dashboard de bout en bout avec des metriques FACTICES :
+#    data/demos/chsa-triage-sft-metrics-fake.json (31 etapes, perte
+#    train/validation + norme gradient, verdict SAINE confirme contre
+#    monitoring/logica_suivi_entrainement.py au moment de sa creation).
+#    Le nom de destination (demo_datos_ficticios/metriques.jsonl) est ce
+#    qui fait apparaitre "demo_datos_ficticios" comme run selectionnable
+#    dans le dashboard ; le nom du fichier local n'a pas besoin de
+#    correspondre. Supprimer ce run factice du depot avant le premier
+#    run reel pour ne pas encombrer le selecteur.
+hf upload mombasstic/chsa-triage-sft-metrics \
+    data/demos/chsa-triage-sft-metrics-fake.json \
+    demo_datos_ficticios/metriques.jsonl \
+    --repo-type dataset
+
+# 5. Lancer l'entrainement en pointant vers le depot de metriques
+#    cree a l'etape 1, pour que le Space ait des vraies donnees a lire :
 uv run python training/E2_04_sft_train.py \
     --recette recipes/sft_qwen3_lora.yaml \
     --dataset data/processed/dataset_pivot_anonymise.jsonl \
@@ -506,7 +521,10 @@ Smoke test local (verifie, sans reseau, contre un JSONL de fixture) :
 `uv sync --extra web --extra local`, groupes `streamlit`/`huggingface_hub`).
 La logique pure (parsing JSONL, pivot, verdict de convergence) est
 testee dans `tests/monitoring/test_app_suivi_entrainement.py`, sans
-Streamlit ni reseau.
+Streamlit ni reseau. `data/demos/chsa-triage-sft-metrics-fake.json`
+(etape 4 ci-dessus) permet en plus de verifier le dashboard COMPLET
+(graphique, cartes, verdict en direct) sans attendre un run GPU reel,
+une fois publie sur le depot de metriques.
 
 ## Structure (architecture hexagonale)
 
