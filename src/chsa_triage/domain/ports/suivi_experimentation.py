@@ -19,8 +19,16 @@ class SuiviExperimentation(Protocol):
         """Ouvre un nouveau run de suivi (MLflow/TensorBoard) sous le nom donne."""
         ...
 
-    def logger_metrique(self, nom: str, valeur: float, etape: int) -> None:
-        """Enregistre une valeur de metrique pour l'etape (pas) courante du run ouvert."""
+    def logger_metrique(self, nom: str, valeur: float, etape: int, horodatage: float | None = None) -> None:
+        """
+        Enregistre une valeur de metrique pour l'etape (pas) courante du
+        run ouvert. `horodatage` (secondes epoch, meme unite que
+        `time.time()`) est optionnel : `None` (defaut, cas d'un
+        entrainement reel en direct) laisse l'adaptateur utiliser son
+        comportement habituel (l'instant present) ; une valeur explicite
+        sert a rejouer un point avec son instant d'origine (import
+        `monitoring/importer_mlflow_local.py`).
+        """
         ...
 
     def terminer_run(self) -> None:

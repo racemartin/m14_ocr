@@ -29,8 +29,8 @@ class TensorboardSuiviExperimentation:
         if parametres:
             self._writer.add_text("parametres", str(parametres))
 
-    def logger_metrique(self, nom: str, valeur: float, etape: int) -> None:
-        self._writer.add_scalar(nom, valeur, etape)
+    def logger_metrique(self, nom: str, valeur: float, etape: int, horodatage: float | None = None) -> None:
+        self._writer.add_scalar(nom, valeur, etape, walltime=horodatage)
 
     def terminer_run(self) -> None:
         self._writer.close()
