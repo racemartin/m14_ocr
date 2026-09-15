@@ -19,6 +19,21 @@ Chaque document se termine par un renvoi vers le suivant, pour lire
 la documentation dans l'ordre du projet en partant de
 `docs/00_cadrage/00_objectifs_du_projet.md`.
 
+## Séquence complète, de bout en bout
+
+Index de navigation rapide vers les sections existantes, dans
+l'ordre reel du pipeline. Chaque detail (commandes, options) vit
+uniquement dans la section liee ; ne pas dupliquer ici.
+
+1. [Préparation des données (Étape 1, sections 1 à 8)](#pipeline-étape-1-les-6-fichiers-sources-fusionnes-dans-le-meme-dataset-pivot)
+2. [Extraction du sous-ensemble SFT publiable](#9-extraction-du-sous-ensemble-sft-5000-exemples-pour-publication-hugging-face)
+3. [Extraction du sous-ensemble DPO publiable](#10-extraction-du-sous-ensemble-dpo-pour-publication-hugging-face)
+4. [Évaluation baseline zero-shot (Étape 1bis)](#11-évaluation-baseline-zero-shot-étape-1bis-avant-sftdpo)
+5. [Entraînement SFT réel](#suivi-dentrainement-en-vivo-étape-2--dashboard-streamlit)
+6. **DPO (Étape 3) : non implémenté à ce jour.** Aucune commande ni
+   étape n'existe encore dans le code pour cette phase ; voir
+   `docs/04_etape3_dpo/` (à venir).
+
 ## Démarrage rapide (Étape 1 : données)
 
 ```bash
