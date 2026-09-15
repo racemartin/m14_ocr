@@ -574,7 +574,11 @@ tar -xzf llama.tar.gz
 # 3. Demarrer le serveur (contexte reduit : suffisant pour des invites
 #    zero-shot courtes, adapte a une machine avec peu de RAM) :
 LD_LIBRARY_PATH=./llama-b10985 ./llama-b10985/llama-server \
-    -m Qwen3-1.7B-Base.Q4_K_M.gguf --port 8080 -c 1024 -t 2 --no-webui
+    -m Qwen3-1.7B-Base.Q4_K_M.gguf --port 8080 -c 1024 -t 2 --no-webui --host 0.0.0.0
+
+curl http://127.0.0.1:8080/health
+{"status":"ok"}.
+
 ```
 
 Puis, dans un second terminal :
