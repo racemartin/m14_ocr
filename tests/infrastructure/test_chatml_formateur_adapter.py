@@ -76,3 +76,21 @@ def test_formater_produit_un_texte_chatml_avec_tour_assistant():
 
 def test_tokens_controle_chatml_restent_atomiques():
     assert verifier_chat_template(NOM_MODELE) is True
+
+
+def test_formater_invite_zero_shot_ne_contient_pas_la_completion():
+    """
+    Oppose de `formater()` : utilise par l'evaluation baseline zero-shot
+    (Etape 1bis, `E1_06_00_evaluer_baseline_zero_shot.py`). Doit rendre
+    UNIQUEMENT le prompt (jamais la completion), et se terminer par le
+    tour assistant vide (`add_generation_prompt=True`), pret pour la
+    generation.
+    """
+    adaptateur = ChatMLFormateurAdapter(nom_modele=NOM_MODELE)
+    exemple = _exemple_pivot()
+
+    texte = adaptateur.formater_invite_zero_shot(exemple)
+
+    assert "Le patient presente une fievre" in texte
+    assert "Suspicion d'infection" not in texte
+    assert texte.rstrip().endswith("<|im_start|>assistant")

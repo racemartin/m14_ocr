@@ -68,6 +68,13 @@ from chsa_triage.application.use_cases.E1_05_02_extraire_sous_ensemble_sft impor
     calculer_repartition_par_strate,
     formater_tableau_repartition,
 )
+from chsa_triage.application.use_cases.E1_05_03_extraire_sous_ensemble_dpo import (
+    ExtraireSousEnsembleDpoUseCase,
+)
+from chsa_triage.application.use_cases.E1_06_00_evaluer_baseline_zero_shot import (
+    EvaluerBaselineZeroShotUseCase,
+    ResultatEvaluationBaseline,
+)
 
 __all__ = [
     "STRATUM_PRINCIPAL",
@@ -85,11 +92,14 @@ __all__ = [
     "EssaiHyperparametres",
     "ExecutionAnonymisation",
     "ExempleControle",
+    "EvaluerBaselineZeroShotUseCase",
+    "ExtraireSousEnsembleDpoUseCase",
     "ExtraireSousEnsembleSftUseCase",
     "FormaterDatasetChatMLUseCase",
     "ProfilerCorpusUseCase",
     "RapportAnonymisationCumule",
     "ResultatBoucleAjustement",
+    "ResultatEvaluationBaseline",
     "ReviserPiiResiduelleUseCase",
     "SauvegarderCheckpointSftUseCase",
     "StatistiquesSource",

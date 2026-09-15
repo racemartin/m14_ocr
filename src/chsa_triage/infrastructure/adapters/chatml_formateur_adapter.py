@@ -53,3 +53,19 @@ class ChatMLFormateurAdapter:
             messages, tokenize=False, add_generation_prompt=False
         )
         return ExempleFormate(identifiant=exemple.identifiant, texte=texte)
+
+    def formater_invite_zero_shot(self, exemple: ExemplePivot) -> str:
+        """
+        Rend UNIQUEMENT `exemple.prompt` (jamais `completion`) via le
+        meme chat template natif, `add_generation_prompt=True` :
+        l'oppose exact de `formater()`, pour une invite d'inference
+        (montrer le prompt, laisser le modele generer la suite) plutot
+        qu'un exemple d'entrainement deja complet. Utilise par
+        l'evaluation baseline zero-shot (Etape 1bis,
+        `E1_06_00_evaluer_baseline.py`) ; hors du port
+        `FormateurConversation`, dont le contrat documente explicitement
+        `add_generation_prompt=False`.
+        """
+        tokenizer = self._obtenir_tokenizer()
+        messages = [{"role": message.role, "content": message.contenu} for message in exemple.prompt]
+        return tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)

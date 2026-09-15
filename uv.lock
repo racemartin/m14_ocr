@@ -465,7 +465,7 @@ requires-dist = [
     { name = "datasets", marker = "extra == 'remote'", specifier = ">=2.20" },
     { name = "fastapi", marker = "extra == 'api'", specifier = ">=0.111" },
     { name = "httpx", marker = "extra == 'api'", specifier = ">=0.27" },
-    { name = "httpx", marker = "extra == 'local'", specifier = ">=0.25.0" },
+    { name = "httpx", marker = "extra == 'local'", specifier = ">=0.27" },
     { name = "httpx", marker = "extra == 'web'", specifier = ">=0.27" },
     { name = "huggingface-hub", marker = "extra == 'local'", specifier = ">=0.24" },
     { name = "huggingface-hub", marker = "extra == 'remote'", specifier = ">=0.24" },
