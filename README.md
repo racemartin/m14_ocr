@@ -456,6 +456,152 @@ l'etape 1. Augmenter la couverture de
 `E1_04_02_controler_qualite_anonymisation.py` (§5) avant publication reduit ce
 risque, mais ne l'elimine pas completement sans audit exhaustif.
 
+### 10. Extraction du sous-ensemble DPO (pour publication Hugging Face)
+
+Meme patron exact que §9 (`ExtraireSousEnsembleSftUseCase`), en
+filtrant `type_exemple == TypeExemple.DPO` au lieu de SFT : le cahier
+des charges (`docs/00_cadrage/01_cahier_des_charges.md` §7, Livrable
+1) exige "SFT ~5000 paires + DPO" dans le dataset publie, et
+`E1_05_03_extraire_sous_ensemble_dpo.py` produit ce second sous-ensemble
+a partir du meme pivot anonymise et du meme fichier d'exclusions PII
+(reutilise tel quel, sans le regenerer). Meme fichier d'exclusions
+(§9 etape 1) : un identifiant y figure independamment du type
+d'exemple, l'export ne le regenere donc pas.
+
+```bash
+# Reutilise le meme fichier d'exclusions que §9 etape 1 (pas besoin de
+# le regenerer si deja fait) :
+uv run python interfaces/cli/E1_04_01_reviser_pii_residuelle.py exporter \
+    --dataset data/processed/dataset_pivot.jsonl \
+    --anonymise data/processed/dataset_pivot_anonymise.jsonl
+
+# Filtre `type_exemple == DPO` ET `split != null` MOINS les
+# identifiants exclus, puis RECOUPE a exactement --taille
+# (echantillonnage stratifie type_exemple/source) si le resultat
+# filtre en contient plus.
+uv run python interfaces/cli/E1_05_03_extraire_sous_ensemble_dpo.py \
+    --dataset data/processed/dataset_pivot_anonymise.jsonl \
+    --exclusions data/processed/identifiants_a_exclure_publication.jsonl \
+    --taille 5000
+```
+
+Sortie attendue (meme forme que §9, `Strate` prefixee `dpo/` au lieu
+de `sft/` puisque `calculer_repartition_par_strate` groupe par
+`type_exemple`) :
+
+```
+Exemples avec split (avant exclusion) : <N>
+Exclus (PII confirmee ou en attente de revision humaine) : <n>
+Disponibles apres exclusion : <N-n>
+Ecrits dans data/processed/dataset_chsa_triage_dpo_anonymise_<taille>.jsonl : <taille> exemple(s).
+
+Repartition du sous-ensemble ecrit par strate (type_exemple, source) :
+Strate                                          Total           train             val            test
+dpo/UltraMedical-Preference                    <...>           <...>            <...>            <...>
+```
+
+Sur le pivot completement anonymise et reparti (134 883 exemples,
+37 802 SFT / 97 081 DPO au 12/09/2026, §4/§7), le pool DPO disponible
+(uniquement `UltraMedical-Preference` a ce jour) est largement
+suffisant pour atteindre les 5000 demandes sans y toucher ; comme en
+§9, `--taille` reste un PLAFOND jamais garanti si le pivot anonymise
+ne couvre encore qu'une fraction du corpus complet.
+
+**Publication sur Hugging Face Hub.** Meme depot que §9 recommande une
+publication SEPAREE (deux fichiers distincts dans le meme depot
+prive), pour que le nom du fichier continue de refleter honnetement
+son contenu et son compte reel :
+
+```bash
+# Le depot existe deja depuis §9 (creer une seule fois) :
+hf repo create mombasstic/dataset_chsa_triage_sft_anonymise_5000 --repo-type dataset --private
+
+# Publier le fichier DPO a cote du fichier SFT deja publie :
+hf upload mombasstic/dataset_chsa_triage_sft_anonymise_5000 data/processed/dataset_chsa_triage_dpo_anonymise_5000.jsonl --repo-type dataset
+
+# Publier/mettre a jour la dataset card (README.md du depot HF) :
+hf upload mombasstic/dataset_chsa_triage_sft_anonymise_5000 docs/02_etape1_donnees/dataset_card_dpo_hf.md README.md --repo-type dataset
+
+# Verifier le compte de lignes cote Hub (meme methode que §9, ne pas
+# se fier au dataset viewer qui peut prendre du temps sur un depot prive) :
+hf download mombasstic/dataset_chsa_triage_sft_anonymise_5000 dataset_chsa_triage_dpo_anonymise_5000.jsonl --repo-type dataset --local-dir /tmp/verificacion_hf_dpo
+wc -l /tmp/verificacion_hf_dpo/dataset_chsa_triage_dpo_anonymise_5000.jsonl
+```
+
+Meme limite de couverture qu'en §9 : l'exclusion ne porte que sur ce
+qui a deja ete audite par le controle qualite (§5).
+
+### 11. Évaluation baseline zero-shot (Étape 1bis, avant SFT/DPO)
+
+Mesure la performance de `Qwen/Qwen3-1.7B-Base` SANS entrainement sur
+le split `test` DEJA EXISTANT du pivot anonymise (champ `split`, §7),
+pour disposer d'un point de comparaison mesurable avant SFT/DPO
+(cahier des charges §9 : "l'accuracy... depasse la baseline zero-shot
+de facon mesurable"). Environnement A (local, sans GPU) : l'inference
+passe par un serveur `llama-server` (llama.cpp) DEJA LANCE en local,
+servant un GGUF quantifie du modele.
+
+**Prerequis : demarrer un `llama-server` local.** Aucune conversion
+GGUF a faire soi-meme : une quantification publique exacte de
+`Qwen/Qwen3-1.7B-Base` existe deja sur le Hub, `mradermacher/Qwen3-1.7B-Base-GGUF`.
+
+```bash
+# 1. Telecharger le GGUF (Q4_K_M, ~1.1 Go) :
+uv run python -c "
+from huggingface_hub import hf_hub_download
+print(hf_hub_download('mradermacher/Qwen3-1.7B-Base-GGUF', 'Qwen3-1.7B-Base.Q4_K_M.gguf', local_dir='.'))
+"
+
+# 2. Recuperer le binaire llama-server (build CPU officiel, Ubuntu x64) :
+curl -sL -o llama.tar.gz https://github.com/ggml-org/llama.cpp/releases/download/b10985/llama-b10985-bin-ubuntu-x64.tar.gz
+tar -xzf llama.tar.gz
+
+# 3. Demarrer le serveur (contexte reduit : suffisant pour des invites
+#    zero-shot courtes, adapte a une machine avec peu de RAM) :
+LD_LIBRARY_PATH=./llama-b10985 ./llama-b10985/llama-server \
+    -m Qwen3-1.7B-Base.Q4_K_M.gguf --port 8080 -c 1024 -t 2 --no-webui
+```
+
+Puis, dans un second terminal :
+
+```bash
+uv run python interfaces/cli/E1_06_00_evaluer_baseline.py \
+    --dataset data/processed/dataset_pivot_anonymise.jsonl \
+    --url-serveur http://127.0.0.1:8080
+```
+
+Le run est journalise dans MLflow (`SuiviExperimentation`, meme
+mecanisme que `training/E2_04_sft_train.py`, pas un nouveau systeme de
+tracking) sous le nom `baseline-zero-shot`, dans
+`sqlite:///data/processed/mlflow.db` par defaut (`--suivi-uri` pour un
+autre chemin). Execute LOCALEMENT (pas sur un job HF), le run atterrit
+directement dans le MLflow local : PAS besoin de
+`monitoring/importer_mlflow_local.py` pour le retrouver (ce script
+rapatrie des runs distants publies sur un depot HF, ce qui n'est pas
+le cas ici).
+
+**Limite honnete mesuree (15/09/2026) :** sur une machine a RAM
+limitee (~6 Go, cf. AGENTS.md), charger le GGUF de 1,1 Go dans
+`llama-server` peut prendre plusieurs minutes (pression memoire), et
+la generation CPU peut descendre a ~0,2-0,5 tokens/seconde selon la
+charge de la machine. Une evaluation complete du split test (plusieurs
+milliers d'exemples) est donc lente sur une machine sans GPU dedie ;
+prevoir le temps necessaire ou reduire `--n-predict`.
+
+**Metriques calculees** (`application/metriques_evaluation_baseline.py`,
+fonctions pures, testables sans reseau/GPU) : exact match et F1 token
+sur la reponse complete (s'appliquent tels quels au dataset REEL
+actuel), et exactitude de classification du niveau ESI (extrait le
+champ `niveau` d'un JSON `{niveau, categorie, ressources_estimees}`,
+cf. cahier des charges F3). Point de vigilance honnete : les
+`completion` reels du pivot actuel (MediQAl, FrenchMedMCQA, MedQuAD)
+sont des reponses en langage naturel, pas ce format JSON
+(`docs/03_etape2_sft/00_introduction_concepts.md`), donc cette
+derniere metrique aura tres peu (voire aucune) paire comparable sur le
+dataset d'aujourd'hui ; le CLI l'indique clairement plutot que
+d'afficher un pourcentage trompeur calcule sur une poignee de
+coincidences.
+
 ## Suivi d'entrainement en vivo (Étape 2 : dashboard Streamlit)
 
 Pendant un run SFT-LoRA reel (Environnement B, GPU sur HF Jobs),

@@ -21,7 +21,13 @@ docs/diagrams/
 │   │                                + vue frontiere generique/specifique du pivot (E1_03_01_mappers_corpus.py)
 │   ├── paquets/                     classes réelles de l'Étape 1 ;
 │   │                                 paquets en jeu pour anonymisation/rapport/QC ;
-│   │                                 paquets en jeu pour decouper_splits/verifier_repartition_splits
+│   │                                 paquets en jeu pour decouper_splits/verifier_repartition_splits ;
+│   │                                 PAS ENCORE mis à jour (11/09/2026, ajout jugé mineur pour ce
+│   │                                 diagramme) avec l'extraction du sous-ensemble DPO
+│   │                                 (E1_05_03_extraire_sous_ensemble_dpo.py), le nouveau port
+│   │                                 FormateurInviteZeroShot, ou l'évaluation baseline zero-shot
+│   │                                 (E1_06_00_evaluer_baseline_zero_shot.py + implémentation réelle
+│   │                                 de LlamaCppInferenceAdapter) : voir AGENTS.md pour ces ajouts
 │   └── deploiement/                 environnement local (WSL2, uv)
 ├── 03_etape2_sft/
 │   ├── activite/                  pipeline SFT (reel, avec le point de

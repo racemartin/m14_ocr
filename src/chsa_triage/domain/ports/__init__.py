@@ -19,6 +19,9 @@ from chsa_triage.domain.ports.entraineur_supervise import (
 from chsa_triage.domain.ports.formateur_conversation import (
     FormateurConversation,
 )
+from chsa_triage.domain.ports.formateur_invite_zero_shot import (
+    FormateurInviteZeroShot,
+)
 from chsa_triage.domain.ports.lecteur_corpus import LecteurCorpus
 from chsa_triage.domain.ports.moteur_inference import (
     MoteurInference,
@@ -39,6 +42,7 @@ __all__ = [
     "EntiteDetectee",
     "EntraineurSupervise",
     "FormateurConversation",
+    "FormateurInviteZeroShot",
     "LecteurCorpus",
     "MetriquesEntrainement",
     "MoteurInference",
