@@ -508,6 +508,11 @@ hf upload mombasstic/chsa-triage-sft-metrics \
     demo_datos_ficticios/metriques.jsonl \
     --repo-type dataset
 
+# **Test de connectivité (quelques centimes, confirme que la carte bancaire fonctionne avec HF Jobs)**
+hf jobs uv run --flavor t4-small python -c "import torch; print(torch.cuda.get_device_name())"
+
+# *Cela prend quelques secondes, ne coûte presque rien et valide l'ensemble du circuit de facturation avant de lancer un job plus important.*
+
 # 5. Lancer l'entrainement en pointant vers le depot de metriques
 #    cree a l'etape 1, pour que le Space ait des vraies donnees a lire :
 uv run python training/E2_04_sft_train.py \
@@ -545,8 +550,23 @@ ce MLflow local (`--forcer` pour reimporter).
 # Rafraichir le MLflow local (par defaut : ~/.chsa-triage/mlflow.db) :
 uv run python monitoring/importer_mlflow_local.py
 
+Depot dataset HF : mombasstic/chsa-triage-sft-metrics
+MLflow local : sqlite:////home/rafael/.chsa-triage/mlflow.db
+2026/09/15 16:31:27 INFO mlflow.store.db.utils: Creating initial MLflow database tables...
+2026/09/15 16:31:27 INFO mlflow.store.db.utils: Updating database tables
+metriques.jsonl: 5.76kB [00:00, 2.56MB/s]
+importe : demo_datos_ficticios (69 metriques)
+1 run(s) importe(s) : demo_datos_ficticios
+Ouvrir l'interface : uv run mlflow ui --backend-store-uri sqlite:////home/rafael/.chsa-triage/mlflow.db --host 0.0.0.0
+
+uv run mlflow ui \
+  --backend-store-uri sqlite:////home/rafael/.chsa-triage/mlflow.db \
+  --host 0.0.0.0 \
+  --port 5000 \
+  --cors-allowed-origins "*"
+
 # Ouvrir l'interface MLflow sur ce meme fichier :
-uv run mlflow ui --backend-store-uri sqlite:///$HOME/.chsa-triage/mlflow.db
+uv run mlflow ui --backend-store-uri sqlite:///$HOME/.chsa-triage/mlflow.db --host 0.0.0.0
 ```
 
 La frontiere reseau HF Hub (`HfApi.list_repo_files`/`hf_hub_download`)
