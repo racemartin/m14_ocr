@@ -148,7 +148,7 @@ hf jobs logs <job_id>
 **Étape 1 : Créer le Space :**
 
 ```bash
-hf repo create chsa-triage-dev --type space --space_sdk docker
+hf repo create chsa-triage-dev --type space --space-sdk docker
 ```
 
 **Étape 2 : Activer Dev Mode et choisir le matériel :**
