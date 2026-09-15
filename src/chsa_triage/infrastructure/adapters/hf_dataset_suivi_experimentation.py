@@ -68,8 +68,8 @@ class HfDatasetSuiviExperimentation:
         if parametres:
             (repertoire_run / "parametres.json").write_text(json.dumps(parametres, default=str), encoding="utf-8")
 
-    def logger_metrique(self, nom: str, valeur: float, etape: int) -> None:
-        ligne = {"etape": etape, "nom": nom, "valeur": valeur, "horodatage": time.time()}
+    def logger_metrique(self, nom: str, valeur: float, etape: int, horodatage: float | None = None) -> None:
+        ligne = {"etape": etape, "nom": nom, "valeur": valeur, "horodatage": horodatage if horodatage is not None else time.time()}
         with self._chemin_jsonl.open("a", encoding="utf-8") as f:
             f.write(json.dumps(ligne) + "\n")
 

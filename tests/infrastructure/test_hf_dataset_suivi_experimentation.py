@@ -9,6 +9,7 @@ sa construction.
 from __future__ import annotations
 
 import json
+import time
 
 from chsa_triage.infrastructure.adapters.hf_dataset_suivi_experimentation import (
     HfDatasetSuiviExperimentation,
@@ -117,3 +118,39 @@ def test_nouveau_run_meme_nom_repart_d_un_fichier_jsonl_vide(tmp_path):
     lignes = _lire_jsonl(tmp_path / "run-test" / "metriques.jsonl")
     assert len(lignes) == 1
     assert lignes[0]["valeur"] == 0.5
+
+
+def test_horodatage_explicite_est_ecrit_tel_quel(tmp_path):
+    appels: list[tuple[str, str, float]] = []
+    fabrique, _ = _fabrique_scheduler_factice_espionne(appels)
+    suivi = HfDatasetSuiviExperimentation(
+        repo_id="mombasstic/chsa-triage-sft-metrics",
+        repertoire_local=str(tmp_path),
+        fabrique_scheduler=fabrique,
+    )
+
+    suivi.demarrer_run("run-test", {})
+    suivi.logger_metrique("perte_train", 1.2, 0, horodatage=1_700_000_000.5)
+    suivi.terminer_run()
+
+    lignes = _lire_jsonl(tmp_path / "run-test" / "metriques.jsonl")
+    assert lignes[0]["horodatage"] == 1_700_000_000.5
+
+
+def test_horodatage_omis_utilise_l_instant_present(tmp_path):
+    appels: list[tuple[str, str, float]] = []
+    fabrique, _ = _fabrique_scheduler_factice_espionne(appels)
+    suivi = HfDatasetSuiviExperimentation(
+        repo_id="mombasstic/chsa-triage-sft-metrics",
+        repertoire_local=str(tmp_path),
+        fabrique_scheduler=fabrique,
+    )
+
+    avant = time.time()
+    suivi.demarrer_run("run-test", {})
+    suivi.logger_metrique("perte_train", 1.2, 0)
+    suivi.terminer_run()
+    apres = time.time()
+
+    lignes = _lire_jsonl(tmp_path / "run-test" / "metriques.jsonl")
+    assert avant <= lignes[0]["horodatage"] <= apres

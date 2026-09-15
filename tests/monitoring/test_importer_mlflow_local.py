@@ -36,9 +36,10 @@ def _uri(tmp_path) -> str:
     return f"sqlite:///{tmp_path}/mlflow.db"
 
 
-def _jsonl(*lignes: tuple[int, str, float]) -> str:
+def _jsonl(*lignes: tuple[int, str, float], horodatage: float = 1.0) -> str:
     return "\n".join(
-        json.dumps({"etape": etape, "nom": nom, "valeur": valeur, "horodatage": 1.0}) for etape, nom, valeur in lignes
+        json.dumps({"etape": etape, "nom": nom, "valeur": valeur, "horodatage": horodatage})
+        for etape, nom, valeur in lignes
     )
 
 
@@ -91,6 +92,24 @@ def test_reproduire_run_ecrit_parametres_et_metriques_relisibles(tmp_path):
     assert run.data.params["rang_lora"] == "8"
     historique = client.get_metric_history(run.info.run_id, "perte_train")
     assert sorted((m.step, m.value) for m in historique) == [(0, 1.2), (1, 0.8)]
+
+
+def test_reproduire_run_reporte_l_horodatage_original(tmp_path):
+    uri = _uri(tmp_path)
+    suivi = MlflowSuiviExperimentation(uri_tracking=uri)
+
+    reproduire_run(
+        suivi,
+        "essai-1",
+        _jsonl((0, "perte_train", 1.2), horodatage=1_700_000_000.5),
+        {},
+    )
+
+    client = MlflowClient(tracking_uri=uri)
+    experience = client.get_experiment_by_name("Default")
+    run = client.search_runs(experiment_ids=[experience.experiment_id])[0]
+    historique = client.get_metric_history(run.info.run_id, "perte_train")
+    assert historique[0].timestamp == int(1_700_000_000.5 * 1000)
 
 
 # ---------------------------------------------------------------------------

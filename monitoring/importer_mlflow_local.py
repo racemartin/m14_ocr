@@ -88,7 +88,7 @@ def reproduire_run(suivi: MlflowSuiviExperimentation, nom: str, texte_metriques:
     lignes = analyser_jsonl_metriques(texte_metriques)
     suivi.demarrer_run(nom, parametres)
     for ligne in lignes:
-        suivi.logger_metrique(ligne.nom, ligne.valeur, ligne.etape)
+        suivi.logger_metrique(ligne.nom, ligne.valeur, ligne.etape, ligne.horodatage)
     suivi.terminer_run()
     return len(lignes)
 

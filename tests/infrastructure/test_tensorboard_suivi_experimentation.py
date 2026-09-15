@@ -45,3 +45,17 @@ def test_run_demarre_metriques_logguees_relisibles_apres_coup(tmp_path):
     # TensorBoard stocke les scalaires en float32 (protobuf) : comparer
     # avec une tolerance plutot que par egalite exacte.
     assert metriques == pytest.approx([1.2, 0.8], rel=1e-6)
+
+
+def test_horodatage_explicite_est_respecte(tmp_path):
+    suivi = TensorboardSuiviExperimentation(repertoire_logs=str(tmp_path))
+
+    suivi.demarrer_run("run-test", {})
+    suivi.logger_metrique("perte", 1.2, 0, horodatage=1_700_000_000.5)
+    suivi.terminer_run()
+
+    accumulateur = EventAccumulator(str(tmp_path / "run-test"))
+    accumulateur.Reload()
+
+    evenement = accumulateur.Scalars("perte")[0]
+    assert evenement.wall_time == pytest.approx(1_700_000_000.5, abs=1e-3)

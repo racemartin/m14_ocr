@@ -41,3 +41,19 @@ def test_run_demarre_metriques_logguees_relisibles_apres_coup(tmp_path):
     historique = client.get_metric_history(run.info.run_id, "perte")
     valeurs = sorted((m.step, m.value) for m in historique)
     assert valeurs == [(0, 1.2), (1, 0.8)]
+
+
+def test_horodatage_explicite_est_respecte(tmp_path):
+    uri = f"sqlite:///{tmp_path}/mlflow.db"
+    suivi = MlflowSuiviExperimentation(uri_tracking=uri)
+
+    suivi.demarrer_run("run-test", {})
+    suivi.logger_metrique("perte", 1.2, 0, horodatage=1_700_000_000.5)
+    suivi.terminer_run()
+
+    client = mlflow.MlflowClient(tracking_uri=uri)
+    experience = client.get_experiment_by_name("Default")
+    run = client.search_runs(experiment_ids=[experience.experiment_id])[0]
+
+    historique = client.get_metric_history(run.info.run_id, "perte")
+    assert historique[0].timestamp == int(1_700_000_000.5 * 1000)
