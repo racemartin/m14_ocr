@@ -58,6 +58,9 @@ if TYPE_CHECKING:  # pragma: no cover - uniquement pour les outils de typage
     from chsa_triage.infrastructure.adapters.tensorboard_suivi_experimentation import (
         TensorboardSuiviExperimentation,
     )
+    from chsa_triage.infrastructure.adapters.transformers_inference_adapter import (
+        TransformersInferenceAdapter,
+    )
     from chsa_triage.infrastructure.adapters.trl_sft_entraineur import (
         TrlSftEntraineurAdapter,
     )
@@ -83,6 +86,7 @@ __all__ = [
     "PresidioAnonymiseur",
     "SpacyVerificateurEntitesNommees",
     "TensorboardSuiviExperimentation",
+    "TransformersInferenceAdapter",
     "TrlSftEntraineurAdapter",
     "VllmEndpointInferenceAdapter",
     "YdataProfileur",
@@ -145,6 +149,10 @@ _CARTE_IMPORTS_PARESSEUX = {
     "TensorboardSuiviExperimentation": (
         "chsa_triage.infrastructure.adapters.tensorboard_suivi_experimentation",
         "TensorboardSuiviExperimentation",
+    ),
+    "TransformersInferenceAdapter": (
+        "chsa_triage.infrastructure.adapters.transformers_inference_adapter",
+        "TransformersInferenceAdapter",
     ),
     "TrlSftEntraineurAdapter": (
         "chsa_triage.infrastructure.adapters.trl_sft_entraineur",
