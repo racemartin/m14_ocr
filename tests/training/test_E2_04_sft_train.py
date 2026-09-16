@@ -91,3 +91,33 @@ def test_verifier_type_perte_valide_rejette_chunked_nll():
 def test_verifier_type_perte_valide_rejette_toute_valeur_inconnue():
     with pytest.raises(SystemExit):
         E2_04_sft_train._verifier_type_perte_valide("une_valeur_qui_nexiste_pas")
+
+
+class TestVerifierSuiviHfRepoCoherent:
+    """
+    `_verifier_suivi_hf_repo_coherent` : garde-fou early sur la
+    coherence `suivi.backend`/`--suivi-hf-repo`, cf. AVERTISSEMENT en
+    tete de module et AGENTS.md. Cas reel qui a fait perdre la courbe
+    d'entrainement complete d'un job GPU L4 facture : `--suivi-hf-repo`
+    passe sur la ligne de commande mais recette `suivi.backend: mlflow`
+    (valeur par defaut a l'epoque), donc le depot HF etait ignore en
+    silence et les metriques ecrites dans un SQLite local perdu avec le
+    conteneur ephemere du job. Pas de dependance reseau ni GPU ici : la
+    fonction ne fait que comparer deux chaines.
+    """
+
+    def test_refuse_suivi_hf_repo_sans_backend_hf_dataset(self):
+        with pytest.raises(SystemExit, match="suivi-hf-repo"):
+            E2_04_sft_train._verifier_suivi_hf_repo_coherent("mlflow", "mombasstic/chsa-triage-sft-metrics")
+
+    def test_refuse_suivi_hf_repo_avec_backend_tensorboard(self):
+        with pytest.raises(SystemExit):
+            E2_04_sft_train._verifier_suivi_hf_repo_coherent("tensorboard", "mombasstic/chsa-triage-sft-metrics")
+
+    def test_accepte_suivi_hf_repo_avec_backend_hf_dataset(self):
+        E2_04_sft_train._verifier_suivi_hf_repo_coherent("hf_dataset", "mombasstic/chsa-triage-sft-metrics")
+
+    def test_accepte_absence_de_suivi_hf_repo_quel_que_soit_le_backend(self):
+        E2_04_sft_train._verifier_suivi_hf_repo_coherent("mlflow", None)
+        E2_04_sft_train._verifier_suivi_hf_repo_coherent("tensorboard", None)
+        E2_04_sft_train._verifier_suivi_hf_repo_coherent("hf_dataset", None)

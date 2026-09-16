@@ -77,3 +77,21 @@ def test_hyperparametres_se_deserialisent_depuis_la_recette():
     assert hyperparametres.taille_lot == 4
     assert hyperparametres.packing is True
     assert hyperparametres.type_perte == "nll"
+
+
+def test_suivi_backend_vaut_hf_dataset_par_defaut_dans_la_recette():
+    """
+    Regression : un premier entrainement SFT-LoRA reel lance sur HF Jobs
+    (GPU L4, verdict "saine", poids publies avec succes) a perdu TOUTE
+    sa courbe d'entrainement parce que cette recette valait encore
+    `suivi.backend: mlflow` alors que `--suivi-hf-repo` etait passe sur
+    la ligne de commande : `mlflow` ecrit dans un SQLite local, perdu
+    avec le conteneur ephemere du job (le disque ne survit pas au job).
+    `training/E2_04_sft_train.py::_verifier_suivi_hf_repo_coherent`
+    refuse desormais de demarrer dans cette combinaison, mais cette
+    recette doit aussi rester correcte par defaut : cf. AVERTISSEMENT
+    dans training/E2_04_sft_train.py et AGENTS.md.
+    """
+    recette = _charger_recette()
+
+    assert recette["suivi"]["backend"] == "hf_dataset"

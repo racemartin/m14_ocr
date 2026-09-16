@@ -38,6 +38,7 @@ Usage (local, Environnement B avec GPU) :
         --dataset data/processed/dataset_pivot_anonymise.jsonl \
         --dataset-formate data/processed/dataset_formate.jsonl \
         --checkpoints data/processed/checkpoints_sft.jsonl \
+        --suivi-hf-repo mombasstic/chsa-triage-sft-metrics \
         --checkpoint-hf-repo mombasstic/chsa-triage-sft-lora \
         --assistant-only-loss false
 
@@ -99,6 +100,33 @@ checkpoint REEL (poids produits par un vrai entrainement), faute de
 GPU ici ; VERIFIE : la resolution des chemins/arguments et que
 `HfApi.create_repo`/`upload_folder` sont les bons appels (signatures
 reelles inspectees), cf. `tests/training/test_E2_04_sft_train.py`.
+
+AVERTISSEMENT CRITIQUE, PERSISTANCE DU SUIVI (trouve et corrige le
+16/09/2026, cf. AGENTS.md) : l'affirmation ci-dessus ("seules les
+metriques de suivi survivraient" sans `--checkpoint-hf-repo`) etait
+FAUSSE en pratique jusqu'a ce correctif. Le premier entrainement
+SFT-LoRA complet reellement lance sur HF Jobs (GPU L4, ~20 min, 342
+pas, verdict "saine", poids publies avec succes sur
+`mombasstic/chsa-triage-sft-lora`) a malgre tout perdu TOUTE sa courbe
+d'entrainement (perte train/validation, norme gradient) : `--suivi-hf-repo`
+etait bien passe sur la ligne de commande, mais `recipes/
+sft_qwen3_lora.yaml::suivi.backend` valait encore `mlflow` a ce
+moment-la, et `_construire_suivi()` ci-dessous ignorait SILENCIEUSEMENT
+`--suivi-hf-repo` tant que `backend != hf_dataset` : les metriques ont
+ete ecrites dans un SQLite LOCAL (`data/processed/mlflow.db` par
+defaut) a l'interieur du conteneur ephemere du job, detruit avec lui.
+Corrige par deux moyens complementaires : (1) `recipes/
+sft_qwen3_lora.yaml::suivi.backend` vaut maintenant `hf_dataset` par
+defaut (`--suivi-hf-repo` fonctionne desormais sans edition manuelle de
+la recette) ; (2) `_verifier_suivi_hf_repo_coherent()` ci-dessous REFUSE
+de demarrer (avant tout chargement de modele/GPU, meme patron que le
+guard `assistant_only_loss`/`type_perte`) si `--suivi-hf-repo` est
+fourni alors que `suivi.backend != hf_dataset`, pour que ce flag ne
+soit plus JAMAIS ignore en silence, meme si la recette est de nouveau
+modifiee a l'avenir. Voir `tests/domain/test_configuration_entrainement.py`
+(regression sur la valeur par defaut de la recette) et
+`tests/training/test_E2_04_sft_train.py` (le guard lui-meme), tous deux
+sans GPU ni reseau reel.
 """
 
 from __future__ import annotations
@@ -233,8 +261,38 @@ def _verifier_type_perte_valide(type_perte: str) -> None:
         )
 
 
+def _verifier_suivi_hf_repo_coherent(backend: str, suivi_hf_repo: str | None) -> None:
+    """
+    Garde-fou AVANT tout chargement de modele/GPU : si `--suivi-hf-repo`
+    est fourni (signal explicite que l'appelant attend une persistance
+    DISTANTE et durable de la courbe d'entrainement), la recette DOIT
+    avoir `suivi.backend: hf_dataset`, sinon `_construire_suivi` ignore
+    silencieusement ce depot et ecrit dans un MLflow/TensorBoard LOCAL a
+    la place. Trouvaille reelle : c'est exactement ce qui s'est produit
+    sur le premier entrainement SFT-LoRA complet lance pour de vrai sur
+    HF Jobs (GPU L4, ~20 min, 342 pas, verdict "saine", poids publies
+    avec succes) : `--suivi-hf-repo` etait bien passe sur la ligne de
+    commande, mais `suivi.backend` valait encore `mlflow` dans la
+    recette, donc les metriques (perte train/validation, norme
+    gradient) ont ete ecrites dans le SQLite local du conteneur HF
+    Jobs, qui ne survit pas au job : la courbe entiere est perdue,
+    irrecuperable (cf. AGENTS.md). Meme patron que le guard
+    `_verifier_type_perte_valide` ci-dessus.
+    """
+    if suivi_hf_repo and backend != "hf_dataset":
+        raise SystemExit(
+            f"--suivi-hf-repo={suivi_hf_repo!r} est fourni mais recette suivi.backend={backend!r} "
+            "(pas hf_dataset) : ce depot serait ignore en silence et les metriques ecrites dans un "
+            "MLflow/TensorBoard LOCAL, perdu sur tout job HF Jobs distant (le disque du conteneur ne "
+            "survit pas au job). Mettez suivi.backend: hf_dataset dans la recette, ou retirez "
+            "--suivi-hf-repo pour un run genuinement local. Voir AGENTS.md : un entrainement reel facture "
+            "a deja perdu sa courbe complete exactement de cette facon."
+        )
+
+
 def _construire_suivi(recette_suivi: dict, arguments: argparse.Namespace):
     backend = recette_suivi.get("backend", "mlflow")
+    _verifier_suivi_hf_repo_coherent(backend, arguments.suivi_hf_repo)
     if backend == "mlflow":
         return MlflowSuiviExperimentation(uri_tracking=arguments.suivi_uri)
     if backend == "tensorboard":
@@ -335,6 +393,7 @@ def main() -> None:
         )
 
     _verifier_type_perte_valide(recette["entrainement"]["type_perte"])
+    _verifier_suivi_hf_repo_coherent(recette.get("suivi", {}).get("backend", "mlflow"), arguments.suivi_hf_repo)
 
     # -------------------------------------------------------------------------
     # PREPARE ADAPTERS (Dependency Injection)

@@ -36,9 +36,26 @@ grille_hyperparametres:
 suivi:
   # mlflow | tensorboard | hf_dataset (visualisation EN VIVO depuis un
   # Space Streamlit distant, cf. monitoring/app_suivi_entrainement.py
-  # et README "Suivi d'entrainement en vivo") ; pour activer hf_dataset :
-  #   backend: hf_dataset
-  # puis lancer training/E2_04_sft_train.py avec
-  #   --suivi-hf-repo mombasstic/chsa-triage-sft-metrics
-  backend: mlflow
+  # et README "Suivi d'entrainement en vivo").
+  #
+  # hf_dataset est le defaut DEPUIS le 16/09/2026 (et non plus mlflow) :
+  # sur un job HF Jobs distant, le disque du conteneur ne survit PAS au
+  # job (meme fait deja documente pour les poids LoRA et la baseline
+  # GPU), donc backend: mlflow y ecrit dans un SQLite qui disparait avec
+  # le conteneur. C'est reellement arrive : le premier entrainement
+  # SFT-LoRA complet lance sur HF Jobs (GPU L4, verdict "saine", poids
+  # publies avec succes) a perdu TOUTE sa courbe d'entrainement, malgre
+  # --suivi-hf-repo passe sur la ligne de commande, parce que la recette
+  # valait encore backend: mlflow a ce moment-la : training/
+  # E2_04_sft_train.py::_construire_suivi() ignore silencieusement
+  # --suivi-hf-repo tant que backend != hf_dataset (cf. AGENTS.md pour
+  # le detail complet, et le guard `_verifier_suivi_hf_repo_coherent`
+  # dans training/E2_04_sft_train.py qui refuse maintenant de demarrer
+  # dans cette combinaison au lieu d'ignorer le flag en silence).
+  #
+  # Pour repasser a mlflow (uniquement pertinent pour un run LOCAL sur
+  # GPU propre, disque persistant, jamais sur HF Jobs) :
+  #   backend: mlflow
+  # et ne PAS passer --suivi-hf-repo (le guard l'exigerait sinon).
+  backend: hf_dataset
   nom_experience: chsa-triage-sft
