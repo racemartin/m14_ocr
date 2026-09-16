@@ -10,10 +10,15 @@ d'usage E2_00 a E2_03), meme si ce n'est pas un script `interfaces/cli/`
 au sens strict. Meme patron argparse + `LogTool` + resume console que
 `interfaces/cli/E1_04_00_anonymiser_dataset.py`.
 
-**JAMAIS EXECUTE REELLEMENT** (aucun GPU disponible a l'ecriture, cf.
-`infrastructure/adapters/trl_sft_entraineur.py` pour le detail de ce
-qui a ete verifie sans GPU vs. ce qui reste a confirmer sur une vraie
-session GPU). Ce script encadene, DANS L'ORDRE DU DIAGRAMME
+**ENTRAINEMENT REEL COMPLET JAMAIS LANCE** (couterait une session GPU
+payante pour un resultat deja partiellement connu par construction, cf.
+README §2.3). Le CABLAGE de bout en bout (guard `assistant_only_loss`,
+resolution/installation du paquet `chsa-triage[remote]`, acces au
+`--recette`/`--dataset` sur un job distant) A ETE verifie pour de vrai
+sur HF Jobs reel (`--flavor cpu-basic`, guard atteint et declenche,
+cf. README §2.3) ; cf. `infrastructure/adapters/trl_sft_entraineur.py`
+pour le detail de ce qui reste NON verifie (le training loop lui-meme,
+faute de GPU). Ce script encadene, DANS L'ORDRE DU DIAGRAMME
 (`docs/diagrams/03_etape2_sft/activite/pipeline_sft_lora.puml`) :
 
   1. `FormaterDatasetChatMLUseCase.executer(split)` (train, puis
@@ -23,13 +28,18 @@ session GPU). Ce script encadene, DANS L'ORDRE DU DIAGRAMME
      si non `SAINE`, la boucle d'ajustement d'hyperparametres (E2_02).
   3. `SauvegarderCheckpointSftUseCase.executer(...)` (E2_03) : persiste
      les metadonnees du meilleur essai dans `--checkpoints`.
+  4. Si `--checkpoint-hf-repo` est fourni : publie les POIDS (pas
+     seulement les metadonnees) du meilleur essai vers un depot modele
+     HF prive, cf. AVERTISSEMENT ci-dessous.
 
-Usage :
+Usage (local, Environnement B avec GPU) :
     uv run python training/E2_04_sft_train.py \
         --recette recipes/sft_qwen3_lora.yaml \
         --dataset data/processed/dataset_pivot_anonymise.jsonl \
         --dataset-formate data/processed/dataset_formate.jsonl \
-        --checkpoints data/processed/checkpoints_sft.jsonl
+        --checkpoints data/processed/checkpoints_sft.jsonl \
+        --checkpoint-hf-repo mombasstic/chsa-triage-sft-lora \
+        --assistant-only-loss false
 
 Porte d'entree recommandee AVANT de lancer ce script pour de vrai
 (`docs/03_etape2_sft/03_guide_implementation_pas_a_pas.md` etape 10,
@@ -49,6 +59,33 @@ resout a `True`, avec un message explicite pointant vers l'analyse
 complete. Utiliser `--assistant-only-loss false` pour lancer un
 premier run reel malgre cette limite connue (perte pleine sequence,
 pas seulement sur les tokens assistant).
+
+AVERTISSEMENT CRITIQUE, PERSISTANCE DES POIDS (trouve et corrige le
+16/09/2026, cf. AGENTS.md) : `TrlSftEntraineurAdapter.entrainer()`
+ecrit les poids LoRA UNIQUEMENT en local (`trainer.save_model()` sous
+`--repertoire-sortie-checkpoints`, defaut `outputs/sft-lora`) ;
+`SauvegarderCheckpointSftUseCase` (E2_03) ne persiste que des
+METADONNEES (chemin, hyperparametres, verdict), jamais les poids
+eux-memes. Sur un job HF Jobs distant, dont le disque ne survit PAS au
+job (meme fait deja documente pour la baseline GPU,
+`interfaces/cli/E1_06_01_evaluer_baseline_gpu.py`), lancer ce script
+SANS `--checkpoint-hf-repo` termine un entrainement reel facture en
+perdant le modele entraine lui-meme : seules les metriques de suivi
+(`--suivi-hf-repo`) survivraient. `--checkpoint-hf-repo` (ex.
+`mombasstic/chsa-triage-sft-lora`) publie les poids du MEILLEUR essai
+(jamais les essais intermediaires rejetes de la grille) vers un depot
+modele HF prive via `huggingface_hub.upload_folder`, une fois la
+boucle d'ajustement terminee. `trl.SFTConfig`/`transformers.
+TrainingArguments` supportent nativement `push_to_hub`/`hub_model_id`
+(verifie reellement, sans GPU, par inspection de signature), mais
+brancher ce flag directement dans `TrlSftEntraineurAdapter.entrainer()`
+publierait CHAQUE essai de la grille, pas seulement le meilleur : d'ou
+le choix de publier explicitement ICI, apres selection du meilleur
+essai, plutot que dans l'adaptateur. NON VERIFIE : la publication d'un
+checkpoint REEL (poids produits par un vrai entrainement), faute de
+GPU ici ; VERIFIE : la resolution des chemins/arguments et que
+`HfApi.create_repo`/`upload_folder` sont les bons appels (signatures
+reelles inspectees), cf. `tests/training/test_E2_04_sft_train.py`.
 """
 
 from __future__ import annotations
@@ -56,6 +93,7 @@ from __future__ import annotations
 import argparse
 
 import yaml
+from huggingface_hub import HfApi
 
 from chsa_triage.application.use_cases import (
     AjusterBoucleHyperparametresSftUseCase,
@@ -136,6 +174,24 @@ def _identifiant_checkpoint(modele_base: str, horodatage: str) -> str:
     return hashlib.sha256(f"{modele_base}:{horodatage}".encode()).hexdigest()[:16]
 
 
+def _publier_checkpoint_hf(chemin_local: str, depot_hf: str) -> None:
+    """
+    Publie les poids LoRA du MEILLEUR essai (deja ecrits localement par
+    `trainer.save_model()`, cf. `TrlSftEntraineurAdapter.entrainer`) vers
+    un depot modele HF prive. Necessaire sur un job HF Jobs distant : le
+    disque de ces jobs ne survit pas au job (meme raison que
+    `--suivi-hf-repo`, cf. `HfDatasetSuiviExperimentation`), donc sans
+    cette etape un entrainement reel facture perdrait le modele
+    entraine lui-meme, seules les metriques survivraient. Appele UNE
+    SEULE FOIS, apres la boucle d'ajustement d'hyperparametres, sur le
+    checkpoint retenu (`resultat_boucle.meilleur_essai`) : les essais
+    intermediaires rejetes ne sont jamais publies.
+    """
+    api = HfApi()
+    api.create_repo(repo_id=depot_hf, repo_type="model", private=True, exist_ok=True)
+    api.upload_folder(repo_id=depot_hf, folder_path=chemin_local, repo_type="model")
+
+
 def _construire_suivi(recette_suivi: dict, arguments: argparse.Namespace):
     backend = recette_suivi.get("backend", "mlflow")
     if backend == "mlflow":
@@ -200,6 +256,15 @@ def main() -> None:
     )
     parser.add_argument("--attn-implementation", default="sdpa", help="cf. AVERTISSEMENT non-valide, TrlSftEntraineurAdapter")
     parser.add_argument("--liger-kernel", action="store_true", help="cf. AVERTISSEMENT non-valide, TrlSftEntraineurAdapter")
+    parser.add_argument(
+        "--checkpoint-hf-repo",
+        default=None,
+        help="Depot modele HF prive (ex. mombasstic/chsa-triage-sft-lora) ou publier les poids du "
+             "MEILLEUR checkpoint LoRA une fois l'entrainement termine (huggingface_hub.upload_folder). "
+             "Sans cet argument, les poids restent UNIQUEMENT dans --repertoire-sortie-checkpoints, local : "
+             "sur un job HF Jobs distant, dont le disque ne survit pas au job, le modele entraine serait "
+             "alors perdu (seules les metriques de suivi survivraient). Cf. README §2.3.",
+    )
     arguments = parser.parse_args()
 
     log.START_ACTION("E2_04_sft_train", "main", "entrainement SFT-LoRA reel (Environnement B, GPU)")
@@ -309,10 +374,21 @@ def main() -> None:
         verdict_convergence=meilleur.verdict,
     )
 
+    # -------------------------------------------------------------------------
+    # Publication optionnelle des poids sur HF Hub (indispensable sur un job
+    # HF Jobs distant, cf. AVERTISSEMENT dans _publier_checkpoint_hf)
+    # -------------------------------------------------------------------------
+    if arguments.checkpoint_hf_repo:
+        log.STEP(5, "Publication des poids du meilleur checkpoint sur HF Hub", arguments.checkpoint_hf_repo)
+        _publier_checkpoint_hf(meilleur.resultat.chemin_checkpoint, arguments.checkpoint_hf_repo)
+        log.PARAMETER_VALUE("poids publies vers", arguments.checkpoint_hf_repo)
+
     log.FINISH_ACTION("E2_04_sft_train", "main", f"checkpoint {checkpoint.identifiant} sauvegarde ({checkpoint.verdict_convergence.value})")
     print(f"Checkpoint SFT-LoRA : {checkpoint.chemin}")
     print(f"Verdict de convergence : {checkpoint.verdict_convergence.value}")
     print(f"Metadonnees persistees dans {arguments.checkpoints}")
+    if arguments.checkpoint_hf_repo:
+        print(f"Poids LoRA publies dans {arguments.checkpoint_hf_repo}")
 
 
 if __name__ == "__main__":

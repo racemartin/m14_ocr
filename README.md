@@ -847,11 +847,14 @@ Pendant un run SFT-LoRA reel (Environnement B, GPU sur HF Jobs),
 `suivi.backend: hf_dataset`) publie la courbe de perte train/validation
 en continu vers un dataset Hugging Face Hub, lu EN VIVO par un
 dashboard Streamlit deploye a part sur un Space
-(`monitoring/app_suivi_entrainement.py`). Aucune de ces commandes n'a
-ete executee reellement (aucune credential HF disponible ici) : elles
-sont documentees, verifiees dans leur syntaxe (`hf repo create --help`,
-`hf upload --help`), mais **NON EXECUTEES/NON VERIFIEES en reseau
-reel**.
+(`monitoring/app_suivi_entrainement.py`). Les etapes 1 a 4 ci-dessous
+(creation des depots metriques/Space, publication du dashboard) restent
+**NON EXECUTEES/NON VERIFIEES en reseau reel** (documentees, syntaxe
+verifiee uniquement). Le LANCEMENT lui-meme (etape 5, `hf jobs uv run`)
+a en revanche ete verifie pour de vrai le 16/09/2026, cf.
+"Verification reelle du lancement HF Jobs" plus bas : credentials HF
+reelles disponibles dans cet environnement de verification, contrairement
+a la redaction initiale de cette section.
 
 ```bash
 # 1. Creer le depot dataset qui recevra les metriques (prive) :
@@ -898,12 +901,196 @@ hf jobs uv run --flavor t4-small python -c "import torch; print(torch.cuda.get_d
 # *Cela prend quelques secondes, ne coûte presque rien et valide l'ensemble du circuit de facturation avant de lancer un job plus important.*
 
 # 5. Lancer l'entrainement en pointant vers le depot de metriques
-#    cree a l'etape 1, pour que le Space ait des vraies donnees a lire :
+#    cree a l'etape 1, pour que le Space ait des vraies donnees a lire.
+#    Commande LOCALE (Environnement B avec GPU deja provisionne) :
 uv run python training/E2_04_sft_train.py \
     --recette recipes/sft_qwen3_lora.yaml \
     --dataset data/processed/dataset_pivot_anonymise.jsonl \
-    --suivi-hf-repo mombasstic/chsa-triage-sft-metrics
+    --suivi-hf-repo mombasstic/chsa-triage-sft-metrics \
+    --checkpoint-hf-repo mombasstic/chsa-triage-sft-lora \
+    --assistant-only-loss false
 ```
+
+**Commande `hf jobs uv run` (VERIFIEE REELLEMENT de bout en bout le
+16/09/2026, cf. le detail complet plus bas ; jamais lancee avec
+`--flavor` GPU reel/payant, uniquement avec `--flavor cpu-basic`, ce
+qui suffit a verifier tout le cablage jusqu'au guard
+`assistant_only_loss`) :**
+
+```bash
+hf jobs uv run \
+    --flavor l4x1 \
+    --timeout 6h \
+    --with "chsa-triage[remote] @ git+https://github.com/racemartin/m14_ocr.git@main" \
+    --secrets HF_TOKEN \
+    -v hf://datasets/mombasstic/chsa-triage-sft-train-data:/mnt/train-data \
+    https://raw.githubusercontent.com/racemartin/m14_ocr/main/training/E2_04_sft_train.py \
+    --recette recipes/sft_qwen3_lora.yaml \
+    --dataset /mnt/train-data/dataset_pivot_anonymise.jsonl \
+    --suivi-hf-repo mombasstic/chsa-triage-sft-metrics \
+    --checkpoint-hf-repo mombasstic/chsa-triage-sft-lora \
+    --assistant-only-loss false
+```
+
+#### Verification reelle du lancement HF Jobs (16/09/2026)
+
+Meme demarche que la baseline GPU (§2.2) : le lancement REEL du
+training COMPLET (GPU payant, `--flavor` GPU) n'a jamais ete effectue
+(cout/duree bien superieurs a l'evaluation baseline), mais tout ce qui
+peut etre verifie SANS charger le modele l'a ete pour de vrai,
+credentials HF disponibles ici (`hf auth whoami` -> `mombasstic`).
+
+**1. `recipes/*.yaml` n'est PAS installe par `--with "chsa-triage[remote] @ git+..."`,
+verifie localement (pas besoin de reseau HF) :**
+`uv build --wheel` sur ce depot puis inspection du `.whl` produit
+confirme que `training/E2_04_sft_train.py` y est bien inclus (`packages
+= ["src/chsa_triage", "interfaces", "src/tools", "training", "monitoring"]`,
+`pyproject.toml`), mais AUCUN fichier sous `recipes/` : ce dossier n'est
+pas un paquet Python, il n'apparait dans aucune entree de `packages`.
+Consequence : `--recette recipes/sft_qwen3_lora.yaml` echouerait sur un
+job qui execute le script par URL brute SANS moyen de fournir ce YAML
+autrement.
+
+**2. Mecanisme reel trouve pour livrer `--recette`/`--dataset` a un job
+distant : PAS un wrapper `hf_hub_download` custom (a la difference de
+la baseline GPU), le CLI `hf jobs uv run` gere deja ca nativement.**
+Lu directement dans le code source de
+`huggingface_hub.HfApi._create_uv_command_env_and_secrets` (installe
+localement, `hf` CLI) : tout argument du script qui EST un fichier
+local existant est automatiquement televerse vers un bucket HF
+propre au job puis l'argument est reecrit vers le chemin monte
+(`/data/<nom_fichier>`) ; tout argument qui N'EST PAS un fichier local
+existant ET dont le suffixe est `.py`/`.sh`/`.yaml`/`.yml`/`.toml` (et
+qui n'est pas une URL `http(s)://`) fait echouer la commande cote
+CLIENT, AVANT meme de soumettre le job, avec `FileNotFoundError` :
+reproduit reellement en passant `--recette /data/sft_qwen3_lora.yaml`
+(chemin cense n'exister que dans le conteneur distant). Consequence
+pratique : `--recette recipes/sft_qwen3_lora.yaml` (chemin LOCAL reel,
+sur la machine qui lance `hf jobs uv run`) fonctionne tel quel, sans
+aucun code ni depot supplementaire : le CLI le televerse et reecrit
+l'argument automatiquement. Le chemin de bucket reserve pour ce
+mecanisme est `/data` (`huggingface_hub.constants.HF_JOBS_ARTIFACTS_MOUNT_PATH`) :
+tout volume monte manuellement via `-v` DOIT utiliser un autre chemin
+de montage (`/mnt/train-data` ci-dessus), sinon `hf jobs uv run` refuse
+avec "Mount path '/data' is reserved for Jobs artifacts...".
+
+**3. `--dataset` : le pivot anonymise complet est trop volumineux
+(576 Mo) pour repasser par l'auto-televersement ci-dessus a chaque
+lancement (retente/grille d'hyperparametres) ; mecanisme retenu a la
+place : `-v hf://datasets/<depot>:/mnt/train-data`, verifie reellement
+en conditions reelles (job ci-dessous). Ceci confirme aussi, en lisant
+`FormaterDatasetChatMLUseCase.executer()` (filtre deja
+`type_exemple == SFT` ET `split` demande a la lecture), que `--dataset`
+doit pointer vers le pivot anonymise COMPLET reparti en splits
+(`data/processed/dataset_pivot_anonymise.jsonl`, 37 802 exemples SFT
+avec split une fois le pivot integralement anonymise/reparti, cf.
+AGENTS.md), PAS vers le sous-ensemble de 5000 exemples deja extrait
+pour publication (§1.7) : ce dernier est un ECHANTILLON stratifie
+delibere de 5000 lignes, bien plus petit que le pool SFT reellement
+disponible pour l'entrainement.
+
+**Depot utilise, et pourquoi ce n'est PAS le depot deja publie
+`mombasstic/dataset_chsa_triage_sft_anonymise_5000` (§1.7) :** verifie
+reellement en le telechargeant (`hf download`) que ce depot existant
+contient bien 5000 lignes avec les bons champs, MAIS avec une
+repartition `type_exemple` de `{dpo: 3591, sft: 1409}` : c'est
+l'export PRE-CORRECTIF de la fuite SFT/DPO documentee dans AGENTS.md
+("un export SFT de 5000 lignes etait a 72% DPO, corrige le
+12/09/2026"), jamais republie depuis. Le fichier LOCAL correspondant
+(`data/processed/dataset_chsa_triage_sft_anonymise_5000.jsonl`) est
+lui bien corrige (5000/5000 `sft`), confirmant que c'est bien le depot
+Hub qui est reste perime, pas un faux-positif de lecture. Combine au
+point precedent (mauvaise taille de toute facon pour l'entrainement),
+un nouveau depot dedie a ete cree : `mombasstic/chsa-triage-sft-train-data`
+(prive), avec pour l'instant seulement `recipes/sft_qwen3_lora.yaml`
+et un ECHANTILLON de 200 lignes (`dataset_pivot_anonymise_echantillon.jsonl`,
+extrait du fichier LOCAL corrige, pas du depot perime) : suffisant pour
+verifier le mecanisme de montage/lecture de bout en bout sans le cout
+d'un televersement de 576 Mo pour une verification. **Avant un vrai
+lancement de production**, remplacer ce fichier par le pivot anonymise
+COMPLET (`hf upload mombasstic/chsa-triage-sft-train-data
+data/processed/dataset_pivot_anonymise.jsonl --repo-type dataset`) ;
+filtrer au prealable sur `type_exemple == sft` reduirait le
+televersement d'environ 72% (mais n'est pas necessaire : le cas
+d'usage filtre deja a la lecture, cf. point 3 ci-dessus). Corriger le
+depot `dataset_chsa_triage_sft_anonymise_5000` perime est un probleme
+REEL mais SEPARE (il alimente la publication communautaire §1.7/§1.8,
+pas l'entrainement), signale ici plutot que corrige, hors perimetre de
+cette verification.
+
+**4. Job reel lance pour verifier tout ce qui precede, `--flavor
+cpu-basic` (aucun GPU charge, guard atteint avant tout cout reel) :**
+
+```bash
+hf jobs uv run \
+    --flavor cpu-basic \
+    --with "chsa-triage[remote] @ git+https://github.com/racemartin/m14_ocr.git@main" \
+    -v hf://datasets/mombasstic/chsa-triage-sft-train-data:/mnt/train-data \
+    https://raw.githubusercontent.com/racemartin/m14_ocr/main/training/E2_04_sft_train.py \
+    --recette recipes/sft_qwen3_lora.yaml \
+    --dataset /mnt/train-data/dataset_pivot_anonymise_echantillon.jsonl
+```
+
+Job reel `sft-lora-verif-hybrid`
+(`https://huggingface.co/jobs/mombasstic/6aaa8a2d5527934177ee9fac`,
+39 s au total, ~35 s d'execution, cout de l'ordre de `$0.0002`) :
+les 256 paquets de `chsa-triage[remote]` (torch/trl/peft/bitsandbytes/
+unsloth/vllm compris) se sont installes avec succes sur l'infrastructure
+HF Jobs reelle, `recipes/sft_qwen3_lora.yaml` est apparu televerse a
+`/data/sft_qwen3_lora.yaml` (auto-televersement, point 2), le dataset
+monte est apparu a `/mnt/train-data/...` (volume, point 3), et le
+script a atteint et declenche pour de vrai le guard
+`assistant_only_loss` (log `ERROR` explicite, sortie non-zero
+ATTENDUE : le job est marque "echoue" par design, c'est le
+comportement voulu, pas un bug). Ceci confirme le CABLAGE complet
+(paquet, recette, dataset, guard) sur l'infrastructure reelle, PAS
+l'entrainement lui-meme (jamais lance avec un GPU).
+
+**5. Choix du flavor GPU pour un vrai lancement, raisonnement (pas de
+mesure GPU reelle disponible ici) :** contrairement a l'inference
+baseline (§2.2), l'entrainement QLoRA 4-bit d'un modele de 1.7B a une
+empreinte VRAM modeste (poids 4-bit ~1 Go + adaptateurs LoRA rang 16
+sur 4 modules, negligeables + etats d'optimiseur AdamW sur les seuls
+poids LoRA) : `l4x1` (24 Go) reste largement suffisant COTE VRAM,
+meme marge que pour l'inference deja validee sur ce meme pipeline. La
+vraie difference avec la baseline (278 exemples, une seule passe
+forward chacun) est le TEMPS : plusieurs milliers de pas d'optimisation
+sur jusqu'a ~30 000 exemples d'entrainement (avant `packing`) x 3
+epoques. D'ou `--timeout 6h` ajoute explicitement ci-dessus (le defaut
+de `hf jobs uv run` n'est pas documente dans `--help`, mieux vaut le
+fixer soi-meme) plutot qu'un flavor plus gros : si un run reel montre
+que `l4x1` est trop lent pour le budget de temps/cout accepte,
+`a10g-large` (meme VRAM, plus de vCPU/RAM, cf. `hf jobs hardware`) est
+l'escalade naturelle, a mesurer sur un run reel, pas devinee ici.
+
+**6. Persistance des poids du meilleur checkpoint, gap trouve et
+corrige (16/09/2026) :** avant ce correctif, `training/E2_04_sft_train.py`
+n'ecrivait les poids LoRA qu'en LOCAL (`--repertoire-sortie-checkpoints`,
+`trainer.save_model()`), jamais vers un depot HF ; `grep -rn
+"push_to_hub|upload_folder" src/ training/` ne trouvait qu'UN usage
+(les METRIQUES, `HfDatasetSuiviExperimentation`), jamais le modele
+lui-meme. Sur un job HF Jobs distant, dont le disque ne survit pas au
+job (meme fait deja documente pour la baseline GPU, §2.2), un
+entrainement reel facture aurait donc perdu le modele entraine,
+seules les metriques auraient survecu. Corrige en ajoutant
+`--checkpoint-hf-repo` (nouvelle fonction `_publier_checkpoint_hf`,
+`training/E2_04_sft_train.py`) : publie, UNE SEULE FOIS apres selection
+du meilleur essai de la grille (jamais les essais intermediaires
+rejetes), le dossier local du checkpoint vers un depot modele HF prive
+via `huggingface_hub.upload_folder` (`HfApi.create_repo(...,
+exist_ok=True)` d'abord, donc pas besoin de creer le depot a la main
+au prealable, a la difference des depots dataset/Space ci-dessus).
+VERIFIE SANS GPU : signatures reelles de `trl.SFTConfig`/
+`transformers.Trainer` (`push_to_hub`/`hub_model_id`/`push_to_hub()`
+existent nativement, mais les brancher directement dans
+`TrlSftEntraineurAdapter.entrainer()` publierait CHAQUE essai de la
+grille au lieu du seul meilleur, d'ou le choix de publier explicitement
+dans `E2_04_sft_train.py` plutot que dans l'adaptateur) et
+`HfApi.create_repo`/`upload_folder` (signatures reelles inspectees,
+tests `tests/training/test_E2_04_sft_train.py` avec `HfApi`
+remplace, aucun reseau reel). NON VERIFIE : la publication d'un
+checkpoint REEL (poids produits par un vrai entrainement), faute de
+GPU disponible ici.
 
 **Panne serveur connue sur `hf repo create`/`hf repos create --repo-type
 dataset` :** confirme sur ce projet le 16/09/2026, la commande peut
