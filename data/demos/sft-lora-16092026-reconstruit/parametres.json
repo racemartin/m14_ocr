@@ -1,0 +1,59 @@
+{
+  "reconstruit_depuis_log": true,
+  "job_id": "6aaab9a95527934177eeaac8",
+  "horodatage_note": "les horodatages de metriques.jsonl sont RECONSTRUITS a partir des ecarts de temps ecoule reels imprimes par les barres tqdm du job, ancres sur l'horodatage reel du nom de repertoire de checkpoint (run-YYYYmmddTHHMMSSZ) ; ce ne sont pas des horodatages synthetiques inventes, mais ils ne sont pas non plus des horodatages mesures ligne a ligne par le job lui-meme",
+  "commit_git": "571abc1398c77154a13764b776ecac001c2e2b2d",
+  "recette": {
+    "modele_base": "Qwen/Qwen3-1.7B-Base",
+    "quantification": {
+      "bits": 4,
+      "type_quantification": "nf4",
+      "double_quantification": true,
+      "dtype_calcul": "bfloat16"
+    },
+    "lora": {
+      "rang": 16,
+      "alpha": 32,
+      "dropout": 0.05,
+      "modules_cibles": [
+        "q_proj",
+        "k_proj",
+        "v_proj",
+        "o_proj"
+      ]
+    },
+    "entrainement": {
+      "taux_apprentissage": 0.0002,
+      "nombre_epoques": 3,
+      "taille_lot": 4,
+      "packing": true,
+      "type_perte": "nll",
+      "assistant_only_loss": true
+    },
+    "grille_hyperparametres": {
+      "taux_apprentissage": [
+        0.0001,
+        0.0002,
+        0.0005
+      ],
+      "rang": [
+        8,
+        16,
+        32
+      ]
+    },
+    "suivi": {
+      "backend": "mlflow",
+      "nom_experience": "chsa-triage-sft"
+    }
+  },
+  "nombre_exemples_train": 2246,
+  "nombre_exemples_validation": 278,
+  "verdict_convergence": "saine",
+  "nombre_essais": 1,
+  "checkpoint_local": "outputs/sft-lora/run-20260916T154711Z",
+  "checkpoint_hf_repo": "mombasstic/chsa-triage-sft-lora",
+  "train_runtime_s": 1182.9999,
+  "train_loss_final": 1.7096408807743362,
+  "nombre_pas_total": 342
+}

@@ -1183,8 +1183,44 @@ pour la valeur par defaut de la recette, `tests/training/
 test_E2_04_sft_train.py::TestVerifierSuiviHfRepoCoherent` pour le
 guard). NON VERIFIE ici : la reconstruction de la courbe deja perdue de
 ce run precis, menee separement a partir du log brut du job (hors
-perimetre de cette correction). Voir AGENTS.md pour le meme
-avertissement, redige au niveau du code.
+perimetre de cette correction, cf. point 9 ci-dessous). Voir AGENTS.md
+pour le meme avertissement, redige au niveau du code.
+
+**9. Courbe de metriques de CE run precis (job `6aaab9a95527934177eeaac8`,
+point 8 ci-dessus) reconstruite a posteriori (16/09/2026) :**
+`monitoring/reconstruire_courbe_sft_depuis_log.py` reconstruit cette
+courbe precise a partir du LOG BRUT sauvegarde du job (915 lignes,
+dictionnaires `{'loss': ...}`/`{'eval_loss': ...}` imprimes par
+`transformers`/`trl`) et la republie dans le meme depot dataset
+(`mombasstic/chsa-triage-sft-metrics/sft-lora-16092026-reconstruit/`,
+verifie reellement selectionnable par `monitoring/app_suivi_entrainement.py`
+via `hf_dataset_runs.lister_runs`). Les `etape` viennent du numero de
+pas tqdm reellement imprime (pas d'une simple interpolation par
+`epoch`). Les `horodatage`, en revanche, sont RECONSTRUITS et non
+mesures ligne a ligne : le job n'imprime pas d'horodatage a chaque pas,
+seulement dans les barres tqdm (temps ecoule depuis le debut de la
+boucle) et dans le nom du repertoire de checkpoint cree juste avant
+`trainer.train()` (`run-YYYYmmddTHHMMSSZ`, horodatage reel utilise
+comme ancrage). Coherence verifiee : l'ecart ainsi reconstruit au
+dernier pas (~1182 s) concorde a moins d'une seconde avec le
+`train_runtime` rapporte par `trl` lui-meme en fin de run (1182.9999 s).
+Le fichier `parametres.json` associe marque explicitement
+`reconstruit_depuis_log: true` et le `job_id` source, et embarque la
+recette REELLE au commit utilise par le job (`git show <sha>:recipes/
+sft_qwen3_lora.yaml`, jamais le fichier courant du worktree, qui a pu
+changer depuis, notamment via le correctif du point 8). Constat annexe,
+non corrige ici (dashboard existant, hors perimetre) : comme
+`E2_01_uc_entrainer_sft.py` logue `perte_train` tous les 10 pas mais les
+evaluations tombent aux bornes d'epoque (pas 114/228/342, jamais
+multiples de 10 sauf 342 lui-meme absent des pas de log d'entrainement),
+`monitoring/logica_suivi_entrainement.py::construire_courbe_convergence`
+(qui exige `perte_train` ET `norme_gradient` sur la MEME ligne pivotee)
+n'inclut aucun des 3 points `perte_validation` dans son verdict de
+convergence : un run reel futur avec les memes
+`logging_steps`/`eval_strategy` afficherait le meme comportement, ce
+n'est pas un artefact de la reconstruction. Script teste sans reseau
+(`tests/monitoring/test_reconstruire_courbe_sft_depuis_log.py`,
+fragment de log fidele au format reel).
 
 **Panne serveur connue sur `hf repo create`/`hf repos create --repo-type
 dataset` :** confirme sur ce projet le 16/09/2026, la commande peut
