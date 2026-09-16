@@ -29,8 +29,9 @@ uniquement dans la section liee ; ne pas dupliquer ici.
 2. [Extraction du sous-ensemble SFT publiable](#9-extraction-du-sous-ensemble-sft-5000-exemples-pour-publication-hugging-face)
 3. [Extraction du sous-ensemble DPO publiable](#10-extraction-du-sous-ensemble-dpo-pour-publication-hugging-face)
 4. [Évaluation baseline zero-shot (Étape 1bis)](#11-évaluation-baseline-zero-shot-étape-1bis-avant-sftdpo)
-5. [Entraînement SFT réel](#suivi-dentrainement-en-vivo-étape-2--dashboard-streamlit)
-6. **DPO (Étape 3) : non implémenté à ce jour.** Aucune commande ni
+5. [Évaluation baseline zero-shot GPU, sur HF Jobs (Étape 1bis)](#12-évaluation-baseline-zero-shot-gpu-étape-1bis-sur-hf-jobs)
+6. [Entraînement SFT réel](#suivi-dentrainement-en-vivo-étape-2--dashboard-streamlit)
+7. **DPO (Étape 3) : non implémenté à ce jour.** Aucune commande ni
    étape n'existe encore dans le code pour cette phase ; voir
    `docs/04_etape3_dpo/` (à venir).
 
@@ -636,6 +637,89 @@ derniere metrique aura tres peu (voire aucune) paire comparable sur le
 dataset d'aujourd'hui ; le CLI l'indique clairement plutot que
 d'afficher un pourcentage trompeur calcule sur une poignee de
 coincidences.
+
+### 12. Évaluation baseline zero-shot GPU (Étape 1bis, sur HF Jobs)
+
+Meme mesure que §11 (`Qwen/Qwen3-1.7B-Base` SANS entrainement, meme
+sous-ensemble de 278 exemples `split=test`/`type_exemple=sft`), mais
+sur GPU reel via `transformers` en pleine precision bf16
+(`TransformersInferenceAdapter`), PAS sur GGUF quantifie Q4_K_M
+(§11, `LlamaCppInferenceAdapter`) : pour comparer plus tard au modele
+SFT/DPO (probablement lui aussi evalue via `transformers`/GPU) SANS
+melanger l'effet de la quantification avec l'effet reel de
+l'entrainement. `EvaluerBaselineZeroShotUseCase` (application) est
+REUTILISE SANS MODIFICATION entre §11 et §12 : seul l'adaptateur
+d'inference change.
+
+Le dataset a evaluer vit sur un depot dataset HF PRIVE deja publie,
+`mombasstic/chsa-triage-baseline-test` (fichier
+`dataset_pivot_test_sft.jsonl`, 278 exemples, EXACTEMENT le meme
+sous-ensemble que §11, pour que les deux resultats soient comparables) ;
+il vit aussi, versionne, dans
+`data/splits/dataset_pivot_test_sft.jsonl` de ce depot.
+`interfaces/cli/E1_06_01_evaluer_baseline_gpu.py` le telecharge lui-meme
+via `huggingface_hub.hf_hub_download` (pas de clone du depot de donnees
+sur le job distant, qui n'a de toute facon pas acces a `data/processed/`,
+gitignore).
+
+```bash
+uv run python interfaces/cli/E1_06_01_evaluer_baseline_gpu.py \
+    --dataset-hf-repo mombasstic/chsa-triage-baseline-test \
+    --suivi-hf-repo mombasstic/chsa-triage-baseline-metrics
+```
+
+**Verification reelle effectuee (16/09/2026), et sa limite honnete :**
+le telechargement du dataset depuis `mombasstic/chsa-triage-baseline-test`
+(278 lignes, confirme), le rendu ChatML du VRAI tokenizer
+`Qwen/Qwen3-1.7B-Base` et le refus explicite, fail-fast, de
+`TransformersInferenceAdapter` en l'absence de GPU CUDA (`RuntimeError`,
+jamais un repli silencieux vers le CPU) ont ete verifies pour de vrai en
+executant la commande ci-dessus dans CET environnement de developpement
+(credentials HF reelles disponibles ici, contrairement a la section
+"Suivi d'entrainement en vivo" ci-dessous). Comme prevu (aucun GPU
+disponible ici), les 278 exemples echouent tous a l'inference avec le
+meme `RuntimeError`, et le cas d'usage leve `ValueError` ("rien a
+agreger") : ceci confirme le CABLAGE de bout en bout, PAS les vrais
+chiffres de baseline GPU, qui restent a produire sur un job HF Jobs
+GPU reel (jamais lance ici : couterait une session GPU payante pour un
+resultat deja connu par construction, la commande ne fait qu'echouer
+plus vite sans GPU).
+
+**Commande `hf jobs uv run` (syntaxe verifiee via `hf jobs uv run --help`
+dans cet environnement, la commande elle-meme JAMAIS EXECUTEE : lancer
+un vrai job GPU est une action payante/irreversible, hors perimetre
+d'une verification de syntaxe) :**
+
+```bash
+hf jobs uv run \
+    --flavor l4x1 \
+    --with "chsa-triage[local] @ git+https://github.com/racemartin/m14_ocr.git@main" \
+    --secrets HF_TOKEN \
+    https://raw.githubusercontent.com/racemartin/m14_ocr/main/interfaces/cli/E1_06_01_evaluer_baseline_gpu.py \
+    --dataset-hf-repo mombasstic/chsa-triage-baseline-test \
+    --suivi-hf-repo mombasstic/chsa-triage-baseline-metrics
+```
+
+**Limite honnete de cette commande, documentee plutot que masquee :**
+`hf jobs uv run SCRIPT` execute un fichier UNIQUE (local ou URL), avec
+ses dependances declarees en metadonnees PEP 723 (`# /// script`) OU via
+`--with` ; il ne clone PAS le depot GitHub pour rendre `src/chsa_triage/`,
+`interfaces/`, `src/tools/` disponibles au script telecharge par URL brute.
+`E1_06_01_evaluer_baseline_gpu.py` importe `chsa_triage.*` et
+`tools.rafael.log_tool` : sans le paquet installe, l'import echoue des la
+premiere ligne. `--with "chsa-triage[local] @ git+https://...@main"`
+installe le paquet DEPUIS GitHub (le depot expose deja `[build-system]`
+hatchling + `[tool.hatch.build.targets.wheel] packages = [...]` incluant
+`interfaces`, `src/tools`, `training`, `monitoring`, cf. `pyproject.toml`)
+avant d'executer le script telecharge : c'est l'alternative REELLEMENT
+verifiee ici, PAS inventee -
+`uv run --with "chsa-triage @ git+https://github.com/racemartin/m14_ocr.git@main" --no-project python -c "import chsa_triage"`
+a ete execute pour de vrai dans cet environnement (reseau GitHub reel,
+resolution `uv` reelle) et a reussi. Ceci ne verifie que la
+RESOLUTION/INSTALLATION du paquet, pas l'execution complete du script sur
+l'infrastructure HF Jobs elle-meme (jamais lancee, cf. ci-dessus).
+`--secrets HF_TOKEN` transmet le token HF necessaire au telechargement du
+depot dataset PRIVE `--dataset-hf-repo` depuis le job distant.
 
 ## Suivi d'entrainement en vivo (Étape 2 : dashboard Streamlit)
 
