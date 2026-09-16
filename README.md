@@ -693,12 +693,27 @@ d'une verification de syntaxe) :**
 ```bash
 hf jobs uv run \
     --flavor l4x1 \
-    --with "chsa-triage[local] @ git+https://github.com/racemartin/m14_ocr.git@main" \
+    --with "chsa-triage[remote] @ git+https://github.com/racemartin/m14_ocr.git@main" \
     --secrets HF_TOKEN \
     https://raw.githubusercontent.com/racemartin/m14_ocr/main/interfaces/cli/E1_06_01_evaluer_baseline_gpu.py \
     --dataset-hf-repo mombasstic/chsa-triage-baseline-test \
     --suivi-hf-repo mombasstic/chsa-triage-baseline-metrics
 ```
+
+**Erreur reelle en production, session GPU payante (16/09/2026), cause
+identifiee et corrigee ici :** cette commande a ete reellement lancee sur HF
+Jobs (GPU reel, payant) avec `chsa-triage[local]` (au lieu de `[remote]`
+comme ci-dessus) et a echoue sur TOUS les exemples avec la meme erreur :
+`Using a device_map, tp_plan, torch.device context manager or setting
+torch.set_default_device(device) requires accelerate. You can install it
+with pip install accelerate`. Cause reelle, verifiee dans `pyproject.toml` :
+l'extra `local` (Environnement A, sans GPU, Etape 1, cf. plus haut) ne
+declare ni `accelerate` ni de version de `torch` pour GPU ; l'extra `remote`
+(Environnement B, GPU, Etapes 2 et 3, cf. plus haut) declare deja
+`torch>=2.3`, `transformers>=4.44` et `accelerate>=0.33`, exactement ce dont
+`TransformersInferenceAdapter` a besoin pour `device_map="cuda"`. Aucune
+dependance ne manquait dans `pyproject.toml` : seul le groupe d'extras passe
+a `--with` etait errone, corrige ci-dessus en `chsa-triage[remote]`.
 
 **Limite honnete de cette commande, documentee plutot que masquee :**
 `hf jobs uv run SCRIPT` execute un fichier UNIQUE (local ou URL), avec
@@ -707,7 +722,7 @@ ses dependances declarees en metadonnees PEP 723 (`# /// script`) OU via
 `interfaces/`, `src/tools/` disponibles au script telecharge par URL brute.
 `E1_06_01_evaluer_baseline_gpu.py` importe `chsa_triage.*` et
 `tools.rafael.log_tool` : sans le paquet installe, l'import echoue des la
-premiere ligne. `--with "chsa-triage[local] @ git+https://...@main"`
+premiere ligne. `--with "chsa-triage[remote] @ git+https://...@main"`
 installe le paquet DEPUIS GitHub (le depot expose deja `[build-system]`
 hatchling + `[tool.hatch.build.targets.wheel] packages = [...]` incluant
 `interfaces`, `src/tools`, `training`, `monitoring`, cf. `pyproject.toml`)
