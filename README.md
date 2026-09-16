@@ -21,8 +21,52 @@ Chaque document se termine par un renvoi vers le suivant, pour lire
 la documentation dans l'ordre du projet en partant de
 `docs/00_cadrage/00_objectifs_du_projet.md`.
 
+## Tableau récapitulatif des scripts
+
+Vue d'ensemble de tous les scripts exécutables du dépôt (`interfaces/cli/`,
+`scripts/`, `training/`, `monitoring/`, plus quelques scripts isolés
+trouvés ailleurs), classés par étape. Le détail de chaque commande
+(options, exemples d'usage) reste dans les sections correspondantes
+ci-dessous ; voir aussi la [Table des matières](#table-des-matières) juste
+après pour naviguer par section plutôt que par script.
+
+| Étape | Script | Rôle |
+|---|---|---|
+| Étape 1 (Préparation des données) | `interfaces/cli/E1_01_telecharger_corpus.py` | Télécharge un corpus brut depuis Hugging Face Hub et l'exporte en JSONL local (`data/raw/`). |
+| Étape 1 (Préparation des données) | `interfaces/cli/E1_02_profiler_corpus.py` | Génère un rapport de profilage ydata-profiling pour un corpus téléchargé. |
+| Étape 1 (Préparation des données) | `interfaces/cli/E1_03_00_construire_dataset_pivot.py` | Fusionne les corpus sources en un dataset pivot unique, dédupliqué par identifiant déterministe. |
+| Étape 1 (Préparation des données) | `interfaces/cli/E1_03_01_mappers_corpus.py` | Fonctions de mapping « enregistrement brut -> ExemplePivot », une par corpus source (module support importé par `E1_03_00_...`, pas un point d'entrée CLI à part entière). |
+| Étape 1 (Préparation des données) | `interfaces/cli/E1_04_00_anonymiser_dataset.py` | Anonymise (Presidio/spaCy) le dataset pivot par vagues incrémentales, en écrivant dans un fichier séparé du pivot original. |
+| Étape 1 (Préparation des données) | `scripts/anonymiser_par_lots.sh` | Rappelle `E1_04_00_anonymiser_dataset.py` en boucle par vagues successives jusqu'à couverture complète du pivot (script shell, protection anti-boucle-infinie). |
+| Étape 1 (Préparation des données) | `interfaces/cli/E1_04_02_controler_qualite_anonymisation.py` | Compare le pivot original et le fichier anonymisé sur un échantillon stratifié pour détecter de la PII résiduelle. |
+| Étape 1 (Préparation des données) | `interfaces/cli/E1_04_01_reviser_pii_residuelle.py` | Révision humaine persistée des candidats PII résiduelle (accepter/rejeter) et export de la liste d'exclusion pour la publication. |
+| Étape 1 (Préparation des données) | `interfaces/cli/E1_05_00_decouper_splits.py` | Répartit (stratifié train/val/test) les exemples du pivot anonymisé, de façon cumulative/incrémentale d'une exécution à l'autre. |
+| Étape 1 (Préparation des données) | `interfaces/cli/E1_05_01_verifier_repartition_splits.py` | Affiche la répartition des splits déjà assignés, par strate (type_exemple, source). |
+| Étape 1 (Préparation des données) | `scripts/decouper_splits.py` | Matérialise le champ `split` déjà assigné en 3 fichiers JSONL séparés (train/val/test_baseline). N'est référencé nulle part dans le README documenté ; semble un utilitaire redondant/antérieur à `E1_05_00`/`E1_05_01`, à vérifier avant de le supprimer. |
+| Étape 1 (Préparation des données) | `interfaces/cli/E1_05_02_extraire_sous_ensemble_sft.py` | Extrait, filtre (exclusions PII) et tronque à une taille cible le sous-ensemble SFT destiné à la publication Hugging Face. |
+| Étape 1 (Préparation des données) | `interfaces/cli/E1_05_03_extraire_sous_ensemble_dpo.py` | Même algorithme que `E1_05_02_...` mais pour le sous-ensemble DPO. |
+| Étape 1bis (Baseline zero-shot) | `interfaces/cli/E1_06_00_evaluer_baseline.py` | Évalue la baseline zero-shot en local (CPU), via un `llama-server` déjà lancé sur un GGUF quantifié Q4_K_M. |
+| Étape 1bis (Baseline zero-shot) | `interfaces/cli/E1_06_01_evaluer_baseline_gpu.py` | Même évaluation baseline zero-shot mais en pleine précision (bf16, transformers) sur un job HF Jobs GPU, pour isoler l'effet de la quantification. |
+| Étape 2 (SFT + LoRA) | `scripts/check_env_gpu.py` | Vérifie que l'environnement GPU (Environnement B) est prêt avant un run SFTTrainer/DPOTrainer coûteux (chat template, tokens ChatML, `assistant_only_loss`, chargement 4-bit). |
+| Étape 2 (SFT + LoRA) | `training/E2_04_sft_train.py` | Point d'entrée d'entraînement SFT-LoRA réel (orchestre les 4 cas d'usage `E2_00`-`E2_03`), exécuté via HF Jobs (GPU requis). |
+| Étape 2 (SFT + LoRA) | `monitoring/app_suivi_entrainement.py` | Dashboard Streamlit (déployé sur HF Spaces) de visualisation en direct de la courbe d'apprentissage d'un run SFT-LoRA. |
+| Étape 2 (SFT + LoRA) | `monitoring/hf_dataset_runs.py` | Frontière réseau partagée (`HfApi.list_repo_files`/`hf_hub_download`) vers le dataset HF de métriques, réutilisée par le dashboard et l'importateur (module support, pas un script autonome). |
+| Étape 2 (SFT + LoRA) | `monitoring/logica_suivi_entrainement.py` | Logique pure de parsing/pivot/convergence du dashboard, testable sans Streamlit ni réseau (module support, pas un script autonome). |
+| Étape 2 (SFT + LoRA) | `monitoring/importer_mlflow_local.py` | Importe les runs du dataset HF de métriques dans un MLflow local (SQLite) pour parcourir l'historique complet sans serveur MLflow distant. |
+| Étape 2 (SFT + LoRA) | `monitoring/reconstruire_courbe_sft_depuis_log.py` | Reconstruit a posteriori la courbe de métriques d'un run SFT déjà terminé à partir de son log brut, quand aucun backend `SuiviExperimentation` durable n'avait été branché. |
+| Étape 2 (SFT + LoRA) | `data/demos/move_chsa-triage-sft-metrics-fake_jston_to_mlflow_db.py` | Chemins et nom de fichier codés en dur, sans `argparse` ni bloc `__main__` : brouillon/démo ponctuel important des métriques JSON factices dans MLflow ; aucun usage documenté au-delà de son propre nom de fichier, en pratique remplacé par `monitoring/importer_mlflow_local.py`. |
+| Étape 3 (DPO) | *(aucun script à ce jour)* | Étape non implémentée dans le code ; voir `docs/04_etape3_dpo/` (à venir). |
+| Infrastructure / vérifications transversales | `scripts/check_env_local.py` | Vérifie que l'environnement local (Environnement A, sans GPU) est prêt pour la préparation des données. |
+| Infrastructure / vérifications transversales | `scripts/check_env_remote_hf.py` | Vérifie l'accès à l'environnement distant Hugging Face (Jobs + Spaces) avant de lancer un entraînement coûteux. |
+
+Fichiers `.py` trouvés dans le même balayage mais volontairement absents
+du tableau ci-dessus : les `__init__.py` de `interfaces/cli/`,
+`monitoring/` et `training/` (marqueurs de package vides, aucun rôle
+exécutable).
+
 ## Table des matières
 
+- [Tableau récapitulatif des scripts](#tableau-récapitulatif-des-scripts)
 - [1. Préparation des données (Étape 1)](#1-préparation-des-données-étape-1)
   - [1.1 Démarrage rapide (installation)](#11-démarrage-rapide-installation)
   - [1.2 Téléchargement (Hugging Face Hub -> data/raw/)](#12-telechargement-hugging-face-hub---dataraw)
