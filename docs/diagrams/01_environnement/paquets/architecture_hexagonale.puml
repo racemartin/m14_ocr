@@ -1,4 +1,5 @@
 @startuml architecture_hexagonale
+!pragma layout smetana
 !include ../../_common/estilo.iuml
 
 title Agent IA de Triage Médical : CHSA\nDiagramme de paquets : architecture hexagonale (état réel du code)
@@ -55,7 +56,9 @@ package "infrastructure" as INFRASTRUCTURE {
     class LecteurCorpusHuggingFace
     class PresidioAnonymiseur
     class YdataProfileur
-    class LlamaCppInferenceAdapter #line.dashed
+    class LlamaCppInferenceAdapter
+    class TransformersInferenceAdapter
+    class TransformersLoraInferenceAdapter
     class VllmEndpointInferenceAdapter #line.dashed
   }
 }
@@ -73,6 +76,8 @@ LecteurCorpusHuggingFace ..|> LecteurCorpus
 PresidioAnonymiseur ..|> Anonymiseur
 YdataProfileur ..|> Profileur
 LlamaCppInferenceAdapter ..|> MoteurInference
+TransformersInferenceAdapter ..|> MoteurInference
+TransformersLoraInferenceAdapter ..|> MoteurInference
 VllmEndpointInferenceAdapter ..|> MoteurInference
 
 ConstruireDatasetPivotUseCase --> LecteurCorpus
@@ -89,8 +94,16 @@ anonymiser_dataset ..> AnonymiserDatasetUseCase
 decouper_splits ..> DecouperSplitsUseCase
 
 note bottom of INFRASTRUCTURE
-  Classes en pointillé : squelettes non
-  implémentés (branchés à l'Étape 4)
+  Classe en pointillé : squelette non
+  implémenté (branché à l'Étape 4, vLLM
+  impose par le cahier des charges §6).
+  Les 3 autres adaptateurs MoteurInference
+  sont réellement implémentés (Étape 1bis/2,
+  cf. AGENTS.md) : LlamaCppInferenceAdapter
+  (CPU, GGUF quantifié), TransformersInferenceAdapter
+  (GPU, bf16, modèle de base zero-shot) et
+  TransformersLoraInferenceAdapter (GPU, bf16,
+  base+LoRA, évaluation post-SFT).
 end note
 
 note right of DOMAIN
