@@ -104,8 +104,11 @@ UCTrain -> Entraineur : entrainer(dataset_train, dataset_validation,\nconfig_lor
 activate Entraineur
 note right of Entraineur
   [FAIT] peft.LoraConfig + trl.SFTTrainer
-  (packing=True, loss_type=chunked_nll,
+  (packing=True, loss_type=nll,
   assistant_only_loss=True), puis .train()
+  (loss_type=chunked_nll a echoue sur un job
+  GPU reel : trl plafonne a 0.24.0 par
+  unsloth, cf. AGENTS.md)
 end note
 Entraineur --> UCTrain : ResultatEntrainementSFT\n(chemin_checkpoint, courbe_metriques)
 deactivate Entraineur

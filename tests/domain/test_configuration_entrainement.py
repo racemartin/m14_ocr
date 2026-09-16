@@ -76,4 +76,4 @@ def test_hyperparametres_se_deserialisent_depuis_la_recette():
     assert hyperparametres.nombre_epoques == 3
     assert hyperparametres.taille_lot == 4
     assert hyperparametres.packing is True
-    assert hyperparametres.type_perte == "chunked_nll"
+    assert hyperparametres.type_perte == "nll"

@@ -221,11 +221,18 @@ imparti :
   mémoire consommée par l'attention de façon quadratique en longueur
   de séquence à linéaire.
 - **Chunked cross-entropy** (`loss_type=chunked_nll` sur
-  `trl.SFTTrainer`) : calcule la perte par morceaux de la séquence
-  plutôt que de matérialiser d'un coup le tenseur de logits complet
-  (taille = longueur de séquence × taille du vocabulaire, souvent le
-  plus gros tenseur intermédiaire d'un forward pass LLM) : réduit le
-  pic mémoire, pas un concept de qualité d'apprentissage.
+  `trl.SFTTrainer`, trl>=1.12 uniquement) : calcule la perte par
+  morceaux de la séquence plutôt que de matérialiser d'un coup le
+  tenseur de logits complet (taille = longueur de séquence × taille du
+  vocabulaire, souvent le plus gros tenseur intermédiaire d'un forward
+  pass LLM) : réduit le pic mémoire, pas un concept de qualité
+  d'apprentissage. **Non utilisable dans ce projet en pratique** : la
+  dépendance `unsloth` de l'extra `remote` (non câblée dans le code)
+  plafonne `trl` à 0.24.0 dès qu'une résolution fraîche a lieu (HF
+  Jobs), un trl antérieur à `chunked_nll` ; `recipes/sft_qwen3_lora.yaml`
+  utilise `nll` (standard) pour cette raison, confirmé sur un job GPU
+  réel facturé qui a échoué avec `chunked_nll` le 16/09/2026, cf.
+  `infrastructure/adapters/trl_sft_entraineur.py` et AGENTS.md.
 
 Ces optimisations sont donc des leviers d'**infrastructure**
 (`infrastructure/adapters/`, voir `02_etapes_cas_usage.md`), pas des

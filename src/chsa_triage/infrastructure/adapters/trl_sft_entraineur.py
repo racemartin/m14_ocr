@@ -79,6 +79,63 @@ permanente d'Environnement A ; desinstalles apres verification) :
     verification prealable (avant de construire cet adaptateur, donc
     sans cout GPU) si `--assistant-only-loss` resout a `True`.
 
+  - **TROUVAILLE REELLE, sur un vrai job GPU L4 facture (echoue le
+    16/09/2026)** : `recipes/sft_qwen3_lora.yaml::entrainement.type_perte`
+    valait `chunked_nll`, passe tel quel a `SFTConfig(loss_type=...)`.
+    Le job a echoue a la construction de `SFTTrainer` : ValueError,
+    message exact "Invalid loss_type chunked_nll passed. Supported
+    values are 'nll' and 'dft'." A NE PAS CONFONDRE avec "trl ne supporte pas
+    chunked_nll" : verifie par lecture reelle du code source de
+    `trl.trainer.sft_trainer`/`sft_config` (installe temporairement,
+    plusieurs versions), `chunked_nll` EXISTE bien depuis trl>=1.12 (en
+    fait la valeur PAR DEFAUT de `SFTConfig.loss_type` quand
+    `use_liger_kernel=False`, cf. le "VERIFIE SANS GPU" ci-dessus qui
+    date du 11/09/2026 avec trl==1.13.0 reellement installe). La cause
+    reelle est une INCOMPATIBILITE DE DEPENDANCES, pas une erreur de
+    frappe : l'extra `remote` de `pyproject.toml` liste `"unsloth"` sans
+    borne de version, alors qu'`unsloth` n'est PAS cable dans le code
+    (cf. AVERTISSEMENT ci-dessus, "Unsloth : PAS integre ici du tout").
+    Or la derniere version publiee d'`unsloth` (verifie reellement via
+    l'API JSON PyPI, `unsloth==2026.9.4`) exige, SANS extra, `trl>=0.18.2,
+    !=0.19.0,<=0.24.0` : une contrainte non conditionnelle qui force
+    N'IMPORTE QUELLE resolution fraiche a plafonner `trl` a 0.24.0 (un
+    trl pre-1.0, ecrit AVANT que `chunked_nll` existe : verifie en
+    installant `trl==0.24.0` pour de vrai, message d'erreur
+    `ValueError` IDENTIQUE mot pour mot a celui du job reel). Le
+    `uv.lock` commite de ce depot masque le probleme en local (il a
+    fige un `unsloth==2024.8` tres ancien, sans contrainte sur `trl`,
+    laissant `trl` remonter a 1.13.0), mais `hf jobs uv run --with
+    "chsa-triage[remote] @ git+https://github.com/racemartin/m14_ocr.git@main"`
+    (cf. README §12) n'utilise PAS `uv.lock` : il resout les
+    dependances a neuf a chaque lancement, contre l'etat REEL de PyPI
+    au moment du job, pas l'etat fige localement. Reproduit pour de vrai
+    (`uv pip install "trl>=0.9" "unsloth"` dans un venv jetable, sans
+    lockfile) : le resolveur choisit bien `trl==0.24.0` +
+    `unsloth==2026.9.4`. Decision : PAS de remplacement direct pour
+    l'optimisation memoire que `chunked_nll` visait (chunker le calcul
+    de la projection `lm_head` pour eviter de materialiser le tenseur de
+    logits complet) : ce mecanisme n'existe simplement pas dans trl
+    0.24.0, et tant qu'`unsloth` (non cable) reste dans l'extra `remote`
+    sans borne, AUCUNE resolution fraiche ne pourra jamais obtenir un
+    trl>=1.12. `recipes/sft_qwen3_lora.yaml::entrainement.type_perte`
+    est donc corrige a `nll` (valeur standard, supportee par TOUTES les
+    versions de trl observees ici, de 0.24.0 a 1.13.0), et
+    `training/E2_04_sft_train.py` verifie desormais `type_perte` contre
+    l'ensemble sur des valeurs sures AVANT de charger le modele (meme
+    patron que le guard `assistant_only_loss` ci-dessus). Marge memoire
+    pour ce run precis (LoRA rang 16, 4 modules cibles, sur un modele
+    1.7B quantifie NF4, `l4x1` 24 Go de VRAM) : le raisonnement deja
+    documente en README §2.3 (marge large) reste valide SANS
+    `chunked_nll`, puisqu'il ne reposait pas sur cette optimisation
+    specifique (le calcul avait deja ete fait pour `loss_type="nll"`
+    standard) ; `chunked_nll` aurait ete un coussin de securite
+    supplementaire, pas une condition de faisabilite. Si le pic memoire
+    s'avere reellement trop juste sur un vrai run, retirer `unsloth`
+    (non utilise) de l'extra `remote` de `pyproject.toml` permettrait a
+    `trl>=1.12` de se resoudre et de recuperer `chunked_nll` pour de
+    vrai : option NON appliquee ici (changement de dependances plus
+    large que ce correctif, laisse a une decision explicite future).
+
 NON VERIFIE, a confirmer sur une vraie session GPU
 avant de faire confiance a ce module :
   - Que le modele charge en 4-bit (QLoRA NF4) + LoRA s'entraine

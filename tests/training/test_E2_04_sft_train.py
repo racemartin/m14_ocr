@@ -5,12 +5,24 @@ frontiere reseau HF Hub elle-meme est remplacee (monkeypatch de
 depot est cree (prive, `exist_ok=True`) puis que le DOSSIER LOCAL du
 meilleur checkpoint est publie tel quel, jamais un essai intermediaire
 rejete (cf. AVERTISSEMENT du module).
+
+Teste aussi `_verifier_type_perte_valide` (garde-fou early sur
+`entrainement.type_perte`, cf. AVERTISSEMENT en tete de module et
+AGENTS.md : un job GPU L4 facture reel a echoue avec
+`type_perte=chunked_nll` car la dependance `unsloth` de l'extra
+`remote` plafonne `trl` a 0.24.0 des qu'une resolution fraiche a lieu,
+et ce trl ne connait pas `chunked_nll`). Pas de dependance a `trl`
+reel ici : ce test verifie l'ensemble de valeurs sures cablees dans le
+module (`VALEURS_TYPE_PERTE_VALIDES`), pas un appel reel a
+`trl.SFTConfig`.
 """
 
 from __future__ import annotations
 
 import sys
 from pathlib import Path
+
+import pytest
 
 # training/ est un paquet installable (cf. pyproject.toml), mais pas
 # forcement installe pendant les tests locaux ; ajouter la racine du
@@ -57,3 +69,25 @@ def test_publier_checkpoint_hf_cree_le_depot_prive_puis_publie_le_dossier(monkey
             "repo_type": "model",
         }
     ]
+
+
+@pytest.mark.parametrize("type_perte", ["nll", "dft"])
+def test_verifier_type_perte_valide_accepte_les_valeurs_sures(type_perte):
+    E2_04_sft_train._verifier_type_perte_valide(type_perte)
+
+
+def test_verifier_type_perte_valide_rejette_chunked_nll():
+    """
+    `chunked_nll` est le cas reel qui a fait echouer un job GPU facture
+    (cf. AVERTISSEMENT du module) : trl le supporte bien depuis trl>=1.12,
+    mais la dependance `unsloth` de l'extra `remote` plafonne `trl` a
+    0.24.0 des qu'une resolution fraiche a lieu (HF Jobs), un trl
+    anterieur a `chunked_nll`.
+    """
+    with pytest.raises(SystemExit, match="chunked_nll"):
+        E2_04_sft_train._verifier_type_perte_valide("chunked_nll")
+
+
+def test_verifier_type_perte_valide_rejette_toute_valeur_inconnue():
+    with pytest.raises(SystemExit):
+        E2_04_sft_train._verifier_type_perte_valide("une_valeur_qui_nexiste_pas")

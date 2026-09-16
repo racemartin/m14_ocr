@@ -335,7 +335,7 @@ Sérialisé en JSONL (même mécanisme que
   "chemin": "checkpoints/sft-lora/2026-XX-XX/",
   "modele_base": "Qwen/Qwen3-1.7B-Base",
   "configuration_lora": {"rang": 16, "alpha": 32, "dropout": 0.05, "modules_cibles": ["q_proj", "k_proj", "v_proj", "o_proj"]},
-  "hyperparametres": {"taux_apprentissage": 0.0002, "nombre_epoques": 3, "taille_lot": 4, "packing": true, "type_perte": "chunked_nll"},
+  "hyperparametres": {"taux_apprentissage": 0.0002, "nombre_epoques": 3, "taille_lot": 4, "packing": true, "type_perte": "nll"},
   "metriques_finales": {"etape": 1200, "perte_train": 0.83, "perte_validation": 0.91, "norme_gradient": 1.4},
   "verdict_convergence": "saine",
   "horodatage": "2026-XX-XXTXX:XX:XXZ"

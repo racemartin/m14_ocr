@@ -108,7 +108,7 @@ partition "ETAPE 2 : Semaine 2 : SFT + LoRA" #E8F0F5 {
 
   :Configurer LoraConfig (r, alpha, dropout,\ntarget_modules);
 
-  :Lancer SFTTrainer (packing=True,\nloss_type=chunked_nll);
+  :Lancer SFTTrainer (packing=True,\nloss_type=nll);
   note right
     Entree : dataset SFT train/val
     Sortie : checkpoint SFT-LoRA intermediaire
@@ -121,7 +121,7 @@ partition "ETAPE 2 : Semaine 2 : SFT + LoRA" #E8F0F5 {
     :Ajuster hyperparametres\n(grid restreint : lr, r, alpha);
     note right: Optuna ecarte du POC (Phase 3)
     -> Relancer SFTTrainer;
-    :Lancer SFTTrainer (packing=True,\nloss_type=chunked_nll);
+    :Lancer SFTTrainer (packing=True,\nloss_type=nll);
   else (oui)
   endif
 
