@@ -28,8 +28,8 @@ from chsa_triage.domain.model.enums                        import TypeExemple, T
 from chsa_triage.domain.model.exemple_pivot                import ExemplePivot  # Entite pivot (prompt/completion)
 from chsa_triage.domain.ports.dataset_repository           import RepositoryLectureEcriture  # Port de lecture du dataset
 from chsa_triage.domain.ports.formateur_invite_zero_shot   import FormateurInviteZeroShot  # Port : formate l'invite zero-shot
-from chsa_triage.domain.ports.moteur_inference              import MoteurInference  # Port : moteur d'inference
-from chsa_triage.domain.ports.suivi_experimentation         import SuiviExperimentation  # Port : suivi du run (MLflow)
+from chsa_triage.domain.ports.moteur_inference             import MoteurInference  # Port : moteur d'inference
+from chsa_triage.domain.ports.suivi_experimentation        import SuiviExperimentation  # Port : suivi du run (MLflow)
 
 NOM_RUN_PAR_DEFAUT = "baseline-zero-shot"
 
