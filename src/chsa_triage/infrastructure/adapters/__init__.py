@@ -61,6 +61,9 @@ if TYPE_CHECKING:  # pragma: no cover - uniquement pour les outils de typage
     from chsa_triage.infrastructure.adapters.transformers_inference_adapter import (
         TransformersInferenceAdapter,
     )
+    from chsa_triage.infrastructure.adapters.transformers_lora_inference_adapter import (
+        TransformersLoraInferenceAdapter,
+    )
     from chsa_triage.infrastructure.adapters.trl_sft_entraineur import (
         TrlSftEntraineurAdapter,
     )
@@ -87,6 +90,7 @@ __all__ = [
     "SpacyVerificateurEntitesNommees",
     "TensorboardSuiviExperimentation",
     "TransformersInferenceAdapter",
+    "TransformersLoraInferenceAdapter",
     "TrlSftEntraineurAdapter",
     "VllmEndpointInferenceAdapter",
     "YdataProfileur",
@@ -153,6 +157,10 @@ _CARTE_IMPORTS_PARESSEUX = {
     "TransformersInferenceAdapter": (
         "chsa_triage.infrastructure.adapters.transformers_inference_adapter",
         "TransformersInferenceAdapter",
+    ),
+    "TransformersLoraInferenceAdapter": (
+        "chsa_triage.infrastructure.adapters.transformers_lora_inference_adapter",
+        "TransformersLoraInferenceAdapter",
     ),
     "TrlSftEntraineurAdapter": (
         "chsa_triage.infrastructure.adapters.trl_sft_entraineur",

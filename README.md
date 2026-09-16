@@ -55,6 +55,7 @@ après pour naviguer par section plutôt que par script.
 | Étape 2 (SFT + LoRA) | `monitoring/logica_suivi_entrainement.py` | Logique pure de parsing/pivot/convergence du dashboard, testable sans Streamlit ni réseau (module support, pas un script autonome). |
 | Étape 2 (SFT + LoRA) | `monitoring/importer_mlflow_local.py` | Importe les runs du dataset HF de métriques dans un MLflow local (SQLite) pour parcourir l'historique complet sans serveur MLflow distant. |
 | Étape 2 (SFT + LoRA) | `monitoring/reconstruire_courbe_sft_depuis_log.py` | Reconstruit a posteriori la courbe de métriques d'un run SFT déjà terminé à partir de son log brut, quand aucun backend `SuiviExperimentation` durable n'avait été branché. |
+| Étape 2 (SFT + LoRA) | `interfaces/cli/E2_05_evaluer_post_sft.py` | Évaluation post-SFT : mêmes métriques/mêmes 278 exemples que les baselines zero-shot (§2.2), mais via le modèle base+LoRA réellement entraîné (`TransformersLoraInferenceAdapter`), pour comparaison directe. |
 | Étape 2 (SFT + LoRA) | `data/demos/move_chsa-triage-sft-metrics-fake_jston_to_mlflow_db.py` | Chemins et nom de fichier codés en dur, sans `argparse` ni bloc `__main__` : brouillon/démo ponctuel important des métriques JSON factices dans MLflow ; aucun usage documenté au-delà de son propre nom de fichier, en pratique remplacé par `monitoring/importer_mlflow_local.py`. |
 | Étape 3 (DPO) | *(aucun script à ce jour)* | Étape non implémentée dans le code ; voir `docs/04_etape3_dpo/` (à venir). |
 | Infrastructure / vérifications transversales | `scripts/check_env_local.py` | Vérifie que l'environnement local (Environnement A, sans GPU) est prêt pour la préparation des données. |
@@ -1372,10 +1373,131 @@ reelle sur sqlite temporaire, source HF injectee) et
 
 ### 2.4 Évaluation post-SFT
 
-**Non implémenté à ce jour.** Aucun cas d'usage ni CLI n'existe encore
-pour évaluer le modèle une fois le SFT-LoRA terminé (§2.3 ci-dessus)
-et comparer ses métriques à la baseline zero-shot mesurée en §2.2 ;
-voir `docs/03_etape2_sft/` pour la planification.
+Mesure la performance du modèle RÉELLEMENT entraîné par SFT-LoRA
+(poids publiés sur `mombasstic/chsa-triage-sft-lora`, verdict `SAINE`,
+premier entraînement réel de cette session, §2.3 ci-dessus), sur le
+MÊME sous-ensemble de 278 exemples `split=test`/`type_exemple=sft`
+que les deux baselines zero-shot (`mombasstic/chsa-triage-baseline-test`,
+§2.2), avec les MÊMES métriques
+(`application/metriques_evaluation_baseline.py`), pour une comparaison
+numéro-contre-numéro directe.
+
+**Décision de conception : réutilisation, jamais un renommage.**
+`EvaluerBaselineZeroShotUseCase`
+(`application/use_cases/E1_06_00_evaluer_baseline_zero_shot.py`) est
+agnostique au modèle injecté : il ne connaît qu'un `MoteurInference`
+(port), un `RepositoryLectureEcriture`, un `FormateurInviteZeroShot`
+et un `SuiviExperimentation`, jamais une classe concrète. Confirmé en
+le relisant : rien dans son code ne suppose que le modèle est
+"zero-shot" au sens strict, seulement qu'on génère une réponse par
+exemple du split test et qu'on la compare à la référence. Il est donc
+réutilisé SANS AUCUNE MODIFICATION une troisième fois (après CPU/GGUF
+puis GPU/bf16 zero-shot, §2.2), exactement le même patron que
+`E1_06_01_evaluer_baseline_gpu.py` vs `E1_06_00_evaluer_baseline.py` :
+seul l'adaptateur d'inférence change.
+`interfaces/cli/E2_05_evaluer_post_sft.py` est ce troisième point
+d'entrée. Renommer le cas d'usage ("Baseline"/"ZeroShot" ne colle plus
+littéralement à un modèle entraîné) a été considéré et écarté : cela
+aurait touché 3 scripts CLI déjà publiés (les deux baselines et
+celui-ci) et leurs tests pour un gain purement cosmétique, sans changer
+le comportement ; le docstring du nouveau CLI documente explicitement
+ce réemploi plutôt que de le masquer. Aucun nouveau cas d'usage fin
+n'a été ajouté non plus : un simple wrapper qui ne ferait que déléguer
+à `EvaluerBaselineZeroShotUseCase` sans rien y ajouter aurait été une
+abstraction sans valeur.
+
+**Adaptateur nouveau : `TransformersLoraInferenceAdapter`**
+(`infrastructure/adapters/transformers_lora_inference_adapter.py`),
+copie quasi conforme de `TransformersInferenceAdapter` (§2.2) : même
+contrat `parametres["invite_deja_rendue"]`, même mesure de
+`latence_ms`, même refus explicite (`RuntimeError`) sans GPU CUDA
+(jamais de repli silencieux vers le CPU). Seule différence réelle :
+`_obtenir_modele_et_tokenizer()` charge le modèle de base
+(`Qwen/Qwen3-1.7B-Base`, bf16) PUIS l'enveloppe avec
+`peft.PeftModel.from_pretrained(modele_base, depot_lora)` pour
+appliquer les poids LoRA entraînés par-dessus. Réutilise directement
+`_parametres_generation_transformers` de
+`transformers_inference_adapter.py` (import, jamais dupliquée) :
+seule la construction du modèle diffère entre les deux adaptateurs, la
+traduction des paramètres de génération est strictement identique.
+`peft>=0.12` est déjà dans l'extra `remote` de `pyproject.toml`,
+aucune nouvelle dépendance nécessaire.
+
+```bash
+uv run python interfaces/cli/E2_05_evaluer_post_sft.py \
+    --dataset-hf-repo mombasstic/chsa-triage-baseline-test \
+    --depot-lora mombasstic/chsa-triage-sft-lora \
+    --suivi-hf-repo mombasstic/chsa-triage-baseline-metrics
+```
+
+**Commande `hf jobs uv run` (syntaxe vérifiée via `hf jobs uv run --help`
+dans cet environnement ; jamais lancée avec un `--flavor` GPU réel,
+coût/attente d'une session GPU payante hors périmètre de cette tâche
+d'après le budget accordé) :**
+
+```bash
+hf jobs uv run \
+    --flavor l4x1 \
+    --with "chsa-triage[remote] @ git+https://github.com/racemartin/m14_ocr.git@main" \
+    --secrets HF_TOKEN \
+    https://raw.githubusercontent.com/racemartin/m14_ocr/main/interfaces/cli/E2_05_evaluer_post_sft.py \
+    --dataset-hf-repo mombasstic/chsa-triage-baseline-test \
+    --depot-lora mombasstic/chsa-triage-sft-lora \
+    --suivi-hf-repo mombasstic/chsa-triage-baseline-metrics
+```
+
+`--flavor l4x1` : même raisonnement que la baseline GPU (§2.2), pas
+une nouvelle mesure GPU réelle. C'est de l'INFÉRENCE (une passe forward
+par exemple), pas de l'entraînement : coût/durée attendus du même ordre
+de grandeur que la baseline GPU (~7,3 s/génération mesurés en §2.2 sur
+ce même `l4x1`, donc ~34 min pour les 278 exemples), très inférieur au
+coût de l'entraînement lui-même (~20 min, §2.3 point 8). Cette commande
+suppose que cette branche a déjà été fusionnée sur `main` et poussée
+sur GitHub : `hf jobs uv run` télécharge le script par URL brute
+directement depuis `racemartin/m14_ocr@main`, pas depuis ce worktree
+local (même limite déjà documentée pour les deux baselines, §2.2).
+
+**Vérification réelle effectuée dans cet environnement (17/09/2026),
+et sa limite honnête, même démarche que §2.2/§2.3 :** credentials HF
+réelles disponibles ici (`hf auth whoami` → `mombasstic`). Vérifié pour
+de vrai, sans dépenser de session GPU :
+- Téléchargement réel du dataset `mombasstic/chsa-triage-baseline-test`
+  (`dataset_pivot_test_sft.jsonl`, 278 lignes confirmées, identique au
+  fichier déjà utilisé par les deux baselines).
+- Le dépôt `mombasstic/chsa-triage-sft-lora` existe réellement et
+  contient bien `adapter_config.json`/`adapter_model.safetensors` à sa
+  racine (poids du MEILLEUR essai, jamais les checkpoints
+  intermédiaires, cf. `_publier_checkpoint_hf`, §2.3 point 6) ;
+  `adapter_config.json::base_model_name_or_path` vaut bien
+  `Qwen/Qwen3-1.7B-Base`, confirmant que ce dépôt LoRA correspond
+  réellement au modèle de base utilisé par `--modele-base` par défaut.
+- `peft==0.21.0` installé temporairement (comme pour les vérifications
+  de signature précédentes de cette session, sans GPU) : signature
+  réelle de `peft.PeftModel.from_pretrained(model, model_id, ...,
+  is_trainable=False, ...)` confirmée, correspond à l'usage fait par
+  l'adaptateur (`is_trainable` reste à son défaut `False`, l'usage ici
+  est de l'inférence, jamais un réentraînement).
+- `interfaces/cli/E2_05_evaluer_post_sft.py` exécuté pour de vrai dans
+  cet environnement (sans `--flavor`, donc en local, sans GPU) : le
+  téléchargement du dataset et la tentative de chargement du modèle
+  LoRA se déroulent réellement, puis `TransformersLoraInferenceAdapter`
+  refuse explicitement (`RuntimeError`, jamais un repli silencieux)
+  sur les 278/278 exemples faute de GPU CUDA, et le cas d'usage lève
+  `ValueError` ("rien à agréger"), exactement le même comportement que
+  la vérification de la baseline GPU en §2.2. Ceci confirme le CÂBLAGE
+  de bout en bout (dataset → adaptateur base+LoRA → métriques → suivi),
+  PAS les vrais chiffres post-SFT, qui restent à produire sur un job HF
+  Jobs GPU réel (jamais lancé ici, même raison de coût que §2.2/§2.3).
+
+**Ce qui reste donc à faire, honnêtement, pour obtenir les vrais
+chiffres :** lancer la commande `hf jobs uv run --flavor l4x1`
+ci-dessus une fois cette branche fusionnée sur `main`, puis comparer
+`exact_match`/`f1_moyen` au plancher déjà mesuré en §2.2 (CPU : exact
+match 0.000/F1 0.037 ; GPU : exact match 0.000/F1 0.043) : une
+progression mesurable de ces deux métriques serait la première preuve
+chiffrée que le SFT a bien un effet (cahier des charges §9),
+indépendamment du verdict de convergence déjà obtenu côté courbe
+d'entraînement (§2.3 point 8).
 
 ## 3. DPO (Étape 3)
 
