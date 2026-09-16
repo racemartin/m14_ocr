@@ -82,6 +82,28 @@ class FauxMoteurInference:
         return ReponseModele(texte=texte, nombre_tokens_entree=10, nombre_tokens_sortie=5, latence_ms=42.0)
 
 
+class FauxMoteurInferenceAvecEchecs:
+    """
+    Comme FauxMoteurInference, mais leve une exception a certains
+    indices d'appel (0-based), pour simuler une degenerescence de
+    generation rejetee par le serveur d'inference reel (500).
+    """
+
+    def __init__(self, indices_en_echec: set[int], reponse_defaut: str = "R.") -> None:
+        self._indices_en_echec = indices_en_echec
+        self._reponse_defaut = reponse_defaut
+        self.appels: list[tuple[list[dict], dict]] = []
+
+    def generer(self, messages: list[dict], parametres: dict | None = None) -> ReponseModele:
+        indice_appel = len(self.appels)
+        self.appels.append((messages, parametres or {}))
+        if indice_appel in self._indices_en_echec:
+            raise RuntimeError("500 Internal Server Error: generation corrompue")
+        return ReponseModele(
+            texte=self._reponse_defaut, nombre_tokens_entree=10, nombre_tokens_sortie=5, latence_ms=42.0
+        )
+
+
 def _exemple_sft_test(identifiant_suffixe: str, question: str, reponse: str) -> ExemplePivot:
     exemple = ExemplePivot(
         identifiant=ExemplePivot.nouvel_identifiant("test", identifiant_suffixe),
@@ -227,5 +249,57 @@ def test_executer_relaie_les_metriques_agregees_vers_suivi_experimentation():
     assert parametres_run["nombre_exemples"] == 1
 
     noms_metriques = {nom for nom, _, _ in suivi.metriques}
-    assert noms_metriques == {"exact_match", "f1_moyen", "latence_ms_moyenne"}  # exactitude_niveau non loggee : None
+    assert noms_metriques == {
+        "exact_match",
+        "f1_moyen",
+        "latence_ms_moyenne",
+        "nombre_echecs_inference",
+    }  # exactitude_niveau non loggee : None
     assert suivi.nombre_fins == 1
+
+
+def test_executer_un_echec_isole_du_moteur_n_abandonne_pas_le_run():
+    """
+    Cas reel confirme sur `llama-server` : un exemple degenere en
+    generation corrompue et le serveur repond 500 sur `/completion`.
+    Un seul echec ne doit jamais faire perdre tout le run.
+    """
+    exemples = [
+        _exemple_sft_test("a", "Q1 ?", "R."),
+        _exemple_sft_test("b", "Q2 ?", "R."),
+        _exemple_sft_test("c", "Q3 ?", "R."),
+    ]
+    repository = FauxRepository(exemples)
+    moteur = FauxMoteurInferenceAvecEchecs(indices_en_echec={1}, reponse_defaut="R.")
+    suivi = FauxSuivi()
+
+    cas_usage = EvaluerBaselineZeroShotUseCase(
+        repository=repository, formateur=FauxFormateur(), moteur=moteur, suivi=suivi
+    )
+    resultat = cas_usage.executer()
+
+    assert len(moteur.appels) == 3  # les 3 exemples ont ete tentes
+    assert resultat.nombre_exemples == 3
+    assert resultat.nombre_echecs_inference == 1
+    assert resultat.exact_match == 1.0  # calcule seulement sur les 2 paires reussies
+    assert suivi.nombre_fins == 1  # le run se termine normalement malgre l'echec isole
+
+    metriques = dict((nom, valeur) for nom, valeur, _ in suivi.metriques)
+    assert metriques["nombre_echecs_inference"] == 1
+
+
+def test_executer_leve_si_tous_les_exemples_echouent_a_l_inference():
+    """Aucune paire generee : agreger silencieusement provoquerait un ZeroDivisionError."""
+    exemples = [
+        _exemple_sft_test("a", "Q1 ?", "R."),
+        _exemple_sft_test("b", "Q2 ?", "R."),
+    ]
+    repository = FauxRepository(exemples)
+    moteur = FauxMoteurInferenceAvecEchecs(indices_en_echec={0, 1})
+
+    cas_usage = EvaluerBaselineZeroShotUseCase(
+        repository=repository, formateur=FauxFormateur(), moteur=moteur, suivi=FauxSuivi()
+    )
+
+    with pytest.raises(ValueError):
+        cas_usage.executer()

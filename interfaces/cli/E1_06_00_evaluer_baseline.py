@@ -145,6 +145,7 @@ def main() -> None:
     log.PARAMETER_VALUE("exact match", resultat.exact_match)
     log.PARAMETER_VALUE("F1 moyen", resultat.f1_moyen)
     log.PARAMETER_VALUE("latence moyenne (ms)", resultat.latence_ms_moyenne)
+    log.PARAMETER_VALUE("echecs d'inference", resultat.nombre_echecs_inference)
     log.FINISH_ACTION(
         "evaluer_baseline",
         "main",
@@ -182,6 +183,10 @@ def main() -> None:
     print(
         f"  Latence moyenne par generation.....................: "
         f"{resultat.latence_ms_moyenne:.1f} ms"
+    )
+    print(
+        f"  Echecs d'inference (exemples ignores)..............: "
+        f"{resultat.nombre_echecs_inference}"
     )
     print(
         f"Run MLflow '{arguments.nom_run}' journalise dans "
