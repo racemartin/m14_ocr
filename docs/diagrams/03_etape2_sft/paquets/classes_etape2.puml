@@ -2,7 +2,7 @@
 !pragma layout smetana
 !include ../../_common/estilo.iuml
 
-title Étape 2 : Diagramme de classes\nClasses réelles du SFT-LoRA (domaine, ports, application, infrastructure) : [FAIT], y compris TrlSftEntraineurAdapter (jamais exécuté sur GPU réel, cf. note)
+title Étape 2 : Diagramme de classes\nClasses réelles du SFT-LoRA (domaine, ports, application, infrastructure) : [FAIT], premier entraînement réel réussi sur GPU L4 (verdict SAINE, poids publiés, cf. AGENTS.md)
 
 package "domain.model" as MODEL {
   class ExempleFormate {
@@ -64,6 +64,9 @@ package "domain.ports" as PORTS {
   interface FormateurConversation {
     +formater(exemple: ExemplePivot) : ExempleFormate
   }
+  interface FormateurInviteZeroShot <<existant, Étape 1bis>> {
+    +formater_invite_zero_shot(exemple: ExemplePivot) : str
+  }
   interface EntraineurSupervise {
     +entrainer(dataset_train, dataset_validation,\nconfig_lora, hyperparametres) : ResultatEntrainementSFT
   }
@@ -72,11 +75,22 @@ package "domain.ports" as PORTS {
     +logger_metrique(nom, valeur, etape)
     +terminer_run()
   }
+  interface MoteurInference <<existant, Étape 1bis>> {
+    +generer(messages: list[dict], parametres: dict | None) : ReponseModele
+  }
+  class ReponseModele <<existant, Étape 1bis>> {
+    +texte: str
+    +nombre_tokens_entree: int
+    +nombre_tokens_sortie: int
+    +latence_ms: float
+    +metadonnees: dict
+  }
 
   ResultatEntrainementSFT *-- MetriquesEntrainement
   EntraineurSupervise ..> ExempleFormate
   EntraineurSupervise ..> ResultatEntrainementSFT
   FormateurConversation ..> ExempleFormate
+  MoteurInference ..> ReponseModele
 
   CheckpointEntraine ..> MetriquesEntrainement
 }
@@ -130,6 +144,23 @@ package "application.use_cases" as USECASES {
     +horloge: Callable[[], str]
     +executer(identifiant, chemin, modele_base,\nconfiguration_lora, hyperparametres,\nmetriques_finales, verdict_convergence) : CheckpointEntraine
   }
+  class ResultatEvaluationBaseline <<existant, Étape 1bis>> {
+    +nombre_exemples: int
+    +exact_match: float
+    +f1_moyen: float
+    +exactitude_niveau: ResultatExactitudeNiveau
+    +latence_ms_moyenne: float
+    +nombre_echecs_inference: int
+  }
+  class EvaluerBaselineZeroShotUseCase <<existant Étape 1bis, réutilisé sans modification pour E2_05>> {
+    +repository: RepositoryLectureEcriture
+    +formateur: FormateurInviteZeroShot
+    +moteur: MoteurInference
+    +suivi: SuiviExperimentation
+    +parametres_generation: dict
+    +nom_run: str
+    +executer() : ResultatEvaluationBaseline
+  }
 
   FormaterDatasetChatMLUseCase --> ExemplePivot
   FormaterDatasetChatMLUseCase --> ExempleFormate
@@ -148,6 +179,13 @@ package "application.use_cases" as USECASES {
   SauvegarderCheckpointSftUseCase --> CheckpointEntraine
   SauvegarderCheckpointSftUseCase --> RepositoryLectureEcriture
 
+  EvaluerBaselineZeroShotUseCase --> ExemplePivot
+  EvaluerBaselineZeroShotUseCase --> FormateurInviteZeroShot
+  EvaluerBaselineZeroShotUseCase --> MoteurInference
+  EvaluerBaselineZeroShotUseCase --> SuiviExperimentation
+  EvaluerBaselineZeroShotUseCase --> RepositoryLectureEcriture
+  EvaluerBaselineZeroShotUseCase --> ResultatEvaluationBaseline
+
   class ExemplePivot <<existant, Étape 1>>
   interface RepositoryLectureEcriture <<existant, Étape 1>>
 }
@@ -158,6 +196,7 @@ package "infrastructure.adapters" as ADAPTERS {
     -_tokenizer: Any
     -_obtenir_tokenizer()
     +formater(exemple: ExemplePivot) : ExempleFormate
+    +formater_invite_zero_shot(exemple: ExemplePivot) : str
   }
   class MlflowSuiviExperimentation {
     +uri_tracking: str
@@ -173,34 +212,110 @@ package "infrastructure.adapters" as ADAPTERS {
     +logger_metrique(nom, valeur, etape)
     +terminer_run()
   }
-  class TrlSftEntraineurAdapter <<FAIT, jamais exécuté sur GPU réel>> {
+  class HfDatasetSuiviExperimentation {
+    +repo_id: str
+    +repertoire_local: str
+    -_scheduler: CommitScheduler
+    +demarrer_run(nom, parametres)
+    +logger_metrique(nom, valeur, etape)
+    +terminer_run()
+  }
+  class TrlSftEntraineurAdapter <<FAIT, entraînement réel réussi sur GPU L4 (16/09/2026)>> {
+    +identifiant_modele_base: str
+    +configuration_quantification: ConfigurationQuantification
+    +repertoire_sortie: str
+    +assistant_only_loss: bool
+    +attn_implementation: str
+    +utiliser_liger_kernel: bool
     +entrainer(dataset_train, dataset_validation,\nconfig_lora, hyperparametres) : ResultatEntrainementSFT
   }
+  class LlamaCppInferenceAdapter <<existant, Étape 1bis>> {
+    +url_serveur_local: str
+    +timeout_secondes: float
+    +generer(messages, parametres) : ReponseModele
+  }
+  class TransformersInferenceAdapter <<existant, Étape 1bis>> {
+    +nom_modele: str
+    +generer(messages, parametres) : ReponseModele
+  }
+  class TransformersLoraInferenceAdapter <<FAIT, Étape 2, évaluation post-SFT>> {
+    +depot_lora: str
+    +nom_modele_base: str
+    -_obtenir_modele_et_tokenizer() : tuple[Any, Any]
+    +generer(messages, parametres) : ReponseModele
+  }
   class JsonlDatasetRepository <<existant, Étape 1>>
+  class JsonlExempleFormateRepository <<FAIT>>
+  class JsonlCheckpointRepository <<FAIT>>
 
   ChatMLFormateurAdapter ..|> FormateurConversation
+  ChatMLFormateurAdapter ..|> FormateurInviteZeroShot
   MlflowSuiviExperimentation ..|> SuiviExperimentation
   TensorboardSuiviExperimentation ..|> SuiviExperimentation
+  HfDatasetSuiviExperimentation ..|> SuiviExperimentation
   TrlSftEntraineurAdapter ..|> EntraineurSupervise
+  LlamaCppInferenceAdapter ..|> MoteurInference
+  TransformersInferenceAdapter ..|> MoteurInference
+  TransformersLoraInferenceAdapter ..|> MoteurInference
   JsonlDatasetRepository ..|> RepositoryLectureEcriture
+  JsonlExempleFormateRepository ..|> RepositoryLectureEcriture
+  JsonlCheckpointRepository ..|> RepositoryLectureEcriture
 }
 
 note bottom of RepositoryLectureEcriture
   Réutilisé pour 3 types d'entités au total :
   ExemplePivot (Étape 1), ExempleFormate et
   CheckpointEntraine (Étape 2) ; aucune méthode
-  ajoutée au port existant.
+  ajoutée au port existant. Chaque entité a son
+  propre adaptateur JSONL dédié (jamais une
+  généralisation de JsonlDatasetRepository).
 end note
 
 note right of TrlSftEntraineurAdapter
-  Écrit et vérifié SANS GPU (263 tests au
-  moment de cette mise à jour, cf. AGENTS.md) ;
-  seul élément qui nécessite encore un GPU réel
-  (Environnement B) pour une vérification
-  complète. Charge le modèle quantifié et
-  construit LoraConfig dans son constructeur,
-  jamais exposé au-dessus de la frontière
+  Écrit et d'abord vérifié SANS GPU, puis
+  RÉELLEMENT exécuté sur un job HF Jobs GPU L4
+  facturé le 16/09/2026 : ~20 min, 342 pas,
+  verdict SAINE, poids publiés avec succès sur
+  mombasstic/chsa-triage-sft-lora (cf. AGENTS.md,
+  README §2.3). Deux trouvailles réelles sur ce
+  run : entrainement.type_perte=chunked_nll est
+  garanti d'échouer (trl plafonné à 0.24.0 par la
+  dépendance unsloth non câblée), corrigé à nll ;
+  et suivi.backend devait valoir hf_dataset pour
+  que --suivi-hf-repo ne soit pas ignoré en
+  silence (la 1re courbe a été perdue, puis
+  reconstruite à partir du log brut du job par
+  monitoring/reconstruire_courbe_sft_depuis_log.py).
+  Charge le modèle quantifié et construit
+  LoraConfig dans son constructeur, jamais
+  exposé au-dessus de la frontière
   domain/application.
+end note
+
+note right of EvaluerBaselineZeroShotUseCase
+  Aucun nouveau cas d'usage écrit pour
+  l'évaluation post-SFT (E2_05) : ce cas
+  d'usage de l'Étape 1bis est agnostique au
+  modèle injecté (seulement un MoteurInference),
+  donc réutilisé tel quel une 3e fois (après
+  CPU/GGUF puis GPU/bf16 zero-shot), seul
+  l'adaptateur (TransformersLoraInferenceAdapter)
+  change. Cf. README §2.4.
+end note
+
+note bottom of TransformersLoraInferenceAdapter
+  Copie quasi conforme de
+  TransformersInferenceAdapter (charge le
+  modèle de base bf16 PUIS
+  peft.PeftModel.from_pretrained(depot_lora)
+  par-dessus) ; réutilise directement sa
+  fonction _parametres_generation_transformers
+  (jamais dupliquée). Échoue explicitement
+  (RuntimeError) sans GPU CUDA, jamais de repli
+  silencieux vers le CPU. Câblage vérifié sans
+  GPU réel (17/09/2026, cf. README §2.4) ; les
+  vrais chiffres post-SFT restent à produire sur
+  un job HF Jobs GPU réel.
 end note
 
 @enduml

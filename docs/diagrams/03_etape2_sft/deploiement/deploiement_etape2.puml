@@ -2,69 +2,119 @@
 !pragma layout smetana
 !include ../../_common/estilo.iuml
 
-title Étape 2 : Diagramme de déploiement\nEntraînement SFT-LoRA (HF Jobs) + suivi en vivo (Space Streamlit) + historique local (MLflow/SQLite) : [FAIT] (réel), AUCUN Docker à cette étape
+title Étape 2 : Diagramme de déploiement\nEntraînement SFT-LoRA + évaluation post-SFT via HF Jobs (`hf jobs uv run`, package installé depuis GitHub) + suivi en vivo (Space Streamlit) + historique local (MLflow/SQLite) : [FAIT] (réel), AUCUN Docker à cette étape
+
+cloud "GitHub" as GITHUB {
+  artifact "racemartin/m14_ocr@main\n(source installable + scripts bruts)" as REPO_GITHUB
+}
 
 cloud "Hugging Face Hub" as HFHUB {
   artifact "Qwen3-1.7B-Base\n(poids publics)" as MODELE
-  database "dataset\nchsa-triage-sft-metrics\n(prive)" as DATASET_METRIQUES
-  database "Repo modeles\nchsa-triage-sft-checkpoints\n(a creer, Etape 3)" as REPO_CHECKPOINTS
+  database "dataset\nchsa-triage-sft-train-data (prive)\ndonnees d'entrainement montees" as DATASET_TRAIN
+  database "dataset\nchsa-triage-sft-metrics (prive)" as DATASET_METRIQUES
+  database "model\nchsa-triage-sft-lora (prive)\npoids LoRA du MEILLEUR essai, publies" as REPO_LORA
+  database "dataset\nchsa-triage-baseline-test (prive)\n278 exemples split=test, reutilise Etape 1bis" as DATASET_TEST
+  database "dataset\nchsa-triage-baseline-metrics (prive)\noptionnel, suivi E2_05" as DATASET_METRIQUES_EVAL
   node "Space Streamlit\nchsa-triage-sft-monitor (prive)" as SPACE {
     component "monitoring/app_suivi_entrainement.py\n[FAIT]" as DASHBOARD
     component "monitoring/hf_dataset_runs.py\n[FAIT]" as HFDATASETRUNS_SPACE
   }
 }
 
-node "HF Jobs (GPU A10G/T4 a l'usage, ephemere)\nEnvironnement B" as REMOTE {
-  node "Environnement uv (--extra remote)" as VENV {
-    component "training/E2_04_sft_train.py\n[FAIT] jamais execute sur GPU reel" as CLI
+node "Machine locale du developpeur\n(WSL2, lance hf jobs uv run, meme uv que Environnement A)" as LOCAL {
+  component "hf jobs uv run\n(CLI huggingface_hub)" as HFJOBSCLI
+  component "monitoring/importer_mlflow_local.py\n[FAIT]" as IMPORTER
+  component "monitoring/reconstruire_courbe_sft_depuis_log.py\n[FAIT]" as RECONSTRUIRE
+  component "monitoring/hf_dataset_runs.py\n[FAIT]" as HFDATASETRUNS_LOCAL
+  database "~/.chsa-triage/mlflow.db\n(SQLite, persistant, LOCAL)" as MLFLOW_LOCAL
+  component "mlflow ui\n(uv run mlflow ui ~-~-backend-store-uri sqlite:///...)" as MLFLOW_UI
+  database "recipes/sft_qwen3_lora.yaml\n(fichier LOCAL reel, auto-televerse\npar hf jobs uv run vers /data)" as RECETTE_LOCALE
+}
+
+node "HF Jobs (GPU L4 a l'usage, ephemere)\nJob entrainement SFT-LoRA [FAIT] execute avec succes le 16/09/2026" as REMOTE_TRAIN {
+  node "Environnement uv (--extra remote, resolu a neuf, PAS uv.lock)" as VENV_TRAIN {
+    component "training/E2_04_sft_train.py\n[FAIT] execute avec succes sur GPU reel\n(televerse par URL brute GitHub)" as CLI_TRAIN
     component "chsa_triage.application\n[FAIT] E2_00-E2_03, verdict_convergence,\ngrille_hyperparametres" as APP
     component "chsa_triage.domain\n[FAIT]" as DOM
     component "chsa_triage.infrastructure.adapters\n[FAIT] chatml/mlflow/tensorboard/\nhf_dataset/trl_sft_entraineur" as INFRA
     component "transformers + bitsandbytes\n(BitsAndBytesConfig 4-bit NF4)" as HF
     component "peft (LoraConfig)" as PEFT
-    component "trl (SFTTrainer)" as TRL
-    component "Unsloth / Liger Kernel /\nFlashAttention-2 (optionnels)" as OPT
+    component "trl (SFTTrainer, loss_type=nll)" as TRL
+    component "Unsloth (non cable, plafonne trl a 0.24.0\nsur une resolution fraiche) / Liger Kernel /\nFlashAttention-2 (optionnels)" as OPT
   }
 
-  database "data/splits/*.jsonl\n(ou dataset HF Hub une fois versionne)" as SPLITS
-  database "recipes/sft_qwen3_lora.yaml" as RECIPE
-  database "checkpoints/sft-lora/\n(poids LoRA locaux au job)" as CKPT_LOCAL
-  database "data/processed/\ncheckpoints_sft.jsonl\n(metadonnees)" as CKPT_META
-  database "sqlite:///data/processed/mlflow.db\n(URI_SUIVI_MLFLOW_DEFAUT,\nLOCAL au conteneur, perdu\na la fin du job)" as MLFLOW_EPHEMERE
+  database "/data/sft_qwen3_lora.yaml\n(recette, AUTO-TELEVERSEE par\nhf jobs uv run, chemin reserve)" as RECIPE_MOUNTED
+  database "/mnt/train-data/dataset_pivot_anonymise.jsonl\n(volume monte, hf://datasets/...,\nJAMAIS /data : chemin reserve)" as SPLITS
+  database "outputs/sft-lora/\n(poids LoRA locaux au job,\nperdu a la fin du job)" as CKPT_LOCAL
+  database "data/processed/\ncheckpoints_sft.jsonl\n(metadonnees, LOCAL au job,\nperdu si le volume n'est pas remonte)" as CKPT_META
+  database "sqlite:///data/processed/mlflow.db\n(fallback si suivi.backend=mlflow,\nLOCAL au conteneur, perdu a la fin\ndu job ; PAS le defaut depuis le\ncorrectif du 16/09/2026)" as MLFLOW_EPHEMERE
 }
 
-node "Machine locale du developpeur\n(WSL2, meme uv que Environnement A)" as LOCAL {
-  component "monitoring/importer_mlflow_local.py\n[FAIT]" as IMPORTER
-  component "monitoring/hf_dataset_runs.py\n[FAIT]" as HFDATASETRUNS_LOCAL
-  database "~/.chsa-triage/mlflow.db\n(SQLite, persistant, LOCAL)" as MLFLOW_LOCAL
-  component "mlflow ui\n(uv run mlflow ui ~-~-backend-store-uri sqlite:///...)" as MLFLOW_UI
+node "HF Jobs (GPU, ephemere)\nJob evaluation post-SFT (E2_05) [FAIT] cablage verifie,\njamais execute sur GPU reel (README §2.4)" as REMOTE_EVAL {
+  node "Environnement uv (--extra remote)" as VENV_EVAL {
+    component "interfaces/cli/E2_05_evaluer_post_sft.py\n[FAIT] cablage verifie sans GPU\n(televerse par URL brute GitHub)" as CLI_EVAL
+    component "EvaluerBaselineZeroShotUseCase\n(existant, Etape 1bis, reutilise sans\nmodification)" as APP_EVAL
+    component "TransformersLoraInferenceAdapter\n[FAIT] base bf16 + peft.PeftModel" as INFRA_EVAL
+  }
 }
 
-HFHUB --> VENV : huggingface_hub.from_pretrained()\n(HF_TOKEN)
+' ----------------------------------------------------------------------
+' Lancement (poste local -> HF Jobs), package installe depuis GitHub
+' ----------------------------------------------------------------------
 
-CLI --> APP
+HFJOBSCLI --> GITHUB : ~-~-with "chsa-triage[remote] @\ngit+https://github.com/.../m14_ocr.git@main"\n(installe le paquet, PAS un git clone)
+HFJOBSCLI --> REMOTE_TRAIN : soumet le job (~-~-flavor l4x1,\n~-~-timeout 6h, ~-~-secrets HF_TOKEN)
+HFJOBSCLI --> REMOTE_EVAL : soumet le job (~-~-flavor l4x1,\n~-~-secrets HF_TOKEN)
+GITHUB --> CLI_TRAIN : script recupere par URL brute\n(raw.githubusercontent.com)
+GITHUB --> CLI_EVAL : script recupere par URL brute\n(raw.githubusercontent.com)
+RECETTE_LOCALE ..> RECIPE_MOUNTED : auto-televersement (fichier LOCAL\nexistant -> bucket /data du job,\nargument reecrit automatiquement,\ncf. HfApi._create_uv_command_env_and_secrets)
+HFHUB --> VENV_TRAIN : huggingface_hub.from_pretrained()\n(HF_TOKEN, poids du modele de base)
+HFHUB --> VENV_EVAL : huggingface_hub.from_pretrained()\n(HF_TOKEN, poids du modele de base)
+DATASET_TRAIN --> SPLITS : -v hf://datasets/chsa-triage-sft-train-data:/mnt/train-data\n(volume monte, PAS d'auto-televersement :\n576 Mo, trop volumineux)
+
+' ----------------------------------------------------------------------
+' Entrainement (job GPU L4, execute avec succes le 16/09/2026)
+' ----------------------------------------------------------------------
+
+CLI_TRAIN --> APP
 APP --> DOM
 APP --> INFRA
 INFRA --> HF
 INFRA --> PEFT
 INFRA --> TRL
-TRL ..> OPT : optimisations optionnelles
-CLI --> RECIPE : lit la configuration\n(quantification, LoRA,\nhyperparametres, grille,\nsuivi.backend)
+TRL ..> OPT : optimisations optionnelles,\njamais cablees (unsloth/liger/flash-attn-2)
+CLI_TRAIN --> RECIPE_MOUNTED : lit la configuration\n(quantification, LoRA,\nhyperparametres, grille,\nsuivi.backend: hf_dataset)
 INFRA --> SPLITS : lecture (train/val)
-INFRA --> CKPT_LOCAL : ecriture (poids LoRA,\nvia peft/trl)
+INFRA --> CKPT_LOCAL : ecriture (poids LoRA,\nvia trainer.save_model())
 INFRA --> CKPT_META : ecriture (CheckpointEntraine,\nvia RepositoryLectureEcriture)
-INFRA ..> MLFLOW_EPHEMERE : suivi.backend: mlflow\n(defaut recette, EPHEMERE)
-INFRA ..> DATASET_METRIQUES : suivi.backend: hf_dataset\n(HfDatasetSuiviExperimentation,\nCommitScheduler, ~-~-suivi-hf-repo)
-CKPT_LOCAL --> REPO_CHECKPOINTS : push_to_hub()\n(Etape 3 : charge ce checkpoint\ncomme politique de reference)
+INFRA ..> MLFLOW_EPHEMERE : suivi.backend: mlflow\n(fallback local, plus le defaut)
+INFRA ..> DATASET_METRIQUES : suivi.backend: hf_dataset (defaut\ndepuis le 16/09/2026),\nHfDatasetSuiviExperimentation,\nCommitScheduler, ~-~-suivi-hf-repo
+CLI_TRAIN --> REPO_LORA : ~-~-checkpoint-hf-repo,\n_publier_checkpoint_hf (HfApi.upload_folder),\nUNE SEULE FOIS, meilleur essai seulement
+
+' ----------------------------------------------------------------------
+' Evaluation post-SFT (job GPU, cablage verifie, jamais lance sur GPU reel)
+' ----------------------------------------------------------------------
+
+CLI_EVAL --> APP_EVAL
+APP_EVAL --> INFRA_EVAL
+DATASET_TEST --> CLI_EVAL : hf_hub_download() (meme\nsous-ensemble que les 2 baselines\nzero-shot, §2.2)
+REPO_LORA --> INFRA_EVAL : peft.PeftModel.from_pretrained\n(poids LoRA du meilleur essai)
+INFRA_EVAL ..> DATASET_METRIQUES_EVAL : ~-~-suivi-hf-repo\n(HfDatasetSuiviExperimentation)
+INFRA_EVAL ..> MLFLOW_EPHEMERE : ~-~-suivi-uri (sqlite, defaut,\nsi ~-~-suivi-hf-repo absent)
+
+' ----------------------------------------------------------------------
+' Suivi en vivo (Space) et historique local (importateur + MLflow)
+' ----------------------------------------------------------------------
 
 DATASET_METRIQUES --> DASHBOARD : HfApi.list_repo_files()\n+ hf_hub_download() (via\nhf_dataset_runs.py), lecture EN VIVO
 DATASET_METRIQUES --> HFDATASETRUNS_LOCAL : memes appels, executes\ndepuis la machine locale (pas\nle Space), a la demande
 
 HFDATASETRUNS_LOCAL --> IMPORTER
 IMPORTER --> MLFLOW_LOCAL : MlflowSuiviExperimentation\n(demarrer_run/logger_metrique/terminer_run),\nidempotent (search_runs)
-MLFLOW_UI --> MLFLOW_LOCAL : lecture (comparaison de runs,\nhistorique complet, tous backends\nSFT et DPO confondus)
+RECONSTRUIRE --> DATASET_METRIQUES : republie la courbe reconstruite\n(sft-lora-16092026-reconstruit/),\na partir du log brut sauvegarde du job
+MLFLOW_UI --> MLFLOW_LOCAL : lecture (comparaison de runs,\nhistorique complet, tous backends\nSFT/eval confondus)
 
-note bottom of REMOTE
+note bottom of REMOTE_TRAIN
   Session GPU facturee a l'usage (cf.
   docs/01_environnement §3.4 discipline
   de facturation). AUCUN Dockerfile propre
@@ -75,13 +125,71 @@ note bottom of REMOTE
   Docker n'est requis par le cahier des
   charges (§6) qu'a l'Etape 4 (endpoint
   FastAPI/vLLM final), jamais pour
-  l'entrainement SFT/DPO.
+  l'entrainement SFT/DPO. Job reel :
+  GPU L4, ~20 min, 342 pas, verdict SAINE,
+  poids publies avec succes (16/09/2026,
+  cf. AGENTS.md/README §2.3 point 8).
 end note
 
-note bottom of VENV
-  torch / trl / peft / bitsandbytes /
-  unsloth / liger-kernel : groupe --extra
-  remote de pyproject.toml.
+note bottom of GITHUB
+  hf jobs uv run N'EST PAS un git clone :
+  ~-~-with "chsa-triage[remote] @ git+..."
+  installe le paquet Python directement
+  depuis GitHub (packaging pyproject.toml),
+  et le script est televerse a part par URL
+  brute (raw.githubusercontent.com). Cette
+  resolution se fait A NEUF a chaque
+  lancement (PAS uv.lock) : c'est ce qui a
+  plafonne trl a 0.24.0 via la dependance
+  unsloth non bornee de l'extra remote,
+  cause reelle de l'echec chunked_nll (cf.
+  AGENTS.md, README §2.3 point 7).
+end note
+
+note bottom of RECIPE_MOUNTED
+  Mecanisme reel (lu dans huggingface_hub.
+  HfApi._create_uv_command_env_and_secrets,
+  verifie sans reseau) : tout argument du
+  script qui EST un fichier local existant
+  est auto-televerse vers un bucket propre
+  au job puis reecrit vers /data/<nom>
+  (chemin RESERVE, HF_JOBS_ARTIFACTS_
+  MOUNT_PATH) ; tout argument qui N'EST PAS
+  un fichier local ET finit en .py/.sh/
+  .yaml/.yml/.toml echoue COTE CLIENT avant
+  meme la soumission du job. recipes/ n'est
+  PAS installe par le paquet PyPI/GitHub
+  (absent de [tool.hatch.build.targets.
+  wheel].packages) : ce mecanisme est donc
+  la seule facon reelle de livrer
+  ~-~-recette a un job distant.
+end note
+
+note bottom of SPLITS
+  Le pivot anonymise complet (576 Mo) est
+  trop volumineux pour l'auto-televersement
+  ci-dessus a chaque lancement : mecanisme
+  retenu, un volume monte
+  (-v hf://datasets/<depot>:/mnt/train-data),
+  sur un chemin AUTRE que /data (reserve).
+  FormaterDatasetChatMLUseCase filtre deja
+  type_exemple==SFT et le split demande a
+  la lecture : ~-~-dataset pointe vers le
+  pivot COMPLET reparti, jamais vers un
+  sous-ensemble de publication deja extrait
+  (§1.7, bien plus petit).
+end note
+
+note bottom of CKPT_META
+  Metadonnees CheckpointEntraine (chemin,
+  hyperparametres, verdict) : jamais
+  publiees sur HF Hub, contrairement aux
+  poids (REPO_LORA) et aux metriques
+  (DATASET_METRIQUES). Sur un job distant
+  dont le disque ne survit pas au job,
+  seul le CONTENU de ce fichier reste
+  recuperable via les logs du job, jamais
+  le fichier JSONL lui-meme.
 end note
 
 note bottom of MLFLOW_EPHEMERE
@@ -90,27 +198,34 @@ note bottom of MLFLOW_EPHEMERE
   Environnement A et B (aurait exige
   Postgres + Docker + authentification d'un
   Space prive, trop d'infrastructure pour ce
-  POC). Ce backend MLflow "mlflow" de la
-  recette reste local au conteneur HF Jobs et
-  disparait a la fin du job : utile pour un
-  coup d'oeil pendant le run lui-meme,
-  jamais comme historique durable. Le suivi
-  DURABLE passe par suivi.backend: hf_dataset
-  (ci-dessus) puis l'importateur local
-  (LOCAL, ci-dessous).
+  POC). Ce backend MLflow "mlflow" reste
+  local au conteneur HF Jobs et disparait a
+  la fin du job. Trouvaille reelle (16/09/2026) :
+  le tout premier entrainement complet reussi
+  a perdu sa courbe entiere de cette facon
+  (~-~-suivi-hf-repo passe mais suivi.backend
+  encore a mlflow dans la recette a ce
+  moment-la) ; reconstruite a posteriori par
+  RECONSTRUIRE depuis le log brut du job. Le
+  suivi DURABLE passe desormais par
+  suivi.backend: hf_dataset (defaut de la
+  recette) + le guard
+  _verifier_suivi_hf_repo_coherent qui refuse
+  de demarrer en cas d'incoherence.
 end note
 
 note bottom of LOCAL
-  Tourne SUR LA MACHINE du developpeur (jamais
-  sur le Space ni sur HF Jobs) : telecharge le
-  meme depot dataset HF que le dashboard, mais
-  a la demande (uv run python
-  monitoring/importer_mlflow_local.py), et
-  alimente un MLflow LOCAL persistant
-  (~/.chsa-triage/mlflow.db par defaut),
-  idempotent (ne reimporte pas un run deja
-  present, sauf ~-~-forcer). C'est l'historique
-  COMPLET (tous runs, SFT et DPO confondus,
+  Poste de LANCEMENT reel de hf jobs uv run
+  (jamais execute depuis le Space ni depuis
+  un job HF Jobs lui-meme) : c'est la machine
+  locale qui possede recipes/sft_qwen3_lora.yaml
+  (fichier reel, auto-televerse) et les
+  credentials HF (~-~-secrets HF_TOKEN). Alimente
+  aussi un MLflow LOCAL persistant
+  (~/.chsa-triage/mlflow.db), idempotent
+  (ne reimporte pas un run deja present, sauf
+  ~-~-forcer). C'est l'historique COMPLET (tous
+  runs, entrainement et evaluation confondus,
   meme mecanisme generique) ; le dashboard
   Streamlit ne montre qu'un run a la fois, en
   vivo, depuis le Space.
@@ -122,6 +237,23 @@ note bottom of SPACE
   d'entrainement en vivo"). Visualiseur
   passif : lit DATASET_METRIQUES en vivo,
   n'ecrit jamais dans le depot.
+end note
+
+note bottom of REMOTE_EVAL
+  Meme mecanisme de lancement exact que
+  REMOTE_TRAIN (package installe depuis
+  GitHub, script par URL brute, ~-~-secrets
+  HF_TOKEN), mais JAMAIS lance avec un
+  ~-~-flavor GPU reel (cout hors perimetre a
+  ce jour). Verifie sans GPU dans cet
+  environnement (17/09/2026) : telechargement
+  reel de DATASET_TEST et de REPO_LORA
+  confirmes, puis TransformersLoraInferenceAdapter
+  refuse explicitement (RuntimeError, jamais
+  de repli silencieux CPU) faute de GPU CUDA.
+  Consomme REPO_LORA directement DANS l'Etape 2
+  (pas seulement a l'Etape 3, contrairement a
+  une version anterieure de ce diagramme).
 end note
 
 @enduml

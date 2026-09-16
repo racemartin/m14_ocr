@@ -2,9 +2,18 @@
 !pragma layout smetana
 !include ../../_common/estilo.iuml
 
-title Étape 2 : Diagramme de paquets\nModules/classes du SFT-LoRA et leur relation à l'existant (Étape 1) : [FAIT] (réel), y compris TrlSftEntraineurAdapter et training/E2_04_sft_train.py (jamais exécutés sur GPU réel, cf. notes)
+title Étape 2 : Diagramme de paquets\nModules/classes du SFT-LoRA et leur relation à l'existant (Étape 1/1bis) : [FAIT] (réel), premier entraînement réel réussi sur GPU (verdict SAINE, poids publiés) et évaluation post-SFT câblée (cf. AGENTS.md)
 
-package "training\n(analogue à interfaces/cli pour l'Étape 2)\n[FAIT] écrit, jamais exécuté sur GPU réel" as TRAINING {
+package "interfaces.cli\n(Étape 2, nouveaux points d'entrée légers)" as CLI {
+  class E2_00_formater_dataset_chatml <<FAIT, mode didactique optionnel>>
+  class E2_05_evaluer_post_sft <<FAIT, câblage vérifié, jamais exécuté sur GPU réel>>
+}
+
+package "scripts" as SCRIPTS {
+  class check_env_gpu <<FAIT, existant, defaut Qwen3-1.7B-Base>>
+}
+
+package "training\n(analogue à interfaces/cli pour l'entrainement, [FAIT] exécuté avec succès sur GPU réel)" as TRAINING {
   class sft_train
 }
 
@@ -14,6 +23,7 @@ package "application" as APPLICATION {
     class EntrainerSftUseCase <<E2_01, FAIT>>
     class AjusterBoucleHyperparametresSftUseCase <<E2_02, FAIT>>
     class SauvegarderCheckpointSftUseCase <<E2_03, FAIT>>
+    class EvaluerBaselineZeroShotUseCase <<existant Étape 1bis, réutilisé sans modification pour E2_05>>
   }
   class "verdict_convergence\n(fonction pure)" as VerdictFn <<FAIT>>
   class "grille_hyperparametres\n(fonction pure)" as GrilleFn <<FAIT>>
@@ -33,8 +43,10 @@ package "domain\n(zéro dépendance externe)" as DOMAIN {
   package "ports" {
     interface RepositoryLectureEcriture <<existant, Étape 1>>
     interface FormateurConversation <<FAIT>>
+    interface FormateurInviteZeroShot <<existant, Étape 1bis>>
     interface EntraineurSupervise <<FAIT>>
     interface SuiviExperimentation <<FAIT>>
+    interface MoteurInference <<existant, Étape 1bis>>
     class ResultatEntrainementSFT <<FAIT>>
   }
 }
@@ -42,11 +54,16 @@ package "domain\n(zéro dépendance externe)" as DOMAIN {
 package "infrastructure" as INFRASTRUCTURE {
   package "adapters" {
     class JsonlDatasetRepository <<existant, Étape 1>>
+    class JsonlExempleFormateRepository <<FAIT>>
+    class JsonlCheckpointRepository <<FAIT>>
     class ChatMLFormateurAdapter <<FAIT>>
-    class TrlSftEntraineurAdapter <<FAIT, jamais exécuté sur GPU réel>>
+    class TrlSftEntraineurAdapter <<FAIT, exécuté avec succès sur GPU L4 le 16/09/2026>>
     class MlflowSuiviExperimentation <<FAIT>>
     class TensorboardSuiviExperimentation <<FAIT>>
     class HfDatasetSuiviExperimentation <<FAIT>>
+    class LlamaCppInferenceAdapter <<existant, Étape 1bis>>
+    class TransformersInferenceAdapter <<existant, Étape 1bis>>
+    class TransformersLoraInferenceAdapter <<FAIT, Étape 2>>
   }
 }
 
@@ -54,6 +71,7 @@ package "monitoring\n(hors training/ et interfaces/cli/, cf. AGENTS.md)" as MONI
   class app_suivi_entrainement <<FAIT, dashboard Streamlit>>
   class importer_mlflow_local <<FAIT, CLI locale>>
   class hf_dataset_runs <<FAIT, frontière réseau HF Hub partagée>>
+  class reconstruire_courbe_sft_depuis_log <<FAIT, reconstruit une courbe perdue depuis un log brut>>
 }
 
 ' ----------------------------------------------------------------------
@@ -61,6 +79,8 @@ package "monitoring\n(hors training/ et interfaces/cli/, cf. AGENTS.md)" as MONI
 ' ----------------------------------------------------------------------
 
 sft_train ..> JsonlDatasetRepository
+sft_train ..> JsonlExempleFormateRepository
+sft_train ..> JsonlCheckpointRepository
 sft_train ..> ChatMLFormateurAdapter
 sft_train ..> TrlSftEntraineurAdapter
 sft_train ..> MlflowSuiviExperimentation
@@ -99,18 +119,49 @@ CheckpointEntraine --> MetriquesEntrainement
 CheckpointEntraine --> VerdictConvergence
 
 JsonlDatasetRepository ..|> RepositoryLectureEcriture
+JsonlExempleFormateRepository ..|> RepositoryLectureEcriture
+JsonlCheckpointRepository ..|> RepositoryLectureEcriture
 ChatMLFormateurAdapter ..|> FormateurConversation
+ChatMLFormateurAdapter ..|> FormateurInviteZeroShot
 TrlSftEntraineurAdapter ..|> EntraineurSupervise
 MlflowSuiviExperimentation ..|> SuiviExperimentation
 TensorboardSuiviExperimentation ..|> SuiviExperimentation
 HfDatasetSuiviExperimentation ..|> SuiviExperimentation
+LlamaCppInferenceAdapter ..|> MoteurInference
+TransformersInferenceAdapter ..|> MoteurInference
+TransformersLoraInferenceAdapter ..|> MoteurInference
 
-sft_train ..> HfDatasetSuiviExperimentation : suivi.backend: hf_dataset
+sft_train ..> HfDatasetSuiviExperimentation : suivi.backend: hf_dataset\n(défaut de la recette depuis le\ncorrectif du 16/09/2026)
+
+' ----------------------------------------------------------------------
+' Nouveaux points d'entree CLI (Étape 2)
+' ----------------------------------------------------------------------
+
+E2_00_formater_dataset_chatml ..> FormaterDatasetChatMLUseCase
+E2_00_formater_dataset_chatml ..> JsonlDatasetRepository
+E2_00_formater_dataset_chatml ..> JsonlExempleFormateRepository
+E2_00_formater_dataset_chatml ..> ChatMLFormateurAdapter
+
+E2_05_evaluer_post_sft ..> EvaluerBaselineZeroShotUseCase
+E2_05_evaluer_post_sft ..> JsonlDatasetRepository
+E2_05_evaluer_post_sft ..> ChatMLFormateurAdapter
+E2_05_evaluer_post_sft ..> TransformersLoraInferenceAdapter
+E2_05_evaluer_post_sft ..> MlflowSuiviExperimentation
+E2_05_evaluer_post_sft ..> HfDatasetSuiviExperimentation
+
+EvaluerBaselineZeroShotUseCase --> ExemplePivot
+EvaluerBaselineZeroShotUseCase --> FormateurInviteZeroShot
+EvaluerBaselineZeroShotUseCase --> MoteurInference
+EvaluerBaselineZeroShotUseCase --> SuiviExperimentation
+EvaluerBaselineZeroShotUseCase --> RepositoryLectureEcriture
+
+check_env_gpu ..> TransformersLoraInferenceAdapter : porte d'entree recommandee\navant tout job GPU reel
 
 app_suivi_entrainement ..> hf_dataset_runs
 importer_mlflow_local ..> hf_dataset_runs
 importer_mlflow_local ..> MlflowSuiviExperimentation : reproduit les runs\ntéléchargés (sqlite:///... local)
 hf_dataset_runs ..> HfDatasetSuiviExperimentation : lit le même dépôt dataset HF\n(NOM_FICHIER_METRIQUES partagé)
+reconstruire_courbe_sft_depuis_log ..> HfDatasetSuiviExperimentation : republie la courbe reconstruite\ndans le même dépôt dataset HF
 
 note bottom of RepositoryLectureEcriture
   Réutilisé pour 3 types d'entités au total :
@@ -120,23 +171,48 @@ note bottom of RepositoryLectureEcriture
 end note
 
 note right of TrlSftEntraineurAdapter
-  [FAIT] Écrit et vérifié SANS GPU (signatures
-  trl/peft/bitsandbytes inspectées, jamais
-  exécuté sur une vraie session GPU à ce jour).
-  Seul module du projet qui importe trl / peft /
-  bitsandbytes / unsloth / liger_kernel.
-  Charge le modèle quantifié et construit
-  LoraConfig dans son constructeur, jamais
-  exposé au-dessus de la frontière
-  domain/application (02_etapes_cas_usage.md §1).
+  [FAIT] Écrit et d'abord vérifié SANS GPU
+  (signatures trl/peft/bitsandbytes inspectées),
+  puis RÉELLEMENT exécuté sur un job HF Jobs GPU
+  L4 facturé le 16/09/2026 (~20 min, 342 pas,
+  verdict SAINE, poids publiés). Seul module du
+  projet qui importe trl / peft / bitsandbytes /
+  unsloth / liger_kernel. Charge le modèle
+  quantifié et construit LoraConfig dans son
+  constructeur, jamais exposé au-dessus de la
+  frontière domain/application
+  (02_etapes_cas_usage.md §1). Deux trouvailles
+  réelles sur ce run précis : entrainement.
+  type_perte=chunked_nll garanti d'échouer (trl
+  plafonné à 0.24.0 par la dépendance unsloth,
+  non câblée, de l'extra remote), corrigé à nll ;
+  et suivi.backend devait valoir hf_dataset pour
+  que ~-~-suivi-hf-repo ne soit pas ignoré en
+  silence (guard _verifier_suivi_hf_repo_coherent).
+end note
+
+note bottom of E2_05_evaluer_post_sft
+  [FAIT] Réutilise EvaluerBaselineZeroShotUseCase
+  (Étape 1bis) SANS AUCUNE MODIFICATION, comme
+  interfaces/cli/E1_06_01_evaluer_baseline_gpu.py :
+  seul l'adaptateur d'inférence change
+  (TransformersLoraInferenceAdapter : modèle de
+  base bf16 + peft.PeftModel.from_pretrained par-
+  dessus). Câblage vérifié sans GPU réel
+  (17/09/2026) ; les vrais chiffres post-SFT
+  restent à produire sur un job HF Jobs GPU réel
+  (README §2.4).
 end note
 
 note bottom of sft_train
-  [FAIT] Écrit, jamais exécuté sur GPU réel
-  (pas d'Environnement B disponible à ce jour).
-  Analogue de interfaces/cli/*.py pour l'Étape 1,
-  mais placé dans training/ (exécuté via HF Jobs,
-  cf. docs/01_environnement), pas dans
+  [FAIT] Écrit, puis RÉELLEMENT exécuté avec
+  succès sur GPU L4 (HF Jobs, 16/09/2026) :
+  ~20 min, 342 pas, verdict SAINE, poids LoRA
+  publiés sur un dépôt modèle HF privé via
+  ~-~-checkpoint-hf-repo. Analogue de
+  interfaces/cli/*.py pour l'Étape 1, mais placé
+  dans training/ (exécuté via HF Jobs, cf.
+  docs/01_environnement), pas dans
   interfaces/cli/, qui reste réservé aux scripts
   sans dépendance GPU. AUCUN Docker : HF Jobs
   fournit directement un conteneur GPU éphémère,
@@ -146,10 +222,13 @@ end note
 
 note bottom of MONITORING
   [FAIT] app_suivi_entrainement.py (Space
-  Streamlit distant, lit le dépôt HF en vivo) et
+  Streamlit distant, lit le dépôt HF en vivo),
   importer_mlflow_local.py (tourne sur la machine
   LOCALE du développeur, alimente un MLflow local
-  SQLite) : deux lecteurs passifs indépendants du
+  SQLite) et reconstruire_courbe_sft_depuis_log.py
+  (reconstruit une courbe perdue à partir du log
+  brut d'un job passé, republiée dans le même
+  dépôt) : lecteurs/réparateurs indépendants du
   même dépôt dataset HF, jamais un serveur MLflow
   partagé (cf. deploiement_etape2.puml).
 end note

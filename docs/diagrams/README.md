@@ -68,10 +68,17 @@ codée (`interfaces/api/`, `interfaces/web/`), à mettre à jour dès que
 le code correspondant existe. Les diagrammes de l'Étape 2 (SFT) sont
 passés de « conceptuel » à « réel » le 14/09/2026 une fois
 `training/E2_04_sft_train.py` et `TrlSftEntraineurAdapter` effectivement
-écrits (vérifiés SANS GPU, jamais exécutés sur une vraie session GPU,
-cf. notes des diagrammes de séquence/paquets/activité) et le paquet
-`monitoring/` (dashboard Streamlit + importateur MLflow local)
-ajouté au diagramme de paquets.
+écrits (vérifiés SANS GPU, jamais exécutés sur une vraie session GPU à
+ce moment-là) et le paquet `monitoring/` (dashboard Streamlit +
+importateur MLflow local) ajouté au diagramme de paquets. Mis à jour le
+17/09/2026 (diagrammes de classes, de paquets et de déploiement de
+l'Étape 2) pour refléter le premier entraînement SFT-LoRA réellement
+exécuté avec succès sur GPU L4 (verdict SAINE, poids publiés), les
+trois adaptateurs `MoteurInference` réels, la publication réelle des
+poids/métriques sur HF Hub, et les deux nouveaux CLI
+(`interfaces/cli/E2_00_formater_dataset_chatml.py`,
+`interfaces/cli/E2_05_evaluer_post_sft.py`) : cf. AGENTS.md pour le
+détail complet.
 **[A FAIRE]** = pas encore produit : les diagrammes de séquence et de
 paquets du DPO (Étape 3) restent à faire, aucune proposition de
 conception équivalente n'ayant encore été documentée pour cette étape ;
