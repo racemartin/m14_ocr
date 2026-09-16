@@ -687,6 +687,19 @@ dataset d'aujourd'hui ; le CLI l'indique clairement plutot que
 d'afficher un pourcentage trompeur calcule sur une poignee de
 coincidences.
 
+**Resultat reel (16/09/2026), run `baseline-zero-shot` dans le MLflow
+local (`sqlite:///data/processed/mlflow.db`), meme sous-ensemble de 278
+exemples `split=test`/`type_exemple=sft` que la baseline GPU ci-dessous,
+apres les fixes `--parallel 1` et de resilience aux echecs isoles
+(tous les deux documentes plus haut) :** exact match 0.000, F1 moyen
+(token) 0.037 (valeur exacte 0.03662720909500452), exactitude de
+classification du niveau ESI non calculable (0/242 paires comparables,
+cf. le point de vigilance sur le format JSON ci-dessus), latence
+moyenne 21571,9 ms (~21,6 s) par generation, et 36/278 exemples
+ignores pour echec d'inference isole (`nombre_echecs_inference`) ; les
+242 exemples restants sont ceux effectivement compares pour ces
+metriques.
+
 #### Évaluation baseline zero-shot GPU (Étape 1bis, sur HF Jobs)
 
 Meme mesure que ci-dessus (`Qwen/Qwen3-1.7B-Base` SANS entrainement, meme
@@ -784,6 +797,29 @@ RESOLUTION/INSTALLATION du paquet, pas l'execution complete du script sur
 l'infrastructure HF Jobs elle-meme (jamais lancee, cf. ci-dessus).
 `--secrets HF_TOKEN` transmet le token HF necessaire au telechargement du
 depot dataset PRIVE `--dataset-hf-repo` depuis le job distant.
+
+**Resultat reel (16/09/2026), job `baseline-zero-shot-gpu` relance avec
+succes sur GPU reel (`--flavor l4x1`) :** apres les deux corrections
+reelles issues du premier essai ci-dessus (extra `[local]` -> `[remote]`
+de `pyproject.toml`, cf. le paragraphe dedie plus haut et AGENTS.md ; et
+l'usage correct de `--secrets HF_TOKEN` pour transmettre le token, plutot
+que de coller sa valeur en clair dans la commande), le job a ete relance
+pour de vrai sur une GPU L4 et a complete avec succes, journalise dans le
+meme MLflow local que la baseline CPU. Sur les memes 278 exemples
+`split=test`/`type_exemple=sft` : 278 evalues et 278 comparables (ZERO
+echec d'inference), exact match 0.000, F1 moyen (token) 0.043 (valeur
+exacte 0.04338116533022368), exactitude de classification du niveau ESI
+non calculable (0/278, meme raison que la baseline CPU ci-dessus),
+latence moyenne 7295,4 ms (~7,3 s) par generation.
+
+**Comparaison des deux baselines (point de depart mesurable pour §2.3) :**
+la baseline GPU/bf16 est nettement plus rapide que la baseline CPU/Q4_K_M
+(~7,3 s contre ~21,6 s par generation), ne subit aucun echec d'inference
+(0/278 contre 36/278 en CPU), et obtient un F1 token legerement superieur
+(0.043 contre 0.037), vraisemblablement du a la precision complete plutot
+qu'a la quantification Q4_K_M ; le futur modele SFT-LoRA (§2.3) devra
+depasser ces deux points de reference de facon mesurable (cahier des
+charges §9).
 
 ### 2.3 Entrainement SFT-LoRA
 
