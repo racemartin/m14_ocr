@@ -204,7 +204,10 @@ entrainement:
   nombre_epoques: 3
   taille_lot: 4
   packing: true
-  type_perte: chunked_nll
+  type_perte: nll  # pas chunked_nll : trl est plafonne a 0.24.0 par la
+                    # dependance unsloth (extra remote, non cablee) des
+                    # qu'une resolution fraiche a lieu (HF Jobs), un trl
+                    # anterieur a chunked_nll -- cf. AGENTS.md
   assistant_only_loss: true
 
 grille_hyperparametres:

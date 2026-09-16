@@ -48,8 +48,11 @@ partition "training/E2_04_sft_train.py (Environnement B, GPU)\n[FAIT] écrit, ja
     [FAIT] le cas d'usage (testé avec un faux
     EntraineurSupervise) ; [FAIT] aussi
     TrlSftEntraineurAdapter (packing=True,
-    loss_type=chunked_nll), vérifié SANS GPU,
+    loss_type=nll), vérifié SANS GPU,
     jamais exécuté sur une vraie session GPU.
+    (loss_type=chunked_nll a échoué sur un
+    job GPU réel : trl plafonné à 0.24.0 par
+    unsloth, cf. AGENTS.md)
     Suivi : SuiviExperimentation [FAIT]
     (MlflowSuiviExperimentation /
     TensorboardSuiviExperimentation /

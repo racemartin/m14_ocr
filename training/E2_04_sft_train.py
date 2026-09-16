@@ -60,6 +60,19 @@ complete. Utiliser `--assistant-only-loss false` pour lancer un
 premier run reel malgre cette limite connue (perte pleine sequence,
 pas seulement sur les tokens assistant).
 
+AVERTISSEMENT CRITIQUE, `type_perte` (trouve sur un vrai job GPU L4
+facture, echoue le 16/09/2026, cf. AGENTS.md) : `recipes/
+sft_qwen3_lora.yaml::entrainement.type_perte` valait `chunked_nll`,
+qui EXISTE bien dans trl>=1.12, mais la dependance `unsloth` de
+l'extra `remote` (non cablee dans le code) plafonne `trl` a 0.24.0 des
+qu'une resolution fraiche a lieu comme sur HF Jobs (`hf jobs uv run`
+n'utilise pas `uv.lock`), et ce trl 0.24.0 ne connait pas
+`chunked_nll`. La recette est corrigee a `nll` ; ce script verifie en
+plus `type_perte` (`_verifier_type_perte_valide`) AVANT de charger le
+modele, meme patron que le guard `assistant_only_loss` ci-dessus. Voir
+l'AVERTISSEMENT complet dans `infrastructure/adapters/
+trl_sft_entraineur.py`.
+
 AVERTISSEMENT CRITIQUE, PERSISTANCE DES POIDS (trouve et corrige le
 16/09/2026, cf. AGENTS.md) : `TrlSftEntraineurAdapter.entrainer()`
 ecrit les poids LoRA UNIQUEMENT en local (`trainer.save_model()` sous
@@ -120,6 +133,8 @@ from chsa_triage.infrastructure.adapters import (
 from tools.rafael.log_tool import LogTool
 
 log = LogTool(origin="E2_04_sft_train")
+
+VALEURS_TYPE_PERTE_VALIDES = frozenset({"nll", "dft"})
 
 CHEMIN_DATASET_FORMATE_DEFAUT = "data/processed/dataset_formate.jsonl"
 CHEMIN_CHECKPOINTS_DEFAUT     = "data/processed/checkpoints_sft.jsonl"
@@ -190,6 +205,32 @@ def _publier_checkpoint_hf(chemin_local: str, depot_hf: str) -> None:
     api = HfApi()
     api.create_repo(repo_id=depot_hf, repo_type="model", private=True, exist_ok=True)
     api.upload_folder(repo_id=depot_hf, folder_path=chemin_local, repo_type="model")
+
+
+def _verifier_type_perte_valide(type_perte: str) -> None:
+    """
+    Garde-fou AVANT tout chargement de modele/GPU : `type_perte` doit
+    etre une valeur de `loss_type` sure pour ce projet. `trl` accepte
+    bien `'chunked_nll'` depuis trl>=1.12 (verifie source, cf.
+    AVERTISSEMENT dans `infrastructure/adapters/trl_sft_entraineur.py`),
+    mais la dependance `unsloth` de l'extra `remote` (non cablee dans
+    le code, jamais utilisee) impose `trl<=0.24.0` des qu'une
+    resolution FRAICHE a lieu (`hf jobs uv run --with "chsa-triage[remote]
+    @ git+..."` ne reutilise PAS `uv.lock`, contrairement a `uv sync
+    --extra remote` en local) : ce trl 0.24.0 reellement installe par
+    le job ne connait pas encore `'chunked_nll'`. Trouvaille reelle, sur
+    un job GPU L4 de pay reel qui a echoue avec exactement cette erreur
+    le 16/09/2026 (cf. AGENTS.md, meme AVERTISSEMENT).
+    """
+    if type_perte not in VALEURS_TYPE_PERTE_VALIDES:
+        raise SystemExit(
+            f"entrainement.type_perte={type_perte!r} n'est pas garanti disponible : seules "
+            f"{sorted(VALEURS_TYPE_PERTE_VALIDES)} sont sures avec la resolution de dependances reelle de "
+            "ce projet (trl est plafonne a 0.24.0 par la dependance 'unsloth', non cablee, de l'extra "
+            "remote, des qu'une resolution fraiche a lieu comme sur HF Jobs). Voir "
+            "infrastructure/adapters/trl_sft_entraineur.py et AGENTS.md pour le detail reel, verifie sur "
+            "un job GPU facture qui a echoue avec cette erreur exacte."
+        )
 
 
 def _construire_suivi(recette_suivi: dict, arguments: argparse.Namespace):
@@ -292,6 +333,8 @@ def main() -> None:
             "abandon avant de charger le modele (pas de cout GPU inutile). "
             "Voir infrastructure/adapters/trl_sft_entraineur.py pour le detail."
         )
+
+    _verifier_type_perte_valide(recette["entrainement"]["type_perte"])
 
     # -------------------------------------------------------------------------
     # PREPARE ADAPTERS (Dependency Injection)

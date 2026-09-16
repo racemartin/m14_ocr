@@ -1092,6 +1092,59 @@ remplace, aucun reseau reel). NON VERIFIE : la publication d'un
 checkpoint REEL (poids produits par un vrai entrainement), faute de
 GPU disponible ici.
 
+**7. Premier vrai lancement GPU (L4, payant), echec a la construction
+de `SFTTrainer`, cause reelle et correction (16/09/2026) :** un vrai
+job GPU L4 facture a ete lance (pas seulement le job de verification
+`cpu-basic` ci-dessus) : il est alle loin (telechargement reel du
+dataset, formatage ChatML, tokenisation, `packing`, guard
+`assistant_only_loss` deja franchi), puis a echoue a la construction de
+`SFTTrainer` avec `ValueError: Invalid loss_type chunked_nll passed.
+Supported values are 'nll' and 'dft'.` `recipes/sft_qwen3_lora.yaml::
+entrainement.type_perte` valait `chunked_nll`, une optimisation
+memoire reelle (calcule la perte par morceaux de la sequence pour
+eviter de materialiser le tenseur de logits complet, cf. §2.1/00_
+introduction_concepts.md) jamais confrontee au trl REELLEMENT installe
+par ce job. **Cause reelle, pas un simple typo** : `chunked_nll`
+EXISTE bien dans `trl` depuis la version 1.12 (verifie par lecture du
+code source de plusieurs versions de `trl`, installees temporairement
+dans un venv jetable), et est meme la valeur PAR DEFAUT de
+`SFTConfig.loss_type`. Mais l'extra `remote` de `pyproject.toml` liste
+`"unsloth"` SANS borne de version, alors qu'Unsloth n'est PAS cable
+dans le code (cf. AVERTISSEMENT dans
+`infrastructure/adapters/trl_sft_entraineur.py`) ; la derniere version
+publiee d'`unsloth` (verifie reellement via l'API JSON PyPI,
+`unsloth==2026.9.4`) exige sans condition `trl<=0.24.0`, un trl
+pre-1.0 ecrit avant que `chunked_nll` existe (reproduit pour de vrai :
+`uv pip install "trl>=0.9" "unsloth"` dans un venv jetable, sans
+lockfile, resout bien `trl==0.24.0` + `unsloth==2026.9.4`, et l'erreur
+`ValueError` obtenue est identique mot pour mot a celle du job reel).
+Le `uv.lock` commite de ce depot masque le probleme en local (il a
+fige un `unsloth==2024.8` tres ancien, sans contrainte sur `trl`,
+laissant `trl` remonter a 1.13.0 lors d'un `uv sync --extra remote`),
+mais `hf jobs uv run --with "chsa-triage[remote] @ git+..."` (point 4
+ci-dessus) n'utilise PAS `uv.lock` : chaque lancement resout les
+dependances a neuf contre l'etat REEL de PyPI, pas l'etat fige
+localement. **Correction appliquee** : `recipes/sft_qwen3_lora.yaml::
+entrainement.type_perte` passe a `nll` (la valeur standard, supportee
+par toutes les versions de `trl` observees ici, de 0.24.0 a 1.13.0) ;
+`training/E2_04_sft_train.py` verifie desormais `type_perte` contre un
+ensemble de valeurs sures AVANT de charger le modele
+(`_verifier_type_perte_valide`, meme patron que le guard
+`assistant_only_loss`), pour qu'une future config invalide echoue tout
+de suite plutot qu'apres avoir facture le telechargement/formatage/
+tokenisation. **Marge memoire sans `chunked_nll`** : le raisonnement
+VRAM deja documente au point 5 ci-dessus (LoRA rang 16 sur 4 modules
+d'un modele 1.7B quantifie NF4, `l4x1` 24 Go, marge large) reste
+valide : il ne reposait pas sur `chunked_nll`, deja ecrit pour
+`loss_type="nll"` standard ; `chunked_nll` aurait ete un coussin de
+securite supplementaire, pas une condition de faisabilite. Si le pic
+memoire s'avere reellement trop juste sur un futur run, retirer
+`unsloth` (non utilise) de l'extra `remote` permettrait a `trl>=1.12`
+de se resoudre et de recuperer `chunked_nll` pour de vrai : option NON
+appliquee ici (changement de dependances plus large que ce correctif).
+Voir l'AVERTISSEMENT complet dans
+`infrastructure/adapters/trl_sft_entraineur.py` et AGENTS.md.
+
 **Panne serveur connue sur `hf repo create`/`hf repos create --repo-type
 dataset` :** confirme sur ce projet le 16/09/2026, la commande peut
 echouer avec une vraie `500 Internal Server Error` renvoyee par le

@@ -17,7 +17,13 @@ entrainement:
   nombre_epoques: 3
   taille_lot: 4
   packing: true
-  type_perte: chunked_nll
+  # nll, pas chunked_nll : un job GPU reel (16/09/2026) a echoue a la
+  # construction de SFTTrainer avec chunked_nll, car la dependance
+  # "unsloth" (extra remote, non cablee dans le code) plafonne trl a
+  # 0.24.0 des qu'une resolution fraiche a lieu (hf jobs uv run
+  # n'utilise pas uv.lock) et 0.24.0 ne connait pas encore chunked_nll,
+  # cf. infrastructure/adapters/trl_sft_entraineur.py et AGENTS.md.
+  type_perte: nll
   assistant_only_loss: true
 
 grille_hyperparametres:

@@ -77,7 +77,7 @@ def test_entrainement_reel_quelques_pas_perte_baisse(tmp_path):
 
     config_lora = ConfigurationLora(rang=8, alpha=16, dropout=0.05, modules_cibles=("q_proj", "v_proj"))
     hyperparametres = HyperparametresEntrainement(
-        taux_apprentissage=2e-4, nombre_epoques=1, taille_lot=2, packing=False, type_perte="chunked_nll"
+        taux_apprentissage=2e-4, nombre_epoques=1, taille_lot=2, packing=False, type_perte="nll"
     )
     configuration_quantification = ConfigurationQuantification(
         bits=4, type_quantification="nf4", double_quantification=True, dtype_calcul="bfloat16"
