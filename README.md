@@ -1145,6 +1145,47 @@ appliquee ici (changement de dependances plus large que ce correctif).
 Voir l'AVERTISSEMENT complet dans
 `infrastructure/adapters/trl_sft_entraineur.py` et AGENTS.md.
 
+**8. Premier entrainement complet REELLEMENT lance et reussi (GPU L4,
+verdict "saine", poids publies), mais courbe de suivi perdue, cause
+reelle et correction (16/09/2026) :** apres la correction du point 7,
+un run GPU L4 facture complet a ete lance pour de vrai (~20 min, 342
+pas) et a converge (verdict `SAINE`), avec les poids LoRA publies avec
+succes sur `mombasstic/chsa-triage-sft-lora` (point 6 ci-dessus). Mais
+les metriques de la courbe d'entrainement (`perte_train`,
+`perte_validation`, `norme_gradient`) ne sont arrivees NULLE PART de
+durable : perdues. **Cause reelle, verifiee dans le code** : la
+commande de lancement passait bien `--suivi-hf-repo
+mombasstic/chsa-triage-sft-metrics`, mais `recipes/
+sft_qwen3_lora.yaml::suivi.backend` valait encore `mlflow` (la valeur
+par defaut a ce moment-la) ; `training/E2_04_sft_train.py::
+_construire_suivi()` ne lit `arguments.suivi_hf_repo` QUE quand
+`backend == "hf_dataset"`, donc ce flag a ete ignore en silence et les
+metriques ecrites dans un SQLite LOCAL (`data/processed/mlflow.db` par
+defaut) A L'INTERIEUR du conteneur ephemere du job HF Jobs, qui ne
+survit pas au job (meme fait deja documente pour les poids au point 6
+et pour la baseline GPU au §2.2). Confirme en telechargeant
+`mombasstic/chsa-triage-sft-metrics` : il ne contient que le fixture
+`demo_datos_ficticios`, rien du run `sft-lora` reel. **Correction
+appliquee, en deux temps deliberement redondants** : (1) `recipes/
+sft_qwen3_lora.yaml::suivi.backend` vaut maintenant `hf_dataset` par
+defaut (`mlflow` ne redevient pertinent que pour un futur run
+GENUINEMENT local sur GPU propre, disque persistant ; les deux
+commandes reellement documentees ci-dessus, locale et `hf jobs uv run`,
+passent deja `--suivi-hf-repo` ensemble avec `--checkpoint-hf-repo`) ;
+(2) nouvelle fonction `_verifier_suivi_hf_repo_coherent()` (meme patron
+que les guards `assistant_only_loss`/`type_perte`, appelee AVANT tout
+chargement de modele/GPU) refuse de demarrer si `--suivi-hf-repo` est
+fourni alors que `suivi.backend != hf_dataset`, pour que ce flag ne
+puisse plus JAMAIS etre ignore en silence, meme si la recette est
+modifiee de nouveau a l'avenir. VERIFIE SANS GPU NI RESEAU : les deux
+correctifs sont testes (`tests/domain/test_configuration_entrainement.py`
+pour la valeur par defaut de la recette, `tests/training/
+test_E2_04_sft_train.py::TestVerifierSuiviHfRepoCoherent` pour le
+guard). NON VERIFIE ici : la reconstruction de la courbe deja perdue de
+ce run precis, menee separement a partir du log brut du job (hors
+perimetre de cette correction). Voir AGENTS.md pour le meme
+avertissement, redige au niveau du code.
+
 **Panne serveur connue sur `hf repo create`/`hf repos create --repo-type
 dataset` :** confirme sur ce projet le 16/09/2026, la commande peut
 echouer avec une vraie `500 Internal Server Error` renvoyee par le
