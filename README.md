@@ -574,12 +574,28 @@ tar -xzf llama.tar.gz
 # 3. Demarrer le serveur (contexte reduit : suffisant pour des invites
 #    zero-shot courtes, adapte a une machine avec peu de RAM) :
 LD_LIBRARY_PATH=./llama-b10985 ./llama-b10985/llama-server \
-    -m Qwen3-1.7B-Base.Q4_K_M.gguf --port 8080 -c 1024 -t 2 --no-webui --host 0.0.0.0
+    -m Qwen3-1.7B-Base.Q4_K_M.gguf --port 8080 -c 1024 -t 2 --no-webui --host 0.0.0.0 --parallel 1
 
 curl http://127.0.0.1:8080/health
 {"status":"ok"}.
 
 ```
+
+**`--parallel 1` est necessaire, pas cosmetique (confirme le 16/09/2026) :**
+sans ce flag, `llama-server` choisit `--parallel`/`-np` automatiquement
+(defaut `-1` = auto) et a reparti le `-c 1024` ci-dessus entre 4 slots
+paralleles sur cette machine, soit ~256 tokens de contexte REELS par
+requete (verifie avec `curl http://127.0.0.1:8080/props`, champ
+`total_slots`), pas 1024. Une invite medicale reelle (question +
+gabarit de chat rendu) depasse facilement 256 tokens, ce qui a produit
+un `500 Internal Server Error` sur `/completion` apres plusieurs
+minutes de generation. `EvaluerBaselineZeroShotUseCase.executer()`
+(`src/chsa_triage/application/use_cases/E1_06_00_evaluer_baseline_zero_shot.py`)
+genere ses requetes SEQUENTIELLEMENT, jamais en parallele : les slots
+supplementaires n'apportent donc aucun benefice ici, ils ne font que
+voler du contexte a l'unique requete reellement utilisee. Avec
+`--parallel 1`, `/props` confirme `total_slots: 1` et les 1024 tokens
+de contexte demandes sont bien tous disponibles pour cette requete.
 
 Puis, dans un second terminal :
 
