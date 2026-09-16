@@ -48,6 +48,7 @@ après pour naviguer par section plutôt que par script.
 | Étape 1bis (Baseline zero-shot) | `interfaces/cli/E1_06_00_evaluer_baseline.py` | Évalue la baseline zero-shot en local (CPU), via un `llama-server` déjà lancé sur un GGUF quantifié Q4_K_M. |
 | Étape 1bis (Baseline zero-shot) | `interfaces/cli/E1_06_01_evaluer_baseline_gpu.py` | Même évaluation baseline zero-shot mais en pleine précision (bf16, transformers) sur un job HF Jobs GPU, pour isoler l'effet de la quantification. |
 | Étape 2 (SFT + LoRA) | `scripts/check_env_gpu.py` | Vérifie que l'environnement GPU (Environnement B) est prêt avant un run SFTTrainer/DPOTrainer coûteux (chat template, tokens ChatML, `assistant_only_loss`, chargement 4-bit). |
+| Étape 2 (SFT + LoRA) | `interfaces/cli/E2_00_formater_dataset_chatml.py` | Point d'entrée autonome pour `FormaterDatasetChatMLUseCase` (rendu ChatML d'un split), avec un mode didactique optionnel (`--exemples N`, cape à 2) qui logue par `LogTool` l'`ExemplePivot` brut puis son rendu ChatML final. |
 | Étape 2 (SFT + LoRA) | `training/E2_04_sft_train.py` | Point d'entrée d'entraînement SFT-LoRA réel (orchestre les 4 cas d'usage `E2_00`-`E2_03`), exécuté via HF Jobs (GPU requis). |
 | Étape 2 (SFT + LoRA) | `monitoring/app_suivi_entrainement.py` | Dashboard Streamlit (déployé sur HF Spaces) de visualisation en direct de la courbe d'apprentissage d'un run SFT-LoRA. |
 | Étape 2 (SFT + LoRA) | `monitoring/hf_dataset_runs.py` | Frontière réseau partagée (`HfApi.list_repo_files`/`hf_hub_download`) vers le dataset HF de métriques, réutilisée par le dashboard et l'importateur (module support, pas un script autonome). |
@@ -81,6 +82,7 @@ exécutable).
   - [1.8 Extraction du sous-ensemble DPO publiable](#18-extraction-du-sous-ensemble-dpo-pour-publication-hugging-face)
 - [2. SFT + LoRA (Étape 2)](#2-sft--lora-étape-2)
   - [2.1 Architecture](#21-architecture)
+    - [Mode didactique : inspecter le rendu ChatML d'un split](#mode-didactique--inspecter-le-rendu-chatml-dun-split)
   - [2.2 Évaluation baseline zero-shot (Étape 1bis)](#22-évaluation-baseline-zero-shot-étape-1bis)
     - [Baseline CPU, via llama.cpp](#évaluation-baseline-zero-shot-étape-1bis-avant-sftdpo)
     - [Baseline GPU, via transformers sur HF Jobs](#évaluation-baseline-zero-shot-gpu-étape-1bis-sur-hf-jobs)
@@ -628,6 +630,32 @@ adaptateurs, est documentée dans `docs/03_etape2_sft/` (concepts,
 installation Environnement B, cas d'usage `E2_NN_uc_*`, guide
 d'implémentation pas à pas) ; voir aussi les notes correspondantes
 dans `AGENTS.md`.
+
+#### Mode didactique : inspecter le rendu ChatML d'un split
+
+`E2_00_uc_formater_dataset_chatml.py`/`FormaterDatasetChatMLUseCase`
+n'a longtemps été invoqué que depuis l'intérieur de
+`training/E2_04_sft_train.py` (étape 1 du pipeline d'entraînement,
+GPU requis). `interfaces/cli/E2_00_formater_dataset_chatml.py` en
+expose un point d'entrée autonome et bon marché, avec les mêmes
+adaptateurs réels (`JsonlDatasetRepository` + `ChatMLFormateurAdapter`) :
+
+```bash
+uv run python interfaces/cli/E2_00_formater_dataset_chatml.py \
+    --dataset data/processed/dataset_pivot_anonymise.jsonl \
+    --split train \
+    --exemples 2
+```
+
+`--exemples N` (capé à 2) logue par `LogTool`, en plus de l'écriture
+normale vers `--dataset-formate`, l'`ExemplePivot` brut (tours
+prompt/completion) puis le texte ChatML final rendu par
+`ChatMLFormateurAdapter.formater()` pour les N premiers exemples du
+split, sans aucune logique de rendu réimplémentée. Purement additif et
+lecture seule/console : l'écriture vers `--dataset-formate` est
+strictement identique avec ou sans ce flag, et `training/
+E2_04_sft_train.py` n'est pas modifié (il continue d'invoquer le cas
+d'usage directement).
 
 ### 2.2 Évaluation baseline zero-shot (Étape 1bis)
 
