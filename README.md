@@ -1,5 +1,7 @@
 # CHSA Triage : Agent IA de Triage Médical (POC)
 
+## Introduction
+
 POC d'agent IA de triage médical pour le Centre Hospitalier
 Saint-Aurélien, développé sous architecture hexagonale (ports &
 adaptateurs). La documentation vit dans `docs/`, structurée en
@@ -19,23 +21,40 @@ Chaque document se termine par un renvoi vers le suivant, pour lire
 la documentation dans l'ordre du projet en partant de
 `docs/00_cadrage/00_objectifs_du_projet.md`.
 
-## Séquence complète, de bout en bout
+## Table des matières
 
-Index de navigation rapide vers les sections existantes, dans
-l'ordre reel du pipeline. Chaque detail (commandes, options) vit
-uniquement dans la section liee ; ne pas dupliquer ici.
+- [1. Préparation des données (Étape 1)](#1-préparation-des-données-étape-1)
+  - [1.1 Démarrage rapide (installation)](#11-démarrage-rapide-installation)
+  - [1.2 Téléchargement (Hugging Face Hub -> data/raw/)](#12-telechargement-hugging-face-hub---dataraw)
+  - [1.3 Profilage individuel](#13-profilage-individuel-un-rapport-ydata-profiling-par-corpus)
+  - [1.4 Construction du dataset pivot](#14-construction-du-dataset-pivot-meme---sortie--fusionne-les-corpus-par-identifiant)
+  - [1.5 Anonymisation](#15-anonymisation-incrementalereprenable-cf---limite-ecrit-dans-un-fichier-separe)
+    - [Contrôle qualité de l'anonymisation](#controle-qualite-de-lanonymisation-comparaison-de-fichiers)
+    - [Révision humaine persistée des candidats de PII résiduelle (NF2)](#revision-humaine-persistee-des-candidats-de-pii-residuelle-nf2)
+  - [1.6 Découpage en splits (train / val / test, stratifié)](#16-decoupage-en-splits-train--val--test-stratifie)
+    - [Vérification de la répartition des splits par strate](#verification-de-la-repartition-des-splits-par-strate)
+  - [1.7 Extraction du sous-ensemble SFT publiable](#17-extraction-du-sous-ensemble-sft-5000-exemples-pour-publication-hugging-face)
+  - [1.8 Extraction du sous-ensemble DPO publiable](#18-extraction-du-sous-ensemble-dpo-pour-publication-hugging-face)
+- [2. SFT + LoRA (Étape 2)](#2-sft--lora-étape-2)
+  - [2.1 Architecture](#21-architecture)
+  - [2.2 Évaluation baseline zero-shot (Étape 1bis)](#22-évaluation-baseline-zero-shot-étape-1bis)
+    - [Baseline CPU, via llama.cpp](#évaluation-baseline-zero-shot-étape-1bis-avant-sftdpo)
+    - [Baseline GPU, via transformers sur HF Jobs](#évaluation-baseline-zero-shot-gpu-étape-1bis-sur-hf-jobs)
+  - [2.3 Entraînement SFT-LoRA](#23-entrainement-sft-lora)
+    - [Historique complet dans un MLflow local (importateur)](#historique-complet-dans-un-mlflow-local-importateur)
+  - [2.4 Évaluation post-SFT](#24-évaluation-post-sft)
+- [3. DPO (Étape 3)](#3-dpo-étape-3)
+- [Structure (architecture hexagonale)](#structure-architecture-hexagonale)
+- [État d'avancement](#état-davancement)
 
-1. [Préparation des données (Étape 1, sections 1 à 8)](#pipeline-étape-1-les-6-fichiers-sources-fusionnes-dans-le-meme-dataset-pivot)
-2. [Extraction du sous-ensemble SFT publiable](#9-extraction-du-sous-ensemble-sft-5000-exemples-pour-publication-hugging-face)
-3. [Extraction du sous-ensemble DPO publiable](#10-extraction-du-sous-ensemble-dpo-pour-publication-hugging-face)
-4. [Évaluation baseline zero-shot (Étape 1bis)](#11-évaluation-baseline-zero-shot-étape-1bis-avant-sftdpo)
-5. [Évaluation baseline zero-shot GPU, sur HF Jobs (Étape 1bis)](#12-évaluation-baseline-zero-shot-gpu-étape-1bis-sur-hf-jobs)
-6. [Entraînement SFT réel](#suivi-dentrainement-en-vivo-étape-2--dashboard-streamlit)
-7. **DPO (Étape 3) : non implémenté à ce jour.** Aucune commande ni
-   étape n'existe encore dans le code pour cette phase ; voir
-   `docs/04_etape3_dpo/` (à venir).
+## 1. Préparation des données (Étape 1)
 
-## Démarrage rapide (Étape 1 : données)
+Les 6 fichiers sources sont fusionnés dans le même dataset pivot,
+puis anonymisés, contrôlés, répartis en splits et enfin extraits en
+sous-ensembles publiables (SFT et DPO). Détail méthodologique complet
+dans `docs/02_etape1_donnees/`.
+
+### 1.1 Démarrage rapide (installation)
 
 ```bash
 # Installation
@@ -54,9 +73,7 @@ uv run python scripts/check_env_local.py
 uv run pytest tests/ -v
 ```
 
-## Pipeline Étape 1 (les 6 fichiers sources, fusionnes dans le meme dataset pivot)
-
-### 1. Telechargement (Hugging Face Hub -> data/raw/)
+### 1.2 Telechargement (Hugging Face Hub -> data/raw/)
 
 ```bash
 # NB : la configuration "oeq" de MediQAl n'a qu'un split "test" (pas de "train") ; --split explicite requis
@@ -69,7 +86,7 @@ uv run python interfaces/cli/E1_01_telecharger_corpus.py --identifiant-hub keiva
 uv run python interfaces/cli/E1_01_telecharger_corpus.py --identifiant-hub TsinghuaC3I/UltraMedical-Preference --sortie data/raw/ultramedical_preference.jsonl
 ```
 
-### 2. Profilage individuel (un rapport ydata-profiling par corpus)
+### 1.3 Profilage individuel (un rapport ydata-profiling par corpus)
 
 ```bash
 uv run python interfaces/cli/E1_02_profiler_corpus.py --source data/raw/mediqal_oeq.jsonl   --nom MediQAl-oeq
@@ -81,7 +98,7 @@ uv run python interfaces/cli/E1_02_profiler_corpus.py --source data/raw/medquad.
 uv run python interfaces/cli/E1_02_profiler_corpus.py --source data/raw/ultramedical_preference.jsonl --nom UltraMedicalPreference
 ```
 
-### 3. Construction du dataset pivot (meme --sortie : fusionne les corpus par identifiant)
+### 1.4 Construction du dataset pivot (meme --sortie : fusionne les corpus par identifiant)
 
 ```bash
 # NB : MediQAl a 3 configurations, avec 2 schemas differents : le
@@ -132,7 +149,7 @@ cle naturelle par source, investigation legere sur la cause probable
 des doublons UltraMedical-Preference) dans
 `docs/02_etape1_donnees/00_couverture_exigences_officielles.md`.
 
-### 4. Anonymisation (incrementale/reprenable, cf. --limite), ecrit dans un fichier SEPARE
+### 1.5 Anonymisation (incrementale/reprenable, cf. --limite), ecrit dans un fichier SEPARE
 
 ```bash
 # IMPORTANT (08/09/2026, design source/sortie separes) : --dataset (le pivot original) n'est JAMAIS modifie ;
@@ -183,7 +200,7 @@ calendaire absolue (masquee) d'une duree relative ("il y a 3
 semaines", "depuis 2 mois"), laissee intacte, signal clinique pas
 identifiant.
 
-### 5. Controle qualite de l'anonymisation (comparaison de fichiers)
+#### Controle qualite de l'anonymisation (comparaison de fichiers)
 
 ```bash
 # Compare le pivot ORIGINAL (jamais modifie) au fichier ANONYMISE,
@@ -209,7 +226,7 @@ detecte" de "quelque chose detecte" pour la relecture manuelle,
 plutot que de presumer ces cas corrects par defaut. Ecrit son propre
 rapport (`data/processed/rapport_controle_qualite_anonymisation.{json,md}`),
 avec des exemples reels inspectables par source et les compteurs
-d'entites par type repris du rapport RGPD cumule (§4 ci-dessus, pas
+d'entites par type repris du rapport RGPD cumule (§1.5 ci-dessus, pas
 recalcules). Voir `application/use_cases/E1_04_02_controler_qualite_anonymisation.py`.
 
 **Muestreo INCREMENTAL** (09/09/2026, meme
@@ -221,7 +238,7 @@ compare que des identifiants NOUVEAUX. C'est ce qui rend les
 decisions humaines de la section suivante cumulables entre
 executions, au lieu d'un echantillon jete a chaque fois.
 
-### 6. Revision humaine persistee des candidats de PII residuelle (NF2)
+#### Revision humaine persistee des candidats de PII residuelle (NF2)
 
 ```bash
 # Revue interactive : recalcule TOUS les candidats "pendant_revision_humaine"
@@ -236,20 +253,20 @@ uv run python interfaces/cli/E1_04_01_reviser_pii_residuelle.py modify --identif
 
 Ferme l'ecart identifie sur l'exigence NF2 du cahier des charges
 ("anonymisation validee **manuellement**") : avant ce script, le
-verdict `pendant_revision_humaine` du controle qualite (§5) etait un
+verdict `pendant_revision_humaine` du controle qualite (ci-dessus) etait un
 cul-de-sac ; aucune decision de personne n'etait jamais persistee.
 Chaque decision (`accepte` = confirme non-PII, `rejete` = PII reelle
 confirmee) est identifiee par une cle stable
 `(source_liste, identifiant, champ, type_motif, debut, fin)` et
 persistee dans `data/processed/decisions_revision_humaine.jsonl`. Le
-rapport de `E1_04_02_controler_qualite_anonymisation.py` (§5) relit ce fichier
+rapport de `E1_04_02_controler_qualite_anonymisation.py` (ci-dessus) relit ce fichier
 pour annoter chaque candidat en attente de son statut de decision
 (accepte/rejete/encore en attente). Voir
 `application/use_cases/E1_04_01_reviser_pii_residuelle.py` et
 `docs/02_etape1_donnees/01_rapport_rgpd.md` §7.5 pour la methodologie
 complete.
 
-### 7. Decoupage en splits (train / val / test, stratifie)
+### 1.6 Decoupage en splits (train / val / test, stratifie)
 
 ```bash
 # E1_05_00_decouper_splits.py opere sur le fichier ANONYMISE (dataset_pivot_anonymise.jsonl),
@@ -305,7 +322,7 @@ separement).
 humaine (10/09/2026, etendue le 11/09/2026 aux candidats confirmes).**
 Par precaution, un exemple portant au moins un candidat de PII
 residuelle CONFIRME (fuite non ambigue) ou SANS decision humaine
-persistee (§6, `E1_04_01_reviser_pii_residuelle.py`) est exclu du decoupage de
+persistee (§1.5 ci-dessus, `E1_04_01_reviser_pii_residuelle.py`) est exclu du decoupage de
 cette execution : il reste sans `split` jusqu'a ce qu'une decision
 soit prise (ou, pour un candidat confirme, indefiniment tant que le
 texte n'est pas corrige). `E1_05_00_decouper_splits.py` accepte donc desormais les memes
@@ -317,7 +334,7 @@ ensemble : `--original` (defaut `data/processed/dataset_pivot.jsonl`),
 et `--jeton-masque`. Le nombre d'exemples exclus pour cette raison
 lors de cette execution est affiche en sortie.
 
-### 8. Verification de la repartition des splits par strate
+#### Verification de la repartition des splits par strate
 
 ```bash
 # E1_05_00_decouper_splits.py n'affiche que le total global (train/val/test).
@@ -336,7 +353,7 @@ uv run python interfaces/cli/E1_05_01_verifier_repartition_splits.py --dataset d
 
 `E1_04_00_anonymiser_dataset.py` affiche une barre de progression `tqdm` pendant le traitement (peut durer plusieurs dizaines de minutes sur un gros dataset).
 
-### 9. Extraction du sous-ensemble SFT (5000 exemples, pour publication Hugging Face)
+### 1.7 Extraction du sous-ensemble SFT (5000 exemples, pour publication Hugging Face)
 
 Deux etapes : exporter les identifiants a exclure (candidats de PII
 residuelle confirmes ou en attente), puis soustraire ce fichier du
@@ -344,24 +361,24 @@ pivot anonymise deja reparti en splits.
 
 **Correction (12/09/2026) :** `ExtraireSousEnsembleSftUseCase` ne
 filtrait auparavant que sur `split != null`, sans filtrer
-`type_exemple` ; `DecouperSplitsUseCase` (§7) reparti A DESSEIN les
+`type_exemple` ; `DecouperSplitsUseCase` (§1.6) reparti A DESSEIN les
 deux types (SFT et DPO) dans le meme fichier anonymise, donc des
 exemples DPO (ex. UltraMedical-Preference, `chosen`/`rejected`
 renseignes, `completion` vide) se retrouvaient dans le sous-ensemble
 cense n'etre que du SFT (constate : un fichier de 5000 lignes etait
 72% DPO). Le filtre `type_exemple == TypeExemple.SFT` est maintenant
 explicite, avant tout comptage/exclusion/recoupe (idem pour
-`FormaterDatasetChatMLUseCase`, §Etape 2). Consequence directe : la
+`FormaterDatasetChatMLUseCase`, §2 Etape 2). Consequence directe : la
 taille reellement ecrite depend du nombre d'exemples PUREMENT SFT deja
 repartis en split, pas du pool total (SFT+DPO) comme avant ; `--taille`
 reste un PLAFOND, jamais un nombre garanti (cf. `manque` ci-dessous) :
 si le pivot anonymise n'a encore couvert qu'une fraction du corpus
 complet (vagues incrementales de `E1_04_00_anonymiser_dataset.py`,
-§4), le pool SFT disponible peut etre plus petit que `--taille` et le
+§1.5), le pool SFT disponible peut etre plus petit que `--taille` et le
 fichier ecrit contiendra alors HONNETEMENT moins de lignes (renommer
 le fichier de sortie pour que son nom reflete ce compte reel, cf.
 `chemin_sortie_defaut`). Sur le pivot COMPLETEMENT anonymise et
-reparti (134 883 exemples, 37 802 SFT/97 081 DPO, §4/§7), le pool SFT
+reparti (134 883 exemples, 37 802 SFT/97 081 DPO, §1.5/§1.6), le pool SFT
 disponible large permet d'atteindre les 5000 demandes sans y toucher.
 
 ```bash
@@ -370,7 +387,7 @@ disponible large permet d'atteindre les 5000 demandes sans y toucher.
 #    soumise a decision humaine), ou au moins un candidat
 #    VERDICT_REVISION_HUMAINE sans decision DECISION_ACCEPTE persistee
 #    (candidat encore ouvert, ou explicitement rejete). Meme replay
-#    deterministe que `E1_04_01_reviser_pii_residuelle.py verify` (§6), etendu
+#    deterministe que `E1_04_01_reviser_pii_residuelle.py verify` (§1.5), etendu
 #    aux candidats CONFIRME.
 uv run python interfaces/cli/E1_04_01_reviser_pii_residuelle.py exporter \
     --dataset data/processed/dataset_pivot.jsonl \
@@ -389,7 +406,7 @@ uv run python interfaces/cli/E1_05_02_extraire_sous_ensemble_sft.py \
 
 Exemple reel (12/09/2026, apres correction du filtre `type_exemple` ET
 apres avoir complete l'anonymisation/le decoupage sur les 134 883
-exemples du pivot, §4/§7 ; controle qualite §5 elargi a 1350
+exemples du pivot, §1.5/§1.6 ; controle qualite §1.5 elargi a 1350
 identifiants echantillonnes cumules, dont 444 de sources SFT, avant
 cette extraction) :
 
@@ -420,9 +437,9 @@ lorsque seule une fraction du pivot avait ete anonymisee),
 automatiquement (ce n'est qu'un filtre/une soustraction, pas un
 nouveau muestreo) : il affiche clairement combien d'exemples restent
 et combien manquent, et suggere d'elargir l'anonymisation
-(`E1_04_00_anonymiser_dataset.py --limite <N>`, §4) puis le decoupage
+(`E1_04_00_anonymiser_dataset.py --limite <N>`, §1.5) puis le decoupage
 des splits (`E1_05_00_decouper_splits.py --n <N>` ou sans `--n` pour
-tout completer, §7) avant de relancer l'extraction ; elargir seulement
+tout completer, §1.6) avant de relancer l'extraction ; elargir seulement
 `--n` sans avoir d'abord anonymise davantage n'ajoute pas de nouveaux
 exemples SFT si le pool SFT anonymise lui-meme est deja epuise.
 
@@ -439,7 +456,7 @@ deux correspondent avant publication), prive par defaut, meme s'il ne
 contient que les 5000 exemples filtres et non le pivot complet : il
 s'agit toujours de texte medical anonymise, et la visibilite privee
 minimise l'exposition publique tant que la couverture du controle
-qualite (§5) reste partielle (voir la limite de couverture
+qualite (§1.5) reste partielle (voir la limite de couverture
 ci-dessous). Le depot pourra etre rendu public plus tard depuis
 l'interface web de Hugging Face si souhaite.
 
@@ -465,27 +482,27 @@ wc -l /tmp/verificacion_hf/dataset_chsa_triage_sft_anonymise_5000.jsonl   # doit
 
 **Limite de couverture connue :** l'exclusion ci-dessus ne peut porter
 que sur ce qui a deja ete AUDITE. Seul un sous-ensemble du pivot a ete
-echantillonne par le controle qualite (§5, 1350 identifiants cumules
+echantillonne par le controle qualite (§1.5, 1350 identifiants cumules
 sur 134 883 a ce jour, ~1%) ; un exemple jamais echantillonne peut
 donc encore contenir une PII residuelle non detectee, meme apres
 l'etape 1. Augmenter la couverture de
-`E1_04_02_controler_qualite_anonymisation.py` (§5) avant publication reduit ce
+`E1_04_02_controler_qualite_anonymisation.py` (§1.5) avant publication reduit ce
 risque, mais ne l'elimine pas completement sans audit exhaustif.
 
-### 10. Extraction du sous-ensemble DPO (pour publication Hugging Face)
+### 1.8 Extraction du sous-ensemble DPO (pour publication Hugging Face)
 
-Meme patron exact que §9 (`ExtraireSousEnsembleSftUseCase`), en
+Meme patron exact que §1.7 (`ExtraireSousEnsembleSftUseCase`), en
 filtrant `type_exemple == TypeExemple.DPO` au lieu de SFT : le cahier
 des charges (`docs/00_cadrage/01_cahier_des_charges.md` §7, Livrable
 1) exige "SFT ~5000 paires + DPO" dans le dataset publie, et
 `E1_05_03_extraire_sous_ensemble_dpo.py` produit ce second sous-ensemble
 a partir du meme pivot anonymise et du meme fichier d'exclusions PII
 (reutilise tel quel, sans le regenerer). Meme fichier d'exclusions
-(§9 etape 1) : un identifiant y figure independamment du type
+(§1.7 etape 1) : un identifiant y figure independamment du type
 d'exemple, l'export ne le regenere donc pas.
 
 ```bash
-# Reutilise le meme fichier d'exclusions que §9 etape 1 (pas besoin de
+# Reutilise le meme fichier d'exclusions que §1.7 etape 1 (pas besoin de
 # le regenerer si deja fait) :
 uv run python interfaces/cli/E1_04_01_reviser_pii_residuelle.py exporter \
     --dataset data/processed/dataset_pivot.jsonl \
@@ -501,7 +518,7 @@ uv run python interfaces/cli/E1_05_03_extraire_sous_ensemble_dpo.py \
     --taille 5000
 ```
 
-Sortie attendue (meme forme que §9, `Strate` prefixee `dpo/` au lieu
+Sortie attendue (meme forme que §1.7, `Strate` prefixee `dpo/` au lieu
 de `sft/` puisque `calculer_repartition_par_strate` groupe par
 `type_exemple`) :
 
@@ -517,19 +534,19 @@ dpo/UltraMedical-Preference                    <...>           <...>            
 ```
 
 Sur le pivot completement anonymise et reparti (134 883 exemples,
-37 802 SFT / 97 081 DPO au 12/09/2026, §4/§7), le pool DPO disponible
+37 802 SFT / 97 081 DPO au 12/09/2026, §1.5/§1.6), le pool DPO disponible
 (uniquement `UltraMedical-Preference` a ce jour) est largement
 suffisant pour atteindre les 5000 demandes sans y toucher ; comme en
-§9, `--taille` reste un PLAFOND jamais garanti si le pivot anonymise
+§1.7, `--taille` reste un PLAFOND jamais garanti si le pivot anonymise
 ne couvre encore qu'une fraction du corpus complet.
 
-**Publication sur Hugging Face Hub.** Meme depot que §9 recommande une
+**Publication sur Hugging Face Hub.** Meme depot que §1.7 recommande une
 publication SEPAREE (deux fichiers distincts dans le meme depot
 prive), pour que le nom du fichier continue de refleter honnetement
 son contenu et son compte reel :
 
 ```bash
-# Le depot existe deja depuis §9 (creer une seule fois) :
+# Le depot existe deja depuis §1.7 (creer une seule fois) :
 hf repo create mombasstic/dataset_chsa_triage_sft_anonymise_5000 --repo-type dataset --private
 
 # Publier le fichier DPO a cote du fichier SFT deja publie :
@@ -538,19 +555,51 @@ hf upload mombasstic/dataset_chsa_triage_sft_anonymise_5000 data/processed/datas
 # Publier/mettre a jour la dataset card (README.md du depot HF) :
 hf upload mombasstic/dataset_chsa_triage_sft_anonymise_5000 docs/02_etape1_donnees/dataset_card_dpo_hf.md README.md --repo-type dataset
 
-# Verifier le compte de lignes cote Hub (meme methode que §9, ne pas
+# Verifier le compte de lignes cote Hub (meme methode que §1.7, ne pas
 # se fier au dataset viewer qui peut prendre du temps sur un depot prive) :
 hf download mombasstic/dataset_chsa_triage_sft_anonymise_5000 dataset_chsa_triage_dpo_anonymise_5000.jsonl --repo-type dataset --local-dir /tmp/verificacion_hf_dpo
 wc -l /tmp/verificacion_hf_dpo/dataset_chsa_triage_dpo_anonymise_5000.jsonl
 ```
 
-Meme limite de couverture qu'en §9 : l'exclusion ne porte que sur ce
-qui a deja ete audite par le controle qualite (§5).
+Meme limite de couverture qu'en §1.7 : l'exclusion ne porte que sur ce
+qui a deja ete audite par le controle qualite (§1.5).
 
-### 11. Évaluation baseline zero-shot (Étape 1bis, avant SFT/DPO)
+## 2. SFT + LoRA (Étape 2)
+
+Architecture retenue, deux mesures de baseline zero-shot (CPU
+quantifié et GPU pleine précision, pour ne jamais mélanger l'effet de
+la quantification avec l'effet réel de l'entraînement), l'entraînement
+SFT-LoRA réel avec suivi en direct, et l'évaluation post-entraînement
+(pas encore implémentée).
+
+### 2.1 Architecture
+
+L'architecture hexagonale (domain/application/infrastructure,
+interfaces/, training/) est commune à tout le projet ; voir
+[Structure (architecture hexagonale)](#structure-architecture-hexagonale)
+plus bas pour le schéma des dossiers, et le détail complet dans
+`docs/01_environnement/01_architecture_hexagonale.md`. La partie
+spécifique à l'Étape 2 (SFT + LoRA), domaine/ports/application/
+adaptateurs, est documentée dans `docs/03_etape2_sft/` (concepts,
+installation Environnement B, cas d'usage `E2_NN_uc_*`, guide
+d'implémentation pas à pas) ; voir aussi les notes correspondantes
+dans `AGENTS.md`.
+
+### 2.2 Évaluation baseline zero-shot (Étape 1bis)
+
+Deux mesures indépendantes de la performance de `Qwen/Qwen3-1.7B-Base`
+SANS entrainement, avant SFT/DPO, pour disposer d'un point de
+comparaison mesurable (cahier des charges §9 : "l'accuracy...
+depasse la baseline zero-shot de facon mesurable") : CPU quantifie
+Q4_K_M via llama.cpp (Environnement A, local), et GPU pleine precision
+bf16 via transformers (Environnement B, HF Jobs), pour ne jamais
+melanger l'effet de la quantification avec l'effet reel de
+l'entrainement.
+
+#### Évaluation baseline zero-shot (Étape 1bis, avant SFT/DPO)
 
 Mesure la performance de `Qwen/Qwen3-1.7B-Base` SANS entrainement sur
-le split `test` DEJA EXISTANT du pivot anonymise (champ `split`, §7),
+le split `test` DEJA EXISTANT du pivot anonymise (champ `split`, §1.6),
 pour disposer d'un point de comparaison mesurable avant SFT/DPO
 (cahier des charges §9 : "l'accuracy... depasse la baseline zero-shot
 de facon mesurable"). Environnement A (local, sans GPU) : l'inference
@@ -638,23 +687,23 @@ dataset d'aujourd'hui ; le CLI l'indique clairement plutot que
 d'afficher un pourcentage trompeur calcule sur une poignee de
 coincidences.
 
-### 12. Évaluation baseline zero-shot GPU (Étape 1bis, sur HF Jobs)
+#### Évaluation baseline zero-shot GPU (Étape 1bis, sur HF Jobs)
 
-Meme mesure que §11 (`Qwen/Qwen3-1.7B-Base` SANS entrainement, meme
+Meme mesure que ci-dessus (`Qwen/Qwen3-1.7B-Base` SANS entrainement, meme
 sous-ensemble de 278 exemples `split=test`/`type_exemple=sft`), mais
 sur GPU reel via `transformers` en pleine precision bf16
 (`TransformersInferenceAdapter`), PAS sur GGUF quantifie Q4_K_M
-(§11, `LlamaCppInferenceAdapter`) : pour comparer plus tard au modele
+(ci-dessus, `LlamaCppInferenceAdapter`) : pour comparer plus tard au modele
 SFT/DPO (probablement lui aussi evalue via `transformers`/GPU) SANS
 melanger l'effet de la quantification avec l'effet reel de
 l'entrainement. `EvaluerBaselineZeroShotUseCase` (application) est
-REUTILISE SANS MODIFICATION entre §11 et §12 : seul l'adaptateur
+REUTILISE SANS MODIFICATION entre les deux baselines ci-dessus : seul l'adaptateur
 d'inference change.
 
 Le dataset a evaluer vit sur un depot dataset HF PRIVE deja publie,
 `mombasstic/chsa-triage-baseline-test` (fichier
 `dataset_pivot_test_sft.jsonl`, 278 exemples, EXACTEMENT le meme
-sous-ensemble que §11, pour que les deux resultats soient comparables) ;
+sous-ensemble que la baseline CPU ci-dessus, pour que les deux resultats soient comparables) ;
 il vit aussi, versionne, dans
 `data/splits/dataset_pivot_test_sft.jsonl` de ce depot.
 `interfaces/cli/E1_06_01_evaluer_baseline_gpu.py` le telecharge lui-meme
@@ -675,8 +724,8 @@ le telechargement du dataset depuis `mombasstic/chsa-triage-baseline-test`
 `TransformersInferenceAdapter` en l'absence de GPU CUDA (`RuntimeError`,
 jamais un repli silencieux vers le CPU) ont ete verifies pour de vrai en
 executant la commande ci-dessus dans CET environnement de developpement
-(credentials HF reelles disponibles ici, contrairement a la section
-"Suivi d'entrainement en vivo" ci-dessous). Comme prevu (aucun GPU
+(credentials HF reelles disponibles ici, contrairement a §2.3 ci-dessous).
+Comme prevu (aucun GPU
 disponible ici), les 278 exemples echouent tous a l'inference avec le
 meme `RuntimeError`, et le cas d'usage leve `ValueError` ("rien a
 agreger") : ceci confirme le CABLAGE de bout en bout, PAS les vrais
@@ -736,7 +785,7 @@ l'infrastructure HF Jobs elle-meme (jamais lancee, cf. ci-dessus).
 `--secrets HF_TOKEN` transmet le token HF necessaire au telechargement du
 depot dataset PRIVE `--dataset-hf-repo` depuis le job distant.
 
-## Suivi d'entrainement en vivo (Étape 2 : dashboard Streamlit)
+### 2.3 Entrainement SFT-LoRA
 
 Pendant un run SFT-LoRA reel (Environnement B, GPU sur HF Jobs),
 `training/E2_04_sft_train.py --suivi-hf-repo <repo>` (recette
@@ -824,7 +873,7 @@ Streamlit ni reseau. `data/demos/chsa-triage-sft-metrics-fake.json`
 (graphique, cartes, verdict en direct) sans attendre un run GPU reel,
 une fois publie sur le depot de metriques.
 
-### Historique complet dans un MLflow local (importateur)
+#### Historique complet dans un MLflow local (importateur)
 
 Le dashboard Streamlit ne montre que le run selectionne, en vivo,
 depuis un Space distant : pour parcourir l'HISTORIQUE COMPLET de tous
@@ -877,6 +926,18 @@ reelle sur sqlite temporaire, source HF injectee) et
 `tests/monitoring/test_hf_dataset_runs.py` (frontiere HF Hub,
 `HfApi`/`hf_hub_download` remplaces).
 
+### 2.4 Évaluation post-SFT
+
+**Non implémenté à ce jour.** Aucun cas d'usage ni CLI n'existe encore
+pour évaluer le modèle une fois le SFT-LoRA terminé (§2.3 ci-dessus)
+et comparer ses métriques à la baseline zero-shot mesurée en §2.2 ;
+voir `docs/03_etape2_sft/` pour la planification.
+
+## 3. DPO (Étape 3)
+
+**Non implémenté à ce jour.** Aucune commande ni étape n'existe encore
+dans le code pour cette phase ; voir `docs/04_etape3_dpo/` (à venir).
+
 ## Structure (architecture hexagonale)
 
 ```
@@ -918,7 +979,7 @@ Détail complet : `docs/01_environnement/01_architecture_hexagonale.md`.
       `--registre-echantillons`) et les 35 candidats en attente
       peuvent désormais être tranchés avec une décision humaine
       **persistée** (`E1_04_01_reviser_pii_residuelle.py`,
-      `data/processed/decisions_revision_humaine.jsonl`) ; voir §6
+      `data/processed/decisions_revision_humaine.jsonl`) ; voir §1.5
       ci-dessus et `docs/02_etape1_donnees/01_rapport_rgpd.md` §7.5.
       **Vagues ultérieures** : à relancer avec `--limite` plus grand
       (ou `full`) avant le SFT/DPO ; réévaluer d'abord le risque de
