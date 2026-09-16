@@ -812,14 +812,33 @@ exacte 0.04338116533022368), exactitude de classification du niveau ESI
 non calculable (0/278, meme raison que la baseline CPU ci-dessus),
 latence moyenne 7295,4 ms (~7,3 s) par generation.
 
-**Comparaison des deux baselines (point de depart mesurable pour §2.3) :**
-la baseline GPU/bf16 est nettement plus rapide que la baseline CPU/Q4_K_M
-(~7,3 s contre ~21,6 s par generation), ne subit aucun echec d'inference
-(0/278 contre 36/278 en CPU), et obtient un F1 token legerement superieur
-(0.043 contre 0.037), vraisemblablement du a la precision complete plutot
-qu'a la quantification Q4_K_M ; le futur modele SFT-LoRA (§2.3) devra
-depasser ces deux points de reference de facon mesurable (cahier des
-charges §9).
+**Ce que cette baseline etablit, et ce qu'elle ne cherche pas a etablir :**
+un F1/exact match bas ici est attendu, pas un echec : `Qwen/Qwen3-1.7B-Base`
+n'a encore rien vu du format de triage cible, et l'objectif de cette etape
+n'est pas d'obtenir de bons scores mais de fixer le point zero mesurable
+contre lequel la progression reelle du SFT (§2.3) puis du DPO (§3) sera
+jugee (cahier des charges §9). Le resultat tout aussi important de ce run
+est independant des scores de qualite : le pipeline d'evaluation
+lui-meme (chargement du modele, generation, scoring) est valide de bout
+en bout sur les 278 exemples, sans aucun echec technique. La latence
+mesuree ici (~7,3 s/generation) est une reference "brute", sur HF Jobs
+sans moteur d'inference optimise ; vLLM, deja impose par le cahier des
+charges (§6, "Moteur d'inference impose : vLLM (PagedAttention)") et
+planifie pour l'Etape 4/Semaine 4 (§8, "Deploiement vLLM/Docker/CI-CD"),
+est le levier prevu pour reduire cette latence plus tard, pas quelque
+chose a optimiser des cette etape.
+
+**Comparaison des deux baselines :** la baseline GPU/bf16 est nettement
+plus rapide que la baseline CPU/Q4_K_M (~7,3 s contre ~21,6 s par
+generation), ne subit aucun echec d'inference (0/278 contre 36/278 en
+CPU), et obtient un F1 token legerement superieur (0.043 contre 0.037),
+vraisemblablement du a la precision complete plutot qu'a la
+quantification Q4_K_M.
+
+**Prochaine etape explicite :** l'entrainement SFT-LoRA (§2.3 ci-dessous),
+avec pour objectif direct que le modele commence a produire la structure
+JSON de triage attendue et depasse ce plancher mesure ici en F1/exact
+match, de facon mesurable (cahier des charges §9).
 
 ### 2.3 Entrainement SFT-LoRA
 
