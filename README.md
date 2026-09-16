@@ -702,6 +702,19 @@ uv run python training/E2_04_sft_train.py \
     --suivi-hf-repo mombasstic/chsa-triage-sft-metrics
 ```
 
+**Panne serveur connue sur `hf repo create`/`hf repos create --repo-type
+dataset` :** confirme sur ce projet le 16/09/2026, la commande peut
+echouer avec une vraie `500 Internal Server Error` renvoyee par le
+serveur de Hugging Face lui-meme, sur les deux formes de la commande
+(l'ancienne `hf repo create`, deja marquee "deprecated", et la nouvelle
+`hf repos create`), toutes deux contre le meme endpoint
+`https://huggingface.co/api/repos/create`. Rien a voir avec les
+identifiants ou la syntaxe de la commande : c'est cote HF. Contournement :
+reessayer la commande (l'erreur est generalement transitoire), ou, si
+elle persiste, creer le depot manuellement depuis l'interface web de
+Hugging Face puis continuer avec `hf upload` normalement (le reste du
+flux ne depend pas de la creation du depot via le CLI).
+
 Smoke test local (verifie, sans reseau, contre un JSONL de fixture) :
 `uv run streamlit run monitoring/app_suivi_entrainement.py` (necessite
 `uv sync --extra web --extra local`, groupes `streamlit`/`huggingface_hub`).
