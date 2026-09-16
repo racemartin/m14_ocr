@@ -30,19 +30,23 @@ from chsa_triage.domain.ports.dataset_repository           import RepositoryLect
 from chsa_triage.domain.ports.formateur_invite_zero_shot   import FormateurInviteZeroShot  # Port : formate l'invite zero-shot
 from chsa_triage.domain.ports.moteur_inference             import MoteurInference  # Port : moteur d'inference
 from chsa_triage.domain.ports.suivi_experimentation        import SuiviExperimentation  # Port : suivi du run (MLflow)
+from tools.rafael.log_tool                                 import LogTool  # Log warning par exemple en echec, sans abandonner le run
 
 NOM_RUN_PAR_DEFAUT = "baseline-zero-shot"
+
+log = LogTool(origin="evaluer_baseline_zero_shot")
 
 
 @dataclass(frozen=True, slots=True)
 class ResultatEvaluationBaseline:
     """Resultat agrege d'un run d'evaluation baseline zero-shot."""
 
-    nombre_exemples    : int
-    exact_match        : float
-    f1_moyen           : float
-    exactitude_niveau  : ResultatExactitudeNiveau
-    latence_ms_moyenne : float
+    nombre_exemples          : int
+    exact_match              : float
+    f1_moyen                 : float
+    exactitude_niveau        : ResultatExactitudeNiveau
+    latence_ms_moyenne       : float
+    nombre_echecs_inference  : int = 0
 
 
 # ##############################################################################
@@ -101,21 +105,41 @@ class EvaluerBaselineZeroShotUseCase:
         )
 
         # ----- GENERATION ZERO-SHOT ET COLLECTE DES PAIRES --------------------
+        # Un exemple degenere (generation corrompue rejetee par le serveur
+        # d'inference, ex. 500 sur un checkpoint BASE pres de n_predict) ne
+        # doit jamais abandonner tout le run : on logue et on continue.
         paires      : list[tuple[str, str]] = []
         latences_ms : list[float]           = []
-        for exemple in exemples:
+        nombre_echecs_inference = 0
+        for indice, exemple in enumerate(exemples):
             invite = self.formateur.formater_invite_zero_shot(exemple)
             parametres = {
                 "invite_deja_rendue": True,
                 **self.parametres_generation,
             }
-            reponse = self.moteur.generer(
-                [{"role": "user", "content": invite}], parametres
-            )
+            try:
+                reponse = self.moteur.generer(
+                    [{"role": "user", "content": invite}], parametres
+                )
+            except Exception as erreur:
+                nombre_echecs_inference += 1
+                log.LEVEL_5_WARNING(
+                    "EvaluerBaselineZeroShotUseCase",
+                    f"echec d'inference sur l'exemple {indice} "
+                    f"(identifiant={exemple.identifiant}) : {erreur} ; "
+                    "exemple ignore, run poursuivi",
+                )
+                continue
             paires.append(
                 (reponse.texte, _extraire_texte_reponse_reelle(exemple))
             )
             latences_ms.append(reponse.latence_ms)
+
+        if not paires:
+            raise ValueError(
+                "tous les exemples ont echoue a l'inference "
+                f"({nombre_echecs_inference}/{len(exemples)}) : rien a agreger"
+            )
 
         # ----- AGREGATION DES METRIQUES ---------------------------------------
         resultat = ResultatEvaluationBaseline(
@@ -124,6 +148,7 @@ class EvaluerBaselineZeroShotUseCase:
             f1_moyen=f1_moyen(paires),
             exactitude_niveau=exactitude_classification_niveau(paires),
             latence_ms_moyenne=sum(latences_ms) / len(latences_ms),
+            nombre_echecs_inference=nombre_echecs_inference,
         )
 
         # ----- JOURNALISATION DES METRIQUES ET CLOTURE DU RUN -----------------
@@ -137,6 +162,9 @@ class EvaluerBaselineZeroShotUseCase:
             )
         self.suivi.logger_metrique(
             "latence_ms_moyenne", resultat.latence_ms_moyenne, 0
+        )
+        self.suivi.logger_metrique(
+            "nombre_echecs_inference", resultat.nombre_echecs_inference, 0
         )
         self.suivi.terminer_run()
 
