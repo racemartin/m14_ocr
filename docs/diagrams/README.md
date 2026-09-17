@@ -9,6 +9,9 @@ diagramme UML/PlantUML. Chaque diagramme est fourni en 4 formats :
 docs/diagrams/
 ├── _common/estilo.iuml          style PlantUML partagé (!include)
 ├── 00_vue_ensemble/
+│   ├── vision_generale_etapes.puml  pitch visuel du projet : étapes 1 à 3
+│   │                                  en ordre, avec entrée/sortie de
+│   │                                  chacune (réel, DPO marqué comme futur)
 │   └── activite/                 roadmap complet du projet (4 semaines)
 ├── 01_environnement/
 │   └── paquets/                  architecture hexagonale (classes réelles)
@@ -55,6 +58,7 @@ docs/diagrams/
 | Étape | Activité | Séquence | Paquets | Déploiement |
 |---|---|---|---|---|
 | 00 : Vue d'ensemble | [FAIT] | N/A | N/A | N/A |
+| 00 : Vue d'ensemble : pitch (`vision_generale_etapes.puml`) | [FAIT] (réel) | N/A | N/A | N/A |
 | 01 : Environnement | N/A | N/A | [FAIT] (réel) | N/A |
 | 02 : Étape 1 (données) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel) |
 | 03 : Étape 2 (SFT) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel) |
