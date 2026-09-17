@@ -25,10 +25,7 @@
 POC d'agent IA de triage médical pour le Centre Hospitalier Saint-Aurélien,
 développé sous architecture hexagonale. Ce document est une version
 **condensée** : chaque section suit le patron intro -> commande(s) réelle(s)
--> résultat obtenu, sans le détail d'implémentation. Pour tout le detail
-technique (hallucinations écartées, hallazgos, limites honnêtes, historique
-complet des corrections), voir
-[`README_IMPLEMENTACION_V1.md`](README_IMPLEMENTACION_V1.md).
+-> résultat obtenu, sans le détail d'implémentation. 
 
 <table id="tableau-récapitulatif-des-scripts" style="width:100%;"><tr><td style="background-color:#c9f1edff;">
 <h1 style="border-bottom:none; margin:0;">Tableau récapitulatif des scripts</h1>
