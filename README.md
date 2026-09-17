@@ -18,6 +18,8 @@
 
  </p>
 
+
+
 <table id="introduction" style="width:100%;"><tr><td style="background-color:#c9f1edff;">
 <h1 style="border-bottom:none; margin:0;">Introduction</h1>
 </td></tr></table>
@@ -27,34 +29,6 @@ développé sous architecture hexagonale. Ce document est une version
 **condensée** : chaque section suit le patron intro -> commande(s) réelle(s)
 -> résultat obtenu, sans le détail d'implémentation. 
 
-<table id="tableau-récapitulatif-des-scripts" style="width:100%;"><tr><td style="background-color:#c9f1edff;">
-<h1 style="border-bottom:none; margin:0;">Tableau récapitulatif des scripts</h1>
-</td></tr></table>
-
-Vue d'ensemble de tous les scripts exécutables du dépôt, classés par étape.
-
-| Étape | Script | Rôle |
-|---|---|---|
-| Étape 1 (Préparation des données) | `interfaces/cli/E1_01_telecharger_corpus.py` | Télécharge un corpus brut depuis Hugging Face Hub et l'exporte en JSONL local (`data/raw/`). |
-| Étape 1 (Préparation des données) | `interfaces/cli/E1_02_profiler_corpus.py` | Génère un rapport de profilage ydata-profiling pour un corpus téléchargé. |
-| Étape 1 (Préparation des données) | `interfaces/cli/E1_03_00_construire_dataset_pivot.py` | Fusionne les corpus sources en un dataset pivot unique, dédupliqué par identifiant déterministe. |
-| Étape 1 (Préparation des données) | `interfaces/cli/E1_04_00_anonymiser_dataset.py` | Anonymise (Presidio/spaCy) le dataset pivot par vagues incrémentales, en écrivant dans un fichier séparé du pivot original. |
-| Étape 1 (Préparation des données) | `scripts/anonymiser_par_lots.sh` | Rappelle `E1_04_00_anonymiser_dataset.py` en boucle par vagues successives jusqu'à couverture complète du pivot. |
-| Étape 1 (Préparation des données) | `interfaces/cli/E1_04_02_controler_qualite_anonymisation.py` | Compare le pivot original et le fichier anonymisé sur un échantillon stratifié pour détecter de la PII résiduelle. |
-| Étape 1 (Préparation des données) | `interfaces/cli/E1_04_01_reviser_pii_residuelle.py` | Révision humaine persistée des candidats PII résiduelle et export de la liste d'exclusion pour la publication. |
-| Étape 1 (Préparation des données) | `interfaces/cli/E1_05_00_decouper_splits.py` | Répartit (stratifié train/val/test) les exemples du pivot anonymisé, de façon cumulative/incrémentale d'une exécution à l'autre. |
-| Étape 1 (Préparation des données) | `interfaces/cli/E1_05_01_verifier_repartition_splits.py` | Affiche la répartition des splits déjà assignés, par strate (type_exemple, source). |
-| Étape 1 (Préparation des données) | `interfaces/cli/E1_05_02_extraire_sous_ensemble_sft.py` / `E1_05_03_extraire_sous_ensemble_dpo.py` | Extraient les sous-ensembles SFT/DPO publiables (échantillons filtrés, hors périmètre de ce document condensé). |
-| Étape 1bis (Baseline zero-shot) | `interfaces/cli/E1_06_00_evaluer_baseline.py` | Évalue la baseline zero-shot en local (CPU), via un `llama-server` sur un GGUF quantifié Q4_K_M. |
-| Étape 1bis (Baseline zero-shot) | `interfaces/cli/E1_06_01_evaluer_baseline_gpu.py` | Même évaluation baseline zero-shot mais en pleine précision (bf16, transformers) sur un job HF Jobs GPU. |
-| Étape 2 (SFT + LoRA) | `interfaces/cli/E2_00_formater_dataset_chatml.py` | Point d'entrée autonome pour le rendu ChatML d'un split (mode didactique inclus). |
-| Étape 2 (SFT + LoRA) | `training/E2_04_sft_train.py` | Point d'entrée d'entraînement SFT-LoRA réel, exécuté via HF Jobs (GPU requis). |
-| Étape 2 (SFT + LoRA) | `interfaces/cli/E2_05_evaluer_post_sft.py` | Évaluation post-SFT : mêmes métriques/mêmes exemples que les baselines, mais via le modèle base+LoRA réellement entraîné. |
-| Étape 2 (SFT + LoRA) | `monitoring/app_suivi_entrainement.py`, `monitoring/importer_mlflow_local.py`, `monitoring/reconstruire_courbe_sft_depuis_log.py` | Suivi en direct (Streamlit/HF Space) et historisation locale (MLflow) de la courbe d'entraînement. |
-| Étape 3 (DPO) | *(aucun script à ce jour)* | Étape non implémentée dans le code. |
-| Infrastructure | `scripts/check_env_local.py`, `scripts/check_env_gpu.py`, `scripts/check_env_remote_hf.py` | Vérifient que l'environnement (local, GPU, HF) est prêt avant chaque étape. |
-
-Détail de chaque commande dans les sections ci-dessous, et détail exhaustif de tous les scripts (y compris ceux hors périmètre de ce document) dans `README_IMPLEMENTACION_V1.md`.
 
 <table id="table-des-matières" style="width:100%;"><tr><td style="background-color:#c9f1edff;">
 <h1 style="border-bottom:none; margin:0;">Table des matières</h1>
@@ -75,6 +49,80 @@ Détail de chaque commande dans les sections ci-dessous, et détail exhaustif de
   - [2.5 Evaluation Post-SFT](#25-evaluation-post-sft)
 - [3. DPO](#3-dpo)
 - [Structure (architecture hexagonale)](#structure-architecture-hexagonale)
+
+<table id="tableau-récapitulatif-des-scripts" style="width:100%;"><tr><td style="background-color:#c9f1edff;">
+<h1 style="border-bottom:none; margin:0;">Tableau récapitulatif des scripts</h1>
+</td></tr></table>
+
+Vue d'ensemble de tous les scripts exécutables du dépôt, classés par étape.
+
+
+<table id="etape-1-preparation-des-donnees" style="width:100%; margin-left: 2cm;"><tr><td style="background-color:#b0f58c;">
+<h3 style="border-bottom:none; margin:0;">Étape 1 — Préparation des données</h3>
+
+
+| Script | Rôle |
+|---|---|
+| `interfaces/cli/E1_01_telecharger_corpus.py` | Télécharge un corpus brut depuis Hugging Face Hub et l'exporte en JSONL local (`data/raw/`). |
+| `interfaces/cli/E1_02_profiler_corpus.py` | Génère un rapport de profilage ydata-profiling pour un corpus téléchargé. |
+| `interfaces/cli/E1_03_00_construire_dataset_pivot.py` | Fusionne les corpus sources en un dataset pivot unique, dédupliqué par identifiant déterministe. |
+| `interfaces/cli/E1_04_00_anonymiser_dataset.py` | Anonymise (Presidio/spaCy) le dataset pivot par vagues incrémentales, en écrivant dans un fichier séparé du pivot original. |
+| `scripts/anonymiser_par_lots.sh` | Rappelle `E1_04_00_anonymiser_dataset.py` en boucle par vagues successives jusqu'à couverture complète du pivot. |
+| `interfaces/cli/E1_04_02_controler_qualite_anonymisation.py` | Compare le pivot original et le fichier anonymisé sur un échantillon stratifié pour détecter de la PII résiduelle. |
+| `interfaces/cli/E1_04_01_reviser_pii_residuelle.py` | Révision humaine persistée des candidats PII résiduelle et export de la liste d'exclusion pour la publication. |
+| `interfaces/cli/E1_05_00_decouper_splits.py` | Répartit (stratifié train/val/test) les exemples du pivot anonymisé, de façon cumulative/incrémentale d'une exécution à l'autre. |
+| `interfaces/cli/E1_05_01_verifier_repartition_splits.py` | Affiche la répartition des splits déjà assignés, par strate (type_exemple, source). |
+| `interfaces/cli/E1_05_02_extraire_sous_ensemble_sft.py` / `E1_05_03_extraire_sous_ensemble_dpo.py` | Extraient les sous-ensembles SFT/DPO publiables (échantillons filtrés, hors périmètre de ce document condensé). |
+
+</td>
+
+</tr>
+</table>
+<table id="etape-1bis-baseline-zero-shot" style="width:100%; margin-left: 2cm;"><tr><td style="background-color:#d4f5b0;">
+<h3 style="border-bottom:none; margin:0;">Étape 1bis — Baseline zero-shot</h3>
+
+
+| Script | Rôle |
+|---|---|
+| `interfaces/cli/E1_06_00_evaluer_baseline.py` | Évalue la baseline zero-shot en local (CPU), via un `llama-server` sur un GGUF quantifié Q4_K_M. |
+| `interfaces/cli/E1_06_01_evaluer_baseline_gpu.py` | Même évaluation baseline zero-shot mais en pleine précision (bf16, transformers) sur un job HF Jobs GPU. |
+
+</td></tr></table>
+
+<table id="etape-2-sft-lora" style="width:100%; margin-left: 2cm;"><tr><td style="background-color:#a6e3ff;">
+<h3 style="border-bottom:none; margin:0;">Étape 2 — SFT + LoRA</h3>
+
+
+| Script | Rôle |
+|---|---|
+| `interfaces/cli/E2_00_formater_dataset_chatml.py` | Point d'entrée autonome pour le rendu ChatML d'un split (mode didactique inclus). |
+| `training/E2_04_sft_train.py` | Point d'entrée d'entraînement SFT-LoRA réel, exécuté via HF Jobs (GPU requis). |
+| `interfaces/cli/E2_05_evaluer_post_sft.py` | Évaluation post-SFT : mêmes métriques/mêmes exemples que les baselines, mais via le modèle base+LoRA réellement entraîné. |
+| `monitoring/app_suivi_entrainement.py`, `monitoring/importer_mlflow_local.py`, `monitoring/reconstruire_courbe_sft_depuis_log.py` | Suivi en direct (Streamlit/HF Space) et historisation locale (MLflow) de la courbe d'entraînement. |
+
+</td></tr></table>
+
+<table id="etape-3-dpo" style="width:100%; margin-left: 2cm;"><tr><td style="background-color:#f5cf47;">
+<h3 style="border-bottom:none; margin:0;">Étape 3 — DPO</h3>
+
+
+| Script | Rôle |
+|---|---|
+| *(aucun script à ce jour)* | Étape non implémentée dans le code. |
+
+</td></tr></table>
+
+<table id="infrastructure" style="width:100%;  margin-left: 2cm;"><tr><td style="background-color:#d9d9d9;">
+<h3 style="border-bottom:none; margin:0;">Infrastructure</h3>
+
+
+| Script | Rôle |
+|---|---|
+| `scripts/check_env_local.py`, `scripts/check_env_gpu.py`, `scripts/check_env_remote_hf.py` | Vérifient que l'environnement (local, GPU, HF) est prêt avant chaque étape. |
+
+</td></tr></table>
+
+
 
 <table id="1-préparation-de-données" style="width:100%;"><tr><td style="background-color:#b0f58c;">
 <h1 style="border-bottom:none; margin:0;">1. Préparation de données</h1>
