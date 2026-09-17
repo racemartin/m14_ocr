@@ -1,6 +1,8 @@
 # CHSA Triage : Agent IA de Triage Médical (POC)
 
-## Introduction
+<table id="introduction" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<h1 style="border-bottom:none; margin:0;">Introduction</h1>
+</td></tr></table>
 
 POC d'agent IA de triage médical pour le Centre Hospitalier
 Saint-Aurélien, développé sous architecture hexagonale (ports &
@@ -21,7 +23,9 @@ Chaque document se termine par un renvoi vers le suivant, pour lire
 la documentation dans l'ordre du projet en partant de
 `docs/00_cadrage/00_objectifs_du_projet.md`.
 
-## Tableau récapitulatif des scripts
+<table id="tableau-récapitulatif-des-scripts" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<h1 style="border-bottom:none; margin:0;">Tableau récapitulatif des scripts</h1>
+</td></tr></table>
 
 Vue d'ensemble de tous les scripts exécutables du dépôt (`interfaces/cli/`,
 `scripts/`, `training/`, `monitoring/`, plus quelques scripts isolés
@@ -66,7 +70,9 @@ du tableau ci-dessus : les `__init__.py` de `interfaces/cli/`,
 `monitoring/` et `training/` (marqueurs de package vides, aucun rôle
 exécutable).
 
-## Table des matières
+<table id="table-des-matières" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<h1 style="border-bottom:none; margin:0;">Table des matières</h1>
+</td></tr></table>
 
 - [Tableau récapitulatif des scripts](#tableau-récapitulatif-des-scripts)
 - [1. Préparation des données (Étape 1)](#1-préparation-des-données-étape-1)
@@ -94,14 +100,18 @@ exécutable).
 - [Structure (architecture hexagonale)](#structure-architecture-hexagonale)
 - [État d'avancement](#état-davancement)
 
-## 1. Préparation des données (Étape 1)
+<table id="1-préparation-des-données-étape-1" style="width:100%;"><tr><td style="background-color:#38a169;">
+<h1 style="border-bottom:none; margin:0;">1. Préparation des données (Étape 1)</h1>
+</td></tr></table>
 
 Les 6 fichiers sources sont fusionnés dans le même dataset pivot,
 puis anonymisés, contrôlés, répartis en splits et enfin extraits en
 sous-ensembles publiables (SFT et DPO). Détail méthodologique complet
 dans `docs/02_etape1_donnees/`.
 
-### 1.1 Démarrage rapide (installation)
+<table id="11-démarrage-rapide-installation" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<h2 style="border-bottom:none; margin:0;">1.1 Démarrage rapide (installation)</h2>
+</td></tr></table>
 
 ```bash
 # Installation
@@ -132,7 +142,9 @@ uv run pytest tests/ -v
   </tr>
 </table>
 
-### 1.2 Telechargement (Hugging Face Hub -> data/raw/)
+<table id="12-telechargement-hugging-face-hub---dataraw" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<h2 style="border-bottom:none; margin:0;">1.2 Telechargement (Hugging Face Hub -> data/raw/)</h2>
+</td></tr></table>
 
 ```bash
 # NB : la configuration "oeq" de MediQAl n'a qu'un split "test" (pas de "train") ; --split explicite requis
@@ -145,7 +157,9 @@ uv run python interfaces/cli/E1_01_telecharger_corpus.py --identifiant-hub keiva
 uv run python interfaces/cli/E1_01_telecharger_corpus.py --identifiant-hub TsinghuaC3I/UltraMedical-Preference --sortie data/raw/ultramedical_preference.jsonl
 ```
 
-### 1.3 Profilage individuel (un rapport ydata-profiling par corpus)
+<table id="13-profilage-individuel-un-rapport-ydata-profiling-par-corpus" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<h2 style="border-bottom:none; margin:0;">1.3 Profilage individuel (un rapport ydata-profiling par corpus)</h2>
+</td></tr></table>
 
 ```bash
 uv run python interfaces/cli/E1_02_profiler_corpus.py --source data/raw/mediqal_oeq.jsonl   --nom MediQAl-oeq
@@ -157,7 +171,9 @@ uv run python interfaces/cli/E1_02_profiler_corpus.py --source data/raw/medquad.
 uv run python interfaces/cli/E1_02_profiler_corpus.py --source data/raw/ultramedical_preference.jsonl --nom UltraMedicalPreference
 ```
 
-### 1.4 Construction du dataset pivot (meme --sortie : fusionne les corpus par identifiant)
+<table id="14-construction-du-dataset-pivot-meme---sortie--fusionne-les-corpus-par-identifiant" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<h2 style="border-bottom:none; margin:0;">1.4 Construction du dataset pivot (meme --sortie : fusionne les corpus par identifiant)</h2>
+</td></tr></table>
 
 ```bash
 # NB : MediQAl a 3 configurations, avec 2 schemas differents : le
@@ -208,7 +224,9 @@ cle naturelle par source, investigation legere sur la cause probable
 des doublons UltraMedical-Preference) dans
 `docs/02_etape1_donnees/00_couverture_exigences_officielles.md`.
 
-### 1.5 Anonymisation (incrementale/reprenable, cf. --limite), ecrit dans un fichier SEPARE
+<table id="15-anonymisation-incrementalereprenable-cf---limite-ecrit-dans-un-fichier-separe" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<h2 style="border-bottom:none; margin:0;">1.5 Anonymisation (incrementale/reprenable, cf. --limite), ecrit dans un fichier SEPARE</h2>
+</td></tr></table>
 
 ```bash
 # IMPORTANT (08/09/2026, design source/sortie separes) : --dataset (le pivot original) n'est JAMAIS modifie ;
@@ -259,7 +277,9 @@ calendaire absolue (masquee) d'une duree relative ("il y a 3
 semaines", "depuis 2 mois"), laissee intacte, signal clinique pas
 identifiant.
 
-#### Controle qualite de l'anonymisation (comparaison de fichiers)
+<table id="controle-qualite-de-lanonymisation-comparaison-de-fichiers" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<h3 style="border-bottom:none; margin:0;">Controle qualite de l'anonymisation (comparaison de fichiers)</h3>
+</td></tr></table>
 
 ```bash
 # Compare le pivot ORIGINAL (jamais modifie) au fichier ANONYMISE,
@@ -297,7 +317,9 @@ compare que des identifiants NOUVEAUX. C'est ce qui rend les
 decisions humaines de la section suivante cumulables entre
 executions, au lieu d'un echantillon jete a chaque fois.
 
-#### Revision humaine persistee des candidats de PII residuelle (NF2)
+<table id="revision-humaine-persistee-des-candidats-de-pii-residuelle-nf2" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<h3 style="border-bottom:none; margin:0;">Revision humaine persistee des candidats de PII residuelle (NF2)</h3>
+</td></tr></table>
 
 ```bash
 # Revue interactive : recalcule TOUS les candidats "pendant_revision_humaine"
@@ -325,7 +347,9 @@ pour annoter chaque candidat en attente de son statut de decision
 `docs/02_etape1_donnees/01_rapport_rgpd.md` §7.5 pour la methodologie
 complete.
 
-### 1.6 Decoupage en splits (train / val / test, stratifie)
+<table id="16-decoupage-en-splits-train--val--test-stratifie" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<h2 style="border-bottom:none; margin:0;">1.6 Decoupage en splits (train / val / test, stratifie)</h2>
+</td></tr></table>
 
 ```bash
 # E1_05_00_decouper_splits.py opere sur le fichier ANONYMISE (dataset_pivot_anonymise.jsonl),
@@ -393,7 +417,9 @@ ensemble : `--original` (defaut `data/processed/dataset_pivot.jsonl`),
 et `--jeton-masque`. Le nombre d'exemples exclus pour cette raison
 lors de cette execution est affiche en sortie.
 
-#### Verification de la repartition des splits par strate
+<table id="verification-de-la-repartition-des-splits-par-strate" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<h3 style="border-bottom:none; margin:0;">Verification de la repartition des splits par strate</h3>
+</td></tr></table>
 
 ```bash
 # E1_05_00_decouper_splits.py n'affiche que le total global (train/val/test).
@@ -412,7 +438,9 @@ uv run python interfaces/cli/E1_05_01_verifier_repartition_splits.py --dataset d
 
 `E1_04_00_anonymiser_dataset.py` affiche une barre de progression `tqdm` pendant le traitement (peut durer plusieurs dizaines de minutes sur un gros dataset).
 
-### 1.7 Extraction du sous-ensemble SFT (5000 exemples, pour publication Hugging Face)
+<table id="17-extraction-du-sous-ensemble-sft-5000-exemples-pour-publication-hugging-face" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<h2 style="border-bottom:none; margin:0;">1.7 Extraction du sous-ensemble SFT (5000 exemples, pour publication Hugging Face)</h2>
+</td></tr></table>
 
 Deux etapes : exporter les identifiants a exclure (candidats de PII
 residuelle confirmes ou en attente), puis soustraire ce fichier du
@@ -548,7 +576,9 @@ l'etape 1. Augmenter la couverture de
 `E1_04_02_controler_qualite_anonymisation.py` (§1.5) avant publication reduit ce
 risque, mais ne l'elimine pas completement sans audit exhaustif.
 
-### 1.8 Extraction du sous-ensemble DPO (pour publication Hugging Face)
+<table id="18-extraction-du-sous-ensemble-dpo-pour-publication-hugging-face" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<h2 style="border-bottom:none; margin:0;">1.8 Extraction du sous-ensemble DPO (pour publication Hugging Face)</h2>
+</td></tr></table>
 
 Meme patron exact que §1.7 (`ExtraireSousEnsembleSftUseCase`), en
 filtrant `type_exemple == TypeExemple.DPO` au lieu de SFT : le cahier
@@ -623,7 +653,9 @@ wc -l /tmp/verificacion_hf_dpo/dataset_chsa_triage_dpo_anonymise_5000.jsonl
 Meme limite de couverture qu'en §1.7 : l'exclusion ne porte que sur ce
 qui a deja ete audite par le controle qualite (§1.5).
 
-## 2. SFT + LoRA (Étape 2)
+<table id="2-sft--lora-étape-2" style="width:100%;"><tr><td style="background-color:#02c39a;">
+<h1 style="border-bottom:none; margin:0;">2. SFT + LoRA (Étape 2)</h1>
+</td></tr></table>
 
 Architecture retenue, deux mesures de baseline zero-shot (CPU
 quantifié et GPU pleine précision, pour ne jamais mélanger l'effet de
@@ -631,7 +663,9 @@ la quantification avec l'effet réel de l'entraînement), l'entraînement
 SFT-LoRA réel avec suivi en direct, et l'évaluation post-entraînement
 (pas encore implémentée).
 
-### 2.1 Architecture
+<table id="21-architecture" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<h2 style="border-bottom:none; margin:0;">2.1 Architecture</h2>
+</td></tr></table>
 
 L'architecture hexagonale (domain/application/infrastructure,
 interfaces/, training/) est commune à tout le projet ; voir
@@ -644,7 +678,9 @@ installation Environnement B, cas d'usage `E2_NN_uc_*`, guide
 d'implémentation pas à pas) ; voir aussi les notes correspondantes
 dans `AGENTS.md`.
 
-#### Mode didactique : inspecter le rendu ChatML d'un split
+<table id="mode-didactique--inspecter-le-rendu-chatml-dun-split" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<h3 style="border-bottom:none; margin:0;">Mode didactique : inspecter le rendu ChatML d'un split</h3>
+</td></tr></table>
 
 `E2_00_uc_formater_dataset_chatml.py`/`FormaterDatasetChatMLUseCase`
 n'a longtemps été invoqué que depuis l'intérieur de
@@ -670,7 +706,9 @@ strictement identique avec ou sans ce flag, et `training/
 E2_04_sft_train.py` n'est pas modifié (il continue d'invoquer le cas
 d'usage directement).
 
-### 2.2 Évaluation baseline zero-shot (Étape 1bis)
+<table id="22-évaluation-baseline-zero-shot-étape-1bis" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<h2 style="border-bottom:none; margin:0;">2.2 Évaluation baseline zero-shot (Étape 1bis)</h2>
+</td></tr></table>
 
 Deux mesures indépendantes de la performance de `Qwen/Qwen3-1.7B-Base`
 SANS entrainement, avant SFT/DPO, pour disposer d'un point de
@@ -681,7 +719,9 @@ bf16 via transformers (Environnement B, HF Jobs), pour ne jamais
 melanger l'effet de la quantification avec l'effet reel de
 l'entrainement.
 
-#### Évaluation baseline zero-shot (Étape 1bis, avant SFT/DPO)
+<table id="évaluation-baseline-zero-shot-étape-1bis-avant-sftdpo" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<h3 style="border-bottom:none; margin:0;">Évaluation baseline zero-shot (Étape 1bis, avant SFT/DPO)</h3>
+</td></tr></table>
 
 Mesure la performance de `Qwen/Qwen3-1.7B-Base` SANS entrainement sur
 le split `test` DEJA EXISTANT du pivot anonymise (champ `split`, §1.6),
@@ -785,7 +825,9 @@ ignores pour echec d'inference isole (`nombre_echecs_inference`) ; les
 242 exemples restants sont ceux effectivement compares pour ces
 metriques.
 
-#### Évaluation baseline zero-shot GPU (Étape 1bis, sur HF Jobs)
+<table id="évaluation-baseline-zero-shot-gpu-étape-1bis-sur-hf-jobs" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<h3 style="border-bottom:none; margin:0;">Évaluation baseline zero-shot GPU (Étape 1bis, sur HF Jobs)</h3>
+</td></tr></table>
 
 Meme mesure que ci-dessus (`Qwen/Qwen3-1.7B-Base` SANS entrainement, meme
 sous-ensemble de 278 exemples `split=test`/`type_exemple=sft`), mais
@@ -925,7 +967,9 @@ avec pour objectif direct que le modele commence a produire la structure
 JSON de triage attendue et depasse ce plancher mesure ici en F1/exact
 match, de facon mesurable (cahier des charges §9).
 
-### 2.3 Entrainement SFT-LoRA
+<table id="23-entrainement-sft-lora" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<h2 style="border-bottom:none; margin:0;">2.3 Entrainement SFT-LoRA</h2>
+</td></tr></table>
 
 Pendant un run SFT-LoRA reel (Environnement B, GPU sur HF Jobs),
 `training/E2_04_sft_train.py --suivi-hf-repo <repo>` (recette
@@ -1017,7 +1061,9 @@ hf jobs uv run \
     --assistant-only-loss false
 ```
 
-#### Verification reelle du lancement HF Jobs (16/09/2026)
+<table id="verification-reelle-du-lancement-hf-jobs-16092026" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<h3 style="border-bottom:none; margin:0;">Verification reelle du lancement HF Jobs (16/09/2026)</h3>
+</td></tr></table>
 
 Meme demarche que la baseline GPU (§2.2) : le lancement REEL du
 training COMPLET (GPU payant, `--flavor` GPU) n'a jamais ete effectue
@@ -1330,7 +1376,9 @@ Streamlit ni reseau. `data/demos/chsa-triage-sft-metrics-fake.json`
 (graphique, cartes, verdict en direct) sans attendre un run GPU reel,
 une fois publie sur le depot de metriques.
 
-#### Historique complet dans un MLflow local (importateur)
+<table id="historique-complet-dans-un-mlflow-local-importateur" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<h3 style="border-bottom:none; margin:0;">Historique complet dans un MLflow local (importateur)</h3>
+</td></tr></table>
 
 Le dashboard Streamlit ne montre que le run selectionne, en vivo,
 depuis un Space distant : pour parcourir l'HISTORIQUE COMPLET de tous
@@ -1383,7 +1431,9 @@ reelle sur sqlite temporaire, source HF injectee) et
 `tests/monitoring/test_hf_dataset_runs.py` (frontiere HF Hub,
 `HfApi`/`hf_hub_download` remplaces).
 
-### 2.4 Évaluation post-SFT
+<table id="24-évaluation-post-sft" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<h2 style="border-bottom:none; margin:0;">2.4 Évaluation post-SFT</h2>
+</td></tr></table>
 
 Mesure la performance du modèle RÉELLEMENT entraîné par SFT-LoRA
 (poids publiés sur `mombasstic/chsa-triage-sft-lora`, verdict `SAINE`,
@@ -1565,12 +1615,16 @@ post-SFT) sous forme de présentation PowerPoint :
 [`docs/03_etape2_sft/04_presentation_synthese_sft_lora.pptx`](docs/03_etape2_sft/04_presentation_synthese_sft_lora.pptx)
 (régénérable via `scripts/generer_presentation_etape2.py`).
 
-## 3. DPO (Étape 3)
+<table id="3-dpo-étape-3" style="width:100%;"><tr><td style="background-color:#7aeae7;">
+<h1 style="border-bottom:none; margin:0;">3. DPO (Étape 3)</h1>
+</td></tr></table>
 
 **Non implémenté à ce jour.** Aucune commande ni étape n'existe encore
 dans le code pour cette phase ; voir `docs/04_etape3_dpo/` (à venir).
 
-## Structure (architecture hexagonale)
+<table id="structure-architecture-hexagonale" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<h1 style="border-bottom:none; margin:0;">Structure (architecture hexagonale)</h1>
+</td></tr></table>
 
 ```
 src/chsa_triage/
@@ -1584,7 +1638,9 @@ docker/                # Dockerfiles + docker-compose (frontend/backend) : Étap
 
 Détail complet : `docs/01_environnement/01_architecture_hexagonale.md`.
 
-## État d'avancement
+<table id="état-davancement" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<h1 style="border-bottom:none; margin:0;">État d'avancement</h1>
+</td></tr></table>
 
 - [x] Étape 0 : Cadrage, environnement, architecture
 - [ ] Étape 1 : Préparation des données : dataset pivot **régénéré**
