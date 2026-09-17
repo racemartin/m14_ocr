@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/v987-18a.png" alt="CHSA" width="120">
+  <img src="docs/images/hospital-logo-design-vector-medical-cross/v987-18a.png" alt="CHSA" width="120">
 
   # CHSA Triage : Agent IA de Triage Médical (POC)
 
@@ -297,6 +297,76 @@ de perte train/validation de ce run a été reconstruite a posteriori depuis
 le log brut du job (backend de suivi mal configuré à l'origine, corrigé
 depuis) et republiée sur le dépôt de métriques.
 
+**Explication du contenu de la rectte:**
+<div style="margin-left: 2cm;">
+
+---
+
+## 1. Quantification — `BitsAndBytesConfig`
+
+*Intervient au chargement du modèle base.*
+
+| Paramètre | Valeur | À quoi ça sert / ce que ça implique | Autres options |
+|---|---|---|---|
+| `bits` | `4` | Niveau de quantification des poids gelés → divise par 4 la VRAM du modèle base. | 8/16-bit : + précis, + VRAM (**non viable sur GPU commercial**) |
+| `type_quantification` | `nf4` | Type 4-bit optimal pour des poids à distribution ~gaussienne. | `fp4` : moins adapté à cette distribution |
+| `double_quantification` | `true` | Quantifie aussi les constantes d'échelle → économie VRAM supplémentaire. | `false` : pas ce gain (négligeable en vitesse) |
+| `dtype_calcul` | `bfloat16` | Précision de calcul forward/backward, bon range dynamique (GPU Ampere+). | `float16` : risque d'overflow / `float32` : + VRAM |
+
+---
+
+## 2. Adaptateur LoRA — `LoraConfig`
+
+*Intervient à l'injection sur le modèle déjà quantifié.*
+
+| Paramètre | Valeur | À quoi ça sert / ce que ça implique | Autres options |
+|---|---|---|---|
+| `rang (r)` | `16` | Capacité de l'adaptateur ; équilibre VRAM ↔ expressivité. | `r=8` : + léger / `r=32-64` : + capacité, risque de surapprentissage |
+| `alpha` | `32` (2r) | Échelle de ΔW ; règle standard α=2r, stabilise le LR si r change. | `α=r` : échelle plus conservatrice |
+| `dropout` | `0.05` | Régularisation sur l'entrée de la matrice A ; anti-surapprentissage (2246 exemples train). | `0.0` : aucune régularisation / `0.1+` : régularisation renforcée |
+| `modules_cibles` | `q,k,v,o_proj` | Attention seulement → adaptateur léger. | `"all-linear"` (+MLP) : + expressif, + VRAM/paramètres |
+
+---
+
+## 3. Entraînement — `SFTConfig` / `SFTTrainer`
+
+*Intervient à chaque pas d'optimisation.*
+
+| Paramètre | Valeur | À quoi ça sert / ce que ça implique | Autres options |
+|---|---|---|---|
+| `taux_apprentissage` | `2e-4` | Valeur typique pour LoRA — a convergé « saine » dès le 1er essai. | `1e-4` : + prudent / `5e-4` : + rapide, risque d'instabilité |
+| `nombre_epoques` | `3` | Passes complètes sur le dataset ; compromis apprentissage/mémorisation. | `1` : sous-apprentissage probable / `5+` : risque de surapprentissage |
+| `taille_lot` | `4` | Exemples par pas et par GPU, limité par la VRAM disponible. | Valeur + haute si VRAM dispo : + stable, + lent par pas |
+| `type_perte` | `nll` | Cross-entropy standard — imposée par une contrainte de dépendance. | `chunked_nll` : réduit le pic VRAM sur `lm_head` — écarté (trl figé en 0.24.0, sans support) |
+| `assistant_only_loss` | `true` | Masque (`-100`) les tokens system/user — le modèle apprend seulement à générer. | `false` : perte sur toute la séquence, gaspille le gradient sur les questions |
+| `packing` | `true` | Concatène les exemples courts → GPU utilisé à ~100%. | `false` : padding classique, jusqu'à 40-60% de FLOPs gaspillés |
+
+### ↳ `packing=true` pilote en réalité 3 réglages de `SFTConfig`
+
+> ⚠️ Absents du fichier YAML — tournent actuellement en valeur par défaut de `trl`.
+
+| Paramètre (implicite) | Valeur actuelle | À quoi ça sert / ce que ça implique |
+|---|---|---|
+| `max_seq_length` | défaut trl | Longueur max par bloc empaqueté. Conditionne directement la VRAM (attention O(N²) ou FlashAttention-2 selon N). |
+| `dataset_text_field` | auto (ChatML) | Colonne texte à empaqueter, ignorée car un formatting_func/chat template gère déjà le rendu (notre cas). |
+| `dataset_kwargs` | défaut trl | Ex. `append_concat_token` (ajoute l'EOS entre exemples empaquetés) — **à vérifier explicitement** : un défaut erroné ici = risque de contamination inter-exemples. |
+
+---
+
+## 4-5. Grille de secours & Suivi
+
+*4 : si non-convergence · 5 : tout au long du run.*
+
+| Paramètre | Valeur | À quoi ça sert / ce que ça implique | Autres options |
+|---|---|---|---|
+| `grille` (4) | 3×3 | LR `[1e-4, 2e-4, 5e-4]` × rang `[8, 16, 32]` — Optuna écarté pour ce POC. | Non utilisée : convergence « saine » dès le 1er essai |
+| `suivi.backend` (5) | `hf_dataset` | Persiste hors du conteneur HF Jobs (disque non persistant). | `mlflow` : valide en local seulement — a fait perdre une courbe complète |
+| `suivi.nom_experience` | `chsa-triage-sft` | Identifiant regroupant les runs dans le dataset de suivi. | — |
+
+</div>
+
+
+
 <table id="24-sft-lora-train" style="width:100%;"><tr><td style="background-color:#a6e3ff;">
 <h2 style="border-bottom:none; margin:0;">2.4 SFT-LoRA Train</h2>
 </td></tr></table>
@@ -306,6 +376,7 @@ script d'entraînement (`training/E2_04_sft_train.py`, §2.3) applique déjà
 LoRA nativement (QLoRA 4-bit) à chaque run. Il n'existe pas de variante
 « SFT plein » séparée à documenter ici ; la commande et les résultats réels
 sont ceux de la §2.3 ci-dessus.
+
 
 <table id="25-evaluation-post-sft" style="width:100%;"><tr><td style="background-color:#a6e3ff;">
 <h2 style="border-bottom:none; margin:0;">2.5 Evaluation Post-SFT</h2>
@@ -347,18 +418,19 @@ caractère-à-caractère avec des réponses de référence en langage libre.
 **Non implémenté à ce jour.** Aucune commande ni étape n'existe encore dans
 le code pour cette phase ; voir `docs/04_etape3_dpo/` (à venir).
 
-<table id="structure-architecture-hexagonale" style="width:100%;"><tr><td style="background-color:#c9f1edff;">
-<h1 style="border-bottom:none; margin:0;">Structure (architecture hexagonale)</h1>
+
+<table id="introduction" style="width:100%;"><tr><td style="background-color:#c9f1edff;">
+<h1 style="border-bottom:none; margin:0;">Auteur</h1>
 </td></tr></table>
 
-```
-src/chsa_triage/
-├── domain/            # entités + ports, zéro dépendance externe
-├── application/       # cas d'usage : orchestrent les ports
-└── infrastructure/    # adaptateurs concrets (JSONL, HF, Presidio, ydata-profiling, ...)
-interfaces/            # adaptateurs primaires : cli/ (Étape 1-2), api/ et web/ (Étape 4)
-training/              # scripts exécutés via HF Jobs (SFT, DPO) : Étapes 2-3
-docker/                # Dockerfiles + docker-compose (frontend/backend) : Étape 4
-```
+**Rafael Cerezo Martín**
 
-Détail complet : `docs/01_environnement/01_architecture_hexagonale.md`.
+- Email : [rafael.cerezo.martin@icloud.com](mailto:rafael.cerezo.martin@icloud.com)
+- GitHub : [@racemartin](https://github.com/racemartin)
+
+
+<table id="introduction" style="width:100%;"><tr><td style="background-color:#c9f1edff;">
+<h1 style="border-bottom:none; margin:0;">Licence</h1>
+</td></tr></table>
+
+MIT License, voir [LICENSE](LICENSE) pour les détails.
