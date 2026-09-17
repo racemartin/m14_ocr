@@ -30,7 +30,7 @@ développé sous architecture hexagonale. Ce document est une version
 -> résultat obtenu, sans le détail d'implémentation.
 
 Vue d'ensemble en un coup d'œil (entrée/sortie de chaque étape) :
-[`docs/diagrams/00_vue_ensemble/vision_generale_etapes.puml`](docs/diagrams/00_vue_ensemble/vision_generale_etapes.puml).
+[`docs/diagrams/00_vue_ensemble/vision_generale_etapes.png`](docs/diagrams/00_vue_ensemble/vision_generale_etapes.png).
 
 
 <table id="table-des-matières" style="width:100%;"><tr><td style="background-color:#c9f1edff;">
