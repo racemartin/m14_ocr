@@ -1,0 +1,49 @@
+@startuml vision_generale_etapes
+!include ../_common/estilo.iuml
+
+title CHSA Triage : Vue d'ensemble du projet\nDe 6 corpus bruts à un modèle de triage entraîné (Étapes 1 à 3)
+
+start
+
+:**Étape 1 : Préparation des données**;
+note right
+  Entrée : 6 corpus sources (Hugging Face Hub)
+  Sortie : dataset pivot anonymisé, réparti en
+  splits train / val / test (134 883 exemples)
+end note
+
+:**Étape 1bis : Baseline zero-shot**;
+note right
+  Entrée : Qwen3-1.7B-Base (non entraîné)
+  + split test (278 exemples)
+  Sortie : métriques de référence
+  (CPU quantifié Q4_K_M + GPU pleine précision)
+end note
+
+:**Étape 2 : Entraînement SFT-LoRA**;
+note right
+  Entrée : Qwen3-1.7B-Base + split train
+  Sortie : poids LoRA entraînés
+  + courbe de métriques (verdict de convergence)
+end note
+
+:**Étape 2 : Évaluation post-SFT**;
+note right
+  Entrée : modèle base + LoRA entraîné
+  + même split test que le baseline
+  Sortie : métriques comparables au baseline
+  (F1 token quasi triplé dans le run réel)
+end note
+
+-[dashed,#7A6A4F]->
+
+:**Étape 3 : DPO**\n(étape future, non implémentée à ce jour);
+note right
+  Entrée prévue : checkpoint SFT-LoRA
+  + paires de préférence (chosen / rejected)
+  Sortie prévue : checkpoint aligné
+end note
+
+stop
+
+@enduml
