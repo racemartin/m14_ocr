@@ -109,7 +109,7 @@ puis anonymisés, contrôlés, répartis en splits et enfin extraits en
 sous-ensembles publiables (SFT et DPO). Détail méthodologique complet
 dans `docs/02_etape1_donnees/`.
 
-<table id="11-démarrage-rapide-installation" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<table id="11-démarrage-rapide-installation" style="width:100%;"><tr><td style="background-color:#38a169;">
 <h2 style="border-bottom:none; margin:0;">1.1 Démarrage rapide (installation)</h2>
 </td></tr></table>
 
@@ -135,7 +135,7 @@ uv run pytest tests/ -v
 </td></tr></table>
 
 
-<table id="12-telechargement-hugging-face-hub---dataraw" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<table id="12-telechargement-hugging-face-hub---dataraw" style="width:100%;"><tr><td style="background-color:#38a169;">
 <h2 style="border-bottom:none; margin:0;">1.2 Telechargement (Hugging Face Hub -> data/raw/)</h2>
 </td></tr></table>
 
@@ -150,7 +150,7 @@ uv run python interfaces/cli/E1_01_telecharger_corpus.py --identifiant-hub keiva
 uv run python interfaces/cli/E1_01_telecharger_corpus.py --identifiant-hub TsinghuaC3I/UltraMedical-Preference --sortie data/raw/ultramedical_preference.jsonl
 ```
 
-<table id="13-profilage-individuel-un-rapport-ydata-profiling-par-corpus" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<table id="13-profilage-individuel-un-rapport-ydata-profiling-par-corpus" style="width:100%;"><tr><td style="background-color:#38a169;">
 <h2 style="border-bottom:none; margin:0;">1.3 Profilage individuel (un rapport ydata-profiling par corpus)</h2>
 </td></tr></table>
 
@@ -164,7 +164,7 @@ uv run python interfaces/cli/E1_02_profiler_corpus.py --source data/raw/medquad.
 uv run python interfaces/cli/E1_02_profiler_corpus.py --source data/raw/ultramedical_preference.jsonl --nom UltraMedicalPreference
 ```
 
-<table id="14-construction-du-dataset-pivot-meme---sortie--fusionne-les-corpus-par-identifiant" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<table id="14-construction-du-dataset-pivot-meme---sortie--fusionne-les-corpus-par-identifiant" style="width:100%;"><tr><td style="background-color:#38a169;">
 <h2 style="border-bottom:none; margin:0;">1.4 Construction du dataset pivot (meme --sortie : fusionne les corpus par identifiant)</h2>
 </td></tr></table>
 
@@ -217,7 +217,7 @@ cle naturelle par source, investigation legere sur la cause probable
 des doublons UltraMedical-Preference) dans
 `docs/02_etape1_donnees/00_couverture_exigences_officielles.md`.
 
-<table id="15-anonymisation-incrementalereprenable-cf---limite-ecrit-dans-un-fichier-separe" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<table id="15-anonymisation-incrementalereprenable-cf---limite-ecrit-dans-un-fichier-separe" style="width:100%;"><tr><td style="background-color:#38a169;">
 <h2 style="border-bottom:none; margin:0;">1.5 Anonymisation (incrementale/reprenable, cf. --limite), ecrit dans un fichier SEPARE</h2>
 </td></tr></table>
 
@@ -270,7 +270,7 @@ calendaire absolue (masquee) d'une duree relative ("il y a 3
 semaines", "depuis 2 mois"), laissee intacte, signal clinique pas
 identifiant.
 
-<table id="controle-qualite-de-lanonymisation-comparaison-de-fichiers" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<table id="controle-qualite-de-lanonymisation-comparaison-de-fichiers" style="width:100%;"><tr><td style="background-color:#38a169;">
 <h3 style="border-bottom:none; margin:0;">Controle qualite de l'anonymisation (comparaison de fichiers)</h3>
 </td></tr></table>
 
@@ -310,7 +310,7 @@ compare que des identifiants NOUVEAUX. C'est ce qui rend les
 decisions humaines de la section suivante cumulables entre
 executions, au lieu d'un echantillon jete a chaque fois.
 
-<table id="revision-humaine-persistee-des-candidats-de-pii-residuelle-nf2" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<table id="revision-humaine-persistee-des-candidats-de-pii-residuelle-nf2" style="width:100%;"><tr><td style="background-color:#38a169;">
 <h3 style="border-bottom:none; margin:0;">Revision humaine persistee des candidats de PII residuelle (NF2)</h3>
 </td></tr></table>
 
@@ -340,7 +340,7 @@ pour annoter chaque candidat en attente de son statut de decision
 `docs/02_etape1_donnees/01_rapport_rgpd.md` §7.5 pour la methodologie
 complete.
 
-<table id="16-decoupage-en-splits-train--val--test-stratifie" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<table id="16-decoupage-en-splits-train--val--test-stratifie" style="width:100%;"><tr><td style="background-color:#38a169;">
 <h2 style="border-bottom:none; margin:0;">1.6 Decoupage en splits (train / val / test, stratifie)</h2>
 </td></tr></table>
 
@@ -410,7 +410,7 @@ ensemble : `--original` (defaut `data/processed/dataset_pivot.jsonl`),
 et `--jeton-masque`. Le nombre d'exemples exclus pour cette raison
 lors de cette execution est affiche en sortie.
 
-<table id="verification-de-la-repartition-des-splits-par-strate" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<table id="verification-de-la-repartition-des-splits-par-strate" style="width:100%;"><tr><td style="background-color:#38a169;">
 <h3 style="border-bottom:none; margin:0;">Verification de la repartition des splits par strate</h3>
 </td></tr></table>
 
@@ -431,7 +431,7 @@ uv run python interfaces/cli/E1_05_01_verifier_repartition_splits.py --dataset d
 
 `E1_04_00_anonymiser_dataset.py` affiche une barre de progression `tqdm` pendant le traitement (peut durer plusieurs dizaines de minutes sur un gros dataset).
 
-<table id="17-extraction-du-sous-ensemble-sft-5000-exemples-pour-publication-hugging-face" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<table id="17-extraction-du-sous-ensemble-sft-5000-exemples-pour-publication-hugging-face" style="width:100%;"><tr><td style="background-color:#38a169;">
 <h2 style="border-bottom:none; margin:0;">1.7 Extraction du sous-ensemble SFT (5000 exemples, pour publication Hugging Face)</h2>
 </td></tr></table>
 
@@ -569,7 +569,7 @@ l'etape 1. Augmenter la couverture de
 `E1_04_02_controler_qualite_anonymisation.py` (§1.5) avant publication reduit ce
 risque, mais ne l'elimine pas completement sans audit exhaustif.
 
-<table id="18-extraction-du-sous-ensemble-dpo-pour-publication-hugging-face" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<table id="18-extraction-du-sous-ensemble-dpo-pour-publication-hugging-face" style="width:100%;"><tr><td style="background-color:#38a169;">
 <h2 style="border-bottom:none; margin:0;">1.8 Extraction du sous-ensemble DPO (pour publication Hugging Face)</h2>
 </td></tr></table>
 
@@ -656,7 +656,7 @@ la quantification avec l'effet réel de l'entraînement), l'entraînement
 SFT-LoRA réel avec suivi en direct, et l'évaluation post-entraînement
 (pas encore implémentée).
 
-<table id="21-architecture" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<table id="21-architecture" style="width:100%;"><tr><td style="background-color:#02c39a;">
 <h2 style="border-bottom:none; margin:0;">2.1 Architecture</h2>
 </td></tr></table>
 
@@ -671,7 +671,7 @@ installation Environnement B, cas d'usage `E2_NN_uc_*`, guide
 d'implémentation pas à pas) ; voir aussi les notes correspondantes
 dans `AGENTS.md`.
 
-<table id="mode-didactique--inspecter-le-rendu-chatml-dun-split" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<table id="mode-didactique--inspecter-le-rendu-chatml-dun-split" style="width:100%;"><tr><td style="background-color:#02c39a;">
 <h3 style="border-bottom:none; margin:0;">Mode didactique : inspecter le rendu ChatML d'un split</h3>
 </td></tr></table>
 
@@ -699,7 +699,7 @@ strictement identique avec ou sans ce flag, et `training/
 E2_04_sft_train.py` n'est pas modifié (il continue d'invoquer le cas
 d'usage directement).
 
-<table id="22-évaluation-baseline-zero-shot-étape-1bis" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<table id="22-évaluation-baseline-zero-shot-étape-1bis" style="width:100%;"><tr><td style="background-color:#02c39a;">
 <h2 style="border-bottom:none; margin:0;">2.2 Évaluation baseline zero-shot (Étape 1bis)</h2>
 </td></tr></table>
 
@@ -712,7 +712,7 @@ bf16 via transformers (Environnement B, HF Jobs), pour ne jamais
 melanger l'effet de la quantification avec l'effet reel de
 l'entrainement.
 
-<table id="évaluation-baseline-zero-shot-étape-1bis-avant-sftdpo" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<table id="évaluation-baseline-zero-shot-étape-1bis-avant-sftdpo" style="width:100%;"><tr><td style="background-color:#02c39a;">
 <h3 style="border-bottom:none; margin:0;">Évaluation baseline zero-shot (Étape 1bis, avant SFT/DPO)</h3>
 </td></tr></table>
 
@@ -818,7 +818,7 @@ ignores pour echec d'inference isole (`nombre_echecs_inference`) ; les
 242 exemples restants sont ceux effectivement compares pour ces
 metriques.
 
-<table id="évaluation-baseline-zero-shot-gpu-étape-1bis-sur-hf-jobs" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<table id="évaluation-baseline-zero-shot-gpu-étape-1bis-sur-hf-jobs" style="width:100%;"><tr><td style="background-color:#02c39a;">
 <h3 style="border-bottom:none; margin:0;">Évaluation baseline zero-shot GPU (Étape 1bis, sur HF Jobs)</h3>
 </td></tr></table>
 
@@ -960,7 +960,7 @@ avec pour objectif direct que le modele commence a produire la structure
 JSON de triage attendue et depasse ce plancher mesure ici en F1/exact
 match, de facon mesurable (cahier des charges §9).
 
-<table id="23-entrainement-sft-lora" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<table id="23-entrainement-sft-lora" style="width:100%;"><tr><td style="background-color:#02c39a;">
 <h2 style="border-bottom:none; margin:0;">2.3 Entrainement SFT-LoRA</h2>
 </td></tr></table>
 
@@ -1054,7 +1054,7 @@ hf jobs uv run \
     --assistant-only-loss false
 ```
 
-<table id="verification-reelle-du-lancement-hf-jobs-16092026" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<table id="verification-reelle-du-lancement-hf-jobs-16092026" style="width:100%;"><tr><td style="background-color:#02c39a;">
 <h3 style="border-bottom:none; margin:0;">Verification reelle du lancement HF Jobs (16/09/2026)</h3>
 </td></tr></table>
 
@@ -1369,7 +1369,7 @@ Streamlit ni reseau. `data/demos/chsa-triage-sft-metrics-fake.json`
 (graphique, cartes, verdict en direct) sans attendre un run GPU reel,
 une fois publie sur le depot de metriques.
 
-<table id="historique-complet-dans-un-mlflow-local-importateur" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<table id="historique-complet-dans-un-mlflow-local-importateur" style="width:100%;"><tr><td style="background-color:#02c39a;">
 <h3 style="border-bottom:none; margin:0;">Historique complet dans un MLflow local (importateur)</h3>
 </td></tr></table>
 
@@ -1424,7 +1424,7 @@ reelle sur sqlite temporaire, source HF injectee) et
 `tests/monitoring/test_hf_dataset_runs.py` (frontiere HF Hub,
 `HfApi`/`hf_hub_download` remplaces).
 
-<table id="24-évaluation-post-sft" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<table id="24-évaluation-post-sft" style="width:100%;"><tr><td style="background-color:#02c39a;">
 <h2 style="border-bottom:none; margin:0;">2.4 Évaluation post-SFT</h2>
 </td></tr></table>
 
