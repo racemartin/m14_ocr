@@ -50,7 +50,6 @@ développé sous architecture hexagonale. Ce document est une version
   - [2.6 Suivi d'entraînement](#26-suivi-entrainement)
 - [3. DPO](#3-dpo)
 - [Vérifications d'environnement](#verifications-environnement)
-- [Structure (architecture hexagonale)](#structure-architecture-hexagonale)
 
 <table id="tableau-récapitulatif-des-scripts" style="width:100%;"><tr><td style="background-color:#c9f1edff;">
 <h1 style="border-bottom:none; margin:0;">Tableau récapitulatif des scripts</h1>
