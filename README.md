@@ -1489,15 +1489,64 @@ de vrai, sans dépenser de session GPU :
   PAS les vrais chiffres post-SFT, qui restent à produire sur un job HF
   Jobs GPU réel (jamais lancé ici, même raison de coût que §2.2/§2.3).
 
-**Ce qui reste donc à faire, honnêtement, pour obtenir les vrais
-chiffres :** lancer la commande `hf jobs uv run --flavor l4x1`
-ci-dessus une fois cette branche fusionnée sur `main`, puis comparer
-`exact_match`/`f1_moyen` au plancher déjà mesuré en §2.2 (CPU : exact
-match 0.000/F1 0.037 ; GPU : exact match 0.000/F1 0.043) : une
-progression mesurable de ces deux métriques serait la première preuve
-chiffrée que le SFT a bien un effet (cahier des charges §9),
-indépendamment du verdict de convergence déjà obtenu côté courbe
-d'entraînement (§2.3 point 8).
+**Résultat réel (17/09/2026), job GPU réel (`--flavor l4x1`) lancé avec
+succès, run `evaluation-post-sft` journalisé dans le même dépôt
+métriques que les deux baselines (`mombasstic/chsa-triage-baseline-metrics`) :**
+sur les mêmes 278 exemples `split=test`/`type_exemple=sft` : 278
+évalués et 278 comparables (ZÉRO échec d'inférence), exact match
+0.000, F1 moyen (token) 0.112 (valeur exacte 0.11166994355349093),
+exactitude de classification du niveau ESI non calculable (0/278,
+même raison structurelle que les deux baselines, cf. §2.2), latence
+moyenne 11553,4 ms (~11,6 s) par génération.
+
+**Comparaison des trois runs** (mêmes 278 exemples, mêmes métriques,
+tous les trois désormais journalisés dans le même dépôt
+`mombasstic/chsa-triage-baseline-metrics`) :
+
+| | Exact match | F1 moyen (token) | Latence moyenne |
+|---|---|---|---|
+| Baseline CPU (Q4_K_M) | 0,000 | 0,037 | ~21,6 s |
+| Baseline GPU (bf16) | 0,000 | 0,043 | ~7,3 s |
+| Post-SFT (bf16+LoRA) | 0,000 | **0,112** | ~11,6 s |
+
+**Le F1 quasi triple par rapport au meilleur des deux baselines
+(0,043 -> 0,112) :** première preuve chiffrée que le SFT a un effet
+mesurable (cahier des charges §9), cohérente avec le verdict de
+convergence `SAINE` déjà obtenu côté courbe d'entraînement (§2.3).
+L'exact match reste à 0,000 sur les trois runs : à ne pas lire comme
+un échec du SFT, c'est une métrique très stricte qui exige une
+correspondance caractère-à-caractère avec une réponse de référence en
+langage libre (MediQAl/FrenchMedMCQA/MedQuAD, cf. le point de
+vigilance JSON en §2.2), quasi inatteignable même avec une réelle
+amélioration du modèle ; le F1 token, moins strict, est la métrique
+qui porte le signal ici.
+
+**La latence augmente par rapport à la baseline GPU (~7,3 s ->
+~11,6 s), et l'hypothèse retenue pour l'expliquer n'a pas pu être
+vérifiée directement :** `EvaluerBaselineZeroShotUseCase` ne
+journalise aucune longueur de génération par exemple (seuls
+`exact_match`/`f1_moyen`/`exactitude_niveau_triage`/`latence_ms_moyenne`/
+`nombre_echecs_inference` sont loggés, confirmé en relisant
+`executer()`, et aucun texte de génération brut n'est conservé nulle
+part), donc la longueur moyenne réelle des générations n'est pas
+calculable a posteriori sans relancer une inférence (nouveau coût
+GPU, hors périmètre ici). Élément indirect disponible : les deux runs
+partagent exactement les mêmes paramètres de génération
+(`temperature: 0.0`, `n_predict: 256`, confirmé dans `parametres.json`
+des deux runs) et le même `--flavor l4x1`, donc le ratio de latence
+(~1,58×) est cohérent avec un nombre de tokens générés significativement
+plus élevé en moyenne côté post-SFT (le modèle affiné, désormais
+exposé au format de triage cible, produit vraisemblablement des
+réponses plus longues/plus structurées, se rapprochant davantage de la
+limite `n_predict=256` plutôt que de s'arrêter tôt comme le modèle de
+base non entraîné). Ceci reste une hypothèse plausible, pas un fait
+vérifié : documentée comme telle plutôt que présentée comme confirmée.
+
+**Ce que ce résultat établit :** le pipeline d'évaluation post-SFT est
+validé de bout en bout sur GPU réel (chargement modèle de base + poids
+LoRA, génération, scoring, journalisation), et le SFT-LoRA a un effet
+mesurable et positif sur le F1 token par rapport aux deux baselines
+zero-shot, conformément à l'objectif du cahier des charges §9.
 
 ## 3. DPO (Étape 3)
 
