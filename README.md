@@ -1548,6 +1548,11 @@ LoRA, génération, scoring, journalisation), et le SFT-LoRA a un effet
 mesurable et positif sur le F1 token par rapport aux deux baselines
 zero-shot, conformément à l'objectif du cahier des charges §9.
 
+Synthèse de ces résultats (baselines → entraînement → évaluation
+post-SFT) sous forme de présentation PowerPoint :
+[`docs/03_etape2_sft/04_presentation_synthese_sft_lora.pptx`](docs/03_etape2_sft/04_presentation_synthese_sft_lora.pptx)
+(régénérable via `scripts/generer_presentation_etape2.py`).
+
 ## 3. DPO (Étape 3)
 
 **Non implémenté à ce jour.** Aucune commande ni étape n'existe encore
