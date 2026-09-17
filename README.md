@@ -440,6 +440,13 @@ hf jobs uv run \
     --dataset-hf-repo mombasstic/chsa-triage-baseline-test \
     --depot-lora mombasstic/chsa-triage-sft-lora \
     --suivi-hf-repo mombasstic/chsa-triage-baseline-metrics
+
+# Visualize
+watch -n 5 hf jobs list
+watch -n 5 hf jobs stats   6aaa59765527934177ee9636
+           hf jobs inspect 6aaab9a95527934177eeaac8 --format json | python3 -m json.tool
+           hf jobs logs -f 6aaa59765527934177ee9636
+
 ```
 
 **Résultat le plus important du projet à ce jour :**
