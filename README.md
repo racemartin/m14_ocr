@@ -1,6 +1,24 @@
-# CHSA Triage : Agent IA de Triage Médical (POC)
+<p align="center">
+  <img src="docs/images/v987-18a.png" alt="CHSA" width="120">
 
-<table id="introduction" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+  # CHSA Triage : Agent IA de Triage Médical (POC)
+
+
+[![Python](https://img.shields.io/badge/Python-3.12-blue)](https://www.python.org)
+[![uv](https://img.shields.io/badge/uv-package%20manager-DE5FE9)](https://docs.astral.sh/uv/)
+[![Transformers](https://img.shields.io/badge/🤗%20Transformers-Qwen3--1.7B-FFD21E)](https://huggingface.co/docs/transformers)
+[![TRL](https://img.shields.io/badge/TRL-SFT%20%2B%20DPO-FF6F00)](https://huggingface.co/docs/trl)
+[![PEFT](https://img.shields.io/badge/PEFT-LoRA-8A2BE2)](https://huggingface.co/docs/peft)
+[![vLLM](https://img.shields.io/badge/vLLM-inference-00B2A9)](https://docs.vllm.ai)
+[![Presidio](https://img.shields.io/badge/Presidio-RGPD%20anonymisation-4B8BBE)](https://github.com/microsoft/presidio)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688)](https://fastapi.tiangolo.com)
+[![Streamlit](https://img.shields.io/badge/Streamlit-UI-FF4B4B)](https://streamlit.io)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED)](https://www.docker.com)
+[![HF Hub](https://img.shields.io/badge/🤗%20HF%20Hub-checkpoints-FFD21E)](https://huggingface.co)
+
+ </p>
+
+<table id="introduction" style="width:100%;"><tr><td style="background-color:#c9f1edff;">
 <h1 style="border-bottom:none; margin:0;">Introduction</h1>
 </td></tr></table>
 
@@ -12,7 +30,7 @@ technique (hallucinations écartées, hallazgos, limites honnêtes, historique
 complet des corrections), voir
 [`README_IMPLEMENTACION_V1.md`](README_IMPLEMENTACION_V1.md).
 
-<table id="tableau-récapitulatif-des-scripts" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<table id="tableau-récapitulatif-des-scripts" style="width:100%;"><tr><td style="background-color:#c9f1edff;">
 <h1 style="border-bottom:none; margin:0;">Tableau récapitulatif des scripts</h1>
 </td></tr></table>
 
@@ -41,7 +59,7 @@ Vue d'ensemble de tous les scripts exécutables du dépôt, classés par étape.
 
 Détail de chaque commande dans les sections ci-dessous, et détail exhaustif de tous les scripts (y compris ceux hors périmètre de ce document) dans `README_IMPLEMENTACION_V1.md`.
 
-<table id="table-des-matières" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<table id="table-des-matières" style="width:100%;"><tr><td style="background-color:#c9f1edff;">
 <h1 style="border-bottom:none; margin:0;">Table des matières</h1>
 </td></tr></table>
 
@@ -61,7 +79,7 @@ Détail de chaque commande dans les sections ci-dessous, et détail exhaustif de
 - [3. DPO](#3-dpo)
 - [Structure (architecture hexagonale)](#structure-architecture-hexagonale)
 
-<table id="1-préparation-de-données" style="width:100%;"><tr><td style="background-color:#38a169;">
+<table id="1-préparation-de-données" style="width:100%;"><tr><td style="background-color:#b0f58c;">
 <h1 style="border-bottom:none; margin:0;">1. Préparation de données</h1>
 </td></tr></table>
 
@@ -70,7 +88,7 @@ anonymisés, contrôlés et répartis en splits train/val/test. Prérequis
 d'installation (`uv sync`, modèles spaCy) : voir
 `docs/01_environnement/00_guide_installation_environnement.md`.
 
-<table id="11-télécharger-corpus" style="width:100%;"><tr><td style="background-color:#38a169;">
+<table id="11-télécharger-corpus" style="width:100%;"><tr><td style="background-color:#b0f58c;">
 <h2 style="border-bottom:none; margin:0;">1.1 Télécharger Corpus</h2>
 </td></tr></table>
 
@@ -90,7 +108,7 @@ uv run python interfaces/cli/E1_01_telecharger_corpus.py --identifiant-hub Tsing
 Les 6 fichiers sources sont récupérés dans `data/raw/`, prêts pour le
 profilage puis la fusion en dataset pivot.
 
-<table id="12-profiler-corpus" style="width:100%;"><tr><td style="background-color:#38a169;">
+<table id="12-profiler-corpus" style="width:100%;"><tr><td style="background-color:#b0f58c;">
 <h2 style="border-bottom:none; margin:0;">1.2 Profiler Corpus</h2>
 </td></tr></table>
 
@@ -110,7 +128,7 @@ uv run python interfaces/cli/E1_02_profiler_corpus.py --source data/raw/ultramed
 Un rapport HTML par corpus a été généré, utilisé pour décider du mapping
 de chaque source vers le schéma pivot (§1.3).
 
-<table id="13-dataset-pivot" style="width:100%;"><tr><td style="background-color:#38a169;">
+<table id="13-dataset-pivot" style="width:100%;"><tr><td style="background-color:#b0f58c;">
 <h2 style="border-bottom:none; margin:0;">1.3 Dataset Pivot</h2>
 </td></tr></table>
 
@@ -133,7 +151,7 @@ identifiant déterministe a mis au jour de vrais doublons entre sources qui
 étaient invisibles avec des identifiants aléatoires. Détail par source :
 `docs/02_etape1_donnees/00_couverture_exigences_officielles.md`.
 
-<table id="14-anonymisation" style="width:100%;"><tr><td style="background-color:#38a169;">
+<table id="14-anonymisation" style="width:100%;"><tr><td style="background-color:#b0f58c;">
 <h2 style="border-bottom:none; margin:0;">1.4 Anonymisation</h2>
 </td></tr></table>
 
@@ -157,7 +175,7 @@ manuelle exigée par le cahier des charges. Détail complet (recognizer NIR,
 normalisation des âges, méthodologie de révision) :
 `docs/02_etape1_donnees/01_rapport_rgpd.md`.
 
-<table id="15-découpage-en-splits" style="width:100%;"><tr><td style="background-color:#38a169;">
+<table id="15-découpage-en-splits" style="width:100%;"><tr><td style="background-color:#b0f58c;">
 <h2 style="border-bottom:none; margin:0;">1.5 Découpage en Splits</h2>
 </td></tr></table>
 
@@ -178,14 +196,14 @@ représentatifs par strate. Les exemples portant un candidat de PII
 résiduelle non résolu restent volontairement exclus du découpage tant
 qu'aucune décision humaine n'est persistée (§1.4).
 
-<table id="2-sft--lora" style="width:100%;"><tr><td style="background-color:#02c39a;">
+<table id="2-sft--lora" style="width:100%;"><tr><td style="background-color:#a6e3ff;">
 <h1 style="border-bottom:none; margin:0;">2. SFT + LoRA</h1>
 </td></tr></table>
 
 Architecture hexagonale, deux baselines zero-shot mesurées avant tout
 entraînement, l'entraînement SFT-LoRA réel, et son évaluation.
 
-<table id="21-architecture" style="width:100%;"><tr><td style="background-color:#02c39a;">
+<table id="21-architecture" style="width:100%;"><tr><td style="background-color:#a6e3ff;">
 <h2 style="border-bottom:none; margin:0;">2.1 Architecture</h2>
 </td></tr></table>
 
@@ -209,7 +227,7 @@ texte ChatML final tel que produit par le tokenizer `Qwen/Qwen3-1.7B-Base`,
 confirmant que le rendu utilisé à l'entraînement (§2.3) est bien celui-ci.
 Schéma complet des classes/paquets/déploiement : `docs/diagrams/`.
 
-<table id="22-baseline-evaluation" style="width:100%;"><tr><td style="background-color:#02c39a;">
+<table id="22-baseline-evaluation" style="width:100%;"><tr><td style="background-color:#a6e3ff;">
 <h2 style="border-bottom:none; margin:0;">2.2 Baseline Evaluation</h2>
 </td></tr></table>
 
@@ -249,7 +267,7 @@ La baseline GPU est plus rapide, plus fiable (zéro échec) et légèrement
 meilleure en F1. Ces deux points zéro servent de référence mesurable pour
 juger l'effet du SFT (§2.5).
 
-<table id="23-sft-train" style="width:100%;"><tr><td style="background-color:#02c39a;">
+<table id="23-sft-train" style="width:100%;"><tr><td style="background-color:#a6e3ff;">
 <h2 style="border-bottom:none; margin:0;">2.3 SFT Train</h2>
 </td></tr></table>
 
@@ -279,7 +297,7 @@ de perte train/validation de ce run a été reconstruite a posteriori depuis
 le log brut du job (backend de suivi mal configuré à l'origine, corrigé
 depuis) et republiée sur le dépôt de métriques.
 
-<table id="24-sft-lora-train" style="width:100%;"><tr><td style="background-color:#02c39a;">
+<table id="24-sft-lora-train" style="width:100%;"><tr><td style="background-color:#a6e3ff;">
 <h2 style="border-bottom:none; margin:0;">2.4 SFT-LoRA Train</h2>
 </td></tr></table>
 
@@ -289,7 +307,7 @@ LoRA nativement (QLoRA 4-bit) à chaque run. Il n'existe pas de variante
 « SFT plein » séparée à documenter ici ; la commande et les résultats réels
 sont ceux de la §2.3 ci-dessus.
 
-<table id="25-evaluation-post-sft" style="width:100%;"><tr><td style="background-color:#02c39a;">
+<table id="25-evaluation-post-sft" style="width:100%;"><tr><td style="background-color:#a6e3ff;">
 <h2 style="border-bottom:none; margin:0;">2.5 Evaluation Post-SFT</h2>
 </td></tr></table>
 
@@ -322,14 +340,14 @@ cohérente avec le verdict de convergence SAINE (§2.3). L'exact match reste
 à 0,000 sur les trois runs : attendu, la métrique exige une correspondance
 caractère-à-caractère avec des réponses de référence en langage libre.
 
-<table id="3-dpo" style="width:100%;"><tr><td style="background-color:#7aeae7;">
+<table id="3-dpo" style="width:100%;"><tr><td style="background-color:#f5cf47;">
 <h1 style="border-bottom:none; margin:0;">3. DPO</h1>
 </td></tr></table>
 
 **Non implémenté à ce jour.** Aucune commande ni étape n'existe encore dans
 le code pour cette phase ; voir `docs/04_etape3_dpo/` (à venir).
 
-<table id="structure-architecture-hexagonale" style="width:100%;"><tr><td style="background-color:#c9f1ed;">
+<table id="structure-architecture-hexagonale" style="width:100%;"><tr><td style="background-color:#c9f1edff;">
 <h1 style="border-bottom:none; margin:0;">Structure (architecture hexagonale)</h1>
 </td></tr></table>
 
