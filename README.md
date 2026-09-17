@@ -47,7 +47,9 @@ développé sous architecture hexagonale. Ce document est une version
   - [2.3 SFT Train](#23-sft-train)
   - [2.4 SFT-LoRA Train](#24-sft-lora-train)
   - [2.5 Evaluation Post-SFT](#25-evaluation-post-sft)
+  - [2.6 Suivi d'entraînement](#26-suivi-entrainement)
 - [3. DPO](#3-dpo)
+- [Vérifications d'environnement](#verifications-environnement)
 - [Structure (architecture hexagonale)](#structure-architecture-hexagonale)
 
 <table id="tableau-récapitulatif-des-scripts" style="width:100%;"><tr><td style="background-color:#c9f1edff;">
@@ -121,6 +123,8 @@ Vue d'ensemble de tous les scripts exécutables du dépôt, classés par étape.
 | `scripts/check_env_local.py`, `scripts/check_env_gpu.py`, `scripts/check_env_remote_hf.py` | Vérifient que l'environnement (local, GPU, HF) est prêt avant chaque étape. |
 
 </td></tr></table>
+
+Détail de chaque commande dans les sections ci-dessous.
 
 
 
@@ -210,6 +214,26 @@ uv run python interfaces/cli/E1_04_00_anonymiser_dataset.py --dataset data/proce
 scripts/anonymiser_par_lots.sh data/processed/dataset_pivot.jsonl data/processed/dataset_pivot_anonymise.jsonl replace 5000
 ```
 
+Compare ensuite le pivot original et le fichier anonymisé sur un
+échantillon stratifié pour détecter de la PII résiduelle :
+
+```bash
+uv run python interfaces/cli/E1_04_02_controler_qualite_anonymisation.py \
+--dataset data/processed/dataset_pivot.jsonl \
+--anonymise data/processed/dataset_pivot_anonymise.jsonl \
+--taille-echantillon 200
+```
+
+Les candidats laissés en attente par ce contrôle passent par une
+révision humaine persistée (une décision par candidat, jamais reperdue
+d'une exécution à l'autre) :
+
+```bash
+uv run python interfaces/cli/E1_04_01_reviser_pii_residuelle.py verify \
+--dataset data/processed/dataset_pivot.jsonl \
+--anonymise data/processed/dataset_pivot_anonymise.jsonl
+```
+
 L'anonymisation complète des 134 883 exemples a été menée à son terme par
 vagues successives. Chaque exécution génère/fusionne un rapport RGPD cumulé
 (entités détectées par type et par source), et un contrôle qualité par
@@ -240,6 +264,25 @@ en splits (37 802 exemples SFT / 97 081 exemples DPO), vérifiés
 représentatifs par strate. Les exemples portant un candidat de PII
 résiduelle non résolu restent volontairement exclus du découpage tant
 qu'aucune décision humaine n'est persistée (§1.4).
+
+Pour publier un sous-ensemble filtré (échantillon stratifié), exporter
+d'abord les identifiants à exclure puis extraire, ici pour le
+sous-ensemble SFT :
+
+```bash
+uv run python interfaces/cli/E1_04_01_reviser_pii_residuelle.py exporter \
+--dataset data/processed/dataset_pivot.jsonl \
+--anonymise data/processed/dataset_pivot_anonymise.jsonl
+
+uv run python interfaces/cli/E1_05_02_extraire_sous_ensemble_sft.py \
+--dataset data/processed/dataset_pivot_anonymise.jsonl \
+--exclusions data/processed/identifiants_a_exclure_publication.jsonl \
+--taille 5000
+```
+
+`E1_05_03_extraire_sous_ensemble_dpo.py` suit exactement le même
+patron (mêmes `--dataset`/`--exclusions`/`--taille`) pour le
+sous-ensemble DPO, en filtrant `type_exemple == DPO` au lieu de SFT.
 
 <table id="2-sft--lora" style="width:100%;"><tr><td style="background-color:#a6e3ff;">
 <h1 style="border-bottom:none; margin:0;">2. SFT + LoRA</h1>
@@ -463,12 +506,73 @@ cohérente avec le verdict de convergence SAINE (§2.3). L'exact match reste
 à 0,000 sur les trois runs : attendu, la métrique exige une correspondance
 caractère-à-caractère avec des réponses de référence en langage libre.
 
+<table id="26-suivi-entrainement" style="width:100%;"><tr><td style="background-color:#a6e3ff;">
+<h2 style="border-bottom:none; margin:0;">2.6 Suivi d'entraînement</h2>
+</td></tr></table>
+
+Pendant un run réel, `training/E2_04_sft_train.py --suivi-hf-repo <repo>`
+publie la courbe de perte en direct sur un dataset HF Hub, lue par un
+dashboard Streamlit déployé sur HF Space :
+
+```bash
+uv run streamlit run monitoring/app_suivi_entrainement.py
+```
+
+Pour parcourir l'historique complet de tous les runs dans l'interface
+MLflow habituelle, sans monter de serveur MLflow distant, importer
+localement les runs du même dépôt HF (idempotent, `--forcer` pour
+réimporter) :
+
+```bash
+uv run python monitoring/importer_mlflow_local.py
+```
+
+Si la courbe d'un run déjà terminé n'a jamais atteint de backend
+durable (cf. §2.3), elle peut être reconstruite a posteriori depuis le
+log brut du job :
+
+```bash
+uv run python monitoring/reconstruire_courbe_sft_depuis_log.py \
+--log /chemin/vers/le/log.log \
+--nom-run sft-lora-16092026-reconstruit \
+--publier
+```
+
+C'est exactement ce qui a permis de récupérer la courbe du premier run
+réel (job `6aaab9a95527934177eeaac8`, §2.3), republiée avec succès dans
+le même dépôt de métriques.
+
 <table id="3-dpo" style="width:100%;"><tr><td style="background-color:#f5cf47;">
 <h1 style="border-bottom:none; margin:0;">3. DPO</h1>
 </td></tr></table>
 
 **Non implémenté à ce jour.** Aucune commande ni étape n'existe encore dans
 le code pour cette phase ; voir `docs/04_etape3_dpo/` (à venir).
+
+
+<table id="verifications-environnement" style="width:100%;"><tr><td style="background-color:#d9d9d9;">
+<h1 style="border-bottom:none; margin:0;">Vérifications d'environnement</h1>
+</td></tr></table>
+
+Trois scripts, à lancer avant de démarrer l'étape correspondante :
+
+```bash
+uv run python scripts/check_env_local.py
+```
+
+```bash
+uv run python scripts/check_env_gpu.py
+```
+
+```bash
+uv run python scripts/check_env_remote_hf.py
+```
+
+`check_env_local.py` vérifie l'environnement local (Environnement A,
+sans GPU, avant l'étape 1) ; `check_env_gpu.py` vérifie l'environnement
+GPU (Environnement B, avant un run `SFTTrainer` coûteux, chat template,
+tokens ChatML, chargement 4-bit) ; `check_env_remote_hf.py` vérifie
+l'accès Hugging Face (Jobs + Spaces) avant tout lancement distant.
 
 
 <table id="introduction" style="width:100%;"><tr><td style="background-color:#c9f1edff;">
