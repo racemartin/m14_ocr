@@ -321,8 +321,6 @@ Le F1 token **quasi triple** par rapport à la meilleure baseline (0,043 ->
 cohérente avec le verdict de convergence SAINE (§2.3). L'exact match reste
 à 0,000 sur les trois runs : attendu, la métrique exige une correspondance
 caractère-à-caractère avec des réponses de référence en langage libre.
-Synthèse complète :
-[`docs/03_etape2_sft/04_presentation_synthese_sft_lora.pptx`](docs/03_etape2_sft/04_presentation_synthese_sft_lora.pptx).
 
 <table id="3-dpo" style="width:100%;"><tr><td style="background-color:#7aeae7;">
 <h1 style="border-bottom:none; margin:0;">3. DPO</h1>
