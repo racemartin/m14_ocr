@@ -120,6 +120,18 @@ uv run python scripts/check_env_local.py
 uv run pytest tests/ -v
 ```
 
+<table style="width:100%;"><tr><td style="background-color:#cfe8fc;">
+<h1 style="border-bottom:none; margin:0;">1.1 Telecharger Corpus</h1>
+</td></tr></table>
+
+<table style="width:100%;">
+  <tr>
+    <td style="background-color:#cfe8fc;">
+      <h2 style="border-bottom:none; margin:0;">1.2 Telechargement (Hugging Face Hub -> data/raw/)</h2>
+    </td>
+  </tr>
+</table>
+
 ### 1.2 Telechargement (Hugging Face Hub -> data/raw/)
 
 ```bash
