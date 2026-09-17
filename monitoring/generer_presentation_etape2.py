@@ -3,7 +3,7 @@
 Usage (python-pptx n'est PAS une dependance permanente du projet, installee
 de facon isolee pour cette seule execution) :
 
-    uv run --with python-pptx python scripts/generer_presentation_etape2.py
+    uv run --with python-pptx python monitoring/generer_presentation_etape2.py
 
 Regenere docs/03_etape2_sft/04_presentation_synthese_sft_lora.pptx a partir
 des chiffres reels mesures et deja documentes dans le README (sections 2.2,

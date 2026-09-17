@@ -103,6 +103,7 @@ Vue d'ensemble de tous les scripts exécutables du dépôt, classés par étape.
 | `training/E2_04_sft_train.py` | Point d'entrée d'entraînement SFT-LoRA réel, exécuté via HF Jobs (GPU requis). |
 | `interfaces/cli/E2_05_evaluer_post_sft.py` | Évaluation post-SFT : mêmes métriques/mêmes exemples que les baselines, mais via le modèle base+LoRA réellement entraîné. |
 | `monitoring/app_suivi_entrainement.py`, `monitoring/importer_mlflow_local.py`, `monitoring/reconstruire_courbe_sft_depuis_log.py` | Suivi en direct (Streamlit/HF Space) et historisation locale (MLflow) de la courbe d'entraînement. |
+| `monitoring/generer_presentation_etape2.py` | Régénère la présentation PowerPoint de synthèse à partir des chiffres mesurés (baselines, entraînement, évaluation post-SFT). |
 
 </td></tr></table>
 
@@ -336,7 +337,12 @@ uv run python interfaces/cli/E1_06_00_evaluer_baseline.py \
     --dataset data/processed/dataset_pivot_anonymise.jsonl \
     --url-serveur http://127.0.0.1:8080
 
-# GPU (transformers, bf16, HF Jobs) :
+# GPU (transformers, bf16, HF Jobs) : le job distant lit le sous-ensemble de
+# 278 exemples depuis un dépôt dataset HF dédié, à créer et publier une
+# seule fois au préalable :
+hf repo create mombasstic/chsa-triage-baseline-test --repo-type dataset --private
+hf upload mombasstic/chsa-triage-baseline-test data/splits/dataset_pivot_test_sft.jsonl dataset_pivot_test_sft.jsonl --repo-type dataset
+
 hf jobs uv run \
     --flavor l4x1 \
     --with "chsa-triage[remote] @ git+https://github.com/racemartin/m14_ocr.git@main" \
@@ -357,6 +363,17 @@ La baseline GPU est plus rapide, plus fiable (zéro échec) et légèrement
 meilleure en F1. Ces deux points zéro servent de référence mesurable pour
 juger l'effet du SFT (§2.5).
 
+Le run GPU (`hf jobs uv run`) journalise sur le dépôt HF
+`mombasstic/chsa-triage-baseline-metrics` (aussi utilisé par
+l'évaluation post-SFT, §2.5) ; pour le parcourir dans un MLflow local
+(voir §2.6) :
+
+```bash
+uv run python monitoring/importer_mlflow_local.py \
+    --repo-id mombasstic/chsa-triage-baseline-metrics \
+    --base-sqlite data/processed/mlflow.db
+```
+
 <table id="23-sft-train" style="width:100%;"><tr><td style="background-color:#a6e3ff;">
 <h2 style="border-bottom:none; margin:0;">2.3 SFT Train</h2>
 </td></tr></table>
@@ -364,6 +381,25 @@ juger l'effet du SFT (§2.5).
 Entraînement SFT-LoRA réel (QLoRA 4-bit, rang 16) sur `Qwen/Qwen3-1.7B-Base`,
 lancé sur HF Jobs (GPU L4) via `training/E2_04_sft_train.py`, seul script
 d'entraînement du projet.
+
+Le pivot anonymisé complet est trop volumineux pour être retéléversé à
+chaque lancement : il est monté depuis un dépôt dataset HF dédié, à
+créer et publier une seule fois au préalable :
+
+```bash
+hf repo create mombasstic/chsa-triage-sft-train-data --repo-type dataset --private
+hf upload mombasstic/chsa-triage-sft-train-data data/processed/dataset_pivot_anonymise.jsonl --repo-type dataset
+```
+
+Le dépôt modèle qui recevra les poids LoRA du meilleur essai
+(`--checkpoint-hf-repo` ci-dessous) est optionnel à créer à l'avance :
+le code le crée lui-même (`exist_ok=True`) au premier téléversement s'il
+n'existe pas déjà. Commande manuelle équivalente, pour le créer soi-même
+au préalable (par exemple pour en fixer la visibilité avant tout run) :
+
+```bash
+hf repo create mombasstic/chsa-triage-sft-lora --repo-type model --private
+```
 
 ```bash
 hf jobs uv run \
@@ -508,6 +544,14 @@ cohérente avec le verdict de convergence SAINE (§2.3). L'exact match reste
 à 0,000 sur les trois runs : attendu, la métrique exige une correspondance
 caractère-à-caractère avec des réponses de référence en langage libre.
 
+Une fois ces résultats obtenus, régénérer la présentation PowerPoint de
+synthèse (baselines, entraînement, évaluation post-SFT) à partir des
+mêmes chiffres :
+
+```bash
+uv run --with python-pptx python monitoring/generer_presentation_etape2.py
+```
+
 <table id="26-suivi-entrainement" style="width:100%;"><tr><td style="background-color:#a6e3ff;">
 <h2 style="border-bottom:none; margin:0;">2.6 Suivi d'entraînement</h2>
 </td></tr></table>
@@ -523,10 +567,20 @@ uv run streamlit run monitoring/app_suivi_entrainement.py
 Pour parcourir l'historique complet de tous les runs dans l'interface
 MLflow habituelle, sans monter de serveur MLflow distant, importer
 localement les runs du même dépôt HF (idempotent, `--forcer` pour
-réimporter) :
+réimporter ; même fichier SQLite que l'import de §2.2 pour tout
+retrouver au même endroit) :
 
 ```bash
-uv run python monitoring/importer_mlflow_local.py
+uv run python monitoring/importer_mlflow_local.py \
+    --repo-id mombasstic/chsa-triage-sft-metrics \
+    --base-sqlite data/processed/mlflow.db
+```
+
+Puis ouvrir l'interface MLflow sur ce même fichier (baseline et SFT
+confondus) :
+
+```bash
+uv run mlflow ui --backend-store-uri sqlite:///data/processed/mlflow.db --host 0.0.0.0 --port 5000
 ```
 
 Si la courbe d'un run déjà terminé n'a jamais atteint de backend
