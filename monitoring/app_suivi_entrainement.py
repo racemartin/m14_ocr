@@ -1,9 +1,14 @@
 """
 Dashboard Streamlit : visualisation EN VIVO de la courbe d'apprentissage
-(perte train/validation) d'un run SFT-LoRA reel (Environnement B, GPU
-sur HF Jobs), en lisant le dataset HF alimente par
-`HfDatasetSuiviExperimentation` (`training/E2_04_sft_train.py`,
-`suivi.backend: hf_dataset`).
+(perte train/validation) d'un run SFT-LoRA ou DPO-LoRA reel
+(Environnement B, GPU sur HF Jobs), en lisant le dataset HF alimente
+par `HfDatasetSuiviExperimentation` (`training/E2_04_sft_train.py`
+pour SFT, `E3_02_uc_entrainer_dpo.py` pour DPO, `suivi.backend:
+hf_dataset` dans les deux cas). Pour un run DPO, affiche en plus les
+metriques de recompense propres a `trl.DPOTrainer`
+(`rewards/chosen`/`rewards/rejected`/`rewards/accuracies`/`rewards/margins`)
+quand elles sont presentes dans le run selectionne ; un run SFT n'a
+jamais ces colonnes et n'affiche donc jamais ces cartes/graphique.
 
 Deploiement cible : Hugging Face Spaces (SDK Streamlit), cf. README
 "Suivi d'entrainement en vivo" pour les commandes exactes de creation
@@ -49,8 +54,10 @@ from monitoring.hf_dataset_runs import (
     telecharger_texte_metriques,
 )
 from monitoring.logica_suivi_entrainement import (
+    COLONNES_RECOMPENSE_DPO,
     analyser_jsonl_metriques,
     evaluer_convergence_en_vivo,
+    filtrer_colonnes_presentes,
     pivoter_par_etape,
 )
 
@@ -91,7 +98,7 @@ def _afficher_verdict_convergence(tableau_large: list[dict]) -> None:
 
 
 def _afficher_courbe_pertes(tableau_large: list[dict]) -> None:
-    colonnes_courbe = [c for c in ("perte_train", "perte_validation") if any(c in ligne for ligne in tableau_large)]
+    colonnes_courbe = filtrer_colonnes_presentes(tableau_large, ("perte_train", "perte_validation"))
     if not colonnes_courbe:
         st.info("Aucune courbe de perte disponible pour l'instant.")
         return
@@ -100,9 +107,37 @@ def _afficher_courbe_pertes(tableau_large: list[dict]) -> None:
     st.line_chart(donnees, x="etape", y=colonnes_courbe)
 
 
+_LIBELLE_PAR_COLONNE_RECOMPENSE = {
+    "rewards/chosen": "Recompense chosen",
+    "rewards/rejected": "Recompense rejected",
+    "rewards/accuracies": "Precision recompenses",
+    "rewards/margins": "Marge recompenses",
+}
+
+
+def _afficher_cartes_recompenses_dpo(derniere_ligne: dict, colonnes_presentes: list[str]) -> None:
+    """Cartes des metriques de recompense DPO (`trl.DPOTrainer`) : rien n'est affiche si `colonnes_presentes` est vide (run SFT)."""
+    if not colonnes_presentes:
+        return
+    colonnes = st.columns(len(colonnes_presentes))
+    for colonne, cle in zip(colonnes, colonnes_presentes):
+        valeur = derniere_ligne.get(cle)
+        colonne.metric(_LIBELLE_PAR_COLONNE_RECOMPENSE[cle], f"{valeur:.4f}" if valeur is not None else "-")
+
+
+def _afficher_courbe_recompenses_dpo(tableau_large: list[dict], colonnes_presentes: list[str]) -> None:
+    """Courbe chosen/rejected uniquement (accuracies/margins restent en cartes, cf. _afficher_cartes_recompenses_dpo) ; rien si `colonnes_presentes` est vide."""
+    colonnes_courbe = [c for c in ("rewards/chosen", "rewards/rejected") if c in colonnes_presentes]
+    if not colonnes_courbe:
+        return
+    donnees = {"etape": [ligne["etape"] for ligne in tableau_large]}
+    donnees.update({colonne: [ligne.get(colonne) for ligne in tableau_large] for colonne in colonnes_courbe})
+    st.line_chart(donnees, x="etape", y=colonnes_courbe)
+
+
 def main() -> None:
-    st.set_page_config(page_title="Suivi entrainement SFT-LoRA", page_icon="📈", layout="wide")
-    st.title("Suivi d'entrainement SFT-LoRA (en vivo)")
+    st.set_page_config(page_title="Suivi entrainement SFT/DPO-LoRA", page_icon="📈", layout="wide")
+    st.title("Suivi d'entrainement SFT/DPO-LoRA (en vivo)")
 
     with st.sidebar:
         repo_id = st.text_input("Depot dataset HF", value=REPO_ID_PAR_DEFAUT)
@@ -131,9 +166,13 @@ def main() -> None:
         st.info("Aucune metrique loguee pour l'instant.")
         return
 
+    colonnes_recompense_presentes = filtrer_colonnes_presentes(tableau_large, COLONNES_RECOMPENSE_DPO)
+
     _afficher_cartes_derniere_etape(tableau_large[-1])
+    _afficher_cartes_recompenses_dpo(tableau_large[-1], colonnes_recompense_presentes)
     _afficher_verdict_convergence(tableau_large)
     _afficher_courbe_pertes(tableau_large)
+    _afficher_courbe_recompenses_dpo(tableau_large, colonnes_recompense_presentes)
 
     if actualiser_maintenant:
         st.rerun()

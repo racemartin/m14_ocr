@@ -517,6 +517,13 @@ particulier (cohérence `--suivi-hf-repo`/`suivi.backend`) s'applique à
 l'identique à un futur job DPO sur HF Jobs, même disque éphémère, même
 risque de perte de courbe.
 
+Côté visualisation, le dashboard EN VIVO
+(`monitoring/app_suivi_entrainement.py`) sait déjà afficher ces quatre
+métriques de récompense (`rewards/chosen`/`rewards/rejected`/`rewards/accuracies`/`rewards/margins`)
+quand elles sont présentes dans le run sélectionné, cartes et courbe
+`chosen`/`rejected` incluses ; un run SFT ne les a jamais et n'affiche
+donc jamais ces éléments (cf. AGENTS.md).
+
 ## Document suivant
 
 Diagrammes : `docs/diagrams/04_etape3_dpo/` (séquence, paquets,

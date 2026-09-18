@@ -1,7 +1,9 @@
 """
 Logique pure (parsing JSONL, pivot format long -> large, construction
-de la courbe de convergence) du dashboard Streamlit de suivi
-d'entrainement EN VIVO (`monitoring/app_suivi_entrainement.py`).
+de la courbe de convergence, detection des colonnes de recompense DPO
+presentes) du dashboard Streamlit de suivi d'entrainement EN VIVO
+(`monitoring/app_suivi_entrainement.py`), reutilisee telle quelle pour
+un run SFT comme pour un run DPO.
 
 Aucune dependance a Streamlit ni au reseau ici : testable directement
 (`tests/monitoring/test_app_suivi_entrainement.py`), meme separation
@@ -31,6 +33,12 @@ NOM_FICHIER_METRIQUES = "metriques.jsonl"
 # presentes) avant de calculer un verdict : un point unique ne peut
 # jamais montrer de tendance (baisse/hausse).
 NOMBRE_MINIMAL_ETAPES_POUR_VERDICT = 2
+
+# Noms reels des metriques de recompense DPO, tels que journalises par
+# `TrlDpoEntraineurAdapter` via `SuiviExperimentation.logger_metrique()`
+# (API `trl.DPOTrainer`, cf. docs/04_etape3_dpo/02_etapes_cas_usage.md
+# §4). Absentes d'un run SFT, presentes uniquement sur un run DPO.
+COLONNES_RECOMPENSE_DPO = ("rewards/chosen", "rewards/rejected", "rewards/accuracies", "rewards/margins")
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,6 +121,16 @@ def evaluer_convergence_en_vivo(tableau_large: list[dict]) -> tuple[VerdictConve
     if not any(point.perte_validation is not None for point in courbe):
         message += ", perte_validation absente : surapprentissage non detectable"
     return verdict, message
+
+
+def filtrer_colonnes_presentes(tableau_large: list[dict], colonnes: tuple[str, ...]) -> list[str]:
+    """
+    Retourne, parmi `colonnes`, celles qui apparaissent effectivement
+    dans au moins une ligne de `tableau_large` (ex. les 4 metriques de
+    recompense DPO sur un run SFT : aucune n'a jamais ete journalisee,
+    la liste retournee est vide).
+    """
+    return [colonne for colonne in colonnes if any(colonne in ligne for ligne in tableau_large)]
 
 
 def extraire_noms_runs(chemins_fichiers: list[str], nom_fichier: str = NOM_FICHIER_METRIQUES) -> list[str]:
