@@ -78,6 +78,64 @@ def test_tokens_controle_chatml_restent_atomiques():
     assert verifier_chat_template(NOM_MODELE) is True
 
 
+def _exemple_pivot_dpo() -> ExemplePivot:
+    return ExemplePivot(
+        identifiant=ExemplePivot.nouvel_identifiant("test_e3", "cas-01"),
+        source="Test",
+        type_exemple=TypeExemple.DPO,
+        langue=Langue.FRANCAIS,
+        prompt=(Message(role="user", contenu="Le patient presente une douleur thoracique."),),
+        chosen=(
+            Message(
+                role="assistant",
+                contenu='<think>Douleur thoracique, risque cardiaque.</think>'
+                '{"niveau": 2, "categorie": "cardio-vasculaire", "ressources_estimees": "ECG"}',
+            ),
+        ),
+        rejected=(Message(role="assistant", contenu="Ce n'est probablement rien de grave."),),
+    )
+
+
+def test_formater_preference_rend_un_triplet_texte_distinct():
+    """
+    Trouvaille reelle (pas supposee) : le chat template natif de
+    Qwen3-1.7B-Base RETIRE le bloc `<think>...</think>` d'un tour
+    assistant qui n'est PAS le dernier tour genere (comportement
+    documente du template Qwen3, qui evite de re-alimenter d'anciens
+    raisonnements dans le contexte) ; verifie ici par appel reel a
+    `apply_chat_template` sur un `chosen` contenant `<think>`, jamais
+    suppose. Consequence pour le DPO (a signaler, pas a corriger ici,
+    hors perimetre des etapes 1-11) : `texte_chosen` tel que rendu par
+    `formater_preference()` ne contient PLUS le bloc `<think>`, seul le
+    JSON cible survit ; cf. AGENTS.md.
+    """
+    adaptateur = ChatMLFormateurAdapter(nom_modele=NOM_MODELE)
+    exemple = _exemple_pivot_dpo()
+
+    resultat = adaptateur.formater_preference(exemple)
+
+    assert resultat.identifiant == exemple.identifiant
+    assert "Le patient presente une douleur thoracique" in resultat.texte_prompt
+    assert '"niveau": 2' in resultat.texte_chosen
+    assert "<think>" not in resultat.texte_chosen  # retire par le chat template, cf. docstring ci-dessus
+    assert "Ce n'est probablement rien de grave" in resultat.texte_rejected
+    assert '"niveau": 2' not in resultat.texte_rejected
+    assert "Ce n'est probablement rien de grave" not in resultat.texte_prompt
+
+
+def test_formater_preference_texte_prompt_ne_contient_jamais_le_tour_assistant():
+    adaptateur = ChatMLFormateurAdapter(nom_modele=NOM_MODELE)
+    exemple = _exemple_pivot_dpo()
+
+    resultat = adaptateur.formater_preference(exemple)
+
+    assert "<|im_start|>assistant" not in resultat.texte_prompt or resultat.texte_prompt.rstrip().endswith(
+        "<|im_start|>assistant"
+    )
+    assert '"niveau"' not in resultat.texte_prompt
+    assert resultat.texte_prompt.rstrip().endswith("<|im_start|>assistant")
+
+
 def test_formater_invite_zero_shot_ne_contient_pas_la_completion():
     """
     Oppose de `formater()` : utilise par l'evaluation baseline zero-shot
