@@ -9,9 +9,26 @@ diagramme UML/PlantUML. Chaque diagramme est fourni en 4 formats :
 docs/diagrams/
 ├── _common/estilo.iuml          style PlantUML partagé (!include)
 ├── 00_vue_ensemble/
-│   ├── vision_generale_etapes.puml  pitch visuel du projet : étapes 1 à 3
-│   │                                  en ordre, avec entrée/sortie de
-│   │                                  chacune (réel, DPO marqué comme futur)
+│   ├── vision_generale_etapes.puml  V1 : pitch visuel simplifié (5 cases)
+│   │                                  du projet, étapes 1 à 3 en ordre,
+│   │                                  avec entrée/sortie de chacune (réel,
+│   │                                  DPO marqué comme futur), pour une
+│   │                                  première lecture rapide
+│   ├── vision_generale_etapes_v3_detaille.puml  V3 : flux technique
+│   │                                  détaillé (mêmes 5 étapes que la V1,
+│   │                                  développées), avec les scripts CLI,
+│   │                                  adaptateurs et dépôts Hugging Face
+│   │                                  réels (noms exacts vérifiés contre
+│   │                                  le code) ; recrée en PlantUML éditable
+│   │                                  le contenu de vision_generale_etapes_V2.png
+│   │                                  (PNG fixe créé manuellement dans un
+│   │                                  outil externe, sans source éditable,
+│   │                                  laissé intact) en corrigeant l'étape
+│   │                                  DPO pour la marquer [CONCEPTUEL]/
+│   │                                  [PRÉVU] au lieu de la présenter avec
+│   │                                  le même style que les étapes réelles,
+│   │                                  pour un lecteur qui veut le détail
+│   │                                  technique
 │   └── activite/                 roadmap complet du projet (4 semaines)
 ├── 01_environnement/
 │   └── paquets/                  architecture hexagonale (classes réelles)
@@ -60,7 +77,8 @@ docs/diagrams/
 | Étape | Activité | Séquence | Paquets | Déploiement |
 |---|---|---|---|---|
 | 00 : Vue d'ensemble | [FAIT] | N/A | N/A | N/A |
-| 00 : Vue d'ensemble : pitch (`vision_generale_etapes.puml`) | [FAIT] (réel) | N/A | N/A | N/A |
+| 00 : Vue d'ensemble : pitch V1 (`vision_generale_etapes.puml`) | [FAIT] (réel) | N/A | N/A | N/A |
+| 00 : Vue d'ensemble : détail technique V3 (`vision_generale_etapes_v3_detaille.puml`) | [FAIT] (réel, étape DPO marquée [CONCEPTUEL]) | N/A | N/A | N/A |
 | 01 : Environnement | N/A | N/A | [FAIT] (réel) | N/A |
 | 02 : Étape 1 (données) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel) |
 | 03 : Étape 2 (SFT) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel) |
@@ -98,6 +116,26 @@ le code) : il illustre comment une seule passe d'entraînement DPO
 enseignerait à la fois la préférence clinique et le format de sortie
 JSON contractuel (F3), complémentaire du diagramme simplifié déjà
 présent dans le livre théorique (§6).
+
+## Vue d'ensemble : V1 vs V3 (et le PNG V2)
+
+`00_vue_ensemble/` contient trois vues du même pipeline, pour des
+publics distincts : **V1** (`vision_generale_etapes.puml`, référencée
+dans `README.md`) reste la version simple à 5 cases pour une première
+lecture ; **V2** (`vision_generale_etapes_V2.png`) est un PNG plat créé
+manuellement dans un outil externe, sans fichier source éditable dans
+le dépôt, laissé intact ; **V3** (`vision_generale_etapes_v3_detaille.puml`,
+18/09/2026) recrée
+en PlantUML éditable le contenu technique de la V2 (mêmes 5 étapes,
+mêmes noms de scripts/adaptateurs/dépôts HF) tout en corrigeant un
+problème d'honnêteté visuelle de la V2 : celle-ci dessinait l'Étape 3
+(DPO) avec exactement le même style que les 4 étapes réelles, alors
+qu'aucun script DPO n'existe dans le code. La V3 marque cette case
+**[CONCEPTUEL] / [PRÉVU]** (fond distinct, même convention que
+`dpo_double_fonction_entrainement.puml`), précise que « dpo-lora » et
+le « checkpoint aligné » sont des noms prédits par convention jamais
+vérifiés, et renvoie vers le diagramme DPO dédié pour le détail de la
+double fonction plutôt que de le dupliquer.
 
 ## Régénérer les diagrammes
 

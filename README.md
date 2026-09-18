@@ -31,6 +31,8 @@ développé sous architecture hexagonale. Ce document est une version
 
 Vue d'ensemble en un coup d'œil (entrée/sortie de chaque étape) :
 [`docs/diagrams/00_vue_ensemble/vision_generale_etapes.png`](docs/diagrams/00_vue_ensemble/vision_generale_etapes.png).
+Version détaillée (scripts/adaptateurs/dépôts HF réels, DPO marqué conceptuel) :
+[`docs/diagrams/00_vue_ensemble/vision_generale_etapes_v3_detaille.png`](docs/diagrams/00_vue_ensemble/vision_generale_etapes_v3_detaille.png).
 
 
 <table id="table-des-matières" style="width:100%;"><tr><td style="background-color:#c9f1edff;">
