@@ -45,8 +45,10 @@ docs/diagrams/
 │                                      en vivo) + machine locale (historique
 │                                      MLflow/SQLite) (reel)
 ├── 04_etape3_dpo/
-│   ├── activite/                  pipeline DPO (conceptuel)
-│   └── deploiement/                infrastructure HF Jobs (conceptuel)
+│   ├── activite/                  double fonction en une seule passe DPO
+│   │                                (`dpo_double_fonction_entrainement.puml`,
+│   │                                conceptuel : Étape 3 non implémentée)
+│   └── deploiement/                infrastructure HF Jobs (conceptuel, à faire)
 └── 05_etape4_deploiement/
     ├── activite/                  pipeline CI/CD (conceptuel)
     ├── sequence/                   cas d'usage en production (conceptuel)
@@ -62,7 +64,7 @@ docs/diagrams/
 | 01 : Environnement | N/A | N/A | [FAIT] (réel) | N/A |
 | 02 : Étape 1 (données) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel) |
 | 03 : Étape 2 (SFT) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel) |
-| 04 : Étape 3 (DPO) | [FAIT] (conceptuel) | [A FAIRE] | [A FAIRE] | [FAIT] (conceptuel) |
+| 04 : Étape 3 (DPO) | [FAIT] (conceptuel) | [A FAIRE] | [A FAIRE] | [A FAIRE] |
 | 05 : Étape 4 (déploiement) | [FAIT] (conceptuel) | [FAIT] (conceptuel) | [A FAIRE] | [FAIT] (conceptuel) |
 
 **« réel »** = généré à partir du code effectivement écrit
@@ -83,12 +85,19 @@ poids/métriques sur HF Hub, et les deux nouveaux CLI
 (`interfaces/cli/E2_00_formater_dataset_chatml.py`,
 `interfaces/cli/E2_05_evaluer_post_sft.py`) : cf. AGENTS.md pour le
 détail complet.
-**[A FAIRE]** = pas encore produit : les diagrammes de séquence et de
-paquets du DPO (Étape 3) restent à faire, aucune proposition de
-conception équivalente n'ayant encore été documentée pour cette étape ;
-le diagramme de paquets de l'Étape 4 de même, une fois `interfaces/api`
-et `interfaces/web` implémentés (ou une proposition de conception
-documentée pour eux, sur le même principe que l'Étape 2).
+**[A FAIRE]** = pas encore produit : les diagrammes de séquence, de
+paquets et de déploiement du DPO (Étape 3) restent à faire, aucune
+proposition de conception équivalente n'ayant encore été documentée
+pour cette étape ; le diagramme de paquets de l'Étape 4 de même, une
+fois `interfaces/api` et `interfaces/web` implémentés (ou une
+proposition de conception documentée pour eux, sur le même principe
+que l'Étape 2). Le premier diagramme d'activité de l'Étape 3
+(`04_etape3_dpo/activite/dpo_double_fonction_entrainement.puml`,
+18/09/2026) est conceptuel par nature (aucun script DPO n'existe dans
+le code) : il illustre comment une seule passe d'entraînement DPO
+enseignerait à la fois la préférence clinique et le format de sortie
+JSON contractuel (F3), complémentaire du diagramme simplifié déjà
+présent dans le livre théorique (§6).
 
 ## Régénérer les diagrammes
 

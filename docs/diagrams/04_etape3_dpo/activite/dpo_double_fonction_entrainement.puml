@@ -1,0 +1,122 @@
+@startuml dpo_double_fonction_entrainement
+!include ../../_common/estilo.iuml
+
+title Étape 3 (DPO) : double fonction en une seule passe d'entraînement\nAlignement des préférences cliniques + apprentissage du format de sortie contractuel (F3)
+
+start
+
+note right #FCEBE6
+  **[CONCEPTUEL / PRÉVU]** Étape 3 (DPO) non implémentée dans le
+  code à ce jour (aucun script d'entraînement DPO n'existe,
+  cf. README.md, section « 3. DPO »). Ce diagramme est prospectif :
+  il illustre ce que le cahier des charges prévoit, pas un
+  entraînement réellement exécuté. Théorie complète (dérivation de
+  la perte DPO) :
+  docs/references/livre_theorique_llm_triage_chsa.md, §6.
+end note
+
+partition "1. Entrée : dataset DPO de préférences cliniques" {
+
+  :Prompt / contexte (x);
+  note right
+    Patiente : « Douleur thoracique oppressive depuis 30 min,
+    irradiant au bras gauche, SpO2 : 92 % »
+  end note
+
+  fork
+    :Réponse choisie\n(y_w, « chosen »);
+    note right
+      Décision : ESI-1 / Code rouge
+      Raisonnement : voies respiratoires en danger + ECG
+      Format : structuré (JSON + balises ChatML)
+    end note
+  fork again
+    :Réponse rejetée\n(y_l, « rejected »);
+    note right
+      Décision : ESI-3 / Code jaune
+      Raisonnement : « Prendre du paracétamol et attendre »
+      Format : texte libre, non structuré
+    end note
+  end fork
+}
+
+partition "2. Traitement DPO en une seule passe (single-pass DPO fine-tuning), [CONCEPTUEL]" #FCEBE6 {
+
+  :Modèle en entraînement\n(politique π_θ)\nQwen3-1.7B-Base + LoRA;
+  note right
+    Point de départ prévu : le checkpoint SFT-LoRA déjà réel,
+    publié sur mombasstic/chsa-triage-sft-lora (verdict de
+    convergence « saine »), jamais encore utilisé comme point de
+    départ d'un entraînement DPO. π_ref : copie gelée de ce même
+    checkpoint (cf. livre théorique §6.3).
+  end note
+
+  fork
+    :Log-vraisemblance\nlog π_θ(y_w | x);
+  fork again
+    :Log-vraisemblance\nlog π_θ(y_l | x);
+  end fork
+
+  :Perte DPO;
+  note right
+    L_DPO(θ; π_ref) = -E [ log σ(
+    β·log(π_θ(y_w|x)/π_ref(y_w|x))
+    − β·log(π_θ(y_l|x)/π_ref(y_l|x)) ) ]
+
+    Formule dérivée en détail (Bradley-Terry → politique optimale
+    sous contrainte KL → perte DPO) dans le livre théorique, §6.2
+    et §6.3 ; non reprise ici.
+  end note
+
+  fork
+    :**Fonction 1 : alignement des préférences cliniques**;
+    note right
+      Augmente la probabilité relative de y_w face à y_l : pénalise
+      le sous-triage (ESI-3 au lieu d'ESI-1) sur des symptômes
+      graves, via le ratio par rapport au modèle de référence π_ref.
+    end note
+  fork again
+    :**Fonction 2 : apprentissage du format de sortie contractuel**;
+    note right
+      En préférant y_w (structuré), le modèle apprend aussi les
+      délimiteurs exacts de bloc ChatML (<|im_start|>assistant) et
+      la structure JSON valide requise, dans la MÊME descente de
+      gradient : aucune passe d'entraînement séparée pour le format.
+    end note
+  end fork
+}
+
+partition "3. Sortie prévue : inférence du modèle aligné, [CONCEPTUEL]" {
+
+  :Contexte d'entrée\n(add_generation_prompt=True);
+  note right
+    <|im_start|>user
+    Symptômes : « Dyspnée aiguë, cyanose, FR>30/min, SpO2 88 % »<|im_end|>
+    <|im_start|>assistant
+  end note
+
+  :Sortie générée\n(schéma JSON minimal, F3);
+  note right
+    {
+      "niveau": "ESI-1",
+      "categorie": "détresse respiratoire aiguë",
+      "ressources_estimees": "déchocage / réanimation immédiate"
+    }
+
+    ----
+    Valeurs illustratives, cf. cahier des charges F3/§9 : aucun
+    schéma Pydantic {niveau, categorie, ressources_estimees} formel
+    n'existe encore dans le code (cf.
+    src/chsa_triage/application/metriques_evaluation_baseline.py).
+
+    Une version enrichie (champs type orientation,
+    justification_medicale, action_sih) pourrait être proposée plus
+    tard pour une intégration avec un SIH hospitalier réel, mais
+    n'appartient ni au critère d'acceptation du POC (§9) ni à F3:
+    elle n'apparaîtrait jamais comme un champ du JSON ci-dessus.
+  end note
+}
+
+stop
+
+@enduml

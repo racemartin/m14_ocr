@@ -730,6 +730,10 @@ L_DPO(θ; π_ref) = -E_{(x,y_w,y_l)} [
 
 ![Alignement DPO](images_livre_theorique/04_dpo_alignement.svg)
 
+Diagramme complémentaire, plus technique (double fonction d'une seule
+passe DPO : préférence clinique + format de sortie JSON contractuel) :
+`docs/diagrams/04_etape3_dpo/activite/dpo_double_fonction_entrainement.png`.
+
 Ce qui rend DPO attractif pour un POC à budget contraint est exactement
 ce que cette dérivation rend visible : **aucun modèle de récompense
 séparé n'est jamais entraîné**. La récompense reste implicite, portée

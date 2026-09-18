@@ -603,7 +603,10 @@ le même dépôt de métriques.
 </td></tr></table>
 
 **Non implémenté à ce jour.** Aucune commande ni étape n'existe encore dans
-le code pour cette phase ; voir `docs/04_etape3_dpo/` (à venir).
+le code pour cette phase ; voir `docs/04_etape3_dpo/` (à venir). Schéma
+conceptuel de la double fonction d'une seule passe DPO (préférence
+clinique + format de sortie JSON contractuel) :
+[`docs/diagrams/04_etape3_dpo/activite/dpo_double_fonction_entrainement.png`](docs/diagrams/04_etape3_dpo/activite/dpo_double_fonction_entrainement.png).
 
 
 <table id="verifications-environnement" style="width:100%;"><tr><td style="background-color:#d9d9d9;">
