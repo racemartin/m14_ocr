@@ -75,12 +75,24 @@ from chsa_triage.application.use_cases.E1_06_00_evaluer_baseline_zero_shot impor
     EvaluerBaselineZeroShotUseCase,
     ResultatEvaluationBaseline,
 )
+from chsa_triage.application.use_cases.E3_00_uc_reformuler_preference_dpo import (
+    PROMPT_REFORMULATION_CHOSEN,
+    ReformulerPreferenceDpoUseCase,
+)
+from chsa_triage.application.use_cases.E3_01_uc_formater_dataset_chatml_preference import (
+    FormaterDatasetChatMLPreferenceUseCase,
+)
+from chsa_triage.application.use_cases.E3_02_uc_entrainer_dpo import (
+    CLES_METRIQUES_RECOMPENSE_DPO,
+    EntrainerDpoUseCase,
+)
 
 __all__ = [
     "STRATUM_PRINCIPAL",
     "STRATUM_SANS_ENTITE",
     "AjusterBoucleHyperparametresSftUseCase",
     "AnonymiserDatasetUseCase",
+    "CLES_METRIQUES_RECOMPENSE_DPO",
     "CandidatARevoir",
     "CandidatFauxPositifAnonymisation",
     "CandidatPiiResiduelle",
@@ -88,6 +100,7 @@ __all__ = [
     "ControleQualiteAnonymisation",
     "ControlerQualiteAnonymisationUseCase",
     "DecouperSplitsUseCase",
+    "EntrainerDpoUseCase",
     "EntrainerSftUseCase",
     "EssaiHyperparametres",
     "ExecutionAnonymisation",
@@ -95,8 +108,11 @@ __all__ = [
     "EvaluerBaselineZeroShotUseCase",
     "ExtraireSousEnsembleDpoUseCase",
     "ExtraireSousEnsembleSftUseCase",
+    "FormaterDatasetChatMLPreferenceUseCase",
     "FormaterDatasetChatMLUseCase",
+    "PROMPT_REFORMULATION_CHOSEN",
     "ProfilerCorpusUseCase",
+    "ReformulerPreferenceDpoUseCase",
     "RapportAnonymisationCumule",
     "ResultatBoucleAjustement",
     "ResultatEvaluationBaseline",

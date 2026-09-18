@@ -8,6 +8,7 @@ from chsa_triage.domain.model.configuration_entrainement import (
     ConfigurationLora,
     ConfigurationQuantification,
     HyperparametresEntrainement,
+    HyperparametresEntrainementDpo,
 )
 from chsa_triage.domain.model.corpus_source import CorpusSource
 from chsa_triage.domain.model.decision_revision_humaine import (
@@ -26,11 +27,13 @@ from chsa_triage.domain.model.enums import (
     TypeSplit,
 )
 from chsa_triage.domain.model.exemple_formate import ExempleFormate
+from chsa_triage.domain.model.exemple_formate_preference import ExempleFormatePreference
 from chsa_triage.domain.model.exemple_pivot import (
     ConstantesVitales,
     ExemplePivot,
     Message,
 )
+from chsa_triage.domain.model.preference_reformulee import ChosenReformule
 
 __all__ = [
     "DECISION_ACCEPTE",
@@ -39,6 +42,7 @@ __all__ = [
     "SOURCE_CANDIDATS_PII",
     "SOURCE_CANDIDATS_PII_SANS_ENTITE",
     "CheckpointEntraine",
+    "ChosenReformule",
     "CleCandidatRevision",
     "ConfigurationLora",
     "ConfigurationQuantification",
@@ -46,8 +50,10 @@ __all__ = [
     "CorpusSource",
     "DecisionRevisionHumaine",
     "ExempleFormate",
+    "ExempleFormatePreference",
     "ExemplePivot",
     "HyperparametresEntrainement",
+    "HyperparametresEntrainementDpo",
     "Langue",
     "Message",
     "NiveauConfiance",

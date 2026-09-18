@@ -61,3 +61,23 @@ class HyperparametresEntrainement:
     taille_lot                : int
     packing                    : bool
     type_perte                  : str
+
+
+@dataclass(frozen=True, slots=True)
+class HyperparametresEntrainementDpo:
+    """
+    Hyperparametres d'entrainement DPO passes a
+    EntraineurPreference.entrainer() (domain.ports.entraineur_preference).
+    Champs repris tels quels de la section `entrainement:` de l'esquisse
+    YAML `recipes/dpo_qwen3_lora.yaml`
+    (docs/04_etape3_dpo/00_introduction_concepts.md §5), verifies
+    (pas supposes) contre les champs reels de `trl.DPOConfig` (trl==1.13.0)
+    propres au DPO, sans equivalent SFT.
+    """
+
+    beta                        : float
+    taux_apprentissage           : float
+    nombre_epoques                 : int
+    taille_lot                       : int
+    type_perte                        : str
+    precompute_ref_log_probs           : bool

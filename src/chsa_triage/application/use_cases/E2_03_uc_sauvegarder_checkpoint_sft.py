@@ -22,6 +22,7 @@ from chsa_triage.domain.model.checkpoint_entraine import CheckpointEntraine, Ver
 from chsa_triage.domain.model.configuration_entrainement import (
     ConfigurationLora,
     HyperparametresEntrainement,
+    HyperparametresEntrainementDpo,
 )
 from chsa_triage.domain.ports.dataset_repository import RepositoryLectureEcriture
 from chsa_triage.domain.ports.entraineur_supervise import MetriquesEntrainement
@@ -44,7 +45,7 @@ class SauvegarderCheckpointSftUseCase:
         chemin                 : str,
         modele_base             : str,
         configuration_lora       : ConfigurationLora,
-        hyperparametres            : HyperparametresEntrainement,
+        hyperparametres            : HyperparametresEntrainement | HyperparametresEntrainementDpo,
         metriques_finales           : MetriquesEntrainement,
         verdict_convergence          : VerdictConvergence,
     ) -> CheckpointEntraine:
