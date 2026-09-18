@@ -466,7 +466,7 @@ depuis) et republiée sur le dépôt de métriques.
 | `nombre_epoques` | `3` | Passes complètes sur le dataset ; compromis apprentissage/mémorisation. | `1` : sous-apprentissage probable / `5+` : risque de surapprentissage |
 | `taille_lot` | `4` | Exemples par pas et par GPU, limité par la VRAM disponible. | Valeur + haute si VRAM dispo : + stable, + lent par pas |
 | `type_perte` | `nll` | Cross-entropy standard — imposée par une contrainte de dépendance. | `chunked_nll` : réduit le pic VRAM sur `lm_head` — écarté (trl figé en 0.24.0, sans support) |
-| `assistant_only_loss` | `true` | Masque (`-100`) les tokens system/user — le modèle apprend seulement à générer. | `false` : perte sur toute la séquence, gaspille le gradient sur les questions |
+| `assistant_only_loss` | `false` | Perte calculée sur toute la séquence (prompt + réponse), limitation technique connue (cf. `AGENTS.md`), pas un choix délibéré. | `true` (souhaité à terme) : masquerait (`-100`) les tokens system/user, mais **crash garanti** aujourd'hui, car `ExempleFormate` porte du ChatML déjà rendu en texte, pas des messages structurés par tour, seule forme acceptée par `trl.data_utils.is_conversational` |
 | `packing` | `true` | Concatène les exemples courts → GPU utilisé à ~100%. | `false` : padding classique, jusqu'à 40-60% de FLOPs gaspillés |
 
 ### ↳ `packing=true` pilote en réalité 3 réglages de `SFTConfig`
@@ -478,6 +478,17 @@ depuis) et republiée sur le dépôt de métriques.
 | `max_seq_length` | défaut trl | Longueur max par bloc empaqueté. Conditionne directement la VRAM (attention O(N²) ou FlashAttention-2 selon N). |
 | `dataset_text_field` | auto (ChatML) | Colonne texte à empaqueter, ignorée car un formatting_func/chat template gère déjà le rendu (notre cas). |
 | `dataset_kwargs` | défaut trl | Ex. `append_concat_token` (ajoute l'EOS entre exemples empaquetés) — **à vérifier explicitement** : un défaut erroné ici = risque de contamination inter-exemples. |
+
+### ↳ `--attn-implementation`/`--liger-kernel` : flags CLI, absents du YAML
+
+> ⚠️ Jamais mesurés empiriquement sur un GPU réel (aucun GPU disponible au moment de l'écriture).
+
+| Paramètre | Valeur par défaut | À quoi ça sert / ce que ça implique |
+|---|---|---|
+| `attn_implementation` | `sdpa` | Intégré à PyTorch, aucune installation/compilation CUDA à part → le moins de risque d'échec sur un environnement cloud pas encore vérifié. `flash_attention_2` est probablement plus rapide mais nécessite le paquet `flash-attn` (compilation longue, échoue souvent sans le bon toolchain CUDA) ; exposé via le même paramètre pour pouvoir le mesurer/basculer. |
+| `utiliser_liger_kernel` | `false` | Champ réel de `trl.SFTConfig`, activable via le paramètre du constructeur, jamais mesuré. |
+
+Unsloth n'est branché nulle part (même pas en flag) : il remplacerait tout le chemin de chargement du modèle, une décision d'architecture, pas une simple bascule à côté de ces deux paramètres.
 
 ---
 
