@@ -439,7 +439,14 @@ lora:   # point de depart identique au SFT ; pourrait etre re-derive
 
 entrainement:
   beta: 0.1                 # cf. discussion §2 ; defaut reel trl.DPOConfig
-  taux_apprentissage: 5.0e-6  # nettement < SFT (2.0e-4), cf. tableau ci-dessous
+  taux_apprentissage: 5.0e-6  # choix delibere > defaut brut trl (1e-06, cf. tableau
+                                # ci-dessous) : LoRA (peu de parametres entraines,
+                                # meme raisonnement qu'en SFT ou 2.0e-4 depasse deja
+                                # largement un taux de full fine-tuning) tolere
+                                # generalement un taux plus eleve que le defaut trl
+                                # (pense pour un DPO full fine-tuning) ; NON VALIDE
+                                # empiriquement sur ce projet, cf. "Pourquoi pas de
+                                # grille" ci-dessous
   nombre_epoques: 1            # ordre de grandeur usuel DPO, a valider empiriquement
   taille_lot: 4
   type_perte: sigmoid          # perte DPO "standard" ; cf. tableau ci-dessous
@@ -460,7 +467,7 @@ supposées) :
 |---|---|---|
 | `beta` | `0.1` | Poids de la régularisation KL implicite envers `π_ref` (cf. §2) : plus haut = plus proche du SFT, plus bas = préférence suivie plus agressivement. |
 | `loss_type` | `["sigmoid"]` (perte DPO standard, §2) | `trl` supporte plusieurs variantes de perte de préférence (`sigmoid`, `ipo`, `hinge`, entre autres) ; `sigmoid` est la formule dérivée en §6.3 du livre théorique, celle décrite dans ce document. |
-| `learning_rate` | `1e-06` | **Deux ordres de grandeur sous le taux SFT** (`2.0e-4` dans `recipes/sft_qwen3_lora.yaml`) : cohérent avec la mise en garde du livre théorique (§6.4, "nettement < SFT") et avec l'intuition du §2 (on affine une politique déjà bonne, pas on en construit une nouvelle). |
+| `learning_rate` | `1e-06` | **Nettement sous le taux SFT** (`2.0e-4` dans `recipes/sft_qwen3_lora.yaml`) : cohérent avec la mise en garde du livre théorique (§6.4, "nettement < SFT") et avec l'intuition du §2 (on affine une politique déjà bonne, pas on en construit une nouvelle). La recette illustrative ci-dessus utilise délibérément `5.0e-6`, pas ce défaut brut : ce défaut est pensé pour un DPO en full fine-tuning (beaucoup de paramètres entraînables, donc un taux prudent), alors que la recette ici reste LoRA (même écart de raisonnement qu'en SFT, où `2.0e-4` dépasse déjà largement un taux de full fine-tuning) ; **choix non validé empiriquement** sur ce projet, cf. "Pourquoi pas de grille" ci-dessous. |
 | `max_length` | `1024` | Longueur maximale du triplet `prompt`+réponse ; **remplace** les champs historiques séparés `max_prompt_length`/`max_completion_length` d'anciennes versions de `trl` (absents de trl==1.13.0, vérifié par introspection réelle de signature, pas supposé) : à garder à l'esprit si la documentation `trl` consultée date d'une version antérieure. |
 | `precompute_ref_log_probs` | `False` | Mitigation directe du point de vigilance mémoire du livre théorique (§6.4, "second passage... à faire tenir en mémoire simultanément") : mis à `True`, `trl` précalcule et met en cache les log-probabilités de `π_ref` une seule fois avant l'entraînement, plutôt que de garder `π_ref` chargé en mémoire GPU à chaque pas. Non activé par défaut ; à mesurer une fois un GPU réel disponible, même prudence que les optimisations Unsloth/Liger/FlashAttention-2 non validées en Étape 2. |
 
