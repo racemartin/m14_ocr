@@ -80,28 +80,42 @@ class ChatMLFormateurAdapter:
         `texte_prompt` suit le meme rendu que `formater_invite_zero_shot()`
         (`add_generation_prompt=True`, prompt seul) ; `texte_chosen`/
         `texte_rejected` rendent chacun le tour assistant correspondant
-        SEUL (sans `system` ni `user`), via le meme chat template natif.
-        Mapping esquisse par analogie, jamais verifie contre un vrai
-        appel `DPOTrainer.train()` (point de vigilance explicitement
-        laisse ouvert par docs/04_etape3_dpo/00_introduction_concepts.md,
-        "Point de vigilance").
+        SEUL (sans `system` ni `user`), via les tokens de controle reels
+        du template plutot que `apply_chat_template()` (cf.
+        `_rendre_tour_assistant_seul` ci-dessous pour le pourquoi).
 
-        Trouvaille reelle (verifiee par appel direct, pas supposee, cf.
-        AGENTS.md) : le chat template natif de Qwen3-1.7B-Base RETIRE le
-        bloc `<think>...</think>` d'un tour assistant qui n'est pas le
-        dernier tour genere. `texte_chosen` ne contient donc PLUS le
-        raisonnement `<think>` d'un `ChosenReformule` (§3.2 du document
-        d'introduction), seul le JSON cible survit au rendu. Signale ici
-        comme point de vigilance pour l'implementation reelle du DPO
-        (etape 12, hors perimetre), pas corrige : corriger cela
-        supposerait soit un template different, soit de ne plus passer
-        par `apply_chat_template` pour ce champ precis.
+        CORRECTION reelle (19/09/2026, cf. AGENTS.md) d'un bug confirme
+        empiriquement par le test dedie
+        (`tests/infrastructure/test_chatml_formateur_adapter.py::test_formater_preference_rend_un_triplet_texte_distinct`) :
+        appeler `apply_chat_template([message_assistant_seul], ...)`
+        (l'ancienne implementation) faisait considerer au template Qwen3
+        ce tour assistant comme "non final" (aucun message `user` dans
+        la liste passee => `last_query_index` retombe a l'index du seul
+        message present, `loop.index0 > last_query_index` devient faux),
+        ce qui declenche la branche du template qui NE reinjecte PAS le
+        bloc `<think>...</think>` (uniquement la partie post-`</think>`,
+        cf. `reasoning_content`/`content` dans le jinja source). Verifie
+        directement par inspection du jinja reel (`tokenizer.chat_template`,
+        installation temporaire, meme methode deja utilisee dans ce
+        projet pour `peft.LoraConfig`/`trl.SFTConfig`/`trl.DPOTrainer`) :
+        c'est exactement cette branche qui strippe. La correction
+        contourne `apply_chat_template()` pour ce champ precis et
+        construit le texte directement avec les tokens de controle reels
+        du modele (`<|im_start|>{role}\\n{contenu}<|im_end|>\\n`,
+        confirmes atomiques a la tokenisation, meme verification que
+        `scripts/check_env_gpu.py::verifier_chat_template`) : `contenu`
+        est utilise VERBATIM (jamais scinde sur `</think>`), donc
+        `<think>` survit pour `chosen`. Confirme sans regression pour
+        `rejected` (jamais de `<think>` dans son contenu source) : la
+        sortie est BYTE-IDENTIQUE a l'ancien rendu via
+        `apply_chat_template`, verifie par appel reel compare aux deux
+        methodes sur le meme texte.
         """
         tokenizer = self._obtenir_tokenizer()
         messages_prompt = [{"role": message.role, "content": message.contenu} for message in exemple.prompt]
         texte_prompt = tokenizer.apply_chat_template(messages_prompt, tokenize=False, add_generation_prompt=True)
-        texte_chosen = self._rendre_tour_assistant_seul(tokenizer, exemple.chosen)
-        texte_rejected = self._rendre_tour_assistant_seul(tokenizer, exemple.rejected)
+        texte_chosen = self._rendre_tour_assistant_seul(exemple.chosen)
+        texte_rejected = self._rendre_tour_assistant_seul(exemple.rejected)
         return ExempleFormatePreference(
             identifiant=exemple.identifiant,
             texte_prompt=texte_prompt,
@@ -110,6 +124,16 @@ class ChatMLFormateurAdapter:
         )
 
     @staticmethod
-    def _rendre_tour_assistant_seul(tokenizer: Any, tour) -> str:
-        messages = [{"role": message.role, "content": message.contenu} for message in tour]
-        return tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
+    def _rendre_tour_assistant_seul(tour) -> str:
+        """
+        Rend un tour assistant seul via les tokens de controle reels du
+        template Qwen3 (`<|im_start|>{role}\\n{contenu}<|im_end|>\\n`),
+        PAS via `apply_chat_template()` : cf. docstring de
+        `formater_preference()` pour le bug reel que ce contournement
+        corrige (`apply_chat_template` sur un message assistant isole,
+        sans tour `user` precedent dans la liste, strippe `<think>`).
+        `contenu` est utilise tel quel, jamais reparse : c'est le meme
+        texte que celui produit par `parser_reformulation_stricte()`
+        pour un `chosen` reformule, deja dans le format cible exact.
+        """
+        return "".join(f"<|im_start|>{message.role}\n{message.contenu}<|im_end|>\n" for message in tour)

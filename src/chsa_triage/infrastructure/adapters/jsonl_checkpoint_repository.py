@@ -8,6 +8,20 @@ DEDIE (meme discipline que `jsonl_exemple_formate_repository.py` /
 `JsonlDatasetRepository`). Ne persiste jamais les poids LoRA
 eux-memes (ecrits sur disque par `trl`/`peft`, cf.
 `CheckpointEntraine.chemin`) : uniquement les metadonnees structurees.
+
+GAP reel trouve+corrige le 19/09/2026 (Etape 3/DPO, etapes 12-13) :
+`checkpoint_depuis_dict` desserialisait `hyperparametres` en
+`HyperparametresEntrainement` (SFT) SANS CONDITION, alors que
+`CheckpointEntraine.hyperparametres` accepte deja l'union SFT|DPO
+depuis l'edition de `domain/model/checkpoint_entraine.py` (guide Etape
+3 etape 5, deja fusionnee) : un checkpoint DPO persiste via ce depot
+aurait leve un `TypeError` a la relecture (champs DPO comme `beta`
+passes en kwarg inconnu a `HyperparametresEntrainement`). Corrige par
+un discriminant sur la cle `beta` (presente UNIQUEMENT sur
+`HyperparametresEntrainementDpo`, absente de `HyperparametresEntrainement`
+qui porte `packing` a la place) : pas de champ `type` explicite ajoute
+au schema JSONL, moins de rupture pour les checkpoints SFT deja
+persistes.
 """
 
 from __future__ import annotations
@@ -24,6 +38,7 @@ from chsa_triage.domain.model.checkpoint_entraine import (
 from chsa_triage.domain.model.configuration_entrainement import (
     ConfigurationLora,
     HyperparametresEntrainement,
+    HyperparametresEntrainementDpo,
 )
 from chsa_triage.domain.ports.entraineur_supervise import MetriquesEntrainement
 
@@ -34,6 +49,13 @@ def checkpoint_vers_dict(checkpoint: CheckpointEntraine) -> dict:
     return d
 
 
+def _hyperparametres_depuis_dict(d: dict) -> HyperparametresEntrainement | HyperparametresEntrainementDpo:
+    """`beta` n'existe que sur `HyperparametresEntrainementDpo` (cf. AVERTISSEMENT en tete de module)."""
+    if "beta" in d:
+        return HyperparametresEntrainementDpo(**d)
+    return HyperparametresEntrainement(**d)
+
+
 def checkpoint_depuis_dict(d: dict) -> CheckpointEntraine:
     configuration_lora = dict(d["configuration_lora"])
     configuration_lora["modules_cibles"] = tuple(configuration_lora["modules_cibles"])
@@ -42,7 +64,7 @@ def checkpoint_depuis_dict(d: dict) -> CheckpointEntraine:
         chemin=d["chemin"],
         modele_base=d["modele_base"],
         configuration_lora=ConfigurationLora(**configuration_lora),
-        hyperparametres=HyperparametresEntrainement(**d["hyperparametres"]),
+        hyperparametres=_hyperparametres_depuis_dict(d["hyperparametres"]),
         metriques_finales=MetriquesEntrainement(**d["metriques_finales"]),
         verdict_convergence=VerdictConvergence(d["verdict_convergence"]),
         horodatage=d["horodatage"],

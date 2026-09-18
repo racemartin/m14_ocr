@@ -31,8 +31,14 @@ if TYPE_CHECKING:  # pragma: no cover - uniquement pour les outils de typage
     from chsa_triage.infrastructure.adapters.jsonl_decisions_revision_humaine import (
         JsonlDecisionsRevisionHumaine,
     )
+    from chsa_triage.infrastructure.adapters.jsonl_exemple_formate_preference_repository import (
+        JsonlExempleFormatePreferenceRepository,
+    )
     from chsa_triage.infrastructure.adapters.jsonl_exemple_formate_repository import (
         JsonlExempleFormateRepository,
+    )
+    from chsa_triage.infrastructure.adapters.jsonl_preference_reformulee_repository import (
+        JsonlPreferenceReformuleeRepository,
     )
     from chsa_triage.infrastructure.adapters.jsonl_registre_echantillons_controle_qualite import (
         JsonlRegistreEchantillonsControleQualite,
@@ -64,6 +70,9 @@ if TYPE_CHECKING:  # pragma: no cover - uniquement pour les outils de typage
     from chsa_triage.infrastructure.adapters.transformers_lora_inference_adapter import (
         TransformersLoraInferenceAdapter,
     )
+    from chsa_triage.infrastructure.adapters.trl_dpo_entraineur import (
+        TrlDpoEntraineurAdapter,
+    )
     from chsa_triage.infrastructure.adapters.trl_sft_entraineur import (
         TrlSftEntraineurAdapter,
     )
@@ -80,7 +89,9 @@ __all__ = [
     "JsonlCheckpointRepository",
     "JsonlDatasetRepository",
     "JsonlDecisionsRevisionHumaine",
+    "JsonlExempleFormatePreferenceRepository",
     "JsonlExempleFormateRepository",
+    "JsonlPreferenceReformuleeRepository",
     "JsonlRegistreEchantillonsControleQualite",
     "LecteurCorpusFichierLocal",
     "LecteurCorpusHuggingFace",
@@ -91,6 +102,7 @@ __all__ = [
     "TensorboardSuiviExperimentation",
     "TransformersInferenceAdapter",
     "TransformersLoraInferenceAdapter",
+    "TrlDpoEntraineurAdapter",
     "TrlSftEntraineurAdapter",
     "VllmEndpointInferenceAdapter",
     "YdataProfileur",
@@ -118,9 +130,17 @@ _CARTE_IMPORTS_PARESSEUX = {
         "chsa_triage.infrastructure.adapters.jsonl_decisions_revision_humaine",
         "JsonlDecisionsRevisionHumaine",
     ),
+    "JsonlExempleFormatePreferenceRepository": (
+        "chsa_triage.infrastructure.adapters.jsonl_exemple_formate_preference_repository",
+        "JsonlExempleFormatePreferenceRepository",
+    ),
     "JsonlExempleFormateRepository": (
         "chsa_triage.infrastructure.adapters.jsonl_exemple_formate_repository",
         "JsonlExempleFormateRepository",
+    ),
+    "JsonlPreferenceReformuleeRepository": (
+        "chsa_triage.infrastructure.adapters.jsonl_preference_reformulee_repository",
+        "JsonlPreferenceReformuleeRepository",
     ),
     "JsonlRegistreEchantillonsControleQualite": (
         "chsa_triage.infrastructure.adapters.jsonl_registre_echantillons_controle_qualite",
@@ -161,6 +181,10 @@ _CARTE_IMPORTS_PARESSEUX = {
     "TransformersLoraInferenceAdapter": (
         "chsa_triage.infrastructure.adapters.transformers_lora_inference_adapter",
         "TransformersLoraInferenceAdapter",
+    ),
+    "TrlDpoEntraineurAdapter": (
+        "chsa_triage.infrastructure.adapters.trl_dpo_entraineur",
+        "TrlDpoEntraineurAdapter",
     ),
     "TrlSftEntraineurAdapter": (
         "chsa_triage.infrastructure.adapters.trl_sft_entraineur",
