@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 300" font-family="Helvetica, Arial, sans-serif">
+  <style>
+    .box { stroke:#33404a; stroke-width:1.5; rx:8; }
+    .lbl { font-size:15px; font-weight:600; fill:#1a2330; }
+    .sub { font-size:11.5px; fill:#33404a; }
+    .arrow { stroke:#33404a; stroke-width:2; marker-end:url(#head); fill:none; }
+    .tag { font-size:11px; fill:#33404a; font-style:italic; }
+  </style>
+  <defs>
+    <marker id="head" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L7,3.5 L0,7 Z" fill="#33404a"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="980" height="300" fill="none"/>
+
+  <!-- Etape 1 -->
+  <rect class="box" x="10" y="70" width="170" height="110" fill="#b0f58c"/>
+  <text class="lbl" x="95" y="100" text-anchor="middle">Étape 1</text>
+  <text class="sub" x="95" y="120" text-anchor="middle">Données</text>
+  <text class="sub" x="95" y="138" text-anchor="middle">6 corpus → pivot</text>
+  <text class="sub" x="95" y="154" text-anchor="middle">anonymisation RGPD</text>
+  <text class="sub" x="95" y="170" text-anchor="middle">splits train/val/test</text>
+
+  <!-- Etape 1bis -->
+  <rect class="box" x="210" y="70" width="170" height="110" fill="#d4f5b0"/>
+  <text class="lbl" x="295" y="100" text-anchor="middle">Étape 1bis</text>
+  <text class="sub" x="295" y="120" text-anchor="middle">Baseline zero-shot</text>
+  <text class="sub" x="295" y="138" text-anchor="middle">Qwen3-1.7B-Base</text>
+  <text class="sub" x="295" y="154" text-anchor="middle">sans entraînement</text>
+  <text class="sub" x="295" y="170" text-anchor="middle">point de référence</text>
+
+  <!-- Etape 2 -->
+  <rect class="box" x="410" y="70" width="170" height="110" fill="#a6e3ff"/>
+  <text class="lbl" x="495" y="100" text-anchor="middle">Étape 2</text>
+  <text class="sub" x="495" y="120" text-anchor="middle">SFT + LoRA</text>
+  <text class="sub" x="495" y="138" text-anchor="middle">QLoRA 4-bit, rang 16</text>
+  <text class="sub" x="495" y="154" text-anchor="middle">ChatML, cross-entropy</text>
+  <text class="sub" x="495" y="170" text-anchor="middle">FAIT (résultats réels)</text>
+
+  <!-- Etape 3 -->
+  <rect class="box" x="610" y="70" width="170" height="110" fill="#f5cf47"/>
+  <text class="lbl" x="695" y="100" text-anchor="middle">Étape 3</text>
+  <text class="sub" x="695" y="120" text-anchor="middle">DPO</text>
+  <text class="sub" x="695" y="138" text-anchor="middle">paires chosen/rejected</text>
+  <text class="sub" x="695" y="154" text-anchor="middle">alignement préférences</text>
+  <text class="sub" x="695" y="170" text-anchor="middle">PRÉVU, non implémenté</text>
+
+  <!-- Etape 4 -->
+  <rect class="box" x="810" y="70" width="160" height="110" fill="#d9d9d9"/>
+  <text class="lbl" x="890" y="100" text-anchor="middle">Étape 4</text>
+  <text class="sub" x="890" y="120" text-anchor="middle">Déploiement</text>
+  <text class="sub" x="890" y="138" text-anchor="middle">vLLM, FastAPI</text>
+  <text class="sub" x="890" y="154" text-anchor="middle">Docker, CI/CD</text>
+  <text class="sub" x="890" y="170" text-anchor="middle">hors périmètre du livre</text>
+
+  <!-- arrows -->
+  <path class="arrow" d="M180,125 L206,125"/>
+  <path class="arrow" d="M380,125 L406,125"/>
+  <path class="arrow" d="M580,125 L606,125"/>
+  <path class="arrow" d="M780,125 L806,125"/>
+
+  <text class="tag" x="490" y="220" text-anchor="middle">134 883 exemples pivot (37 802 SFT / 97 081 DPO) — cahier des charges CHSA, 4 semaines</text>
+  <text class="tag" x="490" y="240" text-anchor="middle">Ce livre suit ce chapitrage : chaque notion théorique est introduite au moment où l'étape en a besoin.</text>
+</svg>

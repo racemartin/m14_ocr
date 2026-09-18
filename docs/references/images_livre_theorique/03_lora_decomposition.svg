@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 360" font-family="Helvetica, Arial, sans-serif">
+  <style>
+    .frozen { stroke:#33404a; stroke-width:1.5; fill:#e4e7eb; }
+    .train  { stroke:#1b6e4a; stroke-width:1.5; fill:#d8f5e6; }
+    .lbl { font-size:13px; fill:#1a2330; }
+    .small { font-size:11.5px; fill:#33404a; }
+    .title { font-size:16px; font-weight:600; fill:#1a2330; }
+    .arrow { stroke:#33404a; stroke-width:2; marker-end:url(#head4); fill:none; }
+    .snow { fill:#3a3a3a; font-size:16px; }
+  </style>
+  <defs>
+    <marker id="head4" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L7,3.5 L0,7 Z" fill="#33404a"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="450" y="26" text-anchor="middle">LoRA : décomposition de bas rang de ΔW</text>
+
+  <!-- input x -->
+  <text class="lbl" x="40" y="185" text-anchor="middle">x</text>
+  <path class="arrow" d="M55,180 L100,120"/>
+  <path class="arrow" d="M55,180 L100,240"/>
+
+  <!-- frozen W0 path -->
+  <rect class="frozen" x="100" y="90" width="150" height="60" rx="6"/>
+  <text class="lbl" x="175" y="115" text-anchor="middle">W₀ (d×k)</text>
+  <text class="small" x="175" y="132" text-anchor="middle">gelé, ∇W₀ = 0</text>
+  <text class="snow" x="255" y="122">❄</text>
+
+  <!-- LoRA path: A then B -->
+  <rect class="train" x="100" y="210" width="130" height="46" rx="6"/>
+  <text class="lbl" x="165" y="238" text-anchor="middle">A (r×k)</text>
+  <text class="small" x="165" y="270" text-anchor="middle">init N(0, 1/r)</text>
+
+  <path class="arrow" d="M230,233 L270,233"/>
+
+  <rect class="train" x="270" y="210" width="130" height="46" rx="6"/>
+  <text class="lbl" x="335" y="238" text-anchor="middle">B (d×r)</text>
+  <text class="small" x="335" y="270" text-anchor="middle">init = 0</text>
+
+  <!-- scale -->
+  <text class="lbl" x="440" y="238" text-anchor="middle">× (α / r)</text>
+
+  <!-- sum node -->
+  <circle cx="530" cy="180" r="22" fill="#fff" stroke="#33404a" stroke-width="1.5"/>
+  <text class="lbl" x="530" y="186" text-anchor="middle">+</text>
+
+  <path class="arrow" d="M250,120 C 400,120 480,150 512,168"/>
+  <path class="arrow" d="M400,233 C 460,233 495,205 515,192"/>
+
+  <!-- output -->
+  <path class="arrow" d="M552,180 L610,180"/>
+  <rect class="frozen" x="610" y="155" width="150" height="50" rx="6" fill="#fdf3d8" stroke="#8a6d1e"/>
+  <text class="lbl" x="685" y="185" text-anchor="middle">h = W₀x + (α/r)BAx</text>
+
+  <text class="small" x="450" y="310" text-anchor="middle">r ≪ min(d,k) → r(d+k) paramètres entraînés au lieu de d×k (ex. r=8, d=k=4096 : réduction ≈ 99,6 %).</text>
+  <text class="small" x="450" y="330" text-anchor="middle">À t=0 : B=0 donc ΔW=BA=0 → le modèle adapté se comporte comme le modèle de base, sans perturbation initiale.</text>
+</svg>

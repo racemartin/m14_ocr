@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 320" font-family="Helvetica, Arial, sans-serif">
+  <style>
+    .tokbox { stroke:#33404a; stroke-width:1.5; fill:#eef3f8; }
+    .predbox { stroke:#1b6e4a; stroke-width:1.5; fill:#d8f5e6; }
+    .lbl { font-size:13px; fill:#1a2330; }
+    .small { font-size:11px; fill:#33404a; }
+    .arrow { stroke:#33404a; stroke-width:2; marker-end:url(#head2); fill:none; }
+    .dasharrow { stroke:#1b6e4a; stroke-width:1.6; stroke-dasharray:4,3; marker-end:url(#head3); fill:none; }
+    .title { font-size:16px; font-weight:600; fill:#1a2330; }
+  </style>
+  <defs>
+    <marker id="head2" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L7,3.5 L0,7 Z" fill="#33404a"/>
+    </marker>
+    <marker id="head3" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L7,3.5 L0,7 Z" fill="#1b6e4a"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="450" y="26" text-anchor="middle">Modèle décodeur-seul : prédiction du token suivant</text>
+
+  <!-- input tokens -->
+  <g>
+    <rect class="tokbox" x="60"  y="60" width="90" height="36" rx="5"/>
+    <rect class="tokbox" x="160" y="60" width="90" height="36" rx="5"/>
+    <rect class="tokbox" x="260" y="60" width="90" height="36" rx="5"/>
+    <rect class="tokbox" x="360" y="60" width="90" height="36" rx="5"/>
+    <text class="lbl" x="105" y="83" text-anchor="middle">&lt;BOS&gt;</text>
+    <text class="lbl" x="205" y="83" text-anchor="middle">Le</text>
+    <text class="lbl" x="305" y="83" text-anchor="middle">patient</text>
+    <text class="lbl" x="405" y="83" text-anchor="middle">tousse</text>
+  </g>
+  <text class="small" x="255" y="115" text-anchor="middle">x₁ … x_i  (input_ids, contexte causal : chaque position ne voit que ce qui la précède)</text>
+
+  <!-- decoder block -->
+  <rect x="60" y="140" width="390" height="60" rx="8" fill="#dbe6f2" stroke="#33404a" stroke-width="1.5"/>
+  <text class="lbl" x="255" y="165" text-anchor="middle" font-weight="600">Décodeur Transformer (couches causales)</text>
+  <text class="small" x="255" y="185" text-anchor="middle">P(xᵢ | x&lt;ᵢ ; θ)  —  masque d'attention causal</text>
+
+  <path class="arrow" d="M255,96 L255,138"/>
+
+  <!-- logits -->
+  <rect class="predbox" x="60" y="220" width="390" height="42" rx="6"/>
+  <text class="lbl" x="255" y="245" text-anchor="middle">logits z ∈ ℝ^|V|  →  softmax  →  p(token suivant)</text>
+  <path class="arrow" d="M255,200 L255,218"/>
+
+  <!-- next token prediction -->
+  <rect class="predbox" x="500" y="60" width="120" height="36" rx="5"/>
+  <text class="lbl" x="560" y="83" text-anchor="middle">"présente"</text>
+  <text class="small" x="560" y="112" text-anchor="middle">token prédit x_{i+1}</text>
+  <path class="dasharrow" d="M452,241 C 520,241 540,150 555,98"/>
+
+  <!-- loss -->
+  <rect x="680" y="140" width="200" height="122" rx="8" fill="#fdece0" stroke="#a15c1e" stroke-width="1.5"/>
+  <text class="lbl" x="780" y="165" text-anchor="middle" font-weight="600">Entraînement (§5)</text>
+  <text class="small" x="780" y="188" text-anchor="middle">Perte = -log p(x_{i+1} réel)</text>
+  <text class="small" x="780" y="206" text-anchor="middle">cross-entropy, moyennée</text>
+  <text class="small" x="780" y="224" text-anchor="middle">sur les tokens non masqués</text>
+  <text class="small" x="780" y="242" text-anchor="middle">(teacher forcing)</text>
+  <path class="arrow" d="M620,80 C 660,80 660,120 690,148"/>
+
+  <text class="small" x="450" y="300" text-anchor="middle">À l'inférence : la boucle se répète, le token prédit rejoint le contexte pour prédire le suivant (génération autoregressive).</text>
+</svg>
