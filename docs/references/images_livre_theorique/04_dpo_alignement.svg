@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 340" font-family="Helvetica, Arial, sans-serif">
+  <style>
+    .box { stroke:#33404a; stroke-width:1.5; }
+    .lbl { font-size:13px; fill:#1a2330; }
+    .small { font-size:11.5px; fill:#33404a; }
+    .title { font-size:16px; font-weight:600; fill:#1a2330; }
+    .arrow { stroke:#33404a; stroke-width:2; marker-end:url(#head5); fill:none; }
+    .badge { font-size:12px; font-weight:600; fill:#8a6d1e; }
+  </style>
+  <defs>
+    <marker id="head5" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L7,3.5 L0,7 Z" fill="#33404a"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="450" y="26" text-anchor="middle">DPO : optimisation directe de préférences (§6 — PRÉVU, non implémenté)</text>
+  <rect x="330" y="34" width="240" height="20" rx="4" fill="#f5cf47" stroke="#8a6d1e"/>
+  <text class="badge" x="450" y="49" text-anchor="middle">Étape 3 du projet — pas encore de code</text>
+
+  <!-- prompt + pair -->
+  <rect class="box" x="30" y="80" width="180" height="80" rx="6" fill="#eef3f8"/>
+  <text class="lbl" x="120" y="104" text-anchor="middle">prompt x</text>
+  <text class="small" x="120" y="124" text-anchor="middle">y_w : réponse préférée</text>
+  <text class="small" x="120" y="142" text-anchor="middle">y_l : réponse rejetée</text>
+  <text class="small" x="120" y="158" text-anchor="middle">(UltraMedical-Preference)</text>
+
+  <path class="arrow" d="M210,110 L250,95"/>
+  <path class="arrow" d="M210,140 L250,155"/>
+
+  <!-- policy pi_theta -->
+  <rect class="box" x="250" y="70" width="170" height="50" rx="6" fill="#a6e3ff"/>
+  <text class="lbl" x="335" y="99" text-anchor="middle">π_θ (politique, SFT init)</text>
+
+  <!-- reference pi_ref -->
+  <rect class="box" x="250" y="140" width="170" height="50" rx="6" fill="#d9d9d9"/>
+  <text class="lbl" x="335" y="169" text-anchor="middle">π_ref (gelé)</text>
+
+  <path class="arrow" d="M420,95 L470,120"/>
+  <path class="arrow" d="M420,165 L470,140"/>
+
+  <!-- implicit reward -->
+  <rect class="box" x="470" y="95" width="200" height="70" rx="6" fill="#d8f5e6" stroke="#1b6e4a"/>
+  <text class="lbl" x="570" y="120" text-anchor="middle">récompense implicite</text>
+  <text class="small" x="570" y="138" text-anchor="middle">β·log[π_θ(y|x)/π_ref(y|x)]</text>
+  <text class="small" x="570" y="154" text-anchor="middle">pour y_w et y_l</text>
+
+  <path class="arrow" d="M670,130 L710,130"/>
+
+  <!-- loss -->
+  <rect class="box" x="710" y="95" width="160" height="70" rx="6" fill="#fdece0" stroke="#a15c1e"/>
+  <text class="lbl" x="790" y="122" text-anchor="middle">L_DPO(θ)</text>
+  <text class="small" x="790" y="140" text-anchor="middle">-log σ(r̂_w - r̂_l)</text>
+  <text class="small" x="790" y="156" text-anchor="middle">(Bradley-Terry)</text>
+
+  <text class="small" x="450" y="230" text-anchor="middle">Aucun modèle de récompense séparé : la politique elle-même définit une récompense implicite via π_ref.</text>
+  <text class="small" x="450" y="250" text-anchor="middle">Maximiser σ(r̂_w − r̂_l) ⇔ pousser π_θ à préférer y_w sur y_l, tout en restant proche de π_ref (terme KL implicite).</text>
+  <text class="small" x="450" y="280" text-anchor="middle">Projet : 97 081 exemples DPO déjà extraits/splittés (E1_05_03), mais trl.DPOTrainer n'a jamais été appelé — cf. §6.4.</text>
+</svg>
