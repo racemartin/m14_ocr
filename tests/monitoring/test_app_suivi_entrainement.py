@@ -11,12 +11,14 @@ import pytest
 
 from chsa_triage.domain.model.checkpoint_entraine import VerdictConvergence
 from monitoring.logica_suivi_entrainement import (
+    COLONNES_RECOMPENSE_DPO,
     NOMBRE_MINIMAL_ETAPES_POUR_VERDICT,
     LigneMetrique,
     analyser_jsonl_metriques,
     construire_courbe_convergence,
     evaluer_convergence_en_vivo,
     extraire_noms_runs,
+    filtrer_colonnes_presentes,
     pivoter_par_etape,
 )
 
@@ -134,6 +136,47 @@ def test_evaluer_convergence_en_vivo_detecte_instabilite():
     verdict, _ = evaluer_convergence_en_vivo(tableau)
 
     assert verdict == VerdictConvergence.INSTABLE
+
+
+def test_filtrer_colonnes_presentes_run_sft_sans_recompenses():
+    """Un run SFT ne journalise jamais les colonnes de recompense DPO : la liste retournee doit rester vide."""
+    tableau_sft = [
+        {"etape": 0, "perte_train": 1.2, "norme_gradient": 0.5},
+        {"etape": 1, "perte_train": 0.9, "perte_validation": 1.1, "norme_gradient": 0.4},
+    ]
+
+    assert filtrer_colonnes_presentes(tableau_sft, COLONNES_RECOMPENSE_DPO) == []
+
+
+def test_filtrer_colonnes_presentes_run_dpo_avec_recompenses():
+    """Un run DPO journalise les 4 metriques de recompense `trl.DPOTrainer` : toutes doivent etre detectees, dans l'ordre de `COLONNES_RECOMPENSE_DPO`."""
+    tableau_dpo = [
+        {
+            "etape": 0,
+            "perte_train": 0.6,
+            "norme_gradient": 0.3,
+            "rewards/chosen": 0.12,
+            "rewards/rejected": -0.05,
+            "rewards/accuracies": 0.8,
+            "rewards/margins": 0.17,
+        },
+    ]
+
+    assert filtrer_colonnes_presentes(tableau_dpo, COLONNES_RECOMPENSE_DPO) == list(COLONNES_RECOMPENSE_DPO)
+
+
+def test_filtrer_colonnes_presentes_detecte_meme_si_une_seule_etape_les_porte():
+    """Une colonne presente sur une seule etape (ex. la derniere, en cours de journalisation) doit tout de meme etre detectee."""
+    tableau = [
+        {"etape": 0, "perte_train": 0.6, "norme_gradient": 0.3},
+        {"etape": 1, "perte_train": 0.5, "norme_gradient": 0.25, "rewards/chosen": 0.2},
+    ]
+
+    assert filtrer_colonnes_presentes(tableau, COLONNES_RECOMPENSE_DPO) == ["rewards/chosen"]
+
+
+def test_filtrer_colonnes_presentes_table_vide():
+    assert filtrer_colonnes_presentes([], COLONNES_RECOMPENSE_DPO) == []
 
 
 @pytest.mark.parametrize(
