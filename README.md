@@ -485,10 +485,7 @@ depuis) et republiée sur le dépôt de métriques.
 
 | Paramètre | Valeur par défaut | À quoi ça sert / ce que ça implique |
 |---|---|---|
-| `attn_implementation` | `sdpa` | Intégré à PyTorch, aucune installation/compilation CUDA à part → le moins de risque d'échec sur un environnement cloud pas encore vérifié. `flash_attention_2` est probablement plus rapide mais nécessite le paquet `flash-attn` (compilation longue, échoue souvent sans le bon toolchain CUDA) ; exposé via le même paramètre pour pouvoir le mesurer/basculer. |
-| `utiliser_liger_kernel` | `false` | Champ réel de `trl.SFTConfig`, activable via le paramètre du constructeur, jamais mesuré. |
-
-Unsloth n'est branché nulle part (même pas en flag) : il remplacerait tout le chemin de chargement du modèle, une décision d'architecture, pas une simple bascule à côté de ces deux paramètres.
+| `attn_implementation` | `sdpa` | Intégré à PyTorch, aucune installation/compilation CUDA à part → le moins de risque d'échec sur un environnement cloud pas encore vérifié. Autres optimisations envisagées pour l'entraînement, jamais mesurées faute de GPU : <ul><li><code>sdpa</code> (par défaut, retenu ici)</li><li><code>flash_attention_2</code> : probablement plus rapide, mais nécessite le paquet <code>flash-attn</code> (compilation longue, échoue souvent sans le bon toolchain CUDA)</li><li><code>utiliser_liger_kernel=true</code> : champ réel de <code>trl.SFTConfig</code>, flag indépendant (pas une valeur de <code>attn_implementation</code>)</li><li><code>Unsloth</code> : non branché du tout dans le code, remplacerait tout le chemin de chargement du modèle, décision d'architecture plutôt qu'un simple flag</li></ul> |
 
 ---
 
