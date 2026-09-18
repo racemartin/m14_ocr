@@ -1,0 +1,84 @@
+@startuml vision_generale_etapes_v3_detaille
+!include ../_common/estilo.iuml
+
+title CHSA Triage : Vue d'ensemble détaillée (V3)\nFlux technique des étapes 1 à 3 : scripts CLI, adaptateurs et dépôts Hugging Face réels\n(complémentaire de vision_generale_etapes.puml, la V1, 5 cases simplifiées pour une première lecture)
+
+start
+
+partition "Étape 1 : Préparation des données, [FAIT] (réel)" {
+  :Hugging Face Hub\n6 corpus sources;
+  :Dataset Pivot\n134 883 exemples\n(E1_03_00_construire_dataset_pivot.py,\nidentifiants déterministes);
+  note right
+    12 321 doublons exacts écartés sur 147 204
+    enregistrements bruts fusionnés (archivés dans
+    doublons_supprimes.jsonl) ; répartition par type
+    d'exemple : 37 802 SFT + 97 081 DPO
+  end note
+
+  :Dataset Anonymisé\n(E1_04_00_anonymiser_dataset.py,\ndataset_pivot_anonymise.jsonl,\nPresidio + spaCy, pivot original jamais modifié);
+
+  :Local, Dataset Splited\nSplit Train / Split Val / Split Test\n(E1_05_00_decouper_splits.py,\nexclut les identifiants PII en attente de révision humaine);
+}
+
+partition "Étape 1bis : Baseline zero-shot, [FAIT] (réel)" {
+  :Hugging Dataset\nmombasstic/chsa-triage-baseline-test\nSFT Split Test, 278 exemples;
+  :Qwen/Qwen3-1.7B-Base\n(non entraîné);
+  :Transformers\n(TransformersInferenceAdapter,\ninterfaces/cli/E1_06_01_evaluer_baseline_gpu.py);
+  :Hugging Dataset\nmombasstic/chsa-triage-baseline-metrics\nrun « baseline-zero-shot-gpu »\n(métriques de référence);
+  note right
+    Importé localement dans mlflow.db via
+    monitoring/importer_mlflow_local.py (mlflow ui)
+  end note
+}
+
+partition "Étape 2 : Entraînement SFT-LoRA, [FAIT] (réel)" {
+  :Hugging Dataset\nmombasstic/chsa-triage-sft-train-data\nSFT Split Train;
+  :Qwen/Qwen3-1.7B-Base\n(non entraîné);
+  :TRL SFTTrainer\n(TrlSftEntraineurAdapter,\ntraining/E2_04_sft_train.py, verdict réel : saine);
+
+  fork
+    :Hugging Dataset\nmombasstic/chsa-triage-sft-metrics\nrun « sft-lora »\n(courbe de métriques,\nverdict de convergence);
+  fork again
+    :checkpoint SFT-LoRA\nmombasstic/chsa-triage-sft-lora\n(adapter_config.json +\nadapter_model.safetensors,\nmeilleur essai seulement);
+  end fork
+}
+
+partition "Étape 2 : Évaluation post-SFT, [FAIT] (réel)" {
+  :Hugging Dataset\nmombasstic/chsa-triage-baseline-test\nSFT Split Test, 278 exemples;
+  :Qwen/Qwen3-1.7B-Base\n+ checkpoint SFT-LoRA;
+  :peft.PeftModel\n(TransformersLoraInferenceAdapter,\ninterfaces/cli/E2_05_evaluer_post_sft.py);
+  :Hugging Dataset\nmombasstic/chsa-triage-baseline-metrics\nrun « evaluation-post-sft »\n(métriques comparables au baseline);
+}
+
+-[dashed,#7A6A4F]->
+
+partition "Étape 3 : DPO, [CONCEPTUEL] / [PRÉVU], non implémenté" #FCEBE6 {
+  note right #FCEBE6
+    **[CONCEPTUEL / PRÉVU]** Aucun script d'entraînement DPO
+    n'existe dans le code à ce jour (cf. `find . -iname "*dpo*"` :
+    seul E1_05_03_extraire_sous_ensemble_dpo.py existe, et il ne
+    fait qu'extraire le SOUS-ENSEMBLE DE DONNÉES DPO, pas un
+    entraînement). « dpo-lora » et « checkpoint aligné » ci-dessous
+    sont des noms PRÉDITS par convention de nommage (même schéma
+    que le run « sft-lora » réel), JAMAIS un run réellement exécuté
+    ni un dépôt réellement publié. Détail de la double fonction
+    (alignement des préférences + apprentissage du format JSON
+    contractuel), complémentaire, non dupliqué ici :
+    docs/diagrams/04_etape3_dpo/activite/dpo_double_fonction_entrainement.png
+  end note
+
+  :Hugging Dataset\nDPO Split Train / Split Val\n(E1_05_03_extraire_sous_ensemble_dpo.py);
+  note right: Paires prompt chosen + rejected
+  :Qwen/Qwen3-1.7B-Base\n+ checkpoint SFT-LoRA;
+  :TRL DPOTrainer\n(non implémenté);
+
+  fork
+    :Hugging Dataset\nrun « dpo-lora » (nom prédit,\njamais exécuté);
+  fork again
+    :checkpoint aligné (nom prédit,\njamais publié)\nadapter_config.json +\nadapter_model.safetensors;
+  end fork
+}
+
+stop
+
+@enduml
