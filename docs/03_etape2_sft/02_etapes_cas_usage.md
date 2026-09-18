@@ -118,12 +118,22 @@ configurable) ; `formater()` concatène les messages `prompt` puis
 `completion` de l'`ExemplePivot` avant de les rendre via le chat
 template natif du tokenizer.
 
-**Décision encore ouverte** (écart identifié
-en `00_introduction_concepts.md` §"Point de vigilance") : le format de
-sortie cible du projet (`<think>...</think>` + JSON strict
+**Décision encore ouverte pour le SFT, tranchée depuis pour le DPO**
+(écart identifié en `00_introduction_concepts.md` §"Point de
+vigilance") : le format de sortie cible du projet
+(`<think>...</think>` + JSON strict
 `niveau`/`categorie`/`ressources_estimees`, cahier des charges F3-F4)
 n'existe dans aucune `completion`/`chosen` du dataset pivot actuel.
-Trois options, non tranchées ici :
+Trois options se posaient, non tranchées ici (elles concernent
+l'Étape 2/SFT). **L'option 1 a depuis été retenue, spécifiquement pour
+le dataset source du DPO** (reformulation du `chosen` de
+`UltraMedical-Preference` vers le format `<think>`+JSON, `rejected`
+laissé en texte libre) : voir
+`docs/04_etape3_dpo/00_introduction_concepts.md` §3 pour la décision
+complète et son raisonnement. Cette décision ne tranche PAS le SFT
+lui-même : les trois options ci-dessous restent ouvertes pour
+`ChatMLFormateurAdapter`/`FormaterDatasetChatMLUseCase` (Étape 2) tel
+quel.
 
 1. **Ne rien changer aux données pour le SFT**, et repousser
    l'apprentissage du format `<think>`+JSON à un prompt système
