@@ -98,16 +98,18 @@ def _exemple_pivot_dpo() -> ExemplePivot:
 
 def test_formater_preference_rend_un_triplet_texte_distinct():
     """
-    Trouvaille reelle (pas supposee) : le chat template natif de
-    Qwen3-1.7B-Base RETIRE le bloc `<think>...</think>` d'un tour
-    assistant qui n'est PAS le dernier tour genere (comportement
-    documente du template Qwen3, qui evite de re-alimenter d'anciens
-    raisonnements dans le contexte) ; verifie ici par appel reel a
-    `apply_chat_template` sur un `chosen` contenant `<think>`, jamais
-    suppose. Consequence pour le DPO (a signaler, pas a corriger ici,
-    hors perimetre des etapes 1-11) : `texte_chosen` tel que rendu par
-    `formater_preference()` ne contient PLUS le bloc `<think>`, seul le
-    JSON cible survit ; cf. AGENTS.md.
+    Bug reel CORRIGE le 19/09/2026 (cf. AGENTS.md, docstring de
+    `ChatMLFormateurAdapter.formater_preference()`) : l'ancienne
+    implementation passait par `apply_chat_template()` sur le tour
+    assistant isole, ce qui faisait retirer le bloc
+    `<think>...</think>` par le chat template natif de Qwen3-1.7B-Base
+    (traite comme un tour "non final" en l'absence de tour `user`
+    precedent dans la liste passee). La correction construit
+    `texte_chosen`/`texte_rejected` directement avec les tokens de
+    controle reels du template plutot que via `apply_chat_template()`
+    pour ce champ precis (`_rendre_tour_assistant_seul`) : `<think>`
+    survit desormais, verifie ici par assertion inversee (documentait
+    le bug avant, documente la correction maintenant).
     """
     adaptateur = ChatMLFormateurAdapter(nom_modele=NOM_MODELE)
     exemple = _exemple_pivot_dpo()
@@ -117,7 +119,7 @@ def test_formater_preference_rend_un_triplet_texte_distinct():
     assert resultat.identifiant == exemple.identifiant
     assert "Le patient presente une douleur thoracique" in resultat.texte_prompt
     assert '"niveau": 2' in resultat.texte_chosen
-    assert "<think>" not in resultat.texte_chosen  # retire par le chat template, cf. docstring ci-dessus
+    assert "<think>Douleur thoracique, risque cardiaque.</think>" in resultat.texte_chosen
     assert "Ce n'est probablement rien de grave" in resultat.texte_rejected
     assert '"niveau": 2' not in resultat.texte_rejected
     assert "Ce n'est probablement rien de grave" not in resultat.texte_prompt
