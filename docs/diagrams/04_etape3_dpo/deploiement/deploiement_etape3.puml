@@ -1,0 +1,166 @@
+@startuml deploiement_etape3
+!pragma layout smetana
+!include ../../_common/estilo.iuml
+
+title Étape 3 (DPO) : Diagramme de déploiement\nEntraînement DPO-LoRA via HF Jobs (`hf jobs uv run`, package installé depuis GitHub), continuant le checkpoint SFT-LoRA déjà entraîné : code [FAIT], job **JAMAIS ENCORE LANCÉ** (décision de lancement en attente, cf. README « 3. DPO »)
+
+cloud "GitHub" as GITHUB {
+  artifact "racemartin/m14_ocr@main\n(source installable + scripts bruts)" as REPO_GITHUB
+}
+
+cloud "Hugging Face Hub" as HFHUB {
+  artifact "Qwen3-1.7B-Base\n(poids publics)" as MODELE
+  database "model\nchsa-triage-sft-lora (privé)\nCHECKPOINT DE DÉPART, déjà réel\n(verdict SAINE, Étape 2, §2.3)" as REPO_SFT_LORA
+  database "dataset\nchsa-triage-dpo-train-data (privé)\nNOUVEAU, sous-ensemble DPO monté" as DATASET_TRAIN
+  database "dataset\nchsa-triage-dpo-metrics (privé)\nNOUVEAU, --suivi-hf-repo" as DATASET_METRIQUES
+  database "model\nchsa-triage-dpo-lora (privé)\nNOUVEAU, --checkpoint-hf-repo\nJAMAIS ENCORE PUBLIÉ" as REPO_DPO_LORA
+}
+
+node "Machine locale du developpeur\n(WSL2, lance hf jobs uv run, même uv que Environnement A)" as LOCAL {
+  component "hf jobs uv run\n(CLI huggingface_hub)" as HFJOBSCLI
+  database "recipes/dpo_qwen3_lora.yaml\n(fichier LOCAL réel, auto-televerse\npar hf jobs uv run vers /data)" as RECETTE_LOCALE
+}
+
+node "HF Jobs (GPU L4 à l'usage, éphémère)\n**JAMAIS ENCORE LANCÉ** (commande prête, README « 3. DPO »)" as REMOTE_DPO #FCEBE6 {
+  node "Environnement uv (--extra remote, résolu à neuf, PAS uv.lock)" as VENV_DPO {
+    component "training/E3_03_dpo_train.py\n[FAIT] écrit, JAMAIS exécuté sur GPU réel\n(televerse par URL brute GitHub)" as CLI_DPO
+    component "chsa_triage.application\n[FAIT] E3_00-E3_02, verdict_convergence\n(réutilisée sans modification)" as APP
+    component "chsa_triage.domain\n[FAIT]" as DOM
+    component "chsa_triage.infrastructure.adapters\n[FAIT] chatml (formater_preference),\nhf_dataset, trl_dpo_entraineur" as INFRA
+    component "TransformersLoraInferenceAdapter\n[FAIT, Étape 2, réutilisée] charge le\ncheckpoint SFT-LoRA pour reformuler chosen" as INFRA_REFORMULATION
+    component "transformers + bitsandbytes\n(BitsAndBytesConfig 4-bit NF4)" as HF
+    component "peft (PeftModel.from_pretrained,\nis_trainable=True, continuation LoRA-SFT)" as PEFT
+    component "trl (DPOTrainer, loss_type=sigmoid,\nref_model=None, pi_ref dérivé par trl)" as TRL
+  }
+
+  database "/data/dpo_qwen3_lora.yaml\n(recette, AUTO-TÉLÉVERSÉE par\nhf jobs uv run, chemin réservé)" as RECIPE_MOUNTED
+  database "/mnt/train-data/dataset_chsa_triage_dpo_anonymise_100.jsonl\n(volume monté, hf://datasets/...,\nJAMAIS /data : chemin réservé)" as SPLITS
+  database "data/processed/dataset_dpo_chosen_reformule.jsonl\n(ChosenReformule, LOCAL au job,\nincrémental/resumable)" as REFORMULE_LOCAL
+  database "outputs/dpo-lora/\n(poids LoRA locaux au job,\nperdus à la fin du job\nsi non publiés)" as CKPT_LOCAL
+  database "data/processed/checkpoints_sft.jsonl\n(métadonnées CheckpointEntraine,\nPARTAGÉ avec le SFT, LOCAL au job)" as CKPT_META
+}
+
+' ----------------------------------------------------------------------
+' Lancement (poste local -> HF Jobs), package installe depuis GitHub
+' ----------------------------------------------------------------------
+
+HFJOBSCLI --> GITHUB : ~-~-with "chsa-triage[remote] @\ngit+https://github.com/.../m14_ocr.git@main"\n(installe le paquet, PAS un git clone)
+HFJOBSCLI --> REMOTE_DPO : commande PRÊTE, jamais soumise\n(~-~-flavor l4x1, ~-~-timeout 2h,\n~-~-secrets HF_TOKEN)
+GITHUB --> CLI_DPO : script récupéré par URL brute\n(raw.githubusercontent.com)
+RECETTE_LOCALE ..> RECIPE_MOUNTED : auto-televersement (fichier LOCAL\nexistant -> bucket /data du job,\nargument réécrit automatiquement,\nmême mécanisme que l'Étape 2)
+HFHUB --> VENV_DPO : huggingface_hub.from_pretrained()\n(HF_TOKEN, poids du modèle de base)
+REPO_SFT_LORA --> VENV_DPO : PeftModel.from_pretrained\n(checkpoint_politique_depart,\nchargé UNE SEULE FOIS dans\nTrlDpoEntraineurAdapter.__post_init__)
+DATASET_TRAIN --> SPLITS : -v hf://datasets/chsa-triage-dpo-train-data:/mnt/train-data\n(volume monté, même mécanisme que le SFT)
+
+' ----------------------------------------------------------------------
+' Pipeline DPO (jamais lancé sur GPU réel)
+' ----------------------------------------------------------------------
+
+CLI_DPO --> RECIPE_MOUNTED : lit la configuration\n(quantification, lora=métadonnée\nseulement, entrainement, suivi)
+CLI_DPO --> INFRA_REFORMULATION : étape 1 : reformuler chosen\n-> <think>+JSON (splits\ntrain+validation UNIQUEMENT)
+INFRA_REFORMULATION --> REPO_SFT_LORA : charge le checkpoint SFT-LoRA\npour générer la reformulation
+INFRA_REFORMULATION --> REFORMULE_LOCAL : écriture (ChosenReformule,\nincrémental/resumable)
+CLI_DPO --> APP : étapes 2-4 : formater le triplet,\nentraîner, sauvegarder le checkpoint
+APP --> DOM
+APP --> INFRA
+INFRA --> HF
+INFRA --> PEFT
+INFRA --> TRL
+INFRA --> SPLITS : lecture (pivot anonymisé,\ntrain/validation)
+INFRA --> REFORMULE_LOCAL : lecture (fusion chosen\nreformulé + pivot)
+INFRA --> CKPT_LOCAL : écriture (poids LoRA,\nvia trainer.save_model())
+INFRA --> CKPT_META : écriture (CheckpointEntraine,\nvia RepositoryLectureEcriture)
+INFRA ..> DATASET_METRIQUES : suivi.backend: hf_dataset\n(défaut de la recette),\nHfDatasetSuiviExperimentation,\nCommitScheduler, ~-~-suivi-hf-repo,\nrewards/chosen, rewards/rejected,\nrewards/accuracies, rewards/margins
+CLI_DPO --> REPO_DPO_LORA : ~-~-checkpoint-hf-repo,\n_publier_checkpoint_hf (réutilisée\ntelle quelle de E2_04_sft_train.py),\nJAMAIS ENCORE EXÉCUTÉ
+
+note bottom of REMOTE_DPO
+  **JAMAIS ENCORE LANCÉ.** Commande réelle prête
+  (README « 3. DPO »), décision de lancement en
+  attente (coût GPU hors périmètre à ce jour).
+  Tout ce qui suit a été vérifié SANS GPU : lecture
+  directe du code source de trl.DPOTrainer/
+  peft.PeftModel (mêmes versions que le SFT,
+  trl==1.13.0 local ET trl==0.24.0 sur une
+  résolution fraîche HF Jobs, même risque de
+  plafonnement par unsloth déjà documenté), tests
+  auto-skip sans torch.cuda.is_available(). AUCUNE
+  garantie que le modèle continue de s'entraîner
+  sans erreur CUDA/mémoire, ni que la perte DPO
+  baisse réellement (cf. AVERTISSEMENT en tête de
+  infrastructure/adapters/trl_dpo_entraineur.py).
+end note
+
+note bottom of GITHUB
+  Même mécanisme exact que l'Étape 2 (SFT) :
+  ~-~-with "chsa-triage[remote] @ git+..." installe
+  le paquet Python directement depuis GitHub
+  (packaging pyproject.toml), script téléversé à
+  part par URL brute. Résolution À NEUF à chaque
+  lancement (PAS uv.lock) : le même risque de
+  plafonnement de trl par unsloth (non borné dans
+  l'extra remote) existe pour le DPO, mais
+  "sigmoid" (seule valeur utilisée par ce projet)
+  a été vérifiée sûre sur trl==1.13.0 ET trl==0.24.0
+  (contrairement à chunked_nll pour le SFT).
+end note
+
+note bottom of RECIPE_MOUNTED
+  Même mécanisme réel que l'Étape 2 (lu dans
+  huggingface_hub.HfApi._create_uv_command_env_and_secrets) :
+  ~-~-recette passé comme fichier LOCAL existant est
+  auto-téléversé vers /data (chemin réservé,
+  HF_JOBS_ARTIFACTS_MOUNT_PATH) ; recipes/ n'est
+  PAS installé par le paquet PyPI/GitHub.
+end note
+
+note bottom of SPLITS
+  Sous-ensemble DPO réduit pour une vérification de
+  lancement (même patron que l'Étape 2, §1.5) :
+  E1_05_03_extraire_sous_ensemble_dpo.py --taille 100,
+  monté via un volume (-v hf://datasets/...),
+  jamais auto-téléversé (trop volumineux).
+end note
+
+note bottom of REFORMULE_LOCAL
+  Fichier LOCAL au job, PAS republié sur HF Hub :
+  sur un job distant dont le disque ne survit pas
+  au job, une reformulation faite pendant un run
+  interrompu serait perdue et devrait redémarrer à
+  zéro (le mécanisme incrémental/resumable
+  d'identifiants_existants() protège seulement
+  contre un retraitement au sein d'un run qui
+  persiste ce fichier, pas contre la perte du
+  disque éphémère lui-même).
+end note
+
+note bottom of CKPT_META
+  data/processed/checkpoints_sft.jsonl est PARTAGÉ
+  entre SFT et DPO (même fichier, --checkpoints du
+  point d'entrée) : CheckpointEntraine.hyperparametres
+  accepte l'union HyperparametresEntrainement |
+  HyperparametresEntrainementDpo, discriminée à la
+  lecture par la présence du champ beta (corrigé
+  19/09/2026, cf. AGENTS.md).
+end note
+
+note bottom of REPO_DPO_LORA
+  JAMAIS ENCORE PUBLIÉ (aucun job réel lancé).
+  Mécanisme de publication identique à
+  chsa-triage-sft-lora (Étape 2) :
+  _publier_checkpoint_hf (HfApi.upload_folder),
+  réutilisée TELLE QUELLE depuis
+  training/E2_04_sft_train.py, appelée UNE SEULE
+  FOIS après l'entraînement (pas de grille
+  d'hyperparamètres DPO à ce jour, cf.
+  02_etapes_cas_usage.md §6, hors périmètre).
+end note
+
+note bottom of LOCAL
+  Poste de LANCEMENT prévu de hf jobs uv run
+  (jamais exécuté à ce jour pour le DPO) : même
+  poste et mêmes credentials HF_TOKEN que pour le
+  SFT (Étape 2). Aucun MLflow local alimenté à ce
+  jour pour le DPO (pas de run réel à importer).
+end note
+
+@enduml

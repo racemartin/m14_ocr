@@ -1,0 +1,186 @@
+@startuml dpo_paquets
+!pragma layout smetana
+!include ../../_common/estilo.iuml
+
+title Étape 3 (DPO) : Diagramme de paquets\nModules/classes du DPO et leur relation à l'existant (Étape 1/1bis/2) : [FAIT] (code écrit, 428 tests), JAMAIS exécuté sur GPU réel, aucun job HF Jobs réel lancé (cf. AGENTS.md)
+
+package "training\n(analogue à interfaces/cli pour l'entrainement, [FAIT] écrit, JAMAIS exécuté sur GPU réel)" as TRAINING {
+  class E3_03_dpo_train
+}
+
+package "application" as APPLICATION {
+  package "use_cases" {
+    class ReformulerPreferenceDpoUseCase <<E3_00, FAIT>>
+    class FormaterDatasetChatMLPreferenceUseCase <<E3_01, FAIT>>
+    class EntrainerDpoUseCase <<E3_02, FAIT>>
+    class SauvegarderCheckpointSftUseCase <<existant Étape 2 (E2_03), réutilisé SANS modification>>
+  }
+  class "validation_reformulation_dpo\n(fonction pure)" as ValidationFn <<FAIT>>
+  class "verdict_convergence\n(fonction pure)" as VerdictFn <<existant Étape 2, réutilisé SANS modification>>
+}
+
+package "domain\n(zéro dépendance externe)" as DOMAIN {
+  package "model" {
+    class ExemplePivot <<existant, Étape 1>>
+    class ExempleFormatePreference <<FAIT>>
+    class ChosenReformule <<FAIT>>
+    class HyperparametresEntrainementDpo <<FAIT>>
+    class ConfigurationLora <<existant, Étape 2, réutilisé>>
+    class MetriquesEntrainement <<existant, Étape 2, réutilisé>>
+    class CheckpointEntraine <<existant, Étape 2, élargi en union SFT|DPO>>
+    enum VerdictConvergence <<existant, Étape 2, réutilisé>>
+  }
+  package "ports" {
+    interface RepositoryLectureEcriture <<existant, Étape 1, réutilisé>>
+    interface MoteurInference <<existant, Étape 1bis, réutilisé>>
+    interface SuiviExperimentation <<existant, Étape 2, réutilisé>>
+    interface EntraineurPreference <<FAIT>>
+    interface FormateurPreference <<FAIT>>
+    class ResultatEntrainementDPO <<FAIT>>
+  }
+}
+
+package "infrastructure" as INFRASTRUCTURE {
+  package "adapters" {
+    class JsonlDatasetRepository <<existant, Étape 1, réutilisé>>
+    class JsonlPreferenceReformuleeRepository <<FAIT>>
+    class JsonlExempleFormatePreferenceRepository <<FAIT>>
+    class JsonlCheckpointRepository <<existant, Étape 2, corrigé (union SFT|DPO)>>
+    class ChatMLFormateurAdapter <<existant, Étape 2, méthode formater_preference() ajoutée>>
+    class TrlDpoEntraineurAdapter <<FAIT, jamais exécuté sur GPU réel>>
+    class TransformersLoraInferenceAdapter <<existant, Étape 2, réutilisé SANS modification>>
+    class HfDatasetSuiviExperimentation <<existant, Étape 2, réutilisé (défaut de la recette)>>
+    class MlflowSuiviExperimentation <<existant, Étape 2, réutilisé>>
+    class TensorboardSuiviExperimentation <<existant, Étape 2, réutilisé>>
+  }
+}
+
+package "monitoring\n(existant, Étape 2, étendu)" as MONITORING {
+  class app_suivi_entrainement <<existant, étendu 18/09/2026 : cartes+graphique\nrewards/* affichés si présentes>>
+}
+
+' ----------------------------------------------------------------------
+' Dependances reelles (training/E3_03_dpo_train.py)
+' ----------------------------------------------------------------------
+
+E3_03_dpo_train ..> JsonlDatasetRepository
+E3_03_dpo_train ..> JsonlPreferenceReformuleeRepository
+E3_03_dpo_train ..> JsonlExempleFormatePreferenceRepository
+E3_03_dpo_train ..> JsonlCheckpointRepository
+E3_03_dpo_train ..> ChatMLFormateurAdapter
+E3_03_dpo_train ..> TransformersLoraInferenceAdapter
+E3_03_dpo_train ..> TrlDpoEntraineurAdapter
+E3_03_dpo_train ..> ReformulerPreferenceDpoUseCase
+E3_03_dpo_train ..> FormaterDatasetChatMLPreferenceUseCase
+E3_03_dpo_train ..> EntrainerDpoUseCase
+E3_03_dpo_train ..> SauvegarderCheckpointSftUseCase
+E3_03_dpo_train ..> HfDatasetSuiviExperimentation : suivi.backend: hf_dataset\n(défaut de la recette, même raison\ndéjà documentée pour le SFT)
+E3_03_dpo_train ..> VerdictFn
+
+ReformulerPreferenceDpoUseCase --> ExemplePivot
+ReformulerPreferenceDpoUseCase --> ChosenReformule
+ReformulerPreferenceDpoUseCase --> MoteurInference
+ReformulerPreferenceDpoUseCase --> RepositoryLectureEcriture
+ReformulerPreferenceDpoUseCase ..> ValidationFn
+
+FormaterDatasetChatMLPreferenceUseCase --> ExemplePivot
+FormaterDatasetChatMLPreferenceUseCase --> ChosenReformule
+FormaterDatasetChatMLPreferenceUseCase --> FormateurPreference
+FormaterDatasetChatMLPreferenceUseCase --> RepositoryLectureEcriture
+
+EntrainerDpoUseCase --> ExempleFormatePreference
+EntrainerDpoUseCase --> ConfigurationLora
+EntrainerDpoUseCase --> HyperparametresEntrainementDpo
+EntrainerDpoUseCase --> EntraineurPreference
+EntrainerDpoUseCase --> SuiviExperimentation
+EntrainerDpoUseCase --> ResultatEntrainementDPO
+
+SauvegarderCheckpointSftUseCase --> CheckpointEntraine
+SauvegarderCheckpointSftUseCase --> RepositoryLectureEcriture
+
+ValidationFn --> ExempleFormatePreference
+
+ResultatEntrainementDPO --> MetriquesEntrainement
+CheckpointEntraine --> ConfigurationLora
+CheckpointEntraine --> HyperparametresEntrainementDpo
+CheckpointEntraine --> MetriquesEntrainement
+CheckpointEntraine --> VerdictConvergence
+
+JsonlDatasetRepository ..|> RepositoryLectureEcriture
+JsonlPreferenceReformuleeRepository ..|> RepositoryLectureEcriture
+JsonlExempleFormatePreferenceRepository ..|> RepositoryLectureEcriture
+JsonlCheckpointRepository ..|> RepositoryLectureEcriture
+ChatMLFormateurAdapter ..|> FormateurPreference
+TrlDpoEntraineurAdapter ..|> EntraineurPreference
+TransformersLoraInferenceAdapter ..|> MoteurInference
+HfDatasetSuiviExperimentation ..|> SuiviExperimentation
+MlflowSuiviExperimentation ..|> SuiviExperimentation
+TensorboardSuiviExperimentation ..|> SuiviExperimentation
+
+app_suivi_entrainement ..> HfDatasetSuiviExperimentation : lit rewards/chosen, rewards/rejected,\nrewards/accuracies, rewards/margins\n(colonnes affichées uniquement si présentes)
+
+note bottom of RepositoryLectureEcriture
+  Réutilisé pour 2 NOUVELLES entités DPO
+  (ChosenReformule, ExempleFormatePreference,
+  ci-dessus), en plus des 3 déjà en place
+  (ExemplePivot, ExempleFormate,
+  CheckpointEntraine) : aucune méthode ajoutée
+  au port existant, chaque entité garde son
+  propre adaptateur JSONL dédié.
+end note
+
+note right of TrlDpoEntraineurAdapter
+  [FAIT] Écrit et vérifié SANS GPU (signatures
+  réelles trl==1.13.0 ET trl==0.24.0 inspectées,
+  installation temporaire), JAMAIS exécuté sur
+  un GPU réel (aucun GPU disponible à
+  l'écriture, aucun job HF Jobs réel lancé).
+  Seul module du projet qui importe
+  trl.DPOTrainer/trl.DPOConfig. config_lora reçu
+  mais jamais transmis à DPOTrainer (architecture
+  déjà figée par le checkpoint SFT-LoRA chargé) ;
+  ref_model=None, pi_ref dérivé par trl lui-même
+  (second adaptateur LoRA figé, pas un second
+  modèle complet).
+end note
+
+note bottom of TRAINING
+  [FAIT] écrit, JAMAIS exécuté sur GPU réel.
+  Enchaîne dans l'ordre : ReformulerPreferenceDpoUseCase
+  (splits train+validation UNIQUEMENT, jamais
+  test) -> FormaterDatasetChatMLPreferenceUseCase
+  (train puis validation) -> EntrainerDpoUseCase
+  -> SauvegarderCheckpointSftUseCase (E2_03,
+  réutilisée telle quelle). Garde-fou dédié
+  _verifier_type_perte_dpo_valide (vocabulaire
+  trl.DPOConfig.loss_type, seule "sigmoid" admise,
+  distinct de _verifier_type_perte_valide du SFT) ;
+  _verifier_suivi_hf_repo_coherent réutilisée telle
+  quelle (logique 100% générique SFT/DPO).
+end note
+
+note bottom of ChatMLFormateurAdapter
+  formater_preference() (nouvelle méthode,
+  19/09/2026) corrige un bug réel confirmé : le
+  chat template natif de Qwen3 retirait le bloc
+  <think>...</think> d'un chosen reformulé rendu
+  seul via apply_chat_template. Construit
+  désormais le tour directement avec les tokens
+  de contrôle réels du modèle, confirmé
+  byte-identique pour rejected et préservant
+  <think> pour chosen.
+end note
+
+note bottom of MONITORING
+  [FAIT, 18/09/2026] app_suivi_entrainement.py
+  affiche des cartes+un graphique additionnels
+  pour les 4 métriques de récompense DPO,
+  UNIQUEMENT quand ces colonnes sont présentes
+  dans le run sélectionné (même pattern défensif
+  que la courbe de perte existante) : un run SFT
+  ne les affiche jamais. Aucun changement côté
+  HfDatasetSuiviExperimentation/parsing (couche
+  déjà générique).
+end note
+
+@enduml
