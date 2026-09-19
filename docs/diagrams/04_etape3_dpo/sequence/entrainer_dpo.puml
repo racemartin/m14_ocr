@@ -1,0 +1,137 @@
+@startuml entrainer_dpo
+!include ../../_common/estilo.iuml
+
+title Étape 3 (DPO) : Diagramme de séquence\nEntraînement DPO-LoRA (E3_02), continuant le checkpoint SFT-LoRA : toutes les classes ci-dessous sont écrites et testées, y compris TrlDpoEntraineurAdapter et E3_03_dpo_train.py, JAMAIS exécutées sur GPU réel (aucun job HF Jobs réel lancé)
+
+actor "Développeur\n(Environnement B, GPU)" as Dev
+
+box "training" #F0EEE7
+  participant "E3_03_dpo_train.py\n[FAIT] jamais exécuté sur GPU réel" as CLI
+end box
+
+box "application/use_cases" #F0EEE7
+  participant "EntrainerDpoUseCase" as UCTrain
+  participant "SauvegarderCheckpointSftUseCase\n(existant, Étape 2, réutilisé\nSANS modification)" as UCSave
+end box
+
+box "application" #F0EEE7
+  participant "verdict_convergence\n(existant, Étape 2, réutilisé\nSANS modification)" as Verdict
+end box
+
+box "infrastructure/adapters" #F0EEE7
+  participant "TrlDpoEntraineurAdapter\n[FAIT] jamais exécuté sur GPU réel" as Entraineur
+  participant "HfDatasetSuiviExperimentation" as Suivi
+  participant "JsonlCheckpointRepository" as RepoCkpt
+end box
+
+autonumber "<b>0."
+
+CLI -> Entraineur : new(identifiant_modele_base=modele_base,\nconfiguration_quantification,\nchemin_checkpoint_politique_depart=mombasstic/chsa-triage-sft-lora,\nrepertoire_sortie)
+note right of Entraineur
+  [FAIT] __post_init__ charge, UNE SEULE FOIS :
+  BitsAndBytesConfig 4-bit NF4 + AutoModelForCausalLM,
+  peft.prepare_model_for_kbit_training(modele_base),
+  PUIS PeftModel.from_pretrained(modele_base,
+  chemin_checkpoint_politique_depart, is_trainable=True)
+  (défaut réel is_trainable=False, sans ce flag
+  explicite l'adaptateur LoRA-SFT resterait gelé).
+  Jamais exposé au-dessus de la frontière
+  domain/application. Vérifié SANS GPU (signatures
+  trl/peft inspectées), jamais exécuté sur GPU réel.
+end note
+
+CLI -> Suivi : new(repo_id=--suivi-hf-repo)
+note right of Suivi
+  suivi.backend: hf_dataset (défaut de la recette,
+  même raison déjà documentée pour le SFT : disque
+  HF Jobs éphémère). _verifier_suivi_hf_repo_coherent
+  (réutilisée telle quelle de E2_04_sft_train.py)
+  refuse de démarrer en cas d'incohérence recette/flag.
+end note
+
+CLI -> UCTrain : new(entraineur=Entraineur, suivi=Suivi)
+
+CLI -> UCTrain : entrainer(dataset_train, dataset_validation,\nconfig_lora, hyperparametres,\nchemin_checkpoint_politique_depart, nom_run)
+activate UCTrain
+
+UCTrain -> Suivi : demarrer_run(nom_run, parametres_run)
+
+UCTrain -> Entraineur : entrainer(dataset_train, dataset_validation,\nconfig_lora, hyperparametres,\nchemin_checkpoint_politique_depart)
+activate Entraineur
+note right of Entraineur
+  Vérifie D'ABORD que chemin_checkpoint_politique_depart
+  concorde avec celui déjà chargé au constructeur
+  (ValueError sinon : cet adaptateur ne peut pas
+  recharger un autre checkpoint de départ à la volée).
+  Puis : trl.DPOConfig(beta, learning_rate,
+  loss_type=["sigmoid"], precompute_ref_log_probs, ...)
+  + trl.DPOTrainer(model=self._modele, ref_model=None,
+  args=dpo_config, ...).train(). config_lora JAMAIS
+  transmis à DPOTrainer (architecture LoRA déjà figée
+  par le checkpoint SFT-LoRA chargé). ref_model=None :
+  trl AJOUTE LUI-MÊME un second adaptateur LoRA figé
+  ("ref"), pas un second modèle complet, décision
+  tranchée par lecture directe du code source de
+  trl.DPOTrainer.__init__.
+end note
+Entraineur --> UCTrain : ResultatEntrainementDPO\n(chemin_checkpoint, courbe_metriques,\nmetriques_recompense)
+deactivate Entraineur
+
+loop pour chaque MetriquesEntrainement de la courbe
+  UCTrain -> Suivi : logger_metrique("perte_train"/"perte_validation"/\n"norme_gradient", valeur, etape)
+end
+
+loop pour chaque clé de rewards/chosen, rewards/rejected,\nrewards/accuracies, rewards/margins (si présente)
+  UCTrain -> Suivi : logger_metrique(cle, valeur, etape_finale)
+  note right of Suivi
+    Métriques propres à trl.DPOTrainer, sans
+    équivalent SFT, relayées directement (jamais
+    consommées par evaluer_convergence) : valeurs
+    agrégées finales, pas une courbe par étape.
+  end note
+end
+
+UCTrain -> Suivi : terminer_run()
+UCTrain --> CLI : ResultatEntrainementDPO
+deactivate UCTrain
+
+CLI -> Verdict : evaluer_convergence(resultat.courbe_metriques)
+activate Verdict
+note right of Verdict
+  Réutilisée SANS AUCUNE modification (Étape 2) :
+  une courbe DPO est diagnostiquée exactement comme
+  une courbe SFT (décision actée en
+  00_introduction_concepts.md §4.4).
+end note
+Verdict --> CLI : VerdictConvergence
+deactivate Verdict
+
+CLI -> UCSave : new(repository_checkpoints=RepoCkpt)
+CLI -> UCSave : executer(identifiant, chemin, modele_base,\nconfiguration_lora, hyperparametres,\nmetriques_finales, verdict_convergence)
+activate UCSave
+UCSave -> RepoCkpt : sauvegarder(CheckpointEntraine)
+note right of RepoCkpt
+  data/processed/checkpoints_sft.jsonl, PARTAGÉ
+  avec le SFT. hyperparametres est un
+  HyperparametresEntrainementDpo (porte le champ
+  beta) : discriminé à la relecture par
+  _hyperparametres_depuis_dict (corrigé 19/09/2026,
+  cf. AGENTS.md, sinon TypeError garanti).
+end note
+UCSave --> CLI : CheckpointEntraine
+deactivate UCSave
+
+alt ~-~-checkpoint-hf-repo fourni
+  CLI -> CLI : _publier_checkpoint_hf(resultat.chemin_checkpoint,\ncheckpoint_hf_repo)
+  note right of CLI
+    Réutilisée TELLE QUELLE de
+    training/E2_04_sft_train.py (HfApi.upload_folder,
+    UNE SEULE FOIS). JAMAIS ENCORE EXÉCUTÉ : aucun
+    job HF Jobs réel lancé pour le DPO à ce jour
+    (README « 3. DPO »).
+  end note
+end
+
+CLI --> Dev : "Checkpoint DPO-LoRA sauvegardé\n(verdict=..., chemin=...)"
+
+@enduml

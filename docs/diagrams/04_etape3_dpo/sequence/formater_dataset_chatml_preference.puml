@@ -1,0 +1,89 @@
+@startuml formater_dataset_chatml_preference
+!include ../../_common/estilo.iuml
+
+title Étape 3 (DPO) : Diagramme de séquence\nRendu triplet prompt/chosen/rejected (E3_01) : fusion pivot + chosen reformulé en mémoire, classes écrites et testées, JAMAIS exécutées sur GPU réel
+
+actor "Développeur\n(Environnement B, GPU)" as Dev
+
+box "training" #F0EEE7
+  participant "E3_03_dpo_train.py\n[FAIT] jamais exécuté sur GPU réel" as CLI
+end box
+
+box "application/use_cases" #F0EEE7
+  participant "FormaterDatasetChatMLPreferenceUseCase" as UCFormat
+end box
+
+box "infrastructure/adapters" #F0EEE7
+  participant "JsonlDatasetRepository\n(pivot anonymisé)" as RepoPivot
+  participant "JsonlPreferenceReformuleeRepository" as RepoReformule
+  participant "ChatMLFormateurAdapter" as Formateur
+  participant "JsonlExempleFormatePreferenceRepository" as RepoFormate
+end box
+
+autonumber "<b>0."
+
+CLI -> UCFormat : new(repository_pivot=RepoPivot, repository_reformule=RepoReformule,\nrepository_formate=RepoFormate, formateur=Formateur)
+
+CLI -> UCFormat : executer(split=TypeSplit.TRAIN)
+activate UCFormat
+
+UCFormat -> RepoPivot : lister(filtre={"split": TRAIN, "type_exemple": DPO})
+RepoPivot --> UCFormat : list[ExemplePivot]
+
+loop pour chaque ExemplePivot
+  UCFormat -> RepoReformule : trouver_par_id(exemple.identifiant)
+  RepoReformule --> UCFormat : ChosenReformule | None
+
+  alt aucun ChosenReformule correspondant
+    UCFormat -> UCFormat : exemple EXCLU du jeu d'entraînement DPO\n(hors du sous-ensemble reformulé, ou\nreformulation en échec pour cet identifiant)
+  else ChosenReformule présent
+    UCFormat -> UCFormat : exemple_fusionne = dataclasses.replace(\nexemple, chosen=chosen_reformule.chosen_reformule)
+    note right of UCFormat
+      Fusion en MÉMOIRE uniquement : jamais de
+      mutation du pivot ni du fichier
+      ChosenReformule sur disque, même principe
+      déjà en place pour le pivot/anonymisé
+      (cf. AGENTS.md).
+    end note
+
+    UCFormat -> Formateur : formater(exemple_fusionne)
+    activate Formateur
+    note right of Formateur
+      formater_preference() : rend prompt/chosen/
+      rejected en TROIS textes distincts, jamais
+      concaténés (contrairement à formater(), SFT).
+      Construit le tour chosen directement avec
+      les tokens de contrôle réels du modèle
+      (<|im_start|>{role}\n{contenu}<|im_end|>\n),
+      PAS via apply_chat_template : préserve le
+      bloc <think> que le chat template natif de
+      Qwen3 retirerait sinon (bug réel confirmé et
+      corrigé le 19/09/2026).
+    end note
+    Formateur --> UCFormat : ExempleFormatePreference
+    deactivate Formateur
+  end
+end
+
+UCFormat -> RepoFormate : sauvegarder_plusieurs(exemples_formates)
+note right of RepoFormate
+  Un seul appel groupé (jamais un sauvegarder()
+  par item, cf. AGENTS.md, coût O(n²)).
+end note
+UCFormat --> CLI : nombre_train (exemples formatés)
+deactivate UCFormat
+
+CLI -> UCFormat : executer(split=TypeSplit.VALIDATION)
+activate UCFormat
+note right of UCFormat
+  Même séquence exacte que ci-dessus,
+  filtre={"split": VALIDATION, "type_exemple": DPO}.
+  Jamais le split test (cf. réforme, cahier des
+  charges §9).
+end note
+UCFormat --> CLI : nombre_val (exemples formatés)
+deactivate UCFormat
+
+CLI --> Dev : log "exemples train formatés" + "exemples validation formatés"
+
+@enduml

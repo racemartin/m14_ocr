@@ -1,0 +1,116 @@
+@startuml reformuler_preference_dpo
+!include ../../_common/estilo.iuml
+
+title Étape 3 (DPO) : Diagramme de séquence\nReformulation du chosen -> <think>+JSON (E3_00) : classes écrites et testées, JAMAIS exécutées sur GPU réel
+
+actor "Développeur\n(Environnement B, GPU)" as Dev
+
+box "training" #F0EEE7
+  participant "E3_03_dpo_train.py\n[FAIT] jamais exécuté sur GPU réel" as CLI
+end box
+
+box "application/use_cases" #F0EEE7
+  participant "ReformulerPreferenceDpoUseCase" as UCReformuler
+end box
+
+box "application" #F0EEE7
+  participant "validation_reformulation_dpo\n(parser_reformulation_stricte)" as Validation
+end box
+
+box "infrastructure/adapters" #F0EEE7
+  participant "JsonlDatasetRepository\n(pivot anonymisé)" as RepoPivot
+  participant "TransformersLoraInferenceAdapter" as Moteur
+  participant "JsonlPreferenceReformuleeRepository" as RepoReformule
+end box
+
+autonumber "<b>0."
+
+Dev -> CLI : uv run python training/E3_03_dpo_train.py\n~-~-recette recipes/dpo_qwen3_lora.yaml\n~-~-dataset data/processed/dataset_pivot_anonymise.jsonl
+activate CLI
+
+CLI -> RepoPivot : new(chemin=dataset pivot anonymisé)
+CLI -> RepoReformule : new(chemin=dataset_dpo_chosen_reformule.jsonl)
+CLI -> Moteur : new(depot_lora=checkpoint_politique_depart,\nnom_modele_base=modele_base)
+note right of Moteur
+  [FAIT, Étape 2, réutilisé SANS modification]
+  Charge le modèle de base bf16 PUIS
+  peft.PeftModel.from_pretrained(depot_lora)
+  par-dessus, dans son constructeur. Échoue
+  explicitement (RuntimeError) sans GPU CUDA,
+  jamais de repli silencieux vers le CPU.
+end note
+
+CLI -> UCReformuler : new(moteur=Moteur, repository_reformule=RepoReformule,\ntaille_cible=recette.reformulation.taille_cible)
+
+CLI -> RepoPivot : lister(filtre={"split": TRAIN, "type_exemple": DPO})\n+ lister(filtre={"split": VALIDATION, "type_exemple": DPO})
+note right of CLI
+  itertools.chain des deux splits : jamais le
+  split test (cahier des charges §9, "ne jamais
+  mélanger données d'entraînement et
+  d'évaluation")
+end note
+RepoPivot --> CLI : Iterable[ExemplePivot]
+
+CLI -> UCReformuler : executer(candidats_reformulation)
+activate UCReformuler
+
+UCReformuler -> RepoReformule : identifiants_existants()
+RepoReformule --> UCReformuler : set[str]
+note right of UCReformuler
+  Filtre sur type_exemple==DPO, exclut les
+  identifiants déjà reformulés, puis borne à
+  taille_cible - (déjà reformulés) : cible
+  CUMULATIVE (comme E1_05_00_decouper_splits.py
+  --n), pas une limite par exécution. No-op si
+  déjà complet.
+end note
+
+loop pour chaque candidat restant
+  UCReformuler -> Moteur : generer([{"role": "system", "content": PROMPT_REFORMULATION_CHOSEN},\n{"role": "user", "content": texte_chosen_original}])
+  activate Moteur
+  Moteur --> UCReformuler : ReponseModele
+  deactivate Moteur
+
+  alt échec d'inférence (exception)
+    UCReformuler -> UCReformuler : nombre_echecs_reformulation += 1\n(exemple ignoré, jamais d'exemple partiel)
+  else inférence réussie
+    UCReformuler -> Validation : parser_reformulation_stricte(reponse.texte)
+    activate Validation
+    note right of Validation
+      Fonction pure : extrait <think>...</think>
+      puis parse le reste comme JSON strict avec
+      EXACTEMENT niveau/categorie/ressources_estimees.
+      Retourne None (jamais une exception) au
+      moindre écart de format.
+    end note
+    Validation --> UCReformuler : tuple[Message, ...] | None
+    deactivate Validation
+
+    alt None (format invalide)
+      UCReformuler -> UCReformuler : nombre_echecs_reformulation += 1
+    else format valide
+      UCReformuler -> UCReformuler : reformules.append(\nChosenReformule(identifiant, chosen_reformule, horloge()))
+    end
+  end
+end
+
+UCReformuler -> RepoReformule : sauvegarder_plusieurs(reformules)
+note right of RepoReformule
+  Un seul appel groupé (jamais un sauvegarder()
+  par item dans la boucle, cf. AGENTS.md, coût
+  O(n²) sur JsonlDatasetRepository/adaptateurs
+  dérivés).
+end note
+UCReformuler --> CLI : nombre_reformules (cette exécution)
+deactivate UCReformuler
+
+CLI --> Dev : log "exemples reformulés" + "échecs de reformulation"\n(cette exécution)
+deactivate CLI
+
+note over Moteur, RepoReformule
+  rejected n'est ni lu ni écrit ici (décision
+  délibérée : seul chosen est reformulé, cf.
+  docs/04_etape3_dpo/00_introduction_concepts.md §3.2).
+end note
+
+@enduml

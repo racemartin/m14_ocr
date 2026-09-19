@@ -30,13 +30,14 @@
 | Boucle d'ajustement d'hyperparamètres DPO | *(pas de cas d'usage pour l'instant : voir §6 Décision)* | (aucun) | (aucun) | [HORS PÉRIMÈTRE] pour l'instant |
 | Sauvegarder le checkpoint DPO | *(pas de nouveau cas d'usage : voir §7 Décision)* | `RepositoryLectureEcriture` | `JsonlDatasetRepository`/adaptateur JSONL checkpoint (réutilisés) | [CONCEPTION], dépend d'un petit ajustement de typage hérité de l'Étape 2 |
 
-Diagramme existant : `docs/diagrams/04_etape3_dpo/activite/dpo_double_fonction_entrainement.puml`
-(déjà écrit, marqué `[CONCEPTUEL/PRÉVU]`, illustre la double fonction
-d'une seule passe DPO référencée en §3-§4 ci-dessous). Aucun diagramme
-de séquence ni de paquets n'existe encore pour l'Étape 3 (contrairement
-à l'Étape 2, `docs/diagrams/03_etape2_sft/`) : à écrire une fois ce
-document de conception validé, même ordre que pour l'Étape 2
-(conception d'abord, diagrammes ensuite).
+Diagramme d'activité existant : `docs/diagrams/04_etape3_dpo/activite/dpo_double_fonction_entrainement.puml`
+(écrit AVANT le code, marqué `[CONCEPTUEL/PRÉVU]`, illustre la double
+fonction d'une seule passe DPO référencée en §3-§4 ci-dessous). Le code
+étant désormais réellement écrit et testé (13 étapes, 428 tests, cf.
+AGENTS.md), les diagrammes de séquence, de paquets et de déploiement de
+l'Étape 3 existent aussi (20/09/2026, `docs/diagrams/04_etape3_dpo/{sequence,paquets,deploiement}/`),
+même patron que l'Étape 2 : voir `docs/diagrams/README.md` pour l'index
+complet et l'état de couverture à jour.
 
 ## 1. Décision (nouvelle, tranchée ici) : `E3_00_uc_reformuler_preference_dpo.py` → `ReformulerPreferenceDpoUseCase`
 

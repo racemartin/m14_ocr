@@ -1,0 +1,265 @@
+@startuml classes_etape3
+!pragma layout smetana
+!include ../../_common/estilo.iuml
+
+title Étape 3 (DPO) : Diagramme de classes\nClasses réelles du DPO (domaine, ports, application, infrastructure) : [FAIT] (code écrit, 428 tests passent), JAMAIS exécuté sur un GPU réel (cf. AGENTS.md)
+
+package "domain.model" as MODEL {
+  class ExempleFormatePreference {
+    +identifiant: str
+    +texte_prompt: str
+    +texte_chosen: str
+    +texte_rejected: str
+  }
+  class ChosenReformule {
+    +identifiant: str
+    +chosen_reformule: tuple[Message, ...]
+    +horodatage: str
+  }
+  class HyperparametresEntrainementDpo {
+    +beta: float
+    +taux_apprentissage: float
+    +nombre_epoques: int
+    +taille_lot: int
+    +type_perte: str
+    +precompute_ref_log_probs: bool
+  }
+  class ConfigurationLora <<existant, Étape 2, réutilisé>> {
+    +rang: int
+    +alpha: int
+    +dropout: float
+    +modules_cibles: tuple[str, ...]
+  }
+  class CheckpointEntraine <<existant, Étape 2, élargi>> {
+    +identifiant: str
+    +chemin: str
+    +modele_base: str
+    +configuration_lora: ConfigurationLora
+    +hyperparametres: HyperparametresEntrainement | HyperparametresEntrainementDpo
+    +metriques_finales: MetriquesEntrainement
+    +verdict_convergence: VerdictConvergence
+    +horodatage: str
+  }
+  class HyperparametresEntrainement <<existant, Étape 2, réutilisé>>
+  class Message <<existant, Étape 1>>
+  enum VerdictConvergence <<existant, Étape 2, réutilisé>>
+
+  ChosenReformule *-- Message
+  CheckpointEntraine *-- ConfigurationLora
+  CheckpointEntraine *-- HyperparametresEntrainement
+  CheckpointEntraine *-- HyperparametresEntrainementDpo
+  CheckpointEntraine --> VerdictConvergence
+}
+
+package "domain.ports" as PORTS {
+  class MetriquesEntrainement <<existant, Étape 2, réutilisé>> {
+    +etape: int
+    +perte_train: float
+    +perte_validation: float | None
+    +norme_gradient: float
+  }
+  class ResultatEntrainementDPO {
+    +chemin_checkpoint: str
+    +courbe_metriques: tuple[MetriquesEntrainement, ...]
+    +metriques_recompense: dict[str, float]
+  }
+  interface EntraineurPreference {
+    +entrainer(dataset_train, dataset_validation,\nconfig_lora, hyperparametres,\nchemin_checkpoint_politique_depart) : ResultatEntrainementDPO
+  }
+  interface FormateurPreference {
+    +formater(exemple: ExemplePivot) : ExempleFormatePreference
+  }
+  interface SuiviExperimentation <<existant, Étape 2, réutilisé>> {
+    +demarrer_run(nom, parametres)
+    +logger_metrique(nom, valeur, etape)
+    +terminer_run()
+  }
+  interface MoteurInference <<existant, Étape 1bis, réutilisé>> {
+    +generer(messages: list[dict], parametres: dict | None) : ReponseModele
+  }
+  interface RepositoryLectureEcriture <<existant, Étape 1, réutilisé>>
+
+  ResultatEntrainementDPO *-- MetriquesEntrainement
+  EntraineurPreference ..> ExempleFormatePreference
+  EntraineurPreference ..> ResultatEntrainementDPO
+  FormateurPreference ..> ExempleFormatePreference
+  CheckpointEntraine ..> MetriquesEntrainement
+}
+
+package "application" as APPLICATION {
+  class "validation_reformulation_dpo" as ValidationFn <<module, fonction pure>> {
+    +parser_reformulation_stricte(texte: str) : tuple[Message, ...] | None
+  }
+  class "verdict_convergence" as VerdictFn <<existant, Étape 2, réutilisé SANS modification>> {
+    +evaluer_convergence(courbe) : VerdictConvergence
+  }
+
+  ValidationFn ..> Message
+}
+
+package "application.use_cases" as USECASES {
+  class ReformulerPreferenceDpoUseCase <<E3_00>> {
+    +moteur: MoteurInference
+    +repository_reformule: RepositoryLectureEcriture
+    +taille_cible: int = 5000
+    +horloge: Callable[[], str]
+    +nombre_echecs_reformulation: int
+    +executer(source_dpo: Iterable[ExemplePivot]) : int
+  }
+  class FormaterDatasetChatMLPreferenceUseCase <<E3_01>> {
+    +repository_pivot: RepositoryLectureEcriture
+    +repository_reformule: RepositoryLectureEcriture
+    +repository_formate: RepositoryLectureEcriture
+    +formateur: FormateurPreference
+    +executer(split: TypeSplit) : int
+  }
+  class EntrainerDpoUseCase <<E3_02>> {
+    +entraineur: EntraineurPreference
+    +suivi: SuiviExperimentation
+    +entrainer(dataset_train, dataset_validation,\nconfig_lora, hyperparametres,\nchemin_checkpoint_politique_depart, nom_run) : ResultatEntrainementDPO
+  }
+  class SauvegarderCheckpointSftUseCase <<existant, Étape 2 (E2_03), réutilisé SANS modification>> {
+    +repository_checkpoints: RepositoryLectureEcriture
+    +executer(identifiant, chemin, modele_base,\nconfiguration_lora, hyperparametres,\nmetriques_finales, verdict_convergence) : CheckpointEntraine
+  }
+
+  class ExemplePivot <<existant, Étape 1>>
+
+  ReformulerPreferenceDpoUseCase --> ExemplePivot
+  ReformulerPreferenceDpoUseCase --> MoteurInference
+  ReformulerPreferenceDpoUseCase --> ChosenReformule
+  ReformulerPreferenceDpoUseCase --> RepositoryLectureEcriture
+  ReformulerPreferenceDpoUseCase ..> ValidationFn
+
+  FormaterDatasetChatMLPreferenceUseCase --> ExemplePivot
+  FormaterDatasetChatMLPreferenceUseCase --> ChosenReformule
+  FormaterDatasetChatMLPreferenceUseCase --> FormateurPreference
+  FormaterDatasetChatMLPreferenceUseCase --> RepositoryLectureEcriture
+
+  EntrainerDpoUseCase --> EntraineurPreference
+  EntrainerDpoUseCase --> SuiviExperimentation
+  EntrainerDpoUseCase --> ResultatEntrainementDPO
+
+  SauvegarderCheckpointSftUseCase --> CheckpointEntraine
+  SauvegarderCheckpointSftUseCase --> RepositoryLectureEcriture
+}
+
+package "infrastructure.adapters" as ADAPTERS {
+  class ChatMLFormateurAdapter <<existant, Étape 2, méthode ajoutée>> {
+    +nom_modele: str = "Qwen/Qwen3-1.7B-Base"
+    -_tokenizer: Any
+    +formater(exemple: ExemplePivot) : ExempleFormate
+    +formater_invite_zero_shot(exemple: ExemplePivot) : str
+    +formater_preference(exemple: ExemplePivot) : ExempleFormatePreference
+  }
+  class TrlDpoEntraineurAdapter <<FAIT, jamais exécuté sur GPU réel>> {
+    +identifiant_modele_base: str
+    +configuration_quantification: ConfigurationQuantification
+    +chemin_checkpoint_politique_depart: str
+    +repertoire_sortie: str
+    +attn_implementation: str = "sdpa"
+    -_modele: Any
+    -_tokenizer: Any
+    +entrainer(dataset_train, dataset_validation,\nconfig_lora, hyperparametres,\nchemin_checkpoint_politique_depart) : ResultatEntrainementDPO
+  }
+  class JsonlPreferenceReformuleeRepository <<FAIT>> {
+    +sauvegarder_plusieurs(items)
+    +trouver_par_id(identifiant) : ChosenReformule | None
+    +lister(filtre) : Iterator[ChosenReformule]
+    +identifiants_existants() : set[str]
+  }
+  class JsonlExempleFormatePreferenceRepository <<FAIT>> {
+    +sauvegarder_plusieurs(items)
+    +trouver_par_id(identifiant) : ExempleFormatePreference | None
+    +lister(filtre) : Iterator[ExempleFormatePreference]
+    +identifiants_existants() : set[str]
+  }
+  class JsonlCheckpointRepository <<existant, Étape 2, corrigé>> {
+    -_hyperparametres_depuis_dict(d) : HyperparametresEntrainement | HyperparametresEntrainementDpo
+  }
+  class TransformersLoraInferenceAdapter <<existant, Étape 2, réutilisé SANS modification pour E3_00>> {
+    +depot_lora: str
+    +nom_modele_base: str
+    +generer(messages, parametres) : ReponseModele
+  }
+  class ConfigurationQuantification <<existant, Étape 2, réutilisé>>
+  class HfDatasetSuiviExperimentation <<existant, Étape 2, réutilisé>>
+  class MlflowSuiviExperimentation <<existant, Étape 2, réutilisé>>
+  class TensorboardSuiviExperimentation <<existant, Étape 2, réutilisé>>
+
+  ChatMLFormateurAdapter ..|> FormateurPreference
+  TrlDpoEntraineurAdapter ..|> EntraineurPreference
+  TrlDpoEntraineurAdapter --> ConfigurationQuantification
+  JsonlPreferenceReformuleeRepository ..|> RepositoryLectureEcriture
+  JsonlExempleFormatePreferenceRepository ..|> RepositoryLectureEcriture
+  JsonlCheckpointRepository ..|> RepositoryLectureEcriture
+  TransformersLoraInferenceAdapter ..|> MoteurInference
+  HfDatasetSuiviExperimentation ..|> SuiviExperimentation
+  MlflowSuiviExperimentation ..|> SuiviExperimentation
+  TensorboardSuiviExperimentation ..|> SuiviExperimentation
+}
+
+note bottom of CheckpointEntraine
+  Réutilisée TELLE QUELLE pour le DPO (aucune
+  classe parallèle CheckpointEntraineDpo,
+  décision actée en 02_etapes_cas_usage.md §7) :
+  hyperparametres est une union SFT|DPO, stockée
+  et resérialisée en JSONL comme donnée opaque.
+  Corrigé le 19/09/2026 : JsonlCheckpointRepository
+  discriminait mal cette union à la relecture
+  (TypeError garanti sur un checkpoint DPO avant
+  le correctif, cf. AGENTS.md).
+end note
+
+note right of TrlDpoEntraineurAdapter
+  AVERTISSEMENT (jamais exécuté sur GPU réel) :
+  config_lora est accepté (contrat du port) mais
+  JAMAIS transmis à DPOTrainer, l'architecture
+  LoRA est déjà figée par le checkpoint SFT-LoRA
+  chargé dans le constructeur. ref_model=None :
+  trl lui-même ajoute un second adaptateur LoRA
+  figé ("ref") plutôt que de recharger un second
+  modèle complet, la seule option compatible avec
+  la continuation d'un adaptateur LoRA-SFT déjà
+  chargé (peft_config effacerait le SFT). Décision
+  tranchée par lecture directe du code source de
+  trl.DPOTrainer.__init__, pas devinée (cf.
+  infrastructure/adapters/trl_dpo_entraineur.py).
+end note
+
+note right of ResultatEntrainementDPO
+  metriques_recompense est un champ AJOUTÉ à
+  l'esquisse du guide d'implémentation (étape 3),
+  seul canal réel pour relayer les 4 métriques
+  propres à trl.DPOTrainer (rewards/chosen,
+  rewards/rejected, rewards/accuracies,
+  rewards/margins) vers EntrainerDpoUseCase :
+  valeurs agrégées finales, pas une courbe par
+  étape (contrairement à courbe_metriques).
+end note
+
+note bottom of FormaterDatasetChatMLPreferenceUseCase
+  Différence structurelle avec le SFT
+  (FormaterDatasetChatMLUseCase) : fusionne DEUX
+  sources en mémoire avant de formater (ExemplePivot
+  d'origine + ChosenReformule correspondant, via
+  dataclasses.replace), jamais de mutation d'aucune
+  des deux sources sur disque. Un exemple SANS
+  ChosenReformule correspondant est EXCLU du jeu
+  d'entraînement DPO.
+end note
+
+note bottom of ChatMLFormateurAdapter
+  formater_preference() corrige un bug réel
+  confirmé le 19/09/2026 : le chat template natif
+  de Qwen3 retirait le bloc <think>...</think> d'un
+  chosen reformulé rendu seul via
+  apply_chat_template (traité comme un tour non
+  final). Construit désormais le tour directement
+  avec les tokens de contrôle réels du modèle
+  (<|im_start|>{role}\n{contenu}<|im_end|>\n),
+  confirmé byte-identique pour rejected (pas de
+  régression) et préservant <think> pour chosen.
+end note
+
+@enduml
