@@ -115,7 +115,7 @@ Vue d'ensemble de tous les scripts exécutables du dépôt, classés par étape.
 
 | Script | Rôle |
 |---|---|
-| *(aucun script à ce jour)* | Étape non implémentée dans le code. |
+| `training/E3_03_dpo_train.py` | Point d'entrée d'entraînement DPO réel (continue le checkpoint SFT-LoRA), exécuté via HF Jobs (GPU requis) ; jamais lancé sur GPU à ce jour. |
 
 </td></tr></table>
 
@@ -612,10 +612,58 @@ le même dépôt de métriques.
 <h1 style="border-bottom:none; margin:0;">3. DPO</h1>
 </td></tr></table>
 
-**Non implémenté à ce jour.** Aucune commande ni étape n'existe encore dans
-le code pour cette phase ; voir `docs/04_etape3_dpo/` (à venir). Schéma
-conceptuel de la double fonction d'une seule passe DPO (préférence
-clinique + format de sortie JSON contractuel) :
+Code complet implémenté et testé : les 13 étapes du guide
+(`docs/04_etape3_dpo/03_guide_implementation_pas_a_pas.md`), du domaine
+(port `EntraineurPreference`, cas d'usage `ReformulerPreferenceDpoUseCase`
+/ `FormaterDatasetChatMLPreferenceUseCase` / `EntrainerDpoUseCase`)
+jusqu'à l'adaptateur `TrlDpoEntraineurAdapter` et au point d'entrée
+`training/E3_03_dpo_train.py` (recette `recipes/dpo_qwen3_lora.yaml`),
+qui continue le checkpoint SFT-LoRA déjà entraîné
+(`mombasstic/chsa-triage-sft-lora`, §2.3). Suite complète : 428 tests
+passent, 4 ignorés (GPU absent).
+
+Sous-ensemble réduit pour une vérification de lancement (même patron
+que l'extraction SFT, §1.5) :
+
+```bash
+uv run python interfaces/cli/E1_05_03_extraire_sous_ensemble_dpo.py \
+    --dataset data/processed/dataset_pivot_anonymise.jsonl \
+    --exclusions data/processed/identifiants_a_exclure_publication.jsonl \
+    --taille 100
+```
+
+Publié sur un dépôt dataset HF dédié (même patron que §2.3) :
+
+```bash
+hf repo create mombasstic/chsa-triage-dpo-train-data --repo-type dataset --private
+hf upload mombasstic/chsa-triage-dpo-train-data data/processed/dataset_chsa_triage_dpo_anonymise_100.jsonl --repo-type dataset
+```
+
+Commande de lancement réelle, **jamais encore exécutée sur GPU**
+(décision de lancement en attente) :
+
+```bash
+hf jobs uv run \
+    --flavor l4x1 \
+    --timeout 2h \
+    --with "chsa-triage[remote] @ git+https://github.com/racemartin/m14_ocr.git@main" \
+    --secrets HF_TOKEN \
+    -v hf://datasets/mombasstic/chsa-triage-dpo-train-data:/mnt/train-data \
+    https://raw.githubusercontent.com/racemartin/m14_ocr/main/training/E3_03_dpo_train.py \
+    --recette recipes/dpo_qwen3_lora.yaml \
+    --dataset /mnt/train-data/dataset_chsa_triage_dpo_anonymise_100.jsonl \
+    --suivi-hf-repo mombasstic/chsa-triage-dpo-metrics \
+    --checkpoint-hf-repo mombasstic/chsa-triage-dpo-lora
+```
+
+Tout a été vérifié sans GPU (même méthode que pour le SFT avant son
+premier run réel : installation temporaire de `trl`/`peft` pour
+confirmer les signatures) ; deux bugs réels trouvés et corrigés au
+passage : le chat template natif de Qwen3 retirait le bloc `<think>`
+d'un `chosen` reformulé, et la désérialisation d'un checkpoint DPO
+levait une `TypeError`. Schéma conceptuel de la double fonction d'une
+seule passe DPO (préférence clinique + format de sortie JSON
+contractuel) :
 [`docs/diagrams/04_etape3_dpo/activite/dpo_double_fonction_entrainement.png`](docs/diagrams/04_etape3_dpo/activite/dpo_double_fonction_entrainement.png).
 
 
