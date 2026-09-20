@@ -116,6 +116,7 @@ Vue d'ensemble de tous les scripts exécutables du dépôt, classés par étape.
 | Script | Rôle |
 |---|---|
 | `training/E3_03_dpo_train.py` | Point d'entrée d'entraînement DPO réel (continue le checkpoint SFT-LoRA), exécuté via HF Jobs (GPU requis) ; jamais lancé sur GPU à ce jour. |
+| `interfaces/cli/E3_04_evaluer_post_dpo.py` | Évaluation post-DPO : mêmes métriques/même sous-ensemble que les baselines et le post-SFT, mais via le modèle base+LoRA DPO. |
 
 </td></tr></table>
 
@@ -665,6 +666,22 @@ levait une `TypeError`. Schéma conceptuel de la double fonction d'une
 seule passe DPO (préférence clinique + format de sortie JSON
 contractuel) :
 [`docs/diagrams/04_etape3_dpo/activite/dpo_double_fonction_entrainement.png`](docs/diagrams/04_etape3_dpo/activite/dpo_double_fonction_entrainement.png).
+
+Une fois ce run réel effectué, évaluer le modèle aligné (mêmes
+métriques/même sous-ensemble que les baselines et le post-SFT, §2.2/
+§2.5, quatrième réemploi sans modification d'`EvaluerBaselineZeroShotUseCase`,
+même patron exact que le post-SFT) :
+
+```bash
+hf jobs uv run \
+    --flavor l4x1 \
+    --with "chsa-triage[remote] @ git+https://github.com/racemartin/m14_ocr.git@main" \
+    --secrets HF_TOKEN \
+    https://raw.githubusercontent.com/racemartin/m14_ocr/main/interfaces/cli/E3_04_evaluer_post_dpo.py \
+    --dataset-hf-repo mombasstic/chsa-triage-baseline-test \
+    --depot-lora mombasstic/chsa-triage-dpo-lora \
+    --suivi-hf-repo mombasstic/chsa-triage-baseline-metrics
+```
 
 
 <table id="verifications-environnement" style="width:100%;"><tr><td style="background-color:#d9d9d9;">
