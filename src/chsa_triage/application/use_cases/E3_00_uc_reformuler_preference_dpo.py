@@ -24,6 +24,22 @@ elargir la reformulation... exactement comme E1_05_00_decouper_splits.py
 
 `rejected` n'est ni lu ni ecrit ici (decision deliberee, §3.2 du
 document d'introduction : seul `chosen` est reformule).
+
+**Prompt en UN SEUL tour `user`, jamais de tour `system` (corrige
+21/09/2026, cf. AGENTS.md)** : le premier job DPO reel (100 exemples)
+a echoue a 0/90 avec un texte genere VIDE (pas malformatte) pour les 5
+echecs captures dans `echantillon_echecs_reformulation`. Verifie
+directement sur `data/processed/dataset_pivot_anonymise.jsonl`
+(134883 exemples reels, tous types confondus) : aucun `ExemplePivot`
+n'a jamais de role `system` dans `prompt`/`chosen`/`rejected`, ce
+checkpoint SFT-LoRA (`mombasstic/chsa-triage-sft-lora`) n'a donc
+jamais vu de tour `system` pendant son propre entrainement. Hypothese
+bien fondee mais NON CONFIRMEE par un run GPU reel reussi au moment de
+ce commit (le capitaine doit relancer le job de 100 pour verifier) :
+un modele 1.7B base+LoRA, non-instruct, degenere en EOS immediat
+face a une forme de prompt absente de son fine-tuning. `PROMPT_REFORMULATION_CHOSEN`
+et le texte a reformuler sont donc desormais concatenes dans un unique
+message `role: "user"`.
 """
 
 from __future__ import annotations
@@ -40,11 +56,11 @@ from chsa_triage.domain.ports.dataset_repository import RepositoryLectureEcritur
 from chsa_triage.domain.ports.moteur_inference import MoteurInference
 
 PROMPT_REFORMULATION_CHOSEN = (
-    "Tu es un assistant clinique charge de reformuler une reponse medicale "
-    "en un format structure de triage. On te donne une reponse jugee "
-    "meilleure (chosen) dans un corpus de preference medicale generale. "
-    "Reformule-la, SANS changer son sens clinique ni inventer d'information "
-    "absente du texte source, sous exactement cette forme :\n"
+    "Reformule la reponse medicale ci-dessous en un format structure de "
+    "triage. C'est une reponse jugee meilleure (chosen) dans un corpus de "
+    "preference medicale generale. Reformule-la, SANS changer son sens "
+    "clinique ni inventer d'information absente du texte source, sous "
+    "exactement cette forme :\n"
     "<think>quelques phrases de raisonnement clinique s'appuyant sur le "
     "texte source</think>"
     '{"niveau": <un entier d\'echelle ESI 1-5, deduit honnetement du texte, '
@@ -115,10 +131,10 @@ class ReformulerPreferenceDpoUseCase:
         reformules: list[ChosenReformule] = []
         for exemple in candidats:
             texte_chosen_original = "\n".join(message.contenu for message in exemple.chosen)
-            messages = [
-                {"role": "system", "content": PROMPT_REFORMULATION_CHOSEN},
-                {"role": "user", "content": texte_chosen_original},
-            ]
+            contenu_utilisateur = (
+                f"{PROMPT_REFORMULATION_CHOSEN}\n\nReponse a reformuler :\n{texte_chosen_original}"
+            )
+            messages = [{"role": "user", "content": contenu_utilisateur}]
             try:
                 reponse = self.moteur.generer(messages)
             except Exception:  # noqa: BLE001 - erreur adaptateur concrete, le domaine ne la type pas
