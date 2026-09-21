@@ -105,6 +105,46 @@ au modele. Ce n'est PAS une certitude : le prochain run GPU reel devra
 confirmer, via les tokens desormais journalises, que la troncature a
 reellement reduit la longueur des entrees en echec et que la sortie
 n'est plus vide pour autant.
+
+**Cinquieme job DPO reel (21/09/2026, job id `6ab13fed52d0dbd7f1d79c27`) :
+toujours 0/90, mais avec le signal le plus precis obtenu jusqu'ici grace
+au diagnostic de tokens ajoute ci-dessus** : `nombre_tokens_sortie` vaut
+**1** sur les cas observes (`694/1`, `652/1`), avec des entrees DEJA
+tronquees a ~700 tokens (donc courtes, pas le regime qui avait motive la
+troncature). Ceci ECARTE DEFINITIVEMENT l'hypothese de longueur (le
+recadrage n'a rien change) : le modele genere litteralement UN SEUL
+token avant de s'arreter, presque certainement le token de fin de
+sequence (EOS), independamment du contenu de l'entree.
+
+**Correctif applique : `min_new_tokens` (HYPOTHESE, NON CONFIRMEE par un
+run GPU reel au moment de ce commit)** : `transformers.GenerationMixin.generate()`
+accepte un parametre standard, `min_new_tokens`, qui SUPPRIME l'option
+EOS tant que ce nombre minimal de tokens n'est pas atteint, exactement
+la mitigation standard pour ce symptome (modele qui veut s'arreter
+immediatement). Verifie directement dans
+`infrastructure/adapters/transformers_inference_adapter.py::_parametres_generation_transformers` :
+apres avoir extrait `n_predict`/`temperature`, cette fonction retransmet
+TOUTE cle non reconnue telle quelle (`resultat.update(parametres)`) a
+`model.generate(**kwargs_generation)`, vocabulaire `transformers` reel ;
+`min_new_tokens` n'a donc necessite AUCUNE modification de cet
+adaptateur, seul `parametres_generation` construit ci-dessous change.
+`MIN_TOKENS_GENERES_REFORMULATION = 24` : suffisant pour sortir le
+modele de son impulsion d'arret immediat et lui laisser une vraie marge
+pour entamer le bloc `<think>` (le token EOS genere seul ne laisse
+aucune chance au format cible), mais delibrement petit face au plafond
+`NOMBRE_TOKENS_GENERES_REFORMULATION = 256` : le format cible reste
+court (quelques phrases de raisonnement + un petit JSON), forcer un
+minimum trop eleve risquerait de produire du remplissage incoherent une
+fois le contenu utile deja acheve.
+
+**Risque connu, documente ici, PAS resolu** : forcer un minimum de
+tokens generes peut produire du remplissage incoherent si le modele
+« ne veut pas » continuer au-dela de son propre arret naturel ; c'est un
+risque connu de cette mitigation, juge acceptable a tester ici car peu
+couteux et mecaniquement bien fonde (le symptome mesure,
+`nombre_tokens_sortie == 1`, est exactement celui que `min_new_tokens`
+cible), mais seul un prochain run GPU reel confirmera si le contenu
+produit au-dela du premier token est coherent avec le format attendu.
 """
 
 from __future__ import annotations
@@ -207,8 +247,20 @@ PROMPT_REFORMULATION_CHOSEN = (
 #   PROMPT n'allonge pas la sortie attendue (elle reste bornee par
 #   l'exemple, un court <think> + un petit JSON) ; 256 tokens restait deja
 #   large pour ce format avant le few-shot et le reste apres.
+# - `MIN_TOKENS_GENERES_REFORMULATION = 24` (21/09/2026, cinquieme job DPO
+#   reel, HYPOTHESE NON CONFIRMEE, cf. docstring du module) : supprime
+#   l'option EOS tant que ce minimum n'est pas atteint
+#   (`transformers.GenerationMixin.generate(min_new_tokens=...)`), la
+#   mitigation standard face au symptome mesure sur ce cinquieme job
+#   (`nombre_tokens_sortie == 1` sur les echecs captures, quelle que soit
+#   la longueur de l'entree, deja tronquee). Assez pour laisser une vraie
+#   marge d'amorcer le bloc <think>, delibrement petit face au plafond de
+#   256 : le format cible reste court, un minimum trop eleve risquerait de
+#   forcer du remplissage incoherent une fois le contenu utile acheve
+#   (risque connu, non resolu ici, cf. docstring du module).
 TEMPERATURE_REFORMULATION = 0.3
 NOMBRE_TOKENS_GENERES_REFORMULATION = 256
+MIN_TOKENS_GENERES_REFORMULATION = 24
 
 # Longueur max (en caracteres) de `texte_chosen_original` avant insertion dans
 # le message envoye au modele (21/09/2026, HYPOTHESE, cf. docstring du
@@ -323,6 +375,7 @@ class ReformulerPreferenceDpoUseCase:
             parametres_generation = {
                 "n_predict": NOMBRE_TOKENS_GENERES_REFORMULATION,
                 "temperature": TEMPERATURE_REFORMULATION,
+                "min_new_tokens": MIN_TOKENS_GENERES_REFORMULATION,
             }
             try:
                 reponse = self.moteur.generer(messages, parametres_generation)
