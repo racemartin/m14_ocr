@@ -35,7 +35,7 @@ n'a jamais de role `system` dans `prompt`/`chosen`/`rejected`, ce
 checkpoint SFT-LoRA (`mombasstic/chsa-triage-sft-lora`) n'a donc
 jamais vu de tour `system` pendant son propre entrainement. Hypothese
 bien fondee mais NON CONFIRMEE par un run GPU reel reussi au moment de
-ce commit (le capitaine doit relancer le job de 100 pour verifier) :
+ce commit, reste a confirmer par un prochain run reel (job de 100) :
 un modele 1.7B base+LoRA, non-instruct, degenere en EOS immediat
 face a une forme de prompt absente de son fine-tuning. `PROMPT_REFORMULATION_CHOSEN`
 et le texte a reformuler sont donc desormais concatenes dans un unique
