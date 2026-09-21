@@ -644,6 +644,10 @@ Commande de lancement réelle, **jamais encore exécutée sur GPU**
 (décision de lancement en attente) :
 
 ```bash
+# Si on considere: 
+# -v hf://datasets/mombasstic/chsa-triage-dpo-train-data:/mnt/train-data
+#                 └────────── origen ──────────┘         └─ destino ─┘
+
 hf jobs uv run \
     --flavor l4x1 \
     --timeout 2h \
