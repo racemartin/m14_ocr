@@ -256,7 +256,7 @@ def main() -> None:
     # UNIQUEMENT (jamais test, cf. cahier des charges §9). No-op si le
     # sous-ensemble cible (recette reformulation.taille_cible) est deja complet.
     # -------------------------------------------------------------------------
-    log.STEP(1, "Reformulation chosen -> <think>+JSON", "ReformulerPreferenceDpoUseCase")
+    log.STEP(1, "SPTEP 1 Reformulation chosen -> <think>+JSON", "ReformulerPreferenceDpoUseCase")
     moteur_reformulation = TransformersLoraInferenceAdapter(
         depot_lora=checkpoint_politique_depart, nom_modele_base=modele_base
     )
@@ -280,7 +280,7 @@ def main() -> None:
     # -------------------------------------------------------------------------
     # E3_01 : fusionner pivot + ChosenReformule, rendre le triplet texte
     # -------------------------------------------------------------------------
-    log.STEP(2, "Rendu triplet prompt/chosen/rejected", "FormaterDatasetChatMLPreferenceUseCase, train puis validation")
+    log.STEP(2, "STEP 2. Rendu triplet prompt/chosen/rejected", "FormaterDatasetChatMLPreferenceUseCase, train puis validation")
     cas_formatage = FormaterDatasetChatMLPreferenceUseCase(
         repository_pivot=repository_pivot,
         repository_reformule=repository_reformule,
