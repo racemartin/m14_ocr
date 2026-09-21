@@ -16,6 +16,7 @@ from uuid import uuid4
 
 from chsa_triage.application.use_cases.E3_00_uc_reformuler_preference_dpo import (
     LONGITUD_MAX_ENTREE_REFORMULATION,
+    MIN_TOKENS_GENERES_REFORMULATION,
     NOMBRE_TOKENS_GENERES_REFORMULATION,
     PROMPT_REFORMULATION_CHOSEN,
     TAILLE_MAX_ECHANTILLON_ECHECS_REFORMULATION,
@@ -330,8 +331,10 @@ def test_generer_recoit_des_parametres_de_generation_explicites():
     assert parametres == {
         "n_predict": NOMBRE_TOKENS_GENERES_REFORMULATION,
         "temperature": TEMPERATURE_REFORMULATION,
+        "min_new_tokens": MIN_TOKENS_GENERES_REFORMULATION,
     }
     assert 0.0 < TEMPERATURE_REFORMULATION < 1.0
+    assert 0 < MIN_TOKENS_GENERES_REFORMULATION < NOMBRE_TOKENS_GENERES_REFORMULATION
 
 
 def test_ne_lit_ni_n_ecrit_jamais_rejected():
