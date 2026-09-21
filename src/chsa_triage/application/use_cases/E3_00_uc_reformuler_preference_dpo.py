@@ -59,6 +59,12 @@ def _horodatage_utc_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+# Taille max de `echantillon_echecs_reformulation` : diagnostic, jamais une
+# croissance sans limite en memoire (un lot peut compter des milliers
+# d'echecs, cf. le premier job DPO reel, 90/90 echecs de format).
+TAILLE_MAX_ECHANTILLON_ECHECS_REFORMULATION = 5
+
+
 @dataclass(slots=True)
 class ReformulerPreferenceDpoUseCase:
     """Orchestre la reformulation incrementale/resumable du `chosen` d'un sous-ensemble DPO."""
@@ -69,6 +75,7 @@ class ReformulerPreferenceDpoUseCase:
     horloge                          : Callable[[], str] = _horodatage_utc_iso
 
     nombre_echecs_reformulation : int = field(default=0, init=False)
+    echantillon_echecs_reformulation: list[str] = field(default_factory=list, init=False)
 
     def executer(self, source_dpo: Iterable[ExemplePivot]) -> int:
         """
@@ -82,7 +89,13 @@ class ReformulerPreferenceDpoUseCase:
         meme patron de resilience que
         `EvaluerBaselineZeroShotUseCase.executer()`) compte dans
         `self.nombre_echecs_reformulation` et n'ecrit jamais d'exemple
-        partiel. Persiste les `ChosenReformule` valides en un seul
+        partiel. Un echec de FORMAT (pas d'inference, qui n'a pas de texte
+        a montrer) garde le texte brut renvoye par `self.moteur.generer()`
+        dans `self.echantillon_echecs_reformulation`, jusqu'a
+        `TAILLE_MAX_ECHANTILLON_ECHECS_REFORMULATION` elements : pur
+        diagnostic (voir AGENTS.md, premier job DPO reel a 0/90 succes),
+        aucun impact sur le parsing/la validation elle-meme, qui reste
+        inchangee. Persiste les `ChosenReformule` valides en un seul
         `sauvegarder_plusieurs()` (jamais un `sauvegarder()` par item,
         cf. AGENTS.md, cout O(n^2)). Retourne le nombre d'exemples
         effectivement reformules lors de CETTE execution.
@@ -98,6 +111,7 @@ class ReformulerPreferenceDpoUseCase:
         candidats = candidats[:nombre_restant]
 
         self.nombre_echecs_reformulation = 0
+        self.echantillon_echecs_reformulation = []
         reformules: list[ChosenReformule] = []
         for exemple in candidats:
             texte_chosen_original = "\n".join(message.contenu for message in exemple.chosen)
@@ -114,6 +128,8 @@ class ReformulerPreferenceDpoUseCase:
             chosen_reformule = parser_reformulation_stricte(reponse.texte)
             if chosen_reformule is None:
                 self.nombre_echecs_reformulation += 1
+                if len(self.echantillon_echecs_reformulation) < TAILLE_MAX_ECHANTILLON_ECHECS_REFORMULATION:
+                    self.echantillon_echecs_reformulation.append(reponse.texte)
                 continue
 
             reformules.append(
