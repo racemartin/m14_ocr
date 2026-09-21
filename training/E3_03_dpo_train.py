@@ -272,6 +272,8 @@ def main() -> None:
     nombre_reformules = cas_reformulation.executer(candidats_reformulation)
     log.PARAMETER_VALUE("exemples reformules (cette execution)", nombre_reformules)
     log.PARAMETER_VALUE("echecs de reformulation (cette execution)", cas_reformulation.nombre_echecs_reformulation)
+    for index, texte_echec in enumerate(cas_reformulation.echantillon_echecs_reformulation):
+        log.PARAMETER_VALUE(f"echantillon echec reformulation [{index}]", texte_echec)
 
     # -------------------------------------------------------------------------
     # E3_01 : fusionner pivot + ChosenReformule, rendre le triplet texte

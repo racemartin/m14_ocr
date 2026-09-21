@@ -15,6 +15,7 @@ from dataclasses import replace
 from uuid import uuid4
 
 from chsa_triage.application.use_cases.E3_00_uc_reformuler_preference_dpo import (
+    TAILLE_MAX_ECHANTILLON_ECHECS_REFORMULATION,
     ReformulerPreferenceDpoUseCase,
 )
 from chsa_triage.domain.model.enums import Langue, TypeExemple
@@ -171,6 +172,56 @@ def test_echec_de_parsing_est_compte_et_exclut_du_resultat_sans_ecrire_un_exempl
     assert cas_usage.nombre_echecs_reformulation == 1
     assert exemple_ok.identifiant in repository.items
     assert exemple_degenere.identifiant not in repository.items
+
+
+def test_echec_de_parsing_capture_le_texte_brut_dans_l_echantillon():
+    exemple_degenere = _exemple_dpo(texte_chosen="reponse degeneree")
+    texte_brut = "preambule inattendu, pas de <think> ni de JSON valide"
+
+    moteur = FauxMoteurInference()
+    moteur.reponses_speciales["reponse degeneree"] = texte_brut
+    repository = FauxRepositoryReformule()
+    cas_usage = ReformulerPreferenceDpoUseCase(moteur=moteur, repository_reformule=repository)
+
+    cas_usage.executer([exemple_degenere])
+
+    assert cas_usage.echantillon_echecs_reformulation == [texte_brut]
+
+
+def test_echec_d_inference_ne_capture_rien_dans_l_echantillon():
+    """Une exception d'inference n'a pas de texte a montrer (cf. FauxMoteurInference.generer)."""
+    exemple_en_echec = _exemple_dpo(texte_chosen="reponse en echec")
+
+    moteur = FauxMoteurInference()
+    moteur.reponses_speciales["reponse en echec"] = RuntimeError("500 Internal Server Error")
+    repository = FauxRepositoryReformule()
+    cas_usage = ReformulerPreferenceDpoUseCase(moteur=moteur, repository_reformule=repository)
+
+    cas_usage.executer([exemple_en_echec])
+
+    assert cas_usage.echantillon_echecs_reformulation == []
+
+
+def test_echantillon_echecs_reformulation_est_acote_meme_avec_plus_d_echecs():
+    """
+    Jamais de croissance sans limite en memoire (cf. AGENTS.md, premier
+    job DPO reel : 90/90 echecs de format) : au-dela de
+    `TAILLE_MAX_ECHANTILLON_ECHECS_REFORMULATION`, les echecs
+    supplementaires sont toujours comptes mais plus captures.
+    """
+    nombre_candidats = TAILLE_MAX_ECHANTILLON_ECHECS_REFORMULATION + 3
+    exemples = [_exemple_dpo(texte_chosen=f"reponse degeneree {i}") for i in range(nombre_candidats)]
+
+    moteur = FauxMoteurInference()
+    for i in range(nombre_candidats):
+        moteur.reponses_speciales[f"reponse degeneree {i}"] = f"texte libre {i}, pas de format cible"
+    repository = FauxRepositoryReformule()
+    cas_usage = ReformulerPreferenceDpoUseCase(moteur=moteur, repository_reformule=repository)
+
+    cas_usage.executer(exemples)
+
+    assert cas_usage.nombre_echecs_reformulation == nombre_candidats
+    assert len(cas_usage.echantillon_echecs_reformulation) == TAILLE_MAX_ECHANTILLON_ECHECS_REFORMULATION
 
 
 def test_echec_d_inference_est_compte_sans_abandonner_le_lot():
