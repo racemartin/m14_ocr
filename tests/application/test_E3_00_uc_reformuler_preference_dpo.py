@@ -15,8 +15,11 @@ from dataclasses import replace
 from uuid import uuid4
 
 from chsa_triage.application.use_cases.E3_00_uc_reformuler_preference_dpo import (
+    NOMBRE_TOKENS_GENERES_REFORMULATION,
     PROMPT_REFORMULATION_CHOSEN,
     TAILLE_MAX_ECHANTILLON_ECHECS_REFORMULATION,
+    TEMPERATURE_REFORMULATION,
+    EchecReformulation,
     ReformulerPreferenceDpoUseCase,
 )
 from chsa_triage.domain.model.enums import Langue, TypeExemple
@@ -42,9 +45,11 @@ class FauxMoteurInference:
         self.reponses_par_defaut = reponses_par_defaut
         self.reponses_speciales: dict[str, str | Exception] = {}
         self.appels: list[list[dict]] = []
+        self.appels_parametres: list[dict | None] = []
 
     def generer(self, messages: list[dict], parametres: dict | None = None) -> ReponseModele:
         self.appels.append(messages)
+        self.appels_parametres.append(parametres)
         contenu_utilisateur = messages[-1]["content"]
         reponse = self.reponses_par_defaut
         for cle, valeur in self.reponses_speciales.items():
@@ -186,7 +191,13 @@ def test_echec_de_parsing_est_compte_et_exclut_du_resultat_sans_ecrire_un_exempl
     assert exemple_degenere.identifiant not in repository.items
 
 
-def test_echec_de_parsing_capture_le_texte_brut_dans_l_echantillon():
+def test_echec_de_parsing_capture_entree_et_sortie_emparieees_dans_l_echantillon():
+    """
+    Entree ET sortie, emparieees (jamais deux listes paralleles qui
+    pourraient se desaligner, cf. AGENTS.md) : sans l'entree, un echec
+    (vide, illisible, etc.) ne peut pas etre relie au texte source qui
+    l'a produit.
+    """
     exemple_degenere = _exemple_dpo(texte_chosen="reponse degeneree")
     texte_brut = "preambule inattendu, pas de <think> ni de JSON valide"
 
@@ -197,7 +208,9 @@ def test_echec_de_parsing_capture_le_texte_brut_dans_l_echantillon():
 
     cas_usage.executer([exemple_degenere])
 
-    assert cas_usage.echantillon_echecs_reformulation == [texte_brut]
+    assert cas_usage.echantillon_echecs_reformulation == [
+        EchecReformulation(entree="reponse degeneree", sortie_brute=texte_brut)
+    ]
 
 
 def test_echec_d_inference_ne_capture_rien_dans_l_echantillon():
@@ -272,6 +285,50 @@ def test_le_prompt_est_un_unique_tour_user_jamais_system():
     assert messages[0]["role"] == "user"
     assert PROMPT_REFORMULATION_CHOSEN in messages[0]["content"]
     assert "reponse choisie originale" in messages[0]["content"]
+
+
+def test_le_prompt_inclut_un_exemple_few_shot_deja_resolu():
+    """
+    Cf. AGENTS.md/docstring du module : le 2e job DPO reel (0/90, texte
+    illisible plutot que vide) a montre qu'une description en prose du
+    format seule ne suffit pas pour un petit modele non-instruct ; le
+    prompt doit inclure un exemple deja resolu (few-shot) respectant
+    lui-meme le format exact attendu par `parser_reformulation_stricte()`.
+    """
+    assert "deja resolu" in PROMPT_REFORMULATION_CHOSEN
+    assert "invente" in PROMPT_REFORMULATION_CHOSEN
+
+    marqueur = "Reponse attendue :\n"
+    debut_exemple = PROMPT_REFORMULATION_CHOSEN.index(marqueur) + len(marqueur)
+    bloc_exemple = PROMPT_REFORMULATION_CHOSEN[debut_exemple:]
+    assert bloc_exemple.startswith("<think>")
+
+    debut_json = bloc_exemple.index("</think>") + len("</think>")
+    fin_json = bloc_exemple.index("\n\n", debut_json)
+    objet_exemple = json.loads(bloc_exemple[debut_json:fin_json])
+    assert set(objet_exemple.keys()) == {"niveau", "categorie", "ressources_estimees"}
+
+
+def test_generer_recoit_des_parametres_de_generation_explicites():
+    """
+    Cf. AGENTS.md/docstring du module : ne plus laisser l'adaptateur sur
+    ses defauts implicites (potentiellement du decodage glouton, cause
+    plausible de la degenerescence observee sur les deux premiers jobs
+    DPO reels).
+    """
+    exemple = _exemple_dpo()
+    moteur = FauxMoteurInference()
+    repository = FauxRepositoryReformule()
+    cas_usage = ReformulerPreferenceDpoUseCase(moteur=moteur, repository_reformule=repository)
+
+    cas_usage.executer([exemple])
+
+    (parametres,) = moteur.appels_parametres
+    assert parametres == {
+        "n_predict": NOMBRE_TOKENS_GENERES_REFORMULATION,
+        "temperature": TEMPERATURE_REFORMULATION,
+    }
+    assert 0.0 < TEMPERATURE_REFORMULATION < 1.0
 
 
 def test_ne_lit_ni_n_ecrit_jamais_rejected():
