@@ -275,6 +275,7 @@ def main() -> None:
     for index, echec in enumerate(cas_reformulation.echantillon_echecs_reformulation):
         log.PARAMETER_VALUE(f"entree [{index}]", echec.entree)
         log.PARAMETER_VALUE(f"sortie [{index}]", echec.sortie_brute)
+        log.PARAMETER_VALUE(f"tokens entree/sortie [{index}]", f"{echec.nombre_tokens_entree}/{echec.nombre_tokens_sortie}")
 
     # -------------------------------------------------------------------------
     # E3_01 : fusionner pivot + ChosenReformule, rendre le triplet texte

@@ -15,6 +15,7 @@ from dataclasses import replace
 from uuid import uuid4
 
 from chsa_triage.application.use_cases.E3_00_uc_reformuler_preference_dpo import (
+    LONGITUD_MAX_ENTREE_REFORMULATION,
     NOMBRE_TOKENS_GENERES_REFORMULATION,
     PROMPT_REFORMULATION_CHOSEN,
     TAILLE_MAX_ECHANTILLON_ECHECS_REFORMULATION,
@@ -43,7 +44,7 @@ class FauxMoteurInference:
 
     def __init__(self, reponses_par_defaut: str = TEXTE_REFORMULATION_VALIDE) -> None:
         self.reponses_par_defaut = reponses_par_defaut
-        self.reponses_speciales: dict[str, str | Exception] = {}
+        self.reponses_speciales: dict[str, str | Exception | ReponseModele] = {}
         self.appels: list[list[dict]] = []
         self.appels_parametres: list[dict | None] = []
 
@@ -58,6 +59,8 @@ class FauxMoteurInference:
                 break
         if isinstance(reponse, Exception):
             raise reponse
+        if isinstance(reponse, ReponseModele):
+            return reponse
         return ReponseModele(texte=reponse)
 
 
@@ -342,6 +345,75 @@ def test_ne_lit_ni_n_ecrit_jamais_rejected():
     for messages in moteur.appels:
         for message in messages:
             assert "mauvaise reponse" not in message["content"]
+
+
+def test_tronque_les_entrees_tres_longues_avant_de_les_envoyer_au_modele():
+    """
+    Cf. AGENTS.md/docstring du module : le 4e job DPO reel a montre 20/20
+    echecs de diagnostic avec une sortie VIDE sur une entree tres longue
+    (300-800+ mots), jamais teste jusque-la. `_tronquer_texte_chosen` coupe
+    l'entree AVANT de l'inserer dans le message envoye au modele, sur une
+    limite de phrase, jamais en plein mot/plein phrase.
+    """
+    phrase = "Ceci est une phrase clinique de test qui se repete plusieurs fois. "
+    texte_tres_long = phrase * 50
+    assert len(texte_tres_long) > LONGITUD_MAX_ENTREE_REFORMULATION
+
+    exemple = _exemple_dpo(texte_chosen=texte_tres_long)
+    moteur = FauxMoteurInference()
+    repository = FauxRepositoryReformule()
+    cas_usage = ReformulerPreferenceDpoUseCase(moteur=moteur, repository_reformule=repository)
+
+    cas_usage.executer([exemple])
+
+    (messages,) = moteur.appels
+    contenu_envoye = messages[0]["content"]
+    assert texte_tres_long not in contenu_envoye
+
+    marqueur = "Reponse a reformuler :\n"
+    entree_envoyee = contenu_envoye[contenu_envoye.rindex(marqueur) + len(marqueur) :]
+    assert len(entree_envoyee) <= LONGITUD_MAX_ENTREE_REFORMULATION
+    assert entree_envoyee.endswith(".")
+
+
+def test_ne_tronque_pas_les_entrees_courtes():
+    exemple = _exemple_dpo(texte_chosen="reponse choisie originale")
+    moteur = FauxMoteurInference()
+    repository = FauxRepositoryReformule()
+    cas_usage = ReformulerPreferenceDpoUseCase(moteur=moteur, repository_reformule=repository)
+
+    cas_usage.executer([exemple])
+
+    (messages,) = moteur.appels
+    assert "reponse choisie originale" in messages[0]["content"]
+
+
+def test_echec_de_parsing_capture_les_tokens_entree_sortie_pour_diagnostic():
+    """
+    Cf. AGENTS.md : diagnostic de longueur (21/09/2026, quatrieme job DPO
+    reel) - les tokens entree/sortie de `ReponseModele` (deja calcules par
+    `TransformersInferenceAdapter.generer()`, jamais exposes ici avant ce
+    correctif) sont recopies dans `EchecReformulation`, pour confirmer ou
+    infirmer l'hypothese de degenerescence liee a la longueur avec des
+    donnees reelles au prochain run GPU, plutot que de deviner encore.
+    """
+    exemple_degenere = _exemple_dpo(texte_chosen="reponse degeneree")
+    reponse_scriptee = ReponseModele(
+        texte="texte libre, pas de <think> ni de JSON",
+        nombre_tokens_entree=812,
+        nombre_tokens_sortie=0,
+    )
+
+    moteur = FauxMoteurInference()
+    moteur.reponses_speciales["reponse degeneree"] = reponse_scriptee
+    repository = FauxRepositoryReformule()
+    cas_usage = ReformulerPreferenceDpoUseCase(moteur=moteur, repository_reformule=repository)
+
+    cas_usage.executer([exemple_degenere])
+
+    (echec,) = cas_usage.echantillon_echecs_reformulation
+    assert echec.nombre_tokens_entree == 812
+    assert echec.nombre_tokens_sortie == 0
 
 
 def test_persiste_en_un_seul_sauvegarder_plusieurs():
