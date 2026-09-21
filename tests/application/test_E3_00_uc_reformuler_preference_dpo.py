@@ -15,6 +15,7 @@ from dataclasses import replace
 from uuid import uuid4
 
 from chsa_triage.application.use_cases.E3_00_uc_reformuler_preference_dpo import (
+    PROMPT_REFORMULATION_CHOSEN,
     TAILLE_MAX_ECHANTILLON_ECHECS_REFORMULATION,
     ReformulerPreferenceDpoUseCase,
 )
@@ -28,7 +29,14 @@ TEXTE_REFORMULATION_VALIDE = f"<think>raisonnement clinique</think>{JSON_CIBLE}"
 
 
 class FauxMoteurInference:
-    """Faux adaptateur MoteurInference : retourne une reponse scriptee par identifiant, sans reseau/GPU."""
+    """
+    Faux adaptateur MoteurInference : retourne une reponse scriptee par
+    identifiant, sans reseau/GPU. `reponses_speciales` est cle par une
+    sous-chaine attendue dans le seul message `user` (prompt + texte a
+    reformuler concatenes, cf. E3_00_uc_reformuler_preference_dpo.py),
+    jamais une egalite exacte, puisque ce message contient desormais
+    PROMPT_REFORMULATION_CHOSEN en plus du texte source.
+    """
 
     def __init__(self, reponses_par_defaut: str = TEXTE_REFORMULATION_VALIDE) -> None:
         self.reponses_par_defaut = reponses_par_defaut
@@ -37,8 +45,12 @@ class FauxMoteurInference:
 
     def generer(self, messages: list[dict], parametres: dict | None = None) -> ReponseModele:
         self.appels.append(messages)
-        texte_utilisateur = messages[-1]["content"]
-        reponse = self.reponses_speciales.get(texte_utilisateur, self.reponses_par_defaut)
+        contenu_utilisateur = messages[-1]["content"]
+        reponse = self.reponses_par_defaut
+        for cle, valeur in self.reponses_speciales.items():
+            if cle in contenu_utilisateur:
+                reponse = valeur
+                break
         if isinstance(reponse, Exception):
             raise reponse
         return ReponseModele(texte=reponse)
@@ -238,6 +250,28 @@ def test_echec_d_inference_est_compte_sans_abandonner_le_lot():
     assert nombre == 1
     assert cas_usage.nombre_echecs_reformulation == 1
     assert exemple_en_echec.identifiant not in repository.items
+
+
+def test_le_prompt_est_un_unique_tour_user_jamais_system():
+    """
+    Cf. AGENTS.md/docstring du module : le checkpoint SFT-LoRA n'a jamais
+    vu de tour `system` pendant son propre entrainement (confirme sur
+    dataset_pivot_anonymise.jsonl, 134883 exemples reels, aucun role
+    `system`) ; un tour `system` separe est une hypothese bien fondee
+    pour l'echec du premier job DPO reel (0/90, texte genere VIDE).
+    """
+    exemple = _exemple_dpo(texte_chosen="reponse choisie originale")
+    moteur = FauxMoteurInference()
+    repository = FauxRepositoryReformule()
+    cas_usage = ReformulerPreferenceDpoUseCase(moteur=moteur, repository_reformule=repository)
+
+    cas_usage.executer([exemple])
+
+    (messages,) = moteur.appels
+    assert len(messages) == 1
+    assert messages[0]["role"] == "user"
+    assert PROMPT_REFORMULATION_CHOSEN in messages[0]["content"]
+    assert "reponse choisie originale" in messages[0]["content"]
 
 
 def test_ne_lit_ni_n_ecrit_jamais_rejected():
