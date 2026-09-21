@@ -73,6 +73,38 @@ paralleles qui pourraient se desaligner) : les deux premiers jobs
 reels n'avaient capture que la sortie brute, rendant impossible de
 relier un echec (vide, illisible, etc.) au texte source qui l'a
 produit sans rejouer manuellement le job.
+
+**Troncature de l'entree + diagnostic de longueur en tokens (21/09/2026,
+cf. AGENTS.md, quatrieme job DPO reel, HYPOTHESE NON CONFIRMEE)** : le
+quatrieme job DPO reel (few-shot + temperature=0.3 deja appliques,
+bullet precedent) est reste a 0/90, mais avec un signal encore plus
+specifique : les 20 echantillons de diagnostic capturaient TOUS une
+sortie VIDE, et les 20 entrees correspondantes etaient TOUTES des
+textes tres longs (plusieurs paragraphes, 300-800+ mots,
+`UltraMedical-Preference`). Ceci ecarte le pur hasard d'echantillonnage
+(la temperature 0.3 n'a rien change) et pointe vers la LONGUEUR de
+l'entree comme variable reelle, jamais testee jusqu'ici : le checkpoint
+SFT-LoRA a ete entraine sur des exemples SFT reels
+(`MediQAl`/`FrenchMedMCQA`/`MedQuAD`), des questions medicales
+typiquement courtes et directes, jamais sur des sequences aussi
+longues que ces reponses au style essai ; un contexte inhabituellement
+long (plus le few-shot deja ajoute au prompt, qui allonge encore) est
+une cause plausible d'une degenerescence en EOS immediat.
+
+Deux changements, DELIBEREMENT distincts en nature : (1) un diagnostic
+(mesurer, pas deviner) : `EchecReformulation` porte desormais
+`nombre_tokens_entree`/`nombre_tokens_sortie`, recopies depuis
+`ReponseModele` (`domain/ports/moteur_inference.py`, deja calcules par
+`TransformersInferenceAdapter.generer()`, jamais exposes jusqu'ici dans
+ce diagnostic) ; (2) une HYPOTHESE DE CORRECTIF appliquee par
+anticipation, pour ne pas depenser un cinquieme job GPU seulement pour
+mesurer : `texte_chosen_original` est tronque
+(`_tronquer_texte_chosen`, `LONGITUD_MAX_ENTREE_REFORMULATION`) sur une
+limite de phrase/paragraphe avant d'etre insere dans le message envoye
+au modele. Ce n'est PAS une certitude : le prochain run GPU reel devra
+confirmer, via les tokens desormais journalises, que la troncature a
+reellement reduit la longueur des entrees en echec et que la sortie
+n'est plus vide pour autant.
 """
 
 from __future__ import annotations
@@ -95,16 +127,22 @@ class EchecReformulation:
     """
     Un element de `ReformulerPreferenceDpoUseCase.echantillon_echecs_reformulation` :
     entree ET sortie emparieees (jamais deux listes paralleles qui
-    pourraient se desaligner). `entree` est `texte_chosen_original` (le
-    `chosen` source, PAS le message complet envoye au modele : celui-ci
-    repete `PROMPT_REFORMULATION_CHOSEN`, constant et deja connu, a
-    chaque appel, l'y rejouer par echec serait pure redondance dans le
+    pourraient se desaligner). `entree` est le texte source TEL
+    QU'ENVOYE au modele (apres troncature eventuelle par
+    `_tronquer_texte_chosen`, PAS le message complet : celui-ci repete
+    `PROMPT_REFORMULATION_CHOSEN`, constant et deja connu, a chaque
+    appel, l'y rejouer par echec serait pure redondance dans le
     diagnostic). `sortie_brute` est `reponse.texte` tel quel, jamais
-    retouche.
+    retouche. `nombre_tokens_entree`/`nombre_tokens_sortie` (21/09/2026)
+    sont recopies depuis `ReponseModele` : diagnostic pour confirmer ou
+    infirmer l'hypothese de degenerescence liee a la longueur de
+    l'entree (cf. docstring du module, quatrieme job DPO reel).
     """
 
     entree      : str
     sortie_brute : str
+    nombre_tokens_entree : int = 0
+    nombre_tokens_sortie : int = 0
 
 # Exemple few-shot : contenu clinique ENTIEREMENT INVENTE pour illustrer le
 # format, jamais presente comme un cas reel du dataset (cf. docstring du
@@ -172,6 +210,45 @@ PROMPT_REFORMULATION_CHOSEN = (
 TEMPERATURE_REFORMULATION = 0.3
 NOMBRE_TOKENS_GENERES_REFORMULATION = 256
 
+# Longueur max (en caracteres) de `texte_chosen_original` avant insertion dans
+# le message envoye au modele (21/09/2026, HYPOTHESE, cf. docstring du
+# module : quatrieme job DPO reel, 20/20 echecs de diagnostic avec une sortie
+# vide sur une entree tres longue, 300-800+ mots). Le BUT de cette
+# reformulation est d'extraire un resume `<think>`+JSON de triage, pas de
+# preserver l'integralite d'un texte au style essai : un extrait de ~1500
+# caracteres (~220-260 mots) suffit largement a capturer le contenu clinique
+# principal (symptomes/diagnostic/traitement apparaissent typiquement dans le
+# premier tiers d'une reponse de ce style), sans approcher la longueur qui a
+# declenche la degenerescence observee. Reste une hypothese non confirmee :
+# seul le prochain run GPU reel (avec le diagnostic de tokens desormais
+# journalise) confirmera si cette troncature suffit.
+LONGITUD_MAX_ENTREE_REFORMULATION = 1500
+
+
+def _tronquer_texte_chosen(texte: str) -> str:
+    """
+    Coupe `texte` a `LONGITUD_MAX_ENTREE_REFORMULATION` caracteres au
+    maximum, sur une limite de phrase (`. `/`! `/`? `) ou, a defaut, de
+    paragraphe (`\n`), jamais en plein mot : un texte coupe de facon
+    abrupte pourrait perturber le modele davantage qu'aider. En dernier
+    recours (aucune limite de phrase/paragraphe trouvee dans la fenetre),
+    coupe simplement a la longueur max.
+    """
+    if len(texte) <= LONGITUD_MAX_ENTREE_REFORMULATION:
+        return texte
+
+    extrait = texte[:LONGITUD_MAX_ENTREE_REFORMULATION]
+    for separateur in (". ", "! ", "? "):
+        position = extrait.rfind(separateur)
+        if position > 0:
+            return extrait[: position + 1]
+
+    position_paragraphe = extrait.rfind("\n")
+    if position_paragraphe > 0:
+        return extrait[:position_paragraphe].rstrip()
+
+    return extrait.rstrip()
+
 
 def _horodatage_utc_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -238,8 +315,9 @@ class ReformulerPreferenceDpoUseCase:
         reformules: list[ChosenReformule] = []
         for exemple in candidats:
             texte_chosen_original = "\n".join(message.contenu for message in exemple.chosen)
+            texte_chosen_envoye = _tronquer_texte_chosen(texte_chosen_original)
             contenu_utilisateur = (
-                f"{PROMPT_REFORMULATION_CHOSEN}\n\nReponse a reformuler :\n{texte_chosen_original}"
+                f"{PROMPT_REFORMULATION_CHOSEN}\n\nReponse a reformuler :\n{texte_chosen_envoye}"
             )
             messages = [{"role": "user", "content": contenu_utilisateur}]
             parametres_generation = {
@@ -257,7 +335,12 @@ class ReformulerPreferenceDpoUseCase:
                 self.nombre_echecs_reformulation += 1
                 if len(self.echantillon_echecs_reformulation) < TAILLE_MAX_ECHANTILLON_ECHECS_REFORMULATION:
                     self.echantillon_echecs_reformulation.append(
-                        EchecReformulation(entree=texte_chosen_original, sortie_brute=reponse.texte)
+                        EchecReformulation(
+                            entree=texte_chosen_envoye,
+                            sortie_brute=reponse.texte,
+                            nombre_tokens_entree=reponse.nombre_tokens_entree,
+                            nombre_tokens_sortie=reponse.nombre_tokens_sortie,
+                        )
                     )
                 continue
 
