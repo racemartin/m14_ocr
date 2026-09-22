@@ -640,8 +640,9 @@ hf repo create mombasstic/chsa-triage-dpo-train-data --repo-type dataset --priva
 hf upload mombasstic/chsa-triage-dpo-train-data data/processed/dataset_chsa_triage_dpo_anonymise_100.jsonl --repo-type dataset
 ```
 
-Commande de lancement réelle, **jamais encore exécutée sur GPU**
-(décision de lancement en attente) :
+Commande de lancement réelle (vérification sur le sous-ensemble de
+100), déjà exécutée à plusieurs reprises sur GPU réel — voir les
+résultats réels ci-dessous :
 
 ```bash
 # Si on considere: 
@@ -672,10 +673,53 @@ seule passe DPO (préférence clinique + format de sortie JSON
 contractuel) :
 [`docs/diagrams/04_etape3_dpo/activite/dpo_double_fonction_entrainement.png`](docs/diagrams/04_etape3_dpo/activite/dpo_double_fonction_entrainement.png).
 
-Une fois ce run réel effectué, évaluer le modèle aligné (mêmes
-métriques/même sous-ensemble que les baselines et le post-SFT, §2.2/
-§2.5, quatrième réemploi sans modification d'`EvaluerBaselineZeroShotUseCase`,
-même patron exact que le post-SFT) :
+**Runs réels sur le sous-ensemble de 100 (2026-09-22)** — trois
+lancements réels, chacun diagnostiqué à partir de preuves réelles avant
+le suivant :
+
+1. `6ab2c3e552d0dbd7f1d7fcd1` (`taux_apprentissage=5e-6`,
+   `taille_lot=4`) : boucle d'entraînement complète avec succès (premier
+   run DPO réel du projet à y parvenir), mais l'évaluation post-époque
+   plante en `CUDA OutOfMemoryError`
+   (`DPOTrainer.evaluation_loop → concatenated_forward`). Cause racine
+   vérifiée (pas une hypothèse) : `per_device_eval_batch_size` n'était
+   jamais fixé, défaut réel `transformers.TrainingArguments` = 8, le
+   double du lot d'entraînement. Corrigé (commit `250ce41`) en fixant
+   `per_device_eval_batch_size=taille_lot` dans `TrlDpoEntraineurAdapter`.
+2. `6ab2d7ee51992417dfcd40cd` (`taux_apprentissage=5e-6`,
+   `taille_lot=1`) : premier run complet bout-en-bout (entraînement +
+   évaluation). Verdict `sous_apprentissage` ; `rewards/accuracies=0.30`
+   (pire que le hasard), `rewards/margins` négatif. `taille_lot` avait
+   été temporairement abaissé à 1 avant que la vraie cause de l'OOM
+   ci-dessus soit identifiée — un lot de 1 donne un gradient très
+   bruité, ce qui a probablement aggravé le sous-apprentissage.
+3. Run suivant (`taux_apprentissage=5e-5`, `taille_lot=4`, recette
+   corrigée d'après le point 2) : net progrès réel —
+   `rewards/accuracies` passe de 0.30 à 0.625 (train) / 0.75 (éval),
+   `rewards/margins` redevient positif (0.72 train / 0.60 éval),
+   `rewards/chosen` > `rewards/rejected` comme attendu. Verdict encore
+   `sous_apprentissage`, mais ce verdict (`application/verdict_convergence.py`)
+   ne regarde QUE la baisse relative de la perte d'entraînement brute
+   (seuil `SEUIL_BAISSE_TRAIN_RELATIVE_MINIMALE=0.05`, hérité tel quel
+   du SFT, cf. commentaire de `E3_02_uc_entrainer_dpo.py`) — il ignore
+   `rewards/accuracies`/`rewards/margins`, les métriques réellement
+   pertinentes pour juger un DPO. Probable faux négatif de ce verdict
+   sur DPO plutôt qu'un vrai échec d'apprentissage ; à recalibrer
+   spécifiquement pour DPO si ce signal se confirme sur un run plus
+   grand.
+
+Prochaine étape prévue : relancer sur un sous-ensemble plus grand
+(même recette, même patron d'extraction/publication que le bloc
+`--taille 100` ci-dessus, en changeant `--taille`) avant d'engager le
+run complet à 5000 (cahier des charges §7, Livrable 1).
+
+Évaluation post-DPO (mêmes métriques/même sous-ensemble que les
+baselines et le post-SFT, §2.2/§2.5, quatrième réemploi sans
+modification d'`EvaluerBaselineZeroShotUseCase`, même patron exact que
+le post-SFT) — à lancer une fois un checkpoint jugé sain obtenu
+(volontairement pas encore lancée sur les checkpoints
+`sous_apprentissage` ci-dessus, pour ne pas dépenser un run GPU sur un
+résultat déjà connu) :
 
 ```bash
 hf jobs uv run \
