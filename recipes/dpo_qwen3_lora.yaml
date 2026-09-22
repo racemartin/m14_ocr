@@ -37,7 +37,8 @@ entrainement:
   # a l'ecriture.
   taux_apprentissage: 5.0e-6
   nombre_epoques: 1
-  taille_lot: 4
+  # taille_lot: 4 >> 1 
+  taille_lot: 1
   # sigmoid : perte DPO "standard" (derivation §6.3 du livre
   # theorique), defaut reel trl.DPOConfig.loss_type = ['sigmoid'].
   type_perte: sigmoid
