@@ -708,10 +708,34 @@ le suivant :
    spécifiquement pour DPO si ce signal se confirme sur un run plus
    grand.
 
-Prochaine étape prévue : relancer sur un sous-ensemble plus grand
-(même recette, même patron d'extraction/publication que le bloc
-`--taille 100` ci-dessus, en changeant `--taille`) avant d'engager le
-run complet à 5000 (cahier des charges §7, Livrable 1).
+**Run complet, 5000 exemples (cahier des charges §7, Livrable 1)** —
+même patron exact, extraction locale puis publication et lancement :
+
+```bash
+uv run python interfaces/cli/E1_05_03_extraire_sous_ensemble_dpo.py \
+    --dataset data/processed/dataset_pivot_anonymise.jsonl \
+    --exclusions data/processed/identifiants_a_exclure_publication.jsonl \
+    --taille 5000
+```
+
+```bash
+hf upload mombasstic/chsa-triage-dpo-train-data data/processed/dataset_chsa_triage_dpo_anonymise_5000.jsonl --repo-type dataset
+```
+
+```bash
+hf jobs uv run \
+    --flavor l4x1 \
+    --timeout 2h \
+    --with "chsa-triage[remote] @ git+https://github.com/racemartin/m14_ocr.git@main" \
+    --secrets HF_TOKEN \
+    -v hf://datasets/mombasstic/chsa-triage-dpo-train-data:/mnt/train-data \
+    https://raw.githubusercontent.com/racemartin/m14_ocr/main/training/E3_03_dpo_train.py \
+    --recette recipes/dpo_qwen3_lora.yaml \
+    --dataset /mnt/train-data/dataset_chsa_triage_dpo_anonymise_5000.jsonl \
+    --suivi-hf-repo mombasstic/chsa-triage-dpo-metrics \
+    --checkpoint-hf-repo mombasstic/chsa-triage-dpo-lora \
+    --skip-reformulation
+```
 
 Évaluation post-DPO (mêmes métriques/même sous-ensemble que les
 baselines et le post-SFT, §2.2/§2.5, quatrième réemploi sans
