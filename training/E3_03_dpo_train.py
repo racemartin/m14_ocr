@@ -107,6 +107,9 @@ valeur reellement utilisee par ce projet, cf. la recette) : pas
 
 from __future__ import annotations
 
+import os
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+
 import argparse
 import itertools
 
@@ -294,19 +297,20 @@ def main() -> None:
     formateur              = ChatMLFormateurAdapter(nom_modele=modele_base)
 
     # -------------------------------------------------------------------------
-    # E3_00 : reformuler chosen ->  +JSON, sous-ensemble train+validation
+    # STEP 1A : reformuler chosen -> +JSON, sous-ensemble train+validation
     # UNIQUEMENT (jamais test, cf. cahier des charges §9). No-op si le
     # sous-ensemble cible (recette reformulation.taille_cible) est deja complet.
     # DECISION DESACOPLADA (19/09/2026) : saute si --skip-reformulation.
     # -------------------------------------------------------------------------
     if arguments.skip_reformulation:
-        log.STEP(1, "ETAPE 1 SAUTEE (skip-reformulation)", "Reformulation sautee, utilisation chosen original")
+        log.STEP(1, "STEP 1A SAUTEE (skip-reformulation)", "chosen original en fallback")
         log.PARAMETER_VALUE("reformulation", "sautee via --skip-reformulation")
-        log.PARAMETER_VALUE("remarque", "Le formatage (E3_01) utilisera le chosen original en fallback quand aucune ChosenReformule n'existe")
+        log.PARAMETER_VALUE("remarque", "E3_01 utilisera le chosen original en fallback")
     else:
-        log.STEP(1, "STEP 1 Reformulation chosen ->  +JSON", "ReformulerPreferenceDpoUseCase")
+        log.STEP(1, "STEP 1A Reformulation chosen -> +JSON", "ReformulerPreferenceDpoUseCase")
         moteur_reformulation = TransformersLoraInferenceAdapter(
-            depot_lora=checkpoint_politique_depart, nom_modele_base=modele_base
+            depot_lora=checkpoint_politique_depart,
+            nom_modele_base=modele_base,
         )
         cas_reformulation = ReformulerPreferenceDpoUseCase(
             moteur=moteur_reformulation,
@@ -318,17 +322,19 @@ def main() -> None:
             repository_pivot.lister(filtre={"split": TypeSplit.VALIDATION, "type_exemple": TypeExemple.DPO}),
         )
         nombre_reformules = cas_reformulation.executer(candidats_reformulation)
-        log.PARAMETER_VALUE("exemples reformules (cette execution)", nombre_reformules)
-        log.PARAMETER_VALUE("echecs de reformulation (cette execution)", cas_reformulation.nombre_echecs_reformulation)
+        log.PARAMETER_VALUE("exemples reformules (cette éxecution)", nombre_reformules)
+        log.PARAMETER_VALUE("échecs de reformulation (cette éxecution)", cas_reformulation.nombre_echecs_reformulation)
         for index, echec in enumerate(cas_reformulation.echantillon_echecs_reformulation):
-            log.PARAMETER_VALUE(f"entree [{index}]", echec.entree)
-            log.PARAMETER_VALUE(f"sortie [{index}]", echec.sortie_brute)
-            log.PARAMETER_VALUE(f"tokens entree/sortie [{index}]", f"{echec.nombre_tokens_entree}/{echec.nombre_tokens_sortie}")
+            log.PARAMETER_VALUE(f"  entrée [{index}]", echec.entree)
+            log.PARAMETER_VALUE(f"  sortie [{index}]", echec.sortie_brute)
+            log.PARAMETER_VALUE(f"  tokens entrée/sortie [{index}]", f"{echec.nombre_tokens_entree}/{echec.nombre_tokens_sortie}")
 
     # -------------------------------------------------------------------------
     # E3_01 : fusionner pivot + ChosenReformule, rendre le triplet texte
     # -------------------------------------------------------------------------
-    log.STEP(2, "STEP 2. Rendu triplet prompt/chosen/rejected", "FormaterDatasetChatMLPreferenceUseCase, train puis validation")
+    # ************************************************************************* 
+    log.STEP(1, "STEP 1B Rendu triplet prompt/chosen/rejected", "FormaterDatasetChatMLPreferenceUseCase, train + validation")
+    # ************************************************************************* 
     cas_formatage = FormaterDatasetChatMLPreferenceUseCase(
         repository_pivot=repository_pivot,
         repository_reformule=repository_reformule,
@@ -362,6 +368,9 @@ def main() -> None:
     # -------------------------------------------------------------------------
     # Construire config_lora / hyperparametres depuis la recette
     # -------------------------------------------------------------------------
+     # ************************************************************************* 
+    log.STEP(1, "STEP 1C Config LoRA + hyperparametres depuis recette")
+    # ************************************************************************* 
     config_lora = ConfigurationLora(
         rang=recette["lora"]["rang"],
         alpha=recette["lora"]["alpha"],
@@ -373,7 +382,9 @@ def main() -> None:
     # -------------------------------------------------------------------------
     # E3_02 : entrainer (continuation du checkpoint SFT-LoRA)
     # -------------------------------------------------------------------------
-    log.STEP(3, "Chargement du modele quantifie + checkpoint SFT-LoRA", f"{modele_base} + {checkpoint_politique_depart}")
+    # ************************************************************************* 
+    log.STEP(2, "STEP 2 Chargement modèle + checkpoint SFT-LoRA", f"DPO: {modele_base} + {checkpoint_politique_depart}")
+    # ************************************************************************* 
     entraineur = TrlDpoEntraineurAdapter(
         identifiant_modele_base=modele_base,
         configuration_quantification=ConfigurationQuantification(**recette["quantification"]),
@@ -383,7 +394,7 @@ def main() -> None:
     suivi = _construire_suivi(recette.get("suivi", {}), arguments)
     cas_entrainement = EntrainerDpoUseCase(entraineur=entraineur, suivi=suivi)
 
-    log.STEP(4, "Entrainement DPO", "EntrainerDpoUseCase")
+    log.STEP(3, "STEP 3 Entrainement DPO", "EntrainerDpoUseCase")
     resultat = cas_entrainement.entrainer(
         dataset_train, dataset_validation, config_lora, hyperparametres, checkpoint_politique_depart
     )
@@ -394,7 +405,9 @@ def main() -> None:
     # -------------------------------------------------------------------------
     # E2_03 (reutilise tel quel) : sauvegarder les metadonnees du checkpoint DPO
     # -------------------------------------------------------------------------
-    log.STEP(5, "Sauvegarde des metadonnees du checkpoint", "SauvegarderCheckpointSftUseCase")
+    # *************************************************************************
+    log.STEP(4, "STEP 4 Sauvegarde métadonnées checkpoint DPO", "SauvegarderCheckpointSftUseCase")
+    # *************************************************************************
     repository_checkpoints = JsonlCheckpointRepository(arguments.checkpoints)
     cas_checkpoint = SauvegarderCheckpointSftUseCase(repository_checkpoints=repository_checkpoints)
     checkpoint = cas_checkpoint.executer(
@@ -410,11 +423,13 @@ def main() -> None:
     # -------------------------------------------------------------------------
     # Publication optionnelle des poids sur HF Hub
     # -------------------------------------------------------------------------
+    # *************************************************************************
     if arguments.checkpoint_hf_repo:
-        log.STEP(6, "Publication des poids du checkpoint DPO sur HF Hub", arguments.checkpoint_hf_repo)
+        log.STEP(5, "STEP 5 Publication poids checkpoint DPO HF Hub", arguments.checkpoint_hf_repo)
         _publier_checkpoint_hf(resultat.chemin_checkpoint, arguments.checkpoint_hf_repo)
         log.PARAMETER_VALUE("poids publies vers", arguments.checkpoint_hf_repo)
 
+    # *************************************************************************
     log.FINISH_ACTION("E3_03_dpo_train", "main", f"checkpoint {checkpoint.identifiant} sauvegarde ({checkpoint.verdict_convergence.value})")
     print(f"Checkpoint DPO-LoRA : {checkpoint.chemin}")
     print(f"Verdict de convergence : {checkpoint.verdict_convergence.value}")

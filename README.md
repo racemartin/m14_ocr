@@ -659,6 +659,7 @@ hf jobs uv run \
     --dataset /mnt/train-data/dataset_chsa_triage_dpo_anonymise_100.jsonl \
     --suivi-hf-repo mombasstic/chsa-triage-dpo-metrics \
     --checkpoint-hf-repo mombasstic/chsa-triage-dpo-lora
+    --skip-reformulation
 ```
 
 Tout a été vérifié sans GPU (même méthode que pour le SFT avant son

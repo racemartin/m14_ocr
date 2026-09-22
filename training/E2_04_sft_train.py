@@ -405,7 +405,7 @@ def main() -> None:
     # -------------------------------------------------------------------------
     # E2_00 : formater ChatML (train, puis validation)
     # -------------------------------------------------------------------------
-    log.STEP(1, "Rendu ChatML", "FormaterDatasetChatMLUseCase, train puis validation")
+    log.STEP(1, "STEP 1 Rendu ChatML", "FormaterDatasetChatMLUseCase, train + validation")
     cas_formatage = FormaterDatasetChatMLUseCase(
         repository_pivot=repository_pivot, repository_formate=repository_formate, formateur=formateur
     )
@@ -440,7 +440,7 @@ def main() -> None:
     # -------------------------------------------------------------------------
     # E2_01 (via E2_02) : entrainer, ajuster si necessaire
     # -------------------------------------------------------------------------
-    log.STEP(2, "Chargement du modele quantifie", f"{modele_base}, cf. AVERTISSEMENT non-valide dans TrlSftEntraineurAdapter")
+    log.STEP(2, "Chargement modele + construction grille", f"{modele_base}, cf. AVERTISSEMENT non-valide dans TrlSftEntraineurAdapter")
     entraineur = TrlSftEntraineurAdapter(
         identifiant_modele_base=modele_base,
         configuration_quantification=ConfigurationQuantification(**recette["quantification"]),
@@ -452,7 +452,7 @@ def main() -> None:
     suivi = _construire_suivi(recette.get("suivi", {}), arguments)
     cas_entrainement = EntrainerSftUseCase(entraineur=entraineur, suivi=suivi)
 
-    log.STEP(3, "Entrainement SFT-LoRA + boucle d'ajustement", "AjusterBoucleHyperparametresSftUseCase")
+    log.STEP(3, "STEP 3 Entraînement SFT-LoRA + boucle d'ajustement", "AjusterBoucleHyperparametresSftUseCase")
     cas_boucle = AjusterBoucleHyperparametresSftUseCase(cas_usage_entrainement=cas_entrainement, grille=grille)
     resultat_boucle = cas_boucle.executer(dataset_train, dataset_validation, config_lora, hyperparametres_initiaux)
     meilleur = resultat_boucle.meilleur_essai
@@ -463,7 +463,7 @@ def main() -> None:
     # -------------------------------------------------------------------------
     # E2_03 : sauvegarder les metadonnees du meilleur checkpoint
     # -------------------------------------------------------------------------
-    log.STEP(4, "Sauvegarde des metadonnees du checkpoint", "SauvegarderCheckpointSftUseCase")
+    log.STEP(4, "STEP 4 Sauvegarde métadonnées checkpoint", "SauvegarderCheckpointSftUseCase")
     repository_checkpoints = JsonlCheckpointRepository(arguments.checkpoints)
     cas_checkpoint = SauvegarderCheckpointSftUseCase(repository_checkpoints=repository_checkpoints)
     checkpoint = cas_checkpoint.executer(
@@ -481,7 +481,7 @@ def main() -> None:
     # HF Jobs distant, cf. AVERTISSEMENT dans _publier_checkpoint_hf)
     # -------------------------------------------------------------------------
     if arguments.checkpoint_hf_repo:
-        log.STEP(5, "Publication des poids du meilleur checkpoint sur HF Hub", arguments.checkpoint_hf_repo)
+        log.STEP(5, "STEP 5 Publication poids checkpoint HF Hub", arguments.checkpoint_hf_repo)
         _publier_checkpoint_hf(meilleur.resultat.chemin_checkpoint, arguments.checkpoint_hf_repo)
         log.PARAMETER_VALUE("poids publies vers", arguments.checkpoint_hf_repo)
 
