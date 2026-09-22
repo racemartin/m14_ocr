@@ -658,7 +658,7 @@ hf jobs uv run \
     --recette recipes/dpo_qwen3_lora.yaml \
     --dataset /mnt/train-data/dataset_chsa_triage_dpo_anonymise_100.jsonl \
     --suivi-hf-repo mombasstic/chsa-triage-dpo-metrics \
-    --checkpoint-hf-repo mombasstic/chsa-triage-dpo-lora
+    --checkpoint-hf-repo mombasstic/chsa-triage-dpo-lora \
     --skip-reformulation
 ```
 
