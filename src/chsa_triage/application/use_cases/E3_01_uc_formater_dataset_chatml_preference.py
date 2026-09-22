@@ -52,7 +52,7 @@ class FormaterDatasetChatMLPreferenceUseCase:
         PERSISTS les exemples SANS `ChosenReformule` en utilisant le
         `chosen` original tel quel (fallback, cf. docstring du module :
         la reformulation est desacoupee du formatage DPO). Rend le
-        triplet fusionne via `self.formateur.formater(...)`, et persiste
+        triplet fusionne via `self.formateur.formater_preference(...)`, et persiste
         le resultat en une seule operation (`sauvegarder_plusieurs`,
         jamais un `sauvegarder()` par item, cf. AGENTS.md sur le cout
         O(n^2)). Retourne le nombre d'exemples formates.
@@ -75,7 +75,7 @@ class FormaterDatasetChatMLPreferenceUseCase:
                 # La reformulation est OPTIONNELLE, le pipeline DPO peut
                 # tourner sur les paires originales sans  + JSON.
                 exemple_fusionne = exemple
-            exemples_formates.append(self.formateur.formater(exemple_fusionne))
+            exemples_formates.append(self.formateur.formater_preference(exemple_fusionne))
 
         self.repository_formate.sauvegarder_plusieurs(exemples_formates)
         return len(exemples_formates)

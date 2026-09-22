@@ -52,7 +52,7 @@ class FauxFormateurPreference:
     def __init__(self) -> None:
         self.appels: list[ExemplePivot] = []
 
-    def formater(self, exemple: ExemplePivot) -> ExempleFormatePreference:
+    def formater_preference(self, exemple: ExemplePivot) -> ExempleFormatePreference:
         self.appels.append(exemple)
         return ExempleFormatePreference(
             identifiant=exemple.identifiant,
