@@ -99,11 +99,15 @@ def _chosen_reformule(identifiant: str, texte: str = "chosen reformule <think>..
     )
 
 
-def test_exclut_les_exemples_sans_chosen_reformule_correspondant():
-    exemple_avec_reformulation = _exemple_dpo(TypeSplit.TRAIN)
-    exemple_sans_reformulation = _exemple_dpo(TypeSplit.TRAIN)
+def test_exemple_sans_chosen_reformule_utilise_chosen_original_en_fallback():
+    """DECISION DESACOPLADA : un exemple sans ChosenReformule correspondant
+    (hors du sous-ensemble reformule) est PERSISTE avec le chosen original,
+    ne sera plus exclus. Cela desacouple le formatage DPO de la reformulation.
+    """
+    exemple_avec_reformulation = _exemple_dpo(TypeSplit.TRAIN, chosen_original="chosen original A")
+    exemple_sans_reformulation = _exemple_dpo(TypeSplit.TRAIN, chosen_original="chosen original B")
     repository_pivot = FauxRepository([exemple_avec_reformulation, exemple_sans_reformulation])
-    repository_reformule = FauxRepository([_chosen_reformule(exemple_avec_reformulation.identifiant)])
+    repository_reformule = FauxRepository([_chosen_reformule(exemple_avec_reformulation.identifiant, texte="chosen reformule A")])
     repository_formate = FauxRepository()
     formateur = FauxFormateurPreference()
 
@@ -115,8 +119,34 @@ def test_exclut_les_exemples_sans_chosen_reformule_correspondant():
     )
     nombre = cas_usage.executer(TypeSplit.TRAIN)
 
-    assert nombre == 1
-    assert set(repository_formate.items) == {exemple_avec_reformulation.identifiant}
+    assert nombre == 2
+    assert set(repository_formate.items) == {exemple_avec_reformulation.identifiant, exemple_sans_reformulation.identifiant}
+
+
+def test_repository_reformule_none_utilise_tous_les_chosen_originaux():
+    """DECISION DESACOPLADA : quand repository_reformule est None (mode
+    --skip-reformulation), tous les exemples DPO sont formates avec leur
+    chosen original tel quel — aucune exclusion.
+    """
+    exemple_1 = _exemple_dpo(TypeSplit.TRAIN, chosen_original="chosen original 1")
+    exemple_2 = _exemple_dpo(TypeSplit.TRAIN, chosen_original="chosen original 2")
+    repository_pivot = FauxRepository([exemple_1, exemple_2])
+    repository_formate = FauxRepository()
+    formateur = FauxFormateurPreference()
+
+    cas_usage = FormaterDatasetChatMLPreferenceUseCase(
+        repository_pivot=repository_pivot,
+        repository_reformule=None,
+        repository_formate=repository_formate,
+        formateur=formateur,
+    )
+    nombre = cas_usage.executer(TypeSplit.TRAIN)
+
+    assert nombre == 2
+    assert set(repository_formate.items) == {exemple_1.identifiant, exemple_2.identifiant}
+    # Verifie que le chosen original a ete utilise (pas de reformulation)
+    for item in repository_formate.items.values():
+        assert "chosen original" in item.texte_chosen
 
 
 def test_exclut_les_exemples_sft():
