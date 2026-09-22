@@ -3,6 +3,19 @@ Point d'entree, Etape 3 : entrainement DPO reel (Environnement B, GPU
 requis), continuant le checkpoint SFT-LoRA deja entraine. Conformement
 a `docs/04_etape3_dpo/03_guide_implementation_pas_a_pas.md` etape 13.
 
+DECISION DESACOPLADA (19/09/2026) : la reformulation `chosen` ->
+ +JSON (E3_00) est desacoupee du pipeline DPO. Le script peut maintenant
+lancer l'entrainement DPO directement sur les paires `chosen`/`rejected`
+originales du pivot, SANS exiger de reformulation prealable. La
+reformulation reste OPTIONNELLE : si `--skip-reformulation` est passe
+(cf. ci-dessous), E3_00 est saute et le formatage (E3_01) utilise le
+`chosen` original tel quel (fallback, cf. docstring de
+`FormaterDatasetChatMLPreferenceUseCase`). Si `--skip-reformulation`
+N'EST PAS passe, le pipeline tente quand meme la reformulation mais ne
+s'arrete PAS si elle echoue partielle : le formatage continue avec les
+exemples reformules quand disponibles, et le `chosen` original pour le
+reste.
+
 Vit hors `interfaces/cli/` (dans `training/`, meme precedent que
 `E2_04_sft_train.py`), numerote `E3_03` (pas un `E3_NN_uc_*`, meme
 raisonnement de nommage : le prochain numero apres le dernier cas
@@ -11,14 +24,16 @@ convention `E1_NN`/`E2_NN`/`E3_NN`). Meme patron argparse + `LogTool` +
 resume console que `training/E2_04_sft_train.py`. Enchaine, DANS
 L'ORDRE :
 
-  1. `ReformulerPreferenceDpoUseCase.executer(...)` (E3_00) : reformule
-     `chosen` -> `<think>`+JSON sur le sous-ensemble cible (incremental
+  1. [OPTIONNEL --skip-reformulation] `ReformulerPreferenceDpoUseCase.executer(...)` (E3_00) : reformule
+     `chosen` ->  + JSON sur le sous-ensemble cible (incremental
      et resumable, no-op si deja complet, cf. AGENTS.md sur le patron
      deja etabli en Etape 1). Candidats limites aux splits
      train+validation (jamais test, cf. cahier des charges §9 "ne
      jamais melanger donnees d'entrainement et d'evaluation").
+     Saute si `--skip-reformulation`.
   2. `FormaterDatasetChatMLPreferenceUseCase.executer(split)` (E3_01),
-     train puis validation.
+     train puis validation. Utilise `chosen_reformule` si disponible,
+     fallback `chosen` original sinon (cf. docstring du cas d'usage).
   3. `EntrainerDpoUseCase.entrainer(...)` (E3_02) : delegue a
      `TrlDpoEntraineurAdapter`.
   4. `SauvegarderCheckpointSftUseCase.executer(...)` (E2_03, reutilise
@@ -37,14 +52,25 @@ detail de ce qui est VERIFIE sans GPU (signatures reelles, lecture du
 code source de `trl`/`peft`) contre ce qui reste NON VERIFIE.
 
 Usage (local, Environnement B avec GPU) :
-    uv run python training/E3_03_dpo_train.py \\
-        --recette recipes/dpo_qwen3_lora.yaml \\
-        --dataset data/processed/dataset_pivot_anonymise.jsonl \\
-        --dataset-reformule data/processed/dataset_dpo_chosen_reformule.jsonl \\
-        --dataset-formate data/processed/dataset_formate_preference.jsonl \\
-        --checkpoints data/processed/checkpoints_sft.jsonl \\
-        --suivi-hf-repo mombasstic/chsa-triage-dpo-metrics \\
+    uv run python training/E3_03_dpo_train.py \\\\
+        --recette recipes/dpo_qwen3_lora.yaml \\\\
+        --dataset data/processed/dataset_pivot_anonymise.jsonl \\\\
+        --dataset-reformule data/processed/dataset_dpo_chosen_reformule.jsonl \\\\
+        --dataset-formate data/processed/dataset_formate_preference.jsonl \\\\
+        --checkpoints data/processed/checkpoints_sft.jsonl \\\\
+        --suivi-hf-repo mombasstic/chsa-triage-dpo-metrics \\\\
         --checkpoint-hf-repo mombasstic/chsa-triage-dpo-lora
+
+Pour sauter la reformulation et entrainer directement sur les paires
+originales (mode desacouple) :
+    uv run python training/E3_03_dpo_train.py \\\\
+        --recette recipes/dpo_qwen3_lora.yaml \\\\
+        --dataset data/processed/dataset_pivot_anonymise.jsonl \\\\
+        --dataset-formate data/processed/dataset_formate_preference.jsonl \\\\
+        --checkpoints data/processed/checkpoints_sft.jsonl \\\\
+        --suivi-hf-repo mombasstic/chsa-triage-dpo-metrics \\\\
+        --checkpoint-hf-repo mombasstic/chsa-triage-dpo-lora \\\
+        --skip-reformulation
 
 Porte d'entree recommandee AVANT de lancer ce script pour de vrai
 (meme discipline que `E2_04_sft_train.py`) :
@@ -187,7 +213,17 @@ def main() -> None:
     parser.add_argument(
         "--dataset-reformule",
         default=CHEMIN_DATASET_REFORMULE_DEFAUT,
-        help=f"Chemin de sortie des ChosenReformule (defaut {CHEMIN_DATASET_REFORMULE_DEFAUT})",
+        help=f"Chemin de sortie des ChosenReformule (defaut {CHEMIN_DATASET_REFORMULE_DEFAUT}). "
+             "Ignore si --skip-reformulation (le repository reformule sera None "
+             "et le formatage utilisera le chosen original).",
+    )
+    parser.add_argument(
+        "--skip-reformulation",
+        action="store_true",
+        help="Sauter l'etape 1 (reformulation chosen ->  + JSON) et "
+             "entrainer directement sur les paires chosen/rejected originales. "
+             "DECISION DESACOPLADA : le formatage (E3_01) utilise le chosen "
+             "original en fallback quand aucune ChosenReformule n'existe.",
     )
     parser.add_argument(
         "--dataset-formate",
@@ -232,6 +268,12 @@ def main() -> None:
     )
     arguments = parser.parse_args()
 
+    # DECISION DESACOPLADA : si --skip-reformulation, --dataset-reformule
+    # est inutilise (repository_reformule sera None). Validation de coherence.
+    if arguments.skip_reformulation and arguments.dataset_reformule:
+        log.PARAMETER_VALUE("avertissement", "--dataset-reformule ignore car --skip-reformulation est active")
+        arguments.dataset_reformule = None
+
     log.START_ACTION("E3_03_dpo_train", "main", "entrainement DPO reel (Environnement B, GPU)")
     log.PARAMETER_VALUE("recette", arguments.recette)
     log.PARAMETER_VALUE("dataset", arguments.dataset)
@@ -247,35 +289,41 @@ def main() -> None:
     # PREPARE ADAPTERS (Dependency Injection)
     # -------------------------------------------------------------------------
     repository_pivot     = JsonlDatasetRepository(arguments.dataset)
-    repository_reformule = JsonlPreferenceReformuleeRepository(arguments.dataset_reformule)
+    repository_reformule = JsonlPreferenceReformuleeRepository(arguments.dataset_reformule) if arguments.dataset_reformule else None
     repository_formate   = JsonlExempleFormatePreferenceRepository(arguments.dataset_formate)
     formateur              = ChatMLFormateurAdapter(nom_modele=modele_base)
 
     # -------------------------------------------------------------------------
-    # E3_00 : reformuler chosen -> <think>+JSON, sous-ensemble train+validation
+    # E3_00 : reformuler chosen ->  +JSON, sous-ensemble train+validation
     # UNIQUEMENT (jamais test, cf. cahier des charges §9). No-op si le
     # sous-ensemble cible (recette reformulation.taille_cible) est deja complet.
+    # DECISION DESACOPLADA (19/09/2026) : saute si --skip-reformulation.
     # -------------------------------------------------------------------------
-    log.STEP(1, "SPTEP 1 Reformulation chosen -> <think>+JSON", "ReformulerPreferenceDpoUseCase")
-    moteur_reformulation = TransformersLoraInferenceAdapter(
-        depot_lora=checkpoint_politique_depart, nom_modele_base=modele_base
-    )
-    cas_reformulation = ReformulerPreferenceDpoUseCase(
-        moteur=moteur_reformulation,
-        repository_reformule=repository_reformule,
-        taille_cible=recette.get("reformulation", {}).get("taille_cible", 5000),
-    )
-    candidats_reformulation = itertools.chain(
-        repository_pivot.lister(filtre={"split": TypeSplit.TRAIN, "type_exemple": TypeExemple.DPO}),
-        repository_pivot.lister(filtre={"split": TypeSplit.VALIDATION, "type_exemple": TypeExemple.DPO}),
-    )
-    nombre_reformules = cas_reformulation.executer(candidats_reformulation)
-    log.PARAMETER_VALUE("exemples reformules (cette execution)", nombre_reformules)
-    log.PARAMETER_VALUE("echecs de reformulation (cette execution)", cas_reformulation.nombre_echecs_reformulation)
-    for index, echec in enumerate(cas_reformulation.echantillon_echecs_reformulation):
-        log.PARAMETER_VALUE(f"entree [{index}]", echec.entree)
-        log.PARAMETER_VALUE(f"sortie [{index}]", echec.sortie_brute)
-        log.PARAMETER_VALUE(f"tokens entree/sortie [{index}]", f"{echec.nombre_tokens_entree}/{echec.nombre_tokens_sortie}")
+    if arguments.skip_reformulation:
+        log.STEP(1, "ETAPE 1 SAUTEE (skip-reformulation)", "Reformulation sautee, utilisation chosen original")
+        log.PARAMETER_VALUE("reformulation", "sautee via --skip-reformulation")
+        log.PARAMETER_VALUE("remarque", "Le formatage (E3_01) utilisera le chosen original en fallback quand aucune ChosenReformule n'existe")
+    else:
+        log.STEP(1, "STEP 1 Reformulation chosen ->  +JSON", "ReformulerPreferenceDpoUseCase")
+        moteur_reformulation = TransformersLoraInferenceAdapter(
+            depot_lora=checkpoint_politique_depart, nom_modele_base=modele_base
+        )
+        cas_reformulation = ReformulerPreferenceDpoUseCase(
+            moteur=moteur_reformulation,
+            repository_reformule=repository_reformule,
+            taille_cible=recette.get("reformulation", {}).get("taille_cible", 5000),
+        )
+        candidats_reformulation = itertools.chain(
+            repository_pivot.lister(filtre={"split": TypeSplit.TRAIN, "type_exemple": TypeExemple.DPO}),
+            repository_pivot.lister(filtre={"split": TypeSplit.VALIDATION, "type_exemple": TypeExemple.DPO}),
+        )
+        nombre_reformules = cas_reformulation.executer(candidats_reformulation)
+        log.PARAMETER_VALUE("exemples reformules (cette execution)", nombre_reformules)
+        log.PARAMETER_VALUE("echecs de reformulation (cette execution)", cas_reformulation.nombre_echecs_reformulation)
+        for index, echec in enumerate(cas_reformulation.echantillon_echecs_reformulation):
+            log.PARAMETER_VALUE(f"entree [{index}]", echec.entree)
+            log.PARAMETER_VALUE(f"sortie [{index}]", echec.sortie_brute)
+            log.PARAMETER_VALUE(f"tokens entree/sortie [{index}]", f"{echec.nombre_tokens_entree}/{echec.nombre_tokens_sortie}")
 
     # -------------------------------------------------------------------------
     # E3_01 : fusionner pivot + ChosenReformule, rendre le triplet texte
@@ -305,9 +353,10 @@ def main() -> None:
 
     if not dataset_train:
         raise SystemExit(
-            "aucun exemple train forme (dataset_train vide) : verifier que la reformulation (etape 1) a "
-            "produit des ChosenReformule pour au moins un identifiant du split train, avant de charger le "
-            "modele GPU."
+            "aucun exemple train forme (dataset_train vide) : verifier que le pivot "
+            "contient des exemples DPO dans le split train, avant de charger le "
+            "modele GPU. La reformulation (etape 1) est OPTIONNELLE (--skip-reformulation) : "
+            "le formatage utilise le chosen original en fallback."
         )
 
     # -------------------------------------------------------------------------
