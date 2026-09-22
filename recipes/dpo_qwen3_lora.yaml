@@ -29,16 +29,27 @@ entrainement:
   # l'ecart tolere entre pi_theta et pi_ref (cf.
   # docs/04_etape3_dpo/00_introduction_concepts.md §2).
   beta: 0.1
-  # NETTEMENT sous le taux SFT (2.0e-4, recipes/sft_qwen3_lora.yaml) :
-  # deliberement > defaut brut trl (1e-06, pense pour un DPO full
-  # fine-tuning) puisque ce run reste LoRA (memes raisons que le SFT,
-  # cf. le tableau de docs/04_etape3_dpo/00_introduction_concepts.md
-  # §5) ; NON VALIDE empiriquement sur ce projet, aucun GPU disponible
-  # a l'ecriture.
-  taux_apprentissage: 5.0e-6
+  # Premier run reel complet (job 6ab2d7ee51992417dfcd40cd, 2026-09-22,
+  # taux 5.0e-6) : verdict sous_apprentissage, rewards/accuracies=0.30
+  # (< 0.5, pire que le hasard), rewards/margins negatif. Relance a
+  # 5.0e-5 (x10, reste 4x sous le taux SFT 2.0e-4) pour verifier
+  # l'hypothese "taux trop bas" sur le meme run pas cher (100
+  # exemples) avant d'engager le run complet a 5000 ; NON VALIDE
+  # empiriquement a cette nouvelle valeur.
+  taux_apprentissage: 5.0e-5
   nombre_epoques: 1
-  # taille_lot: 4 >> 1 
-  taille_lot: 1
+  # Remis a 4 (valeur d'origine) : le batch=1 utilise par le run
+  # sous_apprentissage ci-dessus donne un gradient tres bruite (un seul
+  # exemple par pas), ce qui degrade l'apprentissage independamment du
+  # taux. La cause reelle de l'OOM d'evaluation qui avait motive le
+  # passage a 1 est deja corrigee autrement (per_device_eval_batch_size
+  # fixe explicitement = taille_lot dans trl_dpo_entraineur.py, commit
+  # 250ce41) : l'entrainement A REELLEMENT REUSSI a batch=4 des le tout
+  # premier run complet (job 6ab2c3e552d0dbd7f1d7fcd1, 82/82 pas), donc
+  # l'evaluation a batch=4 (meme charge memoire que l'entrainement, cf.
+  # ce meme commit) devrait tenir aussi ; NON RECONFIRME sur un run reel
+  # depuis ce commit.
+  taille_lot: 4
   # sigmoid : perte DPO "standard" (derivation §6.3 du livre
   # theorique), defaut reel trl.DPOConfig.loss_type = ['sigmoid'].
   type_perte: sigmoid
