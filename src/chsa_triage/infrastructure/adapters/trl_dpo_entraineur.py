@@ -20,6 +20,31 @@ a ete VERIFIE sans GPU (signatures reelles, lecture directe du code
 source de `trl`/`peft`, appels de fonctions pures) de ce qui reste NON
 VERIFIE et attend une vraie session GPU reelle.
 
+MISE A JOUR REELLE (22/09/2026), premier entrainement DPO ayant
+reellement boucle jusqu'au bout (job GPU L4, 100 exemples,
+`--skip-reformulation`, 82/82 pas) : `trainer.train()` a reussi, mais
+l'evaluation post-epoque a plante avec `torch.OutOfMemoryError` (traceback
+exact : `DPOTrainer.evaluation_loop -> prediction_step ->
+get_batch_loss_metrics -> concatenated_forward`, "Tried to allocate
+9.17 GiB"). Cause racine CONFIRMEE (pas une hypothese, contrairement
+aux corrections precedentes de ce module sur le comportement du
+modele) : `DPOConfig(...)` fixait `per_device_train_batch_size` mais
+jamais `per_device_eval_batch_size`, dont le defaut REEL verifie
+(inspection directe de la signature `transformers.TrainingArguments.__init__`,
+sans GPU) est **8**, le double du batch d'entrainement (4, valeur
+reelle de `recipes/dpo_qwen3_lora.yaml`) deja demontre viable par ce
+meme run. `concatenated_forward` traite `chosen`+`rejected`
+concatenes dans la meme passe (visible dans le traceback), doublant
+deja la charge memoire par element par rapport a un forward simple :
+un lot d'evaluation deux fois plus grand que le lot d'entrainement,
+sur une passe qui double deja la charge par element, suffit a
+expliquer l'OOM observe sans autre cause necessaire. Fixe en fixant
+`per_device_eval_batch_size=hyperparametres.taille_lot` dans
+`entrainer()` ci-dessous (raisonnement complet en commentaire a cet
+endroit). Reste NON CONFIRME jusqu'a un prochain run GPU reel :
+`per_device_train_batch_size` n'a pas ete touche (il a deja fonctionne
+82/82 pas).
+
 VERIFIE SANS GPU (trl==1.13.0, peft==0.21.0, `trl` installe
 temporairement dans le venv local via `uv pip install` pour cette
 verification, PAS ajoute en dependance permanente d'Environnement A ;
@@ -186,6 +211,39 @@ CLES_METRIQUES_RECOMPENSE = (
 )
 
 
+def _construire_dpo_config(chemin_checkpoint: str, hyperparametres: HyperparametresEntrainementDpo) -> Any:
+    """
+    Construit le `trl.DPOConfig` reel a partir des hyperparametres du
+    domaine. Extrait de `entrainer()` pour rester testable SANS GPU
+    (construire un `DPOConfig`/`TrainingArguments` ne touche jamais le
+    GPU ni ne charge de modele), cf.
+    `tests/infrastructure/test_trl_dpo_entraineur_config.py`.
+
+    `per_device_eval_batch_size` est fixe explicitement a
+    `hyperparametres.taille_lot` (meme valeur que
+    `per_device_train_batch_size`) : cf. l'AVERTISSEMENT "MISE A JOUR
+    REELLE (22/09/2026)" en tete de module pour la cause racine
+    confirmee (defaut reel de `transformers.TrainingArguments`, 8, le
+    double du batch d'entrainement) de l'OOM CUDA observe pendant
+    l'evaluation post-epoque sur le premier run DPO ayant reellement
+    boucle son entrainement jusqu'au bout.
+    """
+    from trl import DPOConfig
+
+    return DPOConfig(
+        output_dir=chemin_checkpoint,
+        beta=hyperparametres.beta,
+        learning_rate=hyperparametres.taux_apprentissage,
+        num_train_epochs=hyperparametres.nombre_epoques,
+        per_device_train_batch_size=hyperparametres.taille_lot,
+        per_device_eval_batch_size=hyperparametres.taille_lot,
+        loss_type=[hyperparametres.type_perte],
+        precompute_ref_log_probs=hyperparametres.precompute_ref_log_probs,
+        eval_strategy="epoch",
+        report_to="none",
+    )
+
+
 def _metriques_recompense_depuis_log_history(log_history: list[dict]) -> dict[str, float]:
     """
     Valeurs agregees FINALES (derniere occurrence dans `log_history`,
@@ -302,7 +360,7 @@ class TrlDpoEntraineurAdapter:
             )
 
         from datasets import Dataset
-        from trl import DPOConfig, DPOTrainer
+        from trl import DPOTrainer
 
         dataset_train_hf = Dataset.from_list(
             [
@@ -319,17 +377,7 @@ class TrlDpoEntraineurAdapter:
 
         chemin_checkpoint = str(Path(self.repertoire_sortie) / f"run-{_horodatage_nom_run()}")
 
-        dpo_config = DPOConfig(
-            output_dir=chemin_checkpoint,
-            beta=hyperparametres.beta,
-            learning_rate=hyperparametres.taux_apprentissage,
-            num_train_epochs=hyperparametres.nombre_epoques,
-            per_device_train_batch_size=hyperparametres.taille_lot,
-            loss_type=[hyperparametres.type_perte],
-            precompute_ref_log_probs=hyperparametres.precompute_ref_log_probs,
-            eval_strategy="epoch",
-            report_to="none",
-        )
+        dpo_config = _construire_dpo_config(chemin_checkpoint, hyperparametres)
 
         trainer = DPOTrainer(
             model=self._modele,
