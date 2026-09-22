@@ -25,6 +25,6 @@ from chsa_triage.domain.model.exemple_pivot import ExemplePivot
 class FormateurPreference(Protocol):
     """Port generique : rendre un ExemplePivot DPO en triplet prompt/chosen/rejected."""
 
-    def formater(self, exemple: ExemplePivot) -> ExempleFormatePreference:
+    def formater_preference(self, exemple: ExemplePivot) -> ExempleFormatePreference:
         """Rend `exemple.prompt`/`chosen`/`rejected` en triplet texte distinct, jamais concatene."""
         ...
