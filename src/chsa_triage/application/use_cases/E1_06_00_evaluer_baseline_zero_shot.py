@@ -36,6 +36,13 @@ NOM_RUN_PAR_DEFAUT = "baseline-zero-shot"
 
 log = LogTool(origin="evaluer_baseline_zero_shot")
 
+# Taille max de `echantillon_generations` : diagnostic (inspecter reellement
+# ce que le modele genere, ex. verbosite/format, plutot que deviner a partir
+# des seules metriques agregees), jamais une garantie de couverture ; meme
+# principe et meme taille que `TAILLE_MAX_ECHANTILLON_ECHECS_REFORMULATION`
+# dans `E3_00_uc_reformuler_preference_dpo.py` (23/09/2026).
+TAILLE_MAX_ECHANTILLON_GENERATIONS = 20
+
 
 @dataclass(frozen=True, slots=True)
 class ResultatEvaluationBaseline:
@@ -74,6 +81,10 @@ class EvaluerBaselineZeroShotUseCase:
     parametres_generation  : dict = field(default_factory=dict)
     nom_run                : str  = NOM_RUN_PAR_DEFAUT
 
+    # Jusqu'a TAILLE_MAX_ECHANTILLON_GENERATIONS paires (texte genere, texte
+    # reference), dans l'ordre du split test.
+    echantillon_generations: list[tuple[str, str]] = field(default_factory=list, init=False)
+
     # ##########################################################################
     def executer(self) -> ResultatEvaluationBaseline:
         """
@@ -83,6 +94,8 @@ class EvaluerBaselineZeroShotUseCase:
         ce projet (ex. `DecouperSplitsUseCase`). Le run de suivi n'est
         demarre qu'APRES cette verification (rien a logger si on leve).
         """
+        self.echantillon_generations = []
+
         # ----- CHARGEMENT ET VALIDATION DU SPLIT TEST -------------------------
         exemples = list(
             self.repository.lister(
@@ -130,9 +143,10 @@ class EvaluerBaselineZeroShotUseCase:
                     "exemple ignore, run poursuivi",
                 )
                 continue
-            paires.append(
-                (reponse.texte, _extraire_texte_reponse_reelle(exemple))
-            )
+            paire = (reponse.texte, _extraire_texte_reponse_reelle(exemple))
+            paires.append(paire)
+            if len(self.echantillon_generations) < TAILLE_MAX_ECHANTILLON_GENERATIONS:
+                self.echantillon_generations.append(paire)
             latences_ms.append(reponse.latence_ms)
 
         if not paires:
