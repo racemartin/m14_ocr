@@ -27,13 +27,51 @@ protocole MCP.
 
 | ID | Exigence | Source |
 |---|---|---|
-| F1 | Collecter les symptômes du patient via un dialogue structuré | Mission : brief Dr. Dubois |
+| F1 | Collecter les symptômes du patient via un questionnaire intelligent adaptatif | Mission (texte exact, brief Dr. Dubois) |
 | F2 | Classer la priorité clinique selon l'échelle ESI (Niveaux 1-5) | Manuel SFT §7.1 |
-| F3 | Produire une sortie JSON strict (niveau, catégorie, ressources estimées) | Manuel SFT §7.1 |
-| F4 | Exposer un raisonnement clinique explicite (bloc `<think>`) | Mission : « explications claires » |
+| F3 | Produire une sortie JSON strict (niveau, catégorie, ressources estimées) | Manuel SFT §7.1 (absent du texte de mission lui-même) |
+| F4 | Exposer un raisonnement clinique explicite (bloc `<think>`) | Mission : « explications claires » (le bloc `<think>` precis est un choix d'implementation, pas une exigence litterale) |
 | F5 | Répondre en français et en anglais | Mission : dataset bilingue |
 | F6 | Tracer chaque interaction (horodatage, entrée, sortie, version modèle) | Mission : « auditabilité » |
 | F7 | Exposer le modèle via une API de démonstration | Mission : Livrable 4 |
+
+> **Note (implémentation, 23/09/2026)** : relecture du texte de mission
+> original (`MISION!_Finetunez votre propre LLM - OpenClassrooms.pdf`,
+> ce même dossier) apres les premiers runs DPO reels. Deux
+> clarifications importantes, qui reconfigurent comment F1/F3/F4 sont
+> satisfaites :
+>
+> - **F1** n'est demandee QUE dans le brief narratif de la mission
+>   (email Dr. Dubois) ; aucune des 4 etapes concretes de la mission
+>   (donnees / SFT+DPO / deploiement / rapport) ne demande d'entrainer
+>   cette capacite specifiquement, et les 4 corpus sources imposes
+>   (MediQAl, FrenchMedMCQA, MedQuAD, UltraMedical-Preference) sont
+>   tous des paires a UN SEUL tour (Q/R, QCM, preference), jamais des
+>   entretiens multi-tours. La seule mention connexe est la phase 2 du
+>   brief, "simulation d'inference en conditions quasi-reelles" -
+>   rattachee au deploiement (Etape 4), pas a l'entrainement. F1 est
+>   donc traitee comme une exigence de **conception du prompting au
+>   moment de l'inference** (systeme de prompt + historique de
+>   conversation multi-tours envoye au modele deja SFT+DPO), pas comme
+>   une exigence de donnees d'entrainement supplementaires.
+> - **F3/F4** (JSON strict + bloc `<think>`) ne viennent PAS du texte
+>   de mission OpenClassrooms lui-meme (aucune occurrence de "JSON" ni
+>   de `<think>` dans le PDF source) : ce sont des exigences
+>   auto-imposees, ajoutees via le Manuel SFT interne au projet. La
+>   tentative d'enseigner ce format PENDANT le DPO (reformulation
+>   `chosen -> <think>+JSON`, cf. `docs/04_etape3_dpo/`) a echoue
+>   empiriquement sur 6 runs reels (le modele 1.7B ne suit pas la
+>   consigne de reformulation de facon fiable) ; decision prise de
+>   **decoupler** : le DPO s'entraine desormais sur les paires
+>   `chosen`/`rejected` d'origine (`--skip-reformulation`), et le
+>   respect du format JSON est repousse au **prompting/contrainte de
+>   generation a l'inference (Etape 4)**, plutot que d'etre re-appris
+>   pendant l'alignement. Cout reel mesure de ce choix : le F1 token
+>   post-DPO **regresse** par rapport au post-SFT (0,112 -> 0,049,
+>   README §3), et 0/278 sorties du checkpoint DPO brut sont un JSON
+>   valide - preuve que le format doit bien etre repris a la couche
+>   inference, il ne survit pas tel quel a travers le DPO actuel.
+>   Details et chiffres complets : `README.md` §3 "DPO".
 
 ## 4. Exigences non fonctionnelles
 
@@ -144,9 +182,18 @@ livrable nommé `Nom_Prenom_n°_Nom_du_livrable_mmaaaa`.
 ## 9. Critères d'acceptation du POC
 
 - Le modèle produit un JSON valide (schéma Pydantic) sur ≥ 95 % des
-  requêtes de test.
+  requêtes de test. **Statut réel (23/09/2026)** : non atteint par le
+  checkpoint DPO brut évalué directement (0/278, cf. note §3
+  ci-dessus) — attendu, puisque ce critère est désormais visé au
+  niveau de l'**endpoint déployé** (prompting/contrainte de génération,
+  Étape 4), pas au niveau du checkpoint SFT+DPO nu. À re-mesurer une
+  fois le prompting de production en place, pas avant.
 - L'accuracy de classification ESI sur le jeu de test clinique dépasse
-  la baseline zéro-shot (Phase 1) de façon mesurable.
+  la baseline zéro-shot (Phase 1) de façon mesurable. **Statut réel** :
+  non mesurable tel quel sur le checkpoint DPO brut (0 paire JSON
+  comparable, même cause que ci-dessus) ; le F1 token, lui, régresse
+  par rapport au post-SFT (0,112 -> 0,049, README §3) — signal à
+  surveiller une fois le format restauré côté inférence, pas à ignorer.
 - Aucune réponse retenue en évaluation finale n'a de score de sécurité
   < 4/7 (garde-fou NF4).
 - Endpoint vLLM opérationnel avec latence documentée.
