@@ -25,10 +25,20 @@ lora:
   modules_cibles: [q_proj, k_proj, v_proj, o_proj]
 
 entrainement:
-  # Defaut reel verifie trl.DPOConfig (trl==1.13.0) : 0.1. Controle
-  # l'ecart tolere entre pi_theta et pi_ref (cf.
-  # docs/04_etape3_dpo/00_introduction_concepts.md §2).
-  beta: 0.1
+  # Run complet a 5000 (job 6ab2ff0c52d0dbd7f1d80b0b, 2026-09-22/23,
+  # beta=0.1) : verdict saine, rewards/margins=+3.00 (tres eleve),
+  # MAIS evaluation post-DPO reelle montre une degenerescence de
+  # generation (changements de langue aleatoires EN/FR -> JA/ZH/AR,
+  # effondrement en repetitions de "-"), F1 token regresse (0.112 ->
+  # 0.049). --repetition-penalty 1.2 attenue partiellement (F1 -> 0.063)
+  # mais ne resout ni les changements de langue ni tous les
+  # effondrements : signe coherent d'un ancrage trop faible a pi_ref
+  # (marge de recompense tres elevee = derive importante), pas un
+  # probleme de decodage. Releve de 0.1 a 0.3 (x3, ancrage plus fort)
+  # pour tester cette hypothese, d'abord sur le run pas cher a 100
+  # avant de rengager un run a 5000 ; NON VALIDE empiriquement a cette
+  # nouvelle valeur. Defaut reel trl.DPOConfig (trl==1.13.0) : 0.1.
+  beta: 0.3
   # Premier run reel complet (job 6ab2d7ee51992417dfcd40cd, 2026-09-22,
   # taux 5.0e-6) : verdict sous_apprentissage, rewards/accuracies=0.30
   # (< 0.5, pire que le hasard), rewards/margins negatif. Relance a
