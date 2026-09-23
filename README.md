@@ -801,29 +801,49 @@ Résultat inattendu et net : le F1 **régresse** après DPO (0,112 ->
 Exactitude classification niveau ESI non calculable (0/278 sorties au
 format JSON `{niveau, categorie, ressources_estimees}` attendu).
 
-Explication la plus probable, cohérente avec la décision de découplage
-documentée plus haut ("Runs réels sur le sous-ensemble de 100") : la
-reformulation `chosen -> <think>+JSON` a été volontairement retirée de
-l'entraînement DPO (`--skip-reformulation`), donc le DPO a optimisé la
-préférence sur les paires `chosen`/`rejected` **d'origine, en langage
-libre**, sans aucun signal renforçant le format JSON appris pendant le
-SFT. Les métriques de récompense confirment que le DPO a bien appris
-la préférence clinique voulue (`rewards/accuracies=0,725`,
-`rewards/margins=+3,00`, verdict `saine`) — mais ce faisant, il a
-probablement ré-éloigné le modèle du format structuré que le SFT avait
-enseigné, d'où la chute du F1 mesuré contre une référence au format
-JSON. Hypothèse cohérente avec les chiffres, pas encore confirmée par
-une inspection directe des sorties générées.
+**Cause réelle confirmée (23/09/2026), par inspection directe des
+sorties générées** (`echantillon_generations`, cf.
+`EvaluerBaselineZeroShotUseCase`) : ce n'est pas qu'une perte du format
+JSON. Le modèle post-DPO **dégénère** sur une partie réelle des
+exemples — changements de langue aléatoires (questions EN/FR
+répondues en japonais/chinois/arabe) et effondrements en répétitions
+(un paragraphe recopié tel quel, ou des dizaines de "-" à la suite).
+`--repetition-penalty 1.2` à l'évaluation atténue partiellement
+(F1 0,049 -> 0,063) mais ne résout ni les changements de langue ni
+tous les effondrements : signe cohérent d'un ancrage trop faible au
+modèle de référence pendant le DPO (`rewards/margins=+3,00` est très
+élevé pour `beta=0,1`), pas seulement d'un paramètre de décodage à
+l'évaluation. `beta` relevé à `0,3` dans la recette pour tester cette
+hypothèse (à valider sur le run pas cher à 100 avant de rengager un
+run à 5000).
 
-Ceci correspond exactement au compromis anticipé lors de la décision de
-découplage (la mission réelle ne demande que l'alignement SFT+DPO sur
-les paires de préférence ; le format JSON est un ajout du cahier des
-charges local, F3/F4) : le respect du format est repoussé à l'Étape 4
-(prompting/contrainte au moment de l'inférence) plutôt que d'être
-ré-appris pendant le DPO. Reste à décider si ce compromis est
-acceptable tel quel ou si le format doit être restauré autrement —
-décision à prendre avec la mise à jour du cahier des charges et de la
-documentation Étape 3, encore en attente.
+Le découplage reformulation/DPO (chosen non reformulé,
+`--skip-reformulation`) reste une cause probable et distincte de la
+perte spécifique du format JSON (0/278 sorties valides) : la mission
+réelle ne demande que l'alignement SFT+DPO sur les paires de
+préférence, le format JSON est un ajout du cahier des charges local
+(F3/F4) désormais visé au moment de l'inférence (Étape 4). Mais la
+dégénérescence de fluidité/langue ci-dessus est un problème distinct,
+à résoudre côté entraînement (beta) avant de considérer le compromis
+format acceptable tel quel.
+
+**Journal des runs DPO (paramètres d'entrée -> métriques de sortie),
+pour comparaison directe :**
+
+| Run (job / eval) | Date | taux_apprentissage | taille_lot | beta | Taille dataset | Verdict | rewards/accuracies | rewards/margins |
+|---|---|---|---|---|---|---|---|---|
+| `6ab2c3e552d0dbd7f1d7fcd1` | 22/09 | 5e-6 | 4 | 0,1 | 100 | (OOM éval, corrigé depuis) | — | — |
+| `6ab2d7ee51992417dfcd40cd` | 22/09 | 5e-6 | 1 | 0,1 | 100 | sous_apprentissage | 0,30 | -1,25 |
+| (100, taux relevé) | 22/09 | 5e-5 | 4 | 0,1 | 100 | sous_apprentissage | 0,625 / 0,75 (éval) | +0,72 / +0,60 (éval) |
+| `6ab2ff0c52d0dbd7f1d80b0b` | 22-23/09 | 5e-5 | 4 | 0,1 | 5000 | **saine** | 0,725 | **+3,00** |
+
+| Évaluation post-DPO (checkpoint `mombasstic/chsa-triage-dpo-lora`) | Date | repetition_penalty | Exact match | F1 (token) | Latence moy. |
+|---|---|---|---|---|---|
+| `6ab3933152d0dbd7f1d83a16` | 23/09 | — | 0,000 | 0,049 | ~12,0 s |
+| `6ab3adaa52d0dbd7f1d8445b` | 23/09 | 1,2 | 0,000 | 0,063 | ~11,9 s |
+
+Prochaine ligne à ajouter une fois le run à `beta=0,3` réellement
+exécuté.
 
 
 <table id="4-deploiement" style="width:100%;"><tr><td style="background-color:#f5b0e0;">
