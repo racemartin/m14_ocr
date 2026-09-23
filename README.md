@@ -836,14 +836,22 @@ pour comparaison directe :**
 | `6ab2d7ee51992417dfcd40cd` | 22/09 | 5e-6 | 1 | 0,1 | 100 | sous_apprentissage | 0,30 | -1,25 |
 | (100, taux relevé) | 22/09 | 5e-5 | 4 | 0,1 | 100 | sous_apprentissage | 0,625 / 0,75 (éval) | +0,72 / +0,60 (éval) |
 | `6ab2ff0c52d0dbd7f1d80b0b` | 22-23/09 | 5e-5 | 4 | 0,1 | 5000 | **saine** | 0,725 | **+3,00** |
+| `6ab3c06852d0dbd7f1d84adc` | 23/09 | 5e-5 | 4 | **0,3** | 100 | sous_apprentissage (attendu à cette taille, cf. note ci-dessus) | 0,60 | 1,93 (marge non comparable entre beta differents, cf. definition beta×log-ratio) |
 
-| Évaluation post-DPO (checkpoint `mombasstic/chsa-triage-dpo-lora`) | Date | repetition_penalty | Exact match | F1 (token) | Latence moy. |
-|---|---|---|---|---|---|
-| `6ab3933152d0dbd7f1d83a16` | 23/09 | — | 0,000 | 0,049 | ~12,0 s |
-| `6ab3adaa52d0dbd7f1d8445b` | 23/09 | 1,2 | 0,000 | 0,063 | ~11,9 s |
+| Évaluation post-DPO (checkpoint `mombasstic/chsa-triage-dpo-lora`) | Date | beta du checkpoint | repetition_penalty | Exact match | F1 (token) | Latence moy. |
+|---|---|---|---|---|---|---|
+| `6ab3933152d0dbd7f1d83a16` | 23/09 | 0,1 | — | 0,000 | 0,049 | ~12,0 s |
+| `6ab3adaa52d0dbd7f1d8445b` | 23/09 | 0,1 | 1,2 | 0,000 | 0,063 | ~11,9 s |
+| `6ab3c38a52d0dbd7f1d84c5c` | 23/09 | **0,3** | 1,2 | 0,000 | **0,112** | ~10,7 s |
 
-Prochaine ligne à ajouter une fois le run à `beta=0,3` réellement
-exécuté.
+**`beta=0,3` + `repetition_penalty=1,2` ramène le F1 au niveau du
+post-SFT (0,112 == 0,112, sur le checkpoint pas cher à 100
+exemples)** : confirme que la dégénérescence venait bien d'un ancrage
+trop faible à `pi_ref`, pas d'un problème de décodage seul ou du
+découplage reformulation. Prochaine étape : rengager le run complet à
+5000 avec `beta=0,3` (déjà dans la recette) pour confirmer que ce
+gain tient à l'échelle réelle, avant de considérer ce hyperparamètre
+validé.
 
 
 <table id="4-deploiement" style="width:100%;"><tr><td style="background-color:#f5b0e0;">
