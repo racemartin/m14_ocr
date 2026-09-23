@@ -88,14 +88,14 @@ def construire_presentation() -> Presentation:
     diapo = ajouter_diapositive_vide(prs)
     ajouter_bandeau_titre(diapo, "Resultat phare", "Vue d'ensemble, detail dans les sections suivantes")
     ajouter_chiffre_cle(diapo, "0,112", "F1 token post-SFT\n(vs 0,043 baseline GPU)", 0.7, 2.0)
-    ajouter_chiffre_cle(diapo, "72,5 %", "rewards/accuracies DPO\n(5000 exemples, verdict saine)", 4.9, 2.0)
+    ajouter_chiffre_cle(diapo, "75 %", "rewards/accuracies DPO retenu\n(beta=0,3, 5000 exemples, verdict saine)", 4.9, 2.0)
     ajouter_chiffre_cle(diapo, "3", "pieces de deploiement\n(vLLM+LoRA, API, Streamlit)", 9.0, 2.0)
     ajouter_liste(
         diapo,
         [
             "Le SFT triple le F1 token par rapport a la meilleure baseline : premiere preuve chiffree d'un effet mesurable.",
-            "Le DPO a ete entraine avec succes a l'echelle reelle, mais a revele un probleme reel a "
-            "l'evaluation (degenerescence de generation), diagnostique et corrige : le fil conducteur de la section 3.",
+            "Le DPO a d'abord revele un probleme reel a l'evaluation (degenerescence de generation), diagnostique, "
+            "corrige (beta=0,3) et reconfirme a l'echelle reelle : le fil conducteur de la section 3.",
         ],
         top=4.3,
         taille_police=16,
@@ -240,7 +240,7 @@ def construire_presentation() -> Presentation:
 
     # 11. Section 3.2b - Run complet a 5000 exemples
     diapo = ajouter_diapositive_vide(prs)
-    ajouter_bandeau_titre(diapo, "3.2 Entrainement DPO - run complet, 5000 exemples", "Cahier des charges §7, Livrable 1")
+    ajouter_bandeau_titre(diapo, "3.2 Entrainement DPO - run complet, 5000 exemples", "Cahier des charges §7, Livrable 1 - premier run a l'echelle reelle")
     ajouter_chiffre_cle(diapo, "SAINE", "Verdict de convergence\n(premier verdict sain DPO du projet)", 0.7, 2.0, largeur=3.8)
     ajouter_chiffre_cle(diapo, "72,5 %", "rewards/accuracies\n(rewards/margins = +3,00)", 5.0, 2.0, largeur=3.6)
     ajouter_chiffre_cle(diapo, "1h44", "Duree reelle\n(estimation initiale : 30-60 min)", 9.1, 2.0, largeur=3.6)
@@ -251,6 +251,8 @@ def construire_presentation() -> Presentation:
             "rewards/chosen=-1,72, rewards/rejected=-4,72 : le modele prefere bien 'chosen' a 'rejected', comme attendu.",
             "Confirme la lecture faite a 100 exemples : le verdict sous_apprentissage etait un faux negatif du "
             "seuil herite du SFT, pas un echec d'apprentissage. Poids publies : mombasstic/chsa-triage-dpo-lora.",
+            "Ce premier run a l'echelle reelle utilise encore beta=0,1 : l'evaluation qui suit (3.3) y "
+            "decouvre un probleme reel, corrige puis reconfirme a cette meme echelle.",
         ],
         top=4.3,
         taille_police=15,
@@ -286,36 +288,37 @@ def construire_presentation() -> Presentation:
 
     # 13. Section 3.3 - Cause racine et correction
     diapo = ajouter_diapositive_vide(prs)
-    ajouter_bandeau_titre(diapo, "3.3 Cause racine et correction", "Ancrage trop faible au modele de reference (pi_ref)")
+    ajouter_bandeau_titre(diapo, "3.3 Cause racine, correction, confirmation a l'echelle", "Ancrage trop faible au modele de reference (pi_ref)")
     ajouter_liste(
         diapo,
         [
             "rewards/margins=+3,00 est tres eleve pour beta=0,1 : signe coherent d'un ancrage trop faible a pi_ref, "
             "pas seulement d'un parametre de decodage a l'evaluation.",
-            "beta releve a 0,3 dans la recette pour tester cette hypothese, validee d'abord sur le checkpoint "
-            "pas cher a 100 exemples avant de rengager un run a 5000.",
+            "beta releve a 0,3 : gain confirme d'abord sur le checkpoint pas cher a 100 exemples, PUIS sur le "
+            "run complet a 5000 (verdict saine, rewards/accuracies=0,75) - aucune regression en passant a l'echelle.",
         ],
         top=1.7,
         taille_police=17,
     )
     ajouter_tableau(
         diapo,
-        entetes=["Checkpoint (100 ex.)", "repetition_penalty", "F1 (token)"],
+        entetes=["Checkpoint", "repetition_penalty", "F1 (token)"],
         lignes=[
-            ["beta=0,1", "-", "0,049"],
-            ["beta=0,1", "1,2", "0,063"],
-            ["beta=0,3", "1,2", "0,112 (= post-SFT)"],
+            ["beta=0,1 (5000)", "-", "0,049"],
+            ["beta=0,1 (5000)", "1,2", "0,063"],
+            ["beta=0,3 (100, verification)", "1,2", "0,112 (= post-SFT)"],
+            ["beta=0,3 (5000, echelle reelle)", "1,2", "0,110 (= post-SFT)"],
         ],
         top=4.1,
-        largeur_colonnes=[5.0, 3.5, 3.0],
+        largeur_colonnes=[5.5, 3.5, 3.0],
     )
     ajouter_notes(
         diapo,
-        "Jobs d'evaluation reels : 6ab393352... beta=0,1 sans repetition_penalty (F1=0,049) ; "
+        "Jobs d'evaluation reels : 6ab3933152d0dbd7f1d83a16 beta=0,1 sans repetition_penalty (F1=0,049) ; "
         "6ab3adaa52d0dbd7f1d8445b beta=0,1 + repetition_penalty=1,2 (F1=0,063) ; "
-        "6ab3c38a52d0dbd7f1d84c5c beta=0,3 + repetition_penalty=1,2 (F1=0,112). "
-        "Prochaine etape non encore realisee : rengager le run complet a 5000 avec beta=0,3 pour confirmer "
-        "ce gain a l'echelle reelle, avant de considerer l'hyperparametre valide.",
+        "6ab3c38a52d0dbd7f1d84c5c beta=0,3 (checkpoint 100) + repetition_penalty=1,2 (F1=0,112) ; "
+        "6ab40ee752d0dbd7f1d86485 beta=0,3 (checkpoint 5000, job d'entrainement 6ab3f52a51992417dfcd7fe5) "
+        "+ repetition_penalty=1,2 (F1=0,110). beta=0,3 est desormais l'hyperparametre retenu pour ce projet.",
     )
 
     # 14. Diapositive de synthese
@@ -324,9 +327,9 @@ def construire_presentation() -> Presentation:
     ajouter_liste(
         diapo,
         [
-            "Parametres DPO retenus : beta=0,3, taux_apprentissage=5e-5, taille_lot=4, "
-            "per_device_eval_batch_size=4, repetition_penalty=1,2 a l'inference "
-            "(beta=0,3 valide au run pas cher a 100 exemples ; confirmation a 5000 = prochaine etape).",
+            "Parametres DPO retenus (finaux) : beta=0,3, taux_apprentissage=5e-5, taille_lot=4, "
+            "per_device_eval_batch_size=4, repetition_penalty=1,2 a l'inference - confirmes a l'echelle "
+            "reelle (5000 exemples), aucune regression par rapport au run pas cher a 100.",
             "1. OOM a l'evaluation -> per_device_eval_batch_size jamais fixe (defaut = 8) -> fixe explicitement.",
             "2. Sous-apprentissage initial -> taux_apprentissage trop faible (5e-6) -> releve a 5e-5.",
             "3. Degenerescence de generation post-DPO -> ancrage trop faible a pi_ref (beta=0,1) -> "
@@ -342,7 +345,7 @@ def construire_presentation() -> Presentation:
             ["Baseline CPU (Q4_K_M)", "0,000", "0,037", "~21,6 s"],
             ["Baseline GPU (bf16)", "0,000", "0,043", "~7,3 s"],
             ["Post-SFT (bf16+LoRA)", "0,000", "0,112", "~11,6 s"],
-            ["Post-DPO (beta=0,1)", "0,000", "0,049", "~12,0 s"],
+            ["Post-DPO (beta=0,3, retenu)", "0,000", "0,110", "~11,2 s"],
         ],
         top=4.7,
         largeur_colonnes=[4.5, 2.33, 2.33, 2.34],
@@ -409,9 +412,9 @@ def construire_presentation() -> Presentation:
         [
             "Etape 1 (donnees) : terminee - 134 883 exemples pivot, anonymises et repartis en splits.",
             "Etape 2 (SFT) : reussie et validee - F1 token triple par rapport a la meilleure baseline.",
-            "Etape 3 (DPO) : entrainee avec succes a l'echelle reelle (verdict saine, rewards/accuracies=0,725) ; "
-            "degenerescence a l'evaluation diagnostiquee et corrigee (beta=0,3 + repetition_penalty=1,2), "
-            "validee pour l'instant seulement au run pas cher a 100 exemples.",
+            "Etape 3 (DPO) : entrainee avec succes a l'echelle reelle ; degenerescence a l'evaluation "
+            "diagnostiquee et corrigee (beta=0,3 + repetition_penalty=1,2), gain confirme a l'echelle reelle "
+            "(F1=0,110, quasi identique au post-SFT, aucune regression en passant de 100 a 5000 exemples).",
             "Etape 4 (deploiement) : code ecrit et teste (433 passed / 5 skipped), jamais deploye reellement.",
         ],
         top=1.6,
@@ -424,8 +427,7 @@ def construire_presentation() -> Presentation:
     ajouter_liste(
         diapo,
         [
-            "Confirmer beta=0,3 sur le run complet a 5000 exemples (prochaine etape immediate, pas encore lancee).",
-            "Garde-fou de securite clinique NF4 (juge LLM) : decision produit encore ouverte, non implemente.",
+            "Garde-fou de securite clinique NF4 (juge LLM, safety < 4/7) : decision produit encore ouverte, non implemente.",
             "Aucun Space HF (GPU vLLM, API, Streamlit) cree ni pousse a ce jour.",
             "Tests de latence et de robustesse en conditions reelles (charge, concurrence) restant a faire.",
             "Classification du niveau ESI (F3) non calculable : le dataset n'a pas encore de reponses de "
