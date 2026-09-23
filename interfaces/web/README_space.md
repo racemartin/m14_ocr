@@ -23,8 +23,8 @@ Secrets du Space a definir avant publication :
 - `CHSA_API_URL_BASE` : URL du Space Docker/GPU compagnon.
 - `CHSA_API_CLE` : meme cle que `CHSA_CLE_API_DEMO` cote API.
 
-Publication (jamais realisee dans cette tache, effet externe reel a la
-charge du capitaine) : uploader `interfaces/web/app_test_inference.py`,
+Publication (jamais realisee dans cette tache, effet externe reel,
+action reservee a l'operateur humain) : uploader `interfaces/web/app_test_inference.py`,
 `interfaces/web/logica_test_inference.py`, ce fichier (renomme
 `README.md` a la racine du Space) et `interfaces/web/requirements.txt`
 (renomme `requirements.txt` a la racine du Space) vers le depot HF

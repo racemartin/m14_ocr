@@ -998,7 +998,7 @@ workflow.
 <h2 style="border-bottom:none; margin:0;">4.5 Healthcheck vLLM et frontend Streamlit de test</h2>
 </td></tr></table>
 
-Cible de déploiement réelle (décidée avec le capitaine) : **deux HF
+Cible de déploiement réelle (décision produit actée) : **deux HF
 Spaces séparés**, jamais réalisée dans cette tâche (aucun Space HF
 créé ni poussé, code et fichiers de configuration seulement).
 

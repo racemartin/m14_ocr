@@ -6,7 +6,7 @@
 # DIFFERENT du `Dockerfile` a la racine du depot (celui-ci reste
 # l'image API SEULE, decouplee de vLLM, cf. sa propre note de
 # conception : vLLM comme service HTTP externe). Ce fichier-ci sert le
-# DEUXIEME deploiement decide avec le capitaine (cf. tache
+# DEUXIEME deploiement, decision produit actee (cf. tache
 # "healthcheck-streamlit") : DEUX HF Spaces separes, dont celui-ci, le
 # Space Docker/GPU (couteux, allume seulement pendant les tests), qui
 # fait tourner l'API ET vLLM dans le MEME conteneur (un seul cout GPU,

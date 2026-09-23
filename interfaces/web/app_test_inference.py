@@ -6,8 +6,8 @@ pas un faux moteur. Distinct de `monitoring/app_suivi_entrainement.py`
 (courbes d'apprentissage SFT/DPO, aucun chat, but different).
 
 Cible de deploiement (jamais realisee dans cette tache : effet externe
-reel, le capitaine s'en charge lui-meme, meme patron que le reste de
-cette session) : DEUX HF Spaces separes.
+reel, action reservee a l'operateur humain, meme patron que le reste
+de cette session) : DEUX HF Spaces separes.
 - Space Docker/GPU (couteux, allume seulement pendant les tests) :
   `interfaces/api/` + `Dockerfile` a la racine du depot (existant,
   Etape 4).

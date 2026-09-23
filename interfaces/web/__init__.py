@@ -5,7 +5,7 @@ contre l'API FastAPI reelle (`interfaces/api/`) : `app_test_inference.py`
 Streamlit ni reseau, meme discipline que
 `monitoring/logica_suivi_entrainement.py`).
 
-Deploiement cible (jamais realise, decision du capitaine) : un Space HF
+Deploiement cible (jamais realise, decision produit actee) : un Space HF
 Streamlit/CPU separe du Space HF Docker/GPU qui sert l'API+vLLM, cf.
 `interfaces/web/README_space.md` pour son frontmatter et
 `interfaces/web/requirements.txt` pour ses dependances.
