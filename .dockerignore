@@ -1,0 +1,17 @@
+.git/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+data/raw/
+data/processed/
+data/splits/
+docs/
+tests/
+mlruns/
+.mlflow/
+*.log
+logs/
+.env

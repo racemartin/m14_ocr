@@ -20,6 +20,8 @@ from chsa_triage.domain.model.decision_revision_humaine import (
     CleCandidatRevision,
     DecisionRevisionHumaine,
 )
+from chsa_triage.domain.model.diagnostic_clinique import DiagnosticClinique
+from chsa_triage.domain.model.entree_audit import EntreeAudit
 from chsa_triage.domain.model.enums import (
     Langue,
     NiveauConfiance,
@@ -49,6 +51,8 @@ __all__ = [
     "ConstantesVitales",
     "CorpusSource",
     "DecisionRevisionHumaine",
+    "DiagnosticClinique",
+    "EntreeAudit",
     "ExempleFormate",
     "ExempleFormatePreference",
     "ExemplePivot",

@@ -37,6 +37,9 @@ if TYPE_CHECKING:  # pragma: no cover - uniquement pour les outils de typage
     from chsa_triage.infrastructure.adapters.jsonl_exemple_formate_repository import (
         JsonlExempleFormateRepository,
     )
+    from chsa_triage.infrastructure.adapters.jsonl_journal_audit import (
+        JsonlJournalAudit,
+    )
     from chsa_triage.infrastructure.adapters.jsonl_preference_reformulee_repository import (
         JsonlPreferenceReformuleeRepository,
     )
@@ -91,6 +94,7 @@ __all__ = [
     "JsonlDecisionsRevisionHumaine",
     "JsonlExempleFormatePreferenceRepository",
     "JsonlExempleFormateRepository",
+    "JsonlJournalAudit",
     "JsonlPreferenceReformuleeRepository",
     "JsonlRegistreEchantillonsControleQualite",
     "LecteurCorpusFichierLocal",
@@ -137,6 +141,10 @@ _CARTE_IMPORTS_PARESSEUX = {
     "JsonlExempleFormateRepository": (
         "chsa_triage.infrastructure.adapters.jsonl_exemple_formate_repository",
         "JsonlExempleFormateRepository",
+    ),
+    "JsonlJournalAudit": (
+        "chsa_triage.infrastructure.adapters.jsonl_journal_audit",
+        "JsonlJournalAudit",
     ),
     "JsonlPreferenceReformuleeRepository": (
         "chsa_triage.infrastructure.adapters.jsonl_preference_reformulee_repository",
