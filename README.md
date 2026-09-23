@@ -54,6 +54,9 @@ Version détaillée (scripts/adaptateurs/dépôts HF réels, DPO marqué concept
   - [2.5 Evaluation Post-SFT](#25-evaluation-post-sft)
   - [2.6 Suivi d'entraînement](#26-suivi-entrainement)
 - [3. DPO](#3-dpo)
+  - [3.1 Architecture & vérification](#31-architecture)
+  - [3.2 Entraînement DPO](#32-entrainement-dpo)
+  - [3.3 Évaluation post-DPO](#33-evaluation-post-dpo)
 - [4. Déploiement](#4-deploiement)
   - [4.1 Adaptateur vLLM](#41-adaptateur-vllm)
   - [4.2 API FastAPI](#42-api-fastapi)
@@ -630,6 +633,10 @@ le même dépôt de métriques.
 <h1 style="border-bottom:none; margin:0;">3. DPO</h1>
 </td></tr></table>
 
+<table id="31-architecture" style="width:100%;"><tr><td style="background-color:#f5cf47;">
+<h2 style="border-bottom:none; margin:0;">3.1 Architecture &amp; vérification</h2>
+</td></tr></table>
+
 Code complet implémenté et testé : les 13 étapes du guide
 (`docs/04_etape3_dpo/03_guide_implementation_pas_a_pas.md`), du domaine
 (port `EntraineurPreference`, cas d'usage `ReformulerPreferenceDpoUseCase`
@@ -689,6 +696,10 @@ levait une `TypeError`. Schéma conceptuel de la double fonction d'une
 seule passe DPO (préférence clinique + format de sortie JSON
 contractuel) :
 [`docs/diagrams/04_etape3_dpo/activite/dpo_double_fonction_entrainement.png`](docs/diagrams/04_etape3_dpo/activite/dpo_double_fonction_entrainement.png).
+
+<table id="32-entrainement-dpo" style="width:100%;"><tr><td style="background-color:#f5cf47;">
+<h2 style="border-bottom:none; margin:0;">3.2 Entraînement DPO</h2>
+</td></tr></table>
 
 **Runs réels sur le sous-ensemble de 100 (2026-09-22)** — trois
 lancements réels, chacun diagnostiqué à partir de preuves réelles avant
@@ -769,6 +780,10 @@ de pas réels, pas un échec d'apprentissage — avec assez de données
 (3992 exemples train réels, ~998 pas), la perte d'entraînement bouge
 assez pour que le même seuil hérité du SFT reconnaisse la convergence.
 Poids publiés sur `mombasstic/chsa-triage-dpo-lora`.
+
+<table id="33-evaluation-post-dpo" style="width:100%;"><tr><td style="background-color:#f5cf47;">
+<h2 style="border-bottom:none; margin:0;">3.3 Évaluation post-DPO</h2>
+</td></tr></table>
 
 Évaluation post-DPO (mêmes métriques/même sous-ensemble que les
 baselines et le post-SFT, §2.2/§2.5, quatrième réemploi sans
