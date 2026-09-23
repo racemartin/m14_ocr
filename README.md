@@ -140,6 +140,7 @@ Vue d'ensemble de tous les scripts exécutables du dépôt, classés par étape.
 | `.github/workflows/ci.yml` | Pipeline CI : suite de tests (sans GPU/vLLM réel) + vérification du build Docker, sur push/PR vers `main`. |
 | `interfaces/web/app_test_inference.py` | Frontend Streamlit de test de l'entretien clinique (Space CPU, cf. §4.5). |
 | `deploy/space_gpu_api_vllm/` | Config Docker/GPU combinant API+vLLM pour le second Space (cf. §4.5). |
+| `monitoring/generer_presentation_soutenance.py` | Régénère le support PowerPoint de soutenance (`docs/00_cadrage/05_presentation_soutenance.pptx`), toutes étapes (données, SFT, DPO, déploiement), à partir des chiffres déjà mesurés et documentés dans ce README. |
 
 </td></tr></table>
 
@@ -1112,6 +1113,13 @@ uv sync --extra web
 export CHSA_API_URL_BASE="http://127.0.0.1:7860"
 export CHSA_API_CLE="change-moi"
 uv run streamlit run interfaces/web/app_test_inference.py
+```
+
+Une fois les résultats des sections 1 à 4 à jour, régénérer le support
+PowerPoint de soutenance (toutes étapes, chiffres déjà mesurés) :
+
+```bash
+uv run --with python-pptx python monitoring/generer_presentation_soutenance.py
 ```
 
 <table id="verifications-environnement" style="width:100%;"><tr><td style="background-color:#d9d9d9;">
