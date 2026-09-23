@@ -11,6 +11,7 @@ import json
 
 from chsa_triage.application.use_cases.E4_01_uc_obtenir_diagnostic import (
     PROMPT_DIAGNOSTIC,
+    REPETITION_PENALTY_DEFAUT,
     ObtenirDiagnosticUseCase,
 )
 from chsa_triage.domain.model.diagnostic_clinique import DiagnosticClinique
@@ -32,9 +33,11 @@ class FauxMoteurInference:
     def __init__(self, texte_reponse: str = TEXTE_DIAGNOSTIC_VALIDE) -> None:
         self.texte_reponse = texte_reponse
         self.appels: list[list[dict]] = []
+        self.parametres_appels: list[dict] = []
 
     def generer(self, messages: list[dict], parametres: dict | None = None) -> ReponseModele:
         self.appels.append(messages)
+        self.parametres_appels.append(dict(parametres or {}))
         return ReponseModele(texte=self.texte_reponse, nombre_tokens_entree=30, nombre_tokens_sortie=40)
 
 
@@ -103,3 +106,12 @@ def test_consigne_une_entree_d_audit_meme_si_le_format_est_invalide():
     assert json.loads(entree.entree) == [
         {"role": m.role, "contenu": m.contenu} for m in HISTORIQUE_EXEMPLE
     ]
+
+
+def test_repetition_penalty_est_toujours_transmise_au_moteur():
+    moteur = FauxMoteurInference()
+    cas_usage = ObtenirDiagnosticUseCase(moteur=moteur, journal=FauxJournalAudit())
+
+    cas_usage.executer("conv-1", HISTORIQUE_EXEMPLE)
+
+    assert moteur.parametres_appels[0]["repetition_penalty"] == REPETITION_PENALTY_DEFAUT == 1.2
