@@ -737,13 +737,26 @@ hf jobs uv run \
     --skip-reformulation
 ```
 
+**Résultat réel (2026-09-22→23)** : job `6ab2ff0c52d0dbd7f1d80b0b`,
+checkpoint `165d4040855abb6a` (`outputs/dpo-lora/run-20260922T222105Z`),
+durée réelle **1h44** (nettement au-dessus de l'estimation ~30-60 min
+faite avant lancement — sous-estimée, cause probable :
+`precompute_ref_log_probs: false` combiné à un split de validation 6x
+plus grand que la vérification à 100). Verdict de convergence
+**`saine`** — premier verdict sain de tout le projet en DPO. Métriques
+de récompense : `rewards/chosen=-1,72`, `rewards/rejected=-4,72`,
+`rewards/accuracies=0,725` (72,5 %), `rewards/margins=+3,00`. Confirme
+la lecture faite après le run à 100 exemples (point 3 ci-dessus) : le
+verdict `sous_apprentissage` était bien un faux négatif dû au trop peu
+de pas réels, pas un échec d'apprentissage — avec assez de données
+(3992 exemples train réels, ~998 pas), la perte d'entraînement bouge
+assez pour que le même seuil hérité du SFT reconnaisse la convergence.
+Poids publiés sur `mombasstic/chsa-triage-dpo-lora`.
+
 Évaluation post-DPO (mêmes métriques/même sous-ensemble que les
 baselines et le post-SFT, §2.2/§2.5, quatrième réemploi sans
 modification d'`EvaluerBaselineZeroShotUseCase`, même patron exact que
-le post-SFT) — à lancer une fois un checkpoint jugé sain obtenu
-(volontairement pas encore lancée sur les checkpoints
-`sous_apprentissage` ci-dessus, pour ne pas dépenser un run GPU sur un
-résultat déjà connu) :
+le post-SFT), réellement exécutée sur le checkpoint sain ci-dessus :
 
 ```bash
 hf jobs uv run \
@@ -755,6 +768,45 @@ hf jobs uv run \
     --depot-lora mombasstic/chsa-triage-dpo-lora \
     --suivi-hf-repo mombasstic/chsa-triage-baseline-metrics
 ```
+
+**Résultat réel, comparaison directe des quatre runs (mêmes 278
+exemples) :**
+
+| | Exact match | F1 moyen (token) | Latence moyenne |
+|---|---|---|---|
+| Baseline CPU (Q4_K_M) | 0,000 | 0,037 | ~21,6 s |
+| Baseline GPU (bf16) | 0,000 | 0,043 | ~7,3 s |
+| Post-SFT (bf16+LoRA) | 0,000 | **0,112** | ~11,6 s |
+| Post-DPO (bf16+LoRA) | 0,000 | 0,049 | ~12,0 s |
+
+Résultat inattendu et net : le F1 **régresse** après DPO (0,112 ->
+0,049), retombant quasiment au niveau de la baseline GPU seule (0,043).
+Exactitude classification niveau ESI non calculable (0/278 sorties au
+format JSON `{niveau, categorie, ressources_estimees}` attendu).
+
+Explication la plus probable, cohérente avec la décision de découplage
+documentée plus haut ("Runs réels sur le sous-ensemble de 100") : la
+reformulation `chosen -> <think>+JSON` a été volontairement retirée de
+l'entraînement DPO (`--skip-reformulation`), donc le DPO a optimisé la
+préférence sur les paires `chosen`/`rejected` **d'origine, en langage
+libre**, sans aucun signal renforçant le format JSON appris pendant le
+SFT. Les métriques de récompense confirment que le DPO a bien appris
+la préférence clinique voulue (`rewards/accuracies=0,725`,
+`rewards/margins=+3,00`, verdict `saine`) — mais ce faisant, il a
+probablement ré-éloigné le modèle du format structuré que le SFT avait
+enseigné, d'où la chute du F1 mesuré contre une référence au format
+JSON. Hypothèse cohérente avec les chiffres, pas encore confirmée par
+une inspection directe des sorties générées.
+
+Ceci correspond exactement au compromis anticipé lors de la décision de
+découplage (la mission réelle ne demande que l'alignement SFT+DPO sur
+les paires de préférence ; le format JSON est un ajout du cahier des
+charges local, F3/F4) : le respect du format est repoussé à l'Étape 4
+(prompting/contrainte au moment de l'inférence) plutôt que d'être
+ré-appris pendant le DPO. Reste à décider si ce compromis est
+acceptable tel quel ou si le format doit être restauré autrement —
+décision à prendre avec la mise à jour du cahier des charges et de la
+documentation Étape 3, encore en attente.
 
 
 <table id="verifications-environnement" style="width:100%;"><tr><td style="background-color:#d9d9d9;">
