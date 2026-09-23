@@ -449,6 +449,14 @@ de perte train/validation de ce run a été reconstruite a posteriori depuis
 le log brut du job (backend de suivi mal configuré à l'origine, corrigé
 depuis) et republiée sur le dépôt de métriques.
 
+Pour récupérer ces poids en local (inspection directe, hors des
+commandes d'évaluation/entraînement DPO qui les chargent déjà à la
+volée par leur nom de dépôt) :
+
+```bash
+hf download mombasstic/chsa-triage-sft-lora --local-dir outputs/sft-lora-local
+```
+
 **Explication du contenu de la rectte:**
 <div style="margin-left: 2cm;">
 
@@ -928,14 +936,58 @@ serveur vLLM (API compatible OpenAI). Testé avec un faux client HTTP en
 mémoire (`tests/infrastructure/test_vllm_endpoint_inference_adapter.py`),
 aucun serveur vLLM/GPU réel n'étant provisionné dans cet environnement.
 
-Commande de démarrage réelle visée pour le serveur vLLM (jamais exécutée
-ici, GPU requis) : LoRA DPO servi nativement, sans fusion préalable avec
-la base.
+**Commande réelle, exécutée avec succès (23/09/2026)** : LoRA DPO servi
+nativement, sans fusion préalable avec la base. `hf jobs run` (PAS
+`hf jobs uv run`, qui attend un script Python) avec l'image officielle
+`vllm/vllm-openai:latest` ; le nom du binaire (`vllm serve ...`) doit
+être passé explicitement en premier (l'entrypoint de l'image ne
+préfixe pas automatiquement les arguments sur `hf jobs run`, contrairement
+à `docker run` standard) :
 
 ```bash
-vllm serve Qwen/Qwen3-1.7B-Base \
+hf jobs run \
+    --flavor l4x1 \
+    --timeout 30m \
+    --secrets HF_TOKEN \
+    --expose 8000 \
+    vllm/vllm-openai:latest \
+    vllm serve Qwen/Qwen3-1.7B-Base \
     --enable-lora \
-    --lora-modules dpo=mombasstic/chsa-triage-dpo-lora
+    --lora-modules dpo=mombasstic/chsa-triage-dpo-lora \
+    --max-lora-rank 16
+```
+
+`--max-lora-rank 16` fixé explicitement (rang réel du LoRA, cf. recette
+DPO) plutôt que de compter sur le défaut vLLM. `--expose 8000` rend le
+port joignable via le proxy public des Jobs (avec un token HF ayant
+accès en lecture au namespace du job), sans passer par `hf jobs ssh`.
+
+Récupérer l'URL réelle exposée et vérifier que le serveur répond :
+
+```bash
+hf jobs inspect <job_id>   # champ endpoint.expose_urls, ex. https://<job_id>--8000.hf.jobs
+
+curl -H "Authorization: Bearer $(cat ~/.cache/huggingface/token)" \
+    https://<job_id>--8000.hf.jobs/health
+
+curl -H "Authorization: Bearer $(cat ~/.cache/huggingface/token)" \
+    https://<job_id>--8000.hf.jobs/v1/models
+```
+
+`/v1/models` doit lister `Qwen/Qwen3-1.7B-Base` ET `dpo` (`root:
+mombasstic/chsa-triage-dpo-lora`). Confirmé réel : les deux apparaissent
+bien après le démarrage complet du serveur (`Application startup
+complete` dans les logs du job).
+
+**Important** : contrairement aux jobs d'entraînement/évaluation
+(`hf jobs uv run`), `vllm serve` est un serveur qui NE S'ARRÊTE JAMAIS
+tout seul — il continue à facturer du GPU tant qu'il tourne, même sans
+requête. Toujours passer `--timeout` comme filet de sécurité, et
+annuler manuellement dès la fin des tests plutôt que d'attendre le
+timeout :
+
+```bash
+hf jobs cancel <job_id>
 ```
 
 <table id="42-api-fastapi" style="width:100%;"><tr><td style="background-color:#f5b0e0;">
