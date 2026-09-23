@@ -155,8 +155,17 @@ partition "ETAPE 3 : Semaine 3 : Alignement DPO" #F5E8F0 {
 
 partition "ETAPE 4 : Semaine 4 : Deploiement & Evaluation" #FDEBEB {
   fork
-    :Fusionner adaptateurs LoRA\n(merge_and_unload);
-    :Construire image Docker + FastAPI;
+    ' [PERIME / SUPERSEDE, 23/09/2026] "Fusionner adaptateurs LoRA
+    ' (merge_and_unload)" retire : decision reelle (verifiee au fil de
+    ' cette session, cf. docs/00_cadrage/01_cahier_des_charges.md et
+    ' README.md §3) est de NE PAS fusionner -- vLLM sert nativement les
+    ' adaptateurs LoRA non fusionnes (--enable-lora --lora-modules),
+    ' sur la MEME base bf16 non quantifiee deja utilisee par les 4
+    ' evaluations. Garde le checkpoint DPO petit (~126 Mo vs plusieurs
+    ' Go fusionne), evite de re-fusionner a chaque reentrainement
+    ' (encore en cours), et permet de servir plusieurs adaptateurs
+    ' (SFT seul, DPO v1, DPO v2...) sur une seule base chargee.
+    :Construire image Docker + FastAPI\n(base + LoRA non fusionnes, --enable-lora);
     :Deployer endpoint vLLM sur le cloud;
     note right
       Sortie : endpoint pilote (Livrable 4)
