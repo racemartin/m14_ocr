@@ -6,13 +6,19 @@ title Étape 3 (DPO) : double fonction en une seule passe d'entraînement\nAlign
 start
 
 note right #FCEBE6
-  **[CONCEPTUEL / PRÉVU]** Étape 3 (DPO) non implémentée dans le
-  code à ce jour (aucun script d'entraînement DPO n'existe,
-  cf. README.md, section « 3. DPO »). Ce diagramme est prospectif :
-  il illustre ce que le cahier des charges prévoit, pas un
-  entraînement réellement exécuté. Théorie complète (dérivation de
-  la perte DPO) :
-  docs/references/livre_theorique_llm_triage_chsa.md, §6.
+  **[PÉRIMÉ / SUPERSÉDÉ, 23/09/2026]** Ce diagramme décrivait le plan
+  D'ORIGINE (DPO enseignant préférence clinique ET format JSON dans
+  la même passe). Ce plan a été tenté et abandonné empiriquement après
+  6 runs réels (le modèle 1.7B ne suit pas la consigne de
+  reformulation de façon fiable, cf. `docs/00_cadrage/01_cahier_des_charges.md`
+  §3 note 23/09/2026 et `README.md` §3 "DPO"). L'implémentation réelle
+  entraîne le DPO sur les paires `chosen`/`rejected` d'ORIGINE
+  (`--skip-reformulation`) : seule la "Fonction 1" ci-dessous
+  (alignement des préférences) reflète le comportement réel ; la
+  "Fonction 2" (format appris pendant le DPO) NE SE PRODUIT PLUS.
+  Le format JSON est désormais visé au moment de l'inférence
+  (Étape 4), pas pendant cet entraînement. Diagramme à redessiner ;
+  conservé tel quel pour la trace historique de la décision.
 end note
 
 partition "1. Entrée : dataset DPO de préférences cliniques" {
