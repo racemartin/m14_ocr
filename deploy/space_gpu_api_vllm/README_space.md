@@ -24,6 +24,25 @@ manuelle des deux demarrages.
 
 Secrets du Space a definir avant publication :
 - `CHSA_CLE_API_DEMO` : cle attendue en en-tete `X-API-Key`.
+- `HF_TOKEN` : necessaire des que `CHSA_JOURNAL_AUDIT=hf_dataset` (voir
+  ci-dessous) pousse vers un depot dataset prive ; deja necessaire
+  ailleurs dans ce projet pour le meme mecanisme (suivi d'experimentation,
+  cf. AGENTS.md/README §2.6).
+
+Variables optionnelles pour le journal d'audit F6 (traçabilite) : par
+defaut (`JsonlJournalAudit`), les entrees sont ecrites dans un fichier
+local du conteneur, **perdu a chaque redemarrage du Space** (filesystem
+ephemere, aucun stockage persistant HF payant active). Pour persister
+gratuitement via un dataset HF Hub (`HfDatasetJournalAudit`, meme
+mecanisme `huggingface_hub.CommitScheduler` que le suivi d'experimentation) :
+- `CHSA_JOURNAL_AUDIT=hf_dataset`
+- `CHSA_JOURNAL_AUDIT_REPO=mombasstic/chsa-triage-audit-journal`
+
+Depot dataset a creer une seule fois au prealable (necessite `HF_TOKEN`) :
+
+```bash
+hf repo create mombasstic/chsa-triage-audit-journal --repo-type dataset --private
+```
 
 Publication (jamais realisee dans cette tache, effet externe reel,
 GPU payant, a autoriser explicitement, action reservee a l'operateur
