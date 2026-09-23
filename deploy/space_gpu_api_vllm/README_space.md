@@ -8,16 +8,17 @@ app_port: 7860
 pinned: false
 ---
 
-Space Docker/GPU, couteux, a n'allumer que pendant les tests (a la
-difference du Space Streamlit/CPU compagnon, leger, toujours allume,
-cf. `interfaces/web/README_space.md`). Sert l'API FastAPI
-(`interfaces/api/`) ET le serveur vLLM (LoRA DPO, jamais fusionne avec
-la base) dans le MEME conteneur, via `Dockerfile` +
-`demarrer.sh` de ce dossier.
+Space Docker/GPU, couteux, a n'allumer que pendant les tests. Seule
+piece deployee sur HF Spaces (architecture a 2 pieces, decision
+produit du 24/09/2026, cf. `interfaces/web/README_space.md` pour le
+frontend Streamlit compagnon, execute en LOCAL par l'operateur humain,
+jamais comme Space separe). Sert l'API FastAPI (`interfaces/api/`) ET
+le serveur vLLM (LoRA DPO, jamais fusionne avec la base) dans le MEME
+conteneur, via `Dockerfile` + `demarrer.sh` de ce dossier.
 
 `GET /sante` (`interfaces/api/app.py`) reste HTTP 200 des que uvicorn
 demarre, meme si vLLM met plusieurs minutes a charger le modele : c'est
-ce que le Space Streamlit compagnon sonde en boucle pour detecter
+ce que le frontend Streamlit local sonde en boucle pour detecter
 automatiquement la disponibilite reelle du modele, sans synchronisation
 manuelle des deux demarrages.
 

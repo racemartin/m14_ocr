@@ -86,7 +86,9 @@ docs/diagrams/
     ├── paquets/                     classes_etape4 (classes réelles) + etape4_paquets
     │                                (relation à l'existant Étape 1/1bis/2/3) (réel)
     └── deploiement/                 conteneur Docker (API FastAPI) vs composants externes
-                                       (serveur vLLM, HF Hub, HF Spaces jamais créé) (réel)
+                                       (serveur vLLM, HF Hub, HF Space jamais créé) vs poste
+                                       local de l'opérateur (frontend Streamlit, hors HF
+                                       Spaces, architecture à 2 pièces) (réel)
 ```
 
 ## État de couverture
@@ -105,9 +107,10 @@ docs/diagrams/
 **« réel »** = généré à partir du code effectivement écrit
 (`src/chsa_triage/`, `interfaces/cli/`, `training/`, `monitoring/`).
 **« conceptuel »** = anticipe une architecture qui n'est pas encore
-codée (`interfaces/web/`, seul reste dans ce cas : `interfaces/api/`
-est réel depuis le 23/09/2026, cf. plus bas), à mettre à jour dès que
-le code correspondant existe. Les diagrammes de l'Étape 2 (SFT) sont
+codée (plus aucun diagramme n'est actuellement dans cet état :
+`interfaces/api/` est réel depuis le 23/09/2026, `interfaces/web/`
+depuis le 24/09/2026, cf. plus bas), à mettre à jour dès que le code
+correspondant existe. Les diagrammes de l'Étape 2 (SFT) sont
 passés de « conceptuel » à « réel » le 14/09/2026 une fois
 `training/E2_04_sft_train.py` et `TrlSftEntraineurAdapter` effectivement
 écrits (vérifiés SANS GPU, jamais exécutés sur une vraie session GPU à
@@ -140,9 +143,13 @@ depuis zéro (jamais « mis à jour ») : `activite/pipeline_ci_cd.puml` (reflè
 + `paquets/etape4_paquets.puml` (même patron à deux fichiers que
 `04_etape3_dpo/paquets/`), et `deploiement/deploiement_etape4.puml`
 (distingue explicitement le conteneur Docker de l'API des composants
-externes : serveur vLLM séparé, dépôts HF Hub, HF Spaces jamais créé).
-`interfaces/web` (mentionné dans une version antérieure de ce tableau)
-n'existe toujours pas et n'a pas de diagramme dédié. Le premier
+externes : serveur vLLM séparé, dépôts HF Hub, HF Space jamais créé).
+`interfaces/web` (mentionné dans une version antérieure de ce tableau
+comme n'existant pas encore) a depuis été écrit (23/09/2026) ; mis à
+jour le 24/09/2026 dans `deploiement/deploiement_etape4.puml` pour le
+représenter comme un processus LOCAL côté opérateur humain (hors HF
+Spaces), l'architecture ayant été simplifiée de 3 à 2 pièces (plus de
+Space HF Streamlit/CPU dédié, cf. AGENTS.md et README §4.5). Le premier
 diagramme d'activité de l'Étape 3 (`04_etape3_dpo/activite/dpo_double_fonction_entrainement.puml`,
 18/09/2026) est conceptuel par nature et écrit AVANT le code (aucun
 script DPO n'existait alors) : il illustre comment une seule passe

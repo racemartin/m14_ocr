@@ -138,8 +138,8 @@ Vue d'ensemble de tous les scripts exécutables du dépôt, classés par étape.
 | `interfaces/api/main.py` | Point d'entrée ASGI de l'API FastAPI de démonstration (`uvicorn interfaces.api.main:app`). |
 | `Dockerfile` | Conteneurise l'API FastAPI seule (pas vLLM, cf. §4.2). |
 | `.github/workflows/ci.yml` | Pipeline CI : suite de tests (sans GPU/vLLM réel) + vérification du build Docker, sur push/PR vers `main`. |
-| `interfaces/web/app_test_inference.py` | Frontend Streamlit de test de l'entretien clinique (Space CPU, cf. §4.5). |
-| `deploy/space_gpu_api_vllm/` | Config Docker/GPU combinant API+vLLM pour le second Space (cf. §4.5). |
+| `interfaces/web/app_test_inference.py` | Frontend Streamlit de test de l'entretien clinique, exécuté en local par l'opérateur (cf. §4.5). |
+| `deploy/space_gpu_api_vllm/` | Config Docker/GPU combinant API+vLLM pour le Space HF (cf. §4.5). |
 | `monitoring/generer_presentation_soutenance.py` | Régénère le support PowerPoint de soutenance (`docs/00_cadrage/05_presentation_soutenance.pptx`), toutes étapes (données, SFT, DPO, déploiement), à partir des chiffres déjà mesurés et documentés dans ce README. |
 
 </td></tr></table>
@@ -1080,31 +1080,31 @@ workflow.
 <h2 style="border-bottom:none; margin:0;">4.5 Healthcheck vLLM et frontend Streamlit de test</h2>
 </td></tr></table>
 
-Cible de déploiement réelle (décision produit actée) : **deux HF
-Spaces séparés**, jamais réalisée dans cette tâche (aucun Space HF
-créé ni poussé, code et fichiers de configuration seulement).
+Architecture de déploiement retenue (décision produit du 24/09/2026,
+**à 2 pièces**, jamais réalisée dans cette tâche : aucun Space HF créé
+ni poussé, code et fichiers de configuration seulement) :
 
-- Un Space **Docker/GPU** (coûteux, à n'allumer que pendant les tests) :
-  API FastAPI + serveur vLLM, préparé dans
+- Un unique Space HF **Docker/GPU** (coûteux, à n'allumer que pendant
+  les tests) : API FastAPI + serveur vLLM, préparé dans
   [`deploy/space_gpu_api_vllm/`](deploy/space_gpu_api_vllm/)
   (`Dockerfile`, `demarrer.sh`, `README_space.md`), séparé du
   `Dockerfile` racine (qui reste l'image API **seule**, cf. §4.3).
-- Un Space **Streamlit/CPU** (léger, laissé allumé en permanence) :
-  interface de test de l'entretien clinique, préparée dans
-  [`interfaces/web/`](interfaces/web/) (`Dockerfile`,
-  `app_test_inference.py`, `logica_test_inference.py`,
-  `requirements.txt`, `README_space.md`). HF Spaces ne propose plus
-  "Streamlit" comme SDK de premier niveau dans son flux de création
-  actuel (confirmé par une erreur serveur 400 sur `hf repo create
-  --sdk streamlit` ; "Streamlit" y apparaît désormais comme un
-  **template à l'intérieur du SDK "Docker"**) : ce Space se crée donc
-  avec `--sdk docker` (jamais `--sdk streamlit`), même `Dockerfile`
-  dédié que le Space GPU compagnon, cf. `interfaces/web/README_space.md`.
+- Le frontend Streamlit de test de l'entretien clinique
+  ([`interfaces/web/`](interfaces/web/), `app_test_inference.py`,
+  `logica_test_inference.py`, `requirements.txt`) : exécuté **en
+  local** par l'opérateur humain, jamais publié comme Space HF séparé.
+  Un Space Docker rien que pour Streamlit exigerait soit un abonnement
+  HF PRO (sur le hardware gratuit `cpu-basic`), soit du hardware
+  payant, alors que ce frontend ne fait qu'appeler l'API en HTTP, sans
+  aucun calcul GPU : le faire tourner en local marche exactement aussi
+  bien pour ce POC, sans les complications de facturation d'un Space
+  dédié (l'ancienne cible à 3 pièces, `interfaces/web/README_space.md`,
+  est abandonnée).
 
-Le Space Streamlit ne sait jamais à l'avance si le Space GPU compagnon
-est allumé : il sonde `GET /sante` en boucle et affiche un état
-d'attente clair tant que le modèle n'est pas prêt, sans synchronisation
-manuelle des deux démarrages. `/sante`
+Ce frontend local ne sait jamais à l'avance si le Space GPU est
+allumé : il sonde `GET /sante` en boucle et affiche un état d'attente
+clair tant que le modèle n'est pas prêt, sans synchronisation manuelle
+des deux démarrages. `/sante`
 (`interfaces/api/app.py`) interroge à son tour le `/health` natif de
 `vllm serve` et retourne toujours HTTP 200 (jamais une erreur de
 connexion brute), avec un corps structuré `{"disponible": ...,
@@ -1117,7 +1117,10 @@ GPU/vLLM réel requis.
 
 ```bash
 uv sync --extra web
-export CHSA_API_URL_BASE="http://127.0.0.1:7860"
+# Exemple illustratif : remplacer par l'URL réelle du Space Docker/GPU
+# une fois publié (cf. bullet ci-dessus), ou par http://127.0.0.1:7860
+# pour tester contre une API lancée en local (§4.2/§4.3).
+export CHSA_API_URL_BASE="https://mombasstic-chsa-triage-api.hf.space"
 export CHSA_API_CLE="change-moi"
 uv run streamlit run interfaces/web/app_test_inference.py
 ```
