@@ -1,0 +1,112 @@
+@startuml deploiement_etape4
+!pragma layout smetana
+!include ../../_common/estilo.iuml
+
+title Étape 4 (déploiement) : Diagramme de déploiement\nAPI FastAPI conteneurisée (Docker) + serveur vLLM en service séparé : code [FAIT] et testé, jamais déployé réellement (aucun Space HF ni serveur vLLM/GPU réel provisionné, cf. README §4)
+
+actor "Infirmier\n(client HTTP)" as INFIRMIER
+
+node "Conteneur Docker\n(image chsa-triage-api, Dockerfile)\n[FAIT] jamais construit/déployé réellement\n(WSL2 sans intégration Docker Desktop ici)" as DOCKER #EFEAE0 {
+  component "uvicorn\n(interfaces.api.main:app,\nport 7860)" as UVICORN
+  component "interfaces.api.app\n(creer_application(), routes\nFastAPI, dependances par\ninjection explicite)" as APP
+  component "interfaces.api.securite\n(cle X-API-Key,\nCHSA_CLE_API_DEMO)" as SECURITE
+  database "MagasinConversationsMemoire\n(en mémoire, PERDU au\nredémarrage du conteneur)" as MAGASIN
+  component "PoursuivreEntretienUseCase\nObtenirDiagnosticUseCase\n(E4_00 / E4_01)" as USECASES
+  component "VllmEndpointInferenceAdapter\n(implémente MoteurInference,\nclient HTTP httpx sortant)" as ADAPT_VLLM
+  database "data/processed/journal_audit.jsonl\n(JsonlJournalAudit, F6, append-only ;\nPERDU sans volume monté)" as JOURNAL
+}
+
+node "Serveur vLLM\n(service SÉPARÉ, GPU requis,\nJAMAIS dans l'image Docker ci-dessus)\n[CIBLE MISSION] jamais provisionné ici" as VLLM #FCEBE6 {
+  component "vllm serve Qwen/Qwen3-1.7B-Base\n~-~-enable-lora\n~-~-lora-modules dpo=<chsa-triage-dpo-lora>\n(API compatible OpenAI)" as VLLM_SERVER
+}
+
+cloud "Hugging Face Hub" as HFHUB {
+  artifact "Qwen/Qwen3-1.7B-Base\n(poids de base, publics)" as MODELE_BASE
+  database "model\nchsa-triage-dpo-lora (privé)\nadaptateur LoRA DPO, JAMAIS FUSIONNÉ\navec la base" as REPO_DPO_LORA
+}
+
+cloud "GitHub" as GITHUB {
+  component "GitHub Actions CI\n(.github/workflows/ci.yml)\n[FAIT] tests sans GPU +\nverif. build Docker, AUCUN déploiement" as CI
+}
+
+node "Hugging Face Spaces\n(cible de déploiement PRÉVUE,\n**JAMAIS ENCORE CRÉÉE**\ndécision de déploiement en attente)" as HFSPACE #FCEBE6 {
+  component "Docker SDK\n(hébergerait l'image ci-dessus)" as SPACE_DOCKER
+}
+
+' ----------------------------------------------------------------------
+' Flux reel
+' ----------------------------------------------------------------------
+
+INFIRMIER --> UVICORN : HTTPS, en-tête X-API-Key\n(POST /conversations,\n.../messages, .../diagnostic)
+UVICORN --> APP
+APP --> SECURITE : verifier_cle_api()\n(dependency FastAPI)
+APP --> MAGASIN : creer() / obtenir() / ajouter()
+APP --> USECASES : executer(...)
+USECASES --> ADAPT_VLLM : generer(messages, parametres)
+USECASES --> JOURNAL : consigner(EntreeAudit)\n(F6, systematique)
+
+ADAPT_VLLM --> VLLM_SERVER : POST /v1/chat/completions\n(CHSA_URL_MOTEUR_INFERENCE,\nAuthorization: Bearer <CHSA_CLE_API_VLLM>)
+VLLM_SERVER --> MODELE_BASE : charge au démarrage\n(huggingface_hub)
+VLLM_SERVER --> REPO_DPO_LORA : charge l'adaptateur LoRA\n(~-~-lora-modules, jamais fusionné)
+
+GITHUB --> CI : push/PR vers main
+CI ..> DOCKER : docker build -t chsa-triage-api:ci .\n(vérification du build UNIQUEMENT,\njamais publiée/déployée)
+
+DOCKER ..> HFSPACE : déploiement PRÉVU, JAMAIS EFFECTUÉ\n(README §4 : "jamais déployé réellement")
+
+note bottom of DOCKER
+  Décision Étape 4 documentée (cf. Dockerfile) :
+  l'image contient l'API FastAPI SEULE. `torch`
+  est une dépendance de base inconditionnelle du
+  paquet (héritée des Étapes 1-3), installée en
+  CPU via `uv sync ~-~-extra api`, mais jamais
+  importée par cette image (aucun adaptateur
+  transformers/trl chargé en mode "distant").
+end note
+
+note bottom of VLLM
+  JAMAIS provisionné dans cette tâche : GPU/CUDA
+  requis dans le conteneur hôte, hors de portée
+  d'une image API générique visant HF Spaces
+  (Docker SDK, souvent sans GPU pour le seul
+  frontal). Décision : service SÉPARÉ, appelé en
+  HTTP par VllmEndpointInferenceAdapter, exactement
+  le découplage que permet l'architecture
+  hexagonale du projet.
+end note
+
+note bottom of MAGASIN
+  Délibérément HORS architecture hexagonale
+  ports/adapters (cf. docstring
+  magasin_conversations.py) : état de session
+  éphémère du processus API, pas une entité
+  métier persistée. Un vrai déploiement
+  multi-instance voudrait un stockage partagé
+  (Redis, base), hors périmètre de ce POC.
+end note
+
+note bottom of JOURNAL
+  Fichier local au conteneur : sans volume monté,
+  perdu à chaque redémarrage/reconstruction du
+  conteneur (même limite déjà documentée pour le
+  disque éphémère des jobs HF Jobs, Étapes 2/3).
+  Aucun mécanisme de volume/persistance n'est
+  câblé dans le Dockerfile actuel.
+end note
+
+note bottom of HFSPACE
+  **JAMAIS ENCORE CRÉÉE.** Le Dockerfile et le
+  workflow CI sont écrits et testés pour être
+  compatibles avec cette cible (port 7860,
+  HEALTHCHECK /sante), mais aucun Space HF n'a
+  été créé ni configuré dans cette tâche.
+end note
+
+note bottom of REPO_DPO_LORA
+  Décision Étape 4 (cf. AGENTS.md/roadmap) : le
+  LoRA DPO n'est JAMAIS fusionné avec la base.
+  vLLM le sert nativement via ~-~-enable-lora,
+  ~-~-lora-modules dpo=<ce dépôt>.
+end note
+
+@enduml

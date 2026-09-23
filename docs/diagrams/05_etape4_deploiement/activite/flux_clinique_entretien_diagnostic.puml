@@ -1,0 +1,71 @@
+@startuml flux_clinique_entretien_diagnostic
+!include ../../_common/estilo.iuml
+
+title Étape 4 (déploiement) : Diagramme d'activité\nFlux clinique réel de l'API (`interfaces/api/`, F1/F2/F3/F4/F6) : entretien adaptatif multi-tours puis diagnostic sur décision explicite de l'infirmier : [FAIT], jamais exécuté contre un serveur vLLM réel
+
+start
+
+:Infirmier : `POST /conversations`;
+:`MagasinConversationsMemoire.creer()`\n(historique vide, en mémoire, éphémère);
+
+partition "Entretien adaptatif (F1) : E4_00_uc_poursuivre_entretien.py" #E8F0F5 {
+  repeat
+    :Infirmier saisit le message du patient\n(`POST /conversations/{id}/messages`);
+    if (Historique vide ?) then (oui, premier tour)
+      :Préfixer `PROMPT_ENTRETIEN`\nau message ("Pose UNE SEULE question\nà la fois, ne propose ni diagnostic\nni niveau de priorité");
+    else (non)
+    endif
+    note right
+      Jamais de tour `role: "system"` envoyé
+      au modèle (décision Étape 4, cf. AGENTS.md :
+      un rôle absent du fine-tuning DPO a déjà causé
+      une dégénérescence en sortie vide). Le prompt
+      d'entretien est donc stocké dans l'historique
+      lui-même, jamais reconstruit à chaque appel.
+    end note
+    :`PoursuivreEntretienUseCase.executer()`\n-> `MoteurInference.generer()`\n(n_predict=128);
+    :`JournalAudit.consigner()`\n(type_evenement="tour_entretien", F6);
+    :Question suivante affichée à l'infirmier;
+  repeat while (Infirmier juge l'entretien\ninsuffisant ?) is (oui, poursuivre)
+  ->non, entretien jugé suffisant;
+}
+
+:Infirmier déclenche le bouton\n"Obtenir le diagnostic"\n(`POST /conversations/{id}/diagnostic`);
+note right
+  Jamais automatique : c'est TOUJOURS
+  l'infirmier (humain) qui décide quand
+  l'entretien est suffisant, jamais le
+  modèle de façon autonome.
+end note
+
+partition "Diagnostic structuré (F2/F3/F4) : E4_01_uc_obtenir_diagnostic.py" #E8F0F5 {
+  :Envoyer tout l'historique accumulé\n+ `PROMPT_DIAGNOSTIC`\n(bloc <think> + JSON niveau/catégorie/\nressources_estimees) en UN SEUL appel;
+  :`MoteurInference.generer()`\n(n_predict=512);
+  :`parser_diagnostic_strict()`\n(application/validation_diagnostic.py);
+  :`JournalAudit.consigner()`\n(type_evenement="diagnostic",\nmetadonnees={format_respecte}, F6);
+
+  if (Format `<think>`+JSON strict respecté ?) then (non)
+    :Retourner `texte_brut` seul\n(`format_respecte=false`);
+    note right
+      Jamais un échec silencieux : F6 exige
+      la traçabilité même d'une sortie mal
+      formée (texte_brut/format_respecte
+      toujours disponibles à l'appelant).
+    end note
+  else (oui)
+    :Retourner niveau ESI, catégorie,\nressources_estimees, raisonnement\n+ texte_brut;
+  endif
+}
+
+note right
+  **TODO NF4 (non implémenté, décision produit
+  ouverte)** : le garde-fou de sécurité clinique
+  (juge LLM, `safety < 4/7` -> score forcé à 0)
+  n'existe pas encore à ce stade du pipeline
+  (cf. TODO explicite dans
+  E4_01_uc_obtenir_diagnostic.py).
+end note
+
+stop
+
+@enduml

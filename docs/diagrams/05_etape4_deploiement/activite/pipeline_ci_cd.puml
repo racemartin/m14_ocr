@@ -1,0 +1,62 @@
+@startuml pipeline_ci_cd
+!include ../../_common/estilo.iuml
+
+title Étape 4 (déploiement) : Diagramme d'activité\nPipeline CI/CD réel (`.github/workflows/ci.yml`) : [FAIT], exécuté à chaque push/PR vers `main`, aucun déploiement réel déclenché
+
+start
+
+:Push ou Pull Request\nvers la branche `main`;
+
+partition "Job \"tests\" (ubuntu-latest)" #E8F0F5 {
+  :actions/checkout@v4;
+  :astral-sh/setup-uv@v3\n(installe l'outil `uv`);
+  :`uv python install 3.11`;
+  :`uv sync ~-~-extra dev ~-~-extra local ~-~-extra api`\n+ `uv pip install "pyyaml>=6.0"`;
+  note right
+    Extras dev+local+api : mêmes extras
+    réellement utilisés pour faire passer
+    la suite complète SANS GPU/vLLM réel
+    (pyyaml séparé, réservé à `remote`,
+    cf. AGENTS.md). L'extra `remote`
+    (torch/trl/peft GPU) n'est jamais
+    installé ici.
+  end note
+  :`uv run pytest tests/ -q`;
+}
+
+if (Tests passent ?) then (non)
+  :Échec du job "tests";
+  stop
+else (oui)
+endif
+
+partition "Job \"docker-build\" (needs: tests)" #E8F0F5 {
+  :actions/checkout@v4;
+  :`docker build -t chsa-triage-api:ci .`;
+  note right
+    Vérifie uniquement que le `Dockerfile`
+    construit (API FastAPI seule, `uv sync
+    ~-~-extra api ~-~-no-dev ~-~-frozen`) : image
+    JAMAIS publiée ni déployée par ce workflow.
+  end note
+}
+
+if (Build Docker réussit ?) then (non)
+  :Échec du job "docker-build";
+  stop
+else (oui)
+endif
+
+:CI verte;
+note right
+  Aucun déploiement réel n'est déclenché ici
+  (ni HF Spaces, ni registre Docker) : décision
+  Étape 4 documentée, "hors périmètre" de ce
+  workflow (cf. AGENTS.md/README §4.4). Le
+  déploiement effectif reste une action manuelle
+  future (cf. deploiement/deploiement_etape4.puml).
+end note
+
+stop
+
+@enduml

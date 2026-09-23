@@ -1,0 +1,139 @@
+@startuml etape4_paquets
+!pragma layout smetana
+!include ../../_common/estilo.iuml
+
+title Étape 4 (déploiement) : Diagramme de paquets\nModules du déploiement et leur relation à l'existant (Étape 1/1bis/2/3) : [FAIT] code écrit et testé, jamais déployé/exécuté contre un serveur vLLM réel (cf. AGENTS.md)
+
+package "interfaces.api\n(nouveau, adaptateur PRIMAIRE)" as API {
+  class "app\n(creer_application())" as AppModule <<FAIT>>
+  class "main\n(point d'entrée ASGI,\nlit les variables d'environnement)" as MainModule <<FAIT>>
+  class "securite\n(clé X-API-Key)" as SecuriteModule <<FAIT>>
+  class MagasinConversationsMemoire <<FAIT, HORS architecture hexagonale>>
+  class "schemas\n(Pydantic)" as SchemasModule <<FAIT>>
+}
+
+package "application" as APPLICATION {
+  package "use_cases" {
+    class PoursuivreEntretienUseCase <<E4_00, FAIT>>
+    class ObtenirDiagnosticUseCase <<E4_01, FAIT>>
+  }
+  class "validation_diagnostic\n(fonction pure)" as ValidationFn <<FAIT>>
+  class "validation_reformulation_dpo\n(fonction pure)" as ValidationDpoFn <<existant, Étape 3, réutilisé\n(CLES_REFORMULATION_ATTENDUES)>>
+}
+
+package "domain\n(zéro dépendance externe)" as DOMAIN {
+  package "model" {
+    class EntreeAudit <<FAIT>>
+    class DiagnosticClinique <<FAIT>>
+    class Message <<existant, Étape 1, réutilisé>>
+  }
+  package "ports" {
+    interface JournalAudit <<FAIT, nouveau port>>
+    interface MoteurInference <<existant, Étape 1bis, réutilisé>>
+    class ReponseModele <<existant, Étape 1bis, réutilisé>>
+  }
+}
+
+package "infrastructure.adapters" as INFRASTRUCTURE {
+  class VllmEndpointInferenceAdapter <<FAIT, jamais exécuté\ncontre un serveur vLLM réel>>
+  class JsonlJournalAudit <<FAIT>>
+  class LlamaCppInferenceAdapter <<existant, Étape 1bis, réutilisé\n(mode local, dev sans GPU)>>
+  class TransformersLoraInferenceAdapter <<existant, Étape 2/3,\nJAMAIS branché à l'API\n(GPU en-process, distinct de vLLM)>>
+}
+
+package "Dockerfile + CI\n(livraison, hors code Python)" as LIVRAISON {
+  class "Dockerfile\n(image API seule, port 7860)" as Docker <<FAIT, jamais construit/déployé\nréellement dans cette tâche>>
+  class ".github/workflows/ci.yml\n(tests sans GPU + build Docker)" as CI <<FAIT, exécuté à chaque\npush/PR, aucun déploiement>>
+}
+
+' ----------------------------------------------------------------------
+' Dependances reelles
+' ----------------------------------------------------------------------
+
+MainModule ..> AppModule
+MainModule ..> VllmEndpointInferenceAdapter
+MainModule ..> LlamaCppInferenceAdapter
+MainModule ..> JsonlJournalAudit
+note on link
+  CHSA_MOTEUR_INFERENCE=distant (défaut, vLLM,
+  cible mission) ou local (llama.cpp, dev sans GPU)
+end note
+
+AppModule ..> PoursuivreEntretienUseCase
+AppModule ..> ObtenirDiagnosticUseCase
+AppModule ..> MagasinConversationsMemoire
+AppModule ..> SecuriteModule
+AppModule ..> SchemasModule
+
+PoursuivreEntretienUseCase --> MoteurInference
+PoursuivreEntretienUseCase --> JournalAudit
+PoursuivreEntretienUseCase --> Message
+PoursuivreEntretienUseCase --> EntreeAudit
+
+ObtenirDiagnosticUseCase --> MoteurInference
+ObtenirDiagnosticUseCase --> JournalAudit
+ObtenirDiagnosticUseCase --> Message
+ObtenirDiagnosticUseCase --> EntreeAudit
+ObtenirDiagnosticUseCase --> DiagnosticClinique
+ObtenirDiagnosticUseCase ..> ValidationFn
+
+ValidationFn --> DiagnosticClinique
+ValidationFn ..> ValidationDpoFn
+
+JournalAudit ..> EntreeAudit
+MoteurInference ..> ReponseModele
+
+VllmEndpointInferenceAdapter ..|> MoteurInference
+JsonlJournalAudit ..|> JournalAudit
+LlamaCppInferenceAdapter ..|> MoteurInference
+
+Docker ..> AppModule : COPY src/ interfaces/ +\n`uv sync ~-~-extra api ~-~-no-dev ~-~-frozen`\n(uvicorn interfaces.api.main:app)
+CI ..> Docker : docker build -t chsa-triage-api:ci .\n(vérification du build UNIQUEMENT)
+
+note bottom of TransformersLoraInferenceAdapter
+  Réutilisé pour l'évaluation post-DPO (Étape 3,
+  E3_04_evaluer_post_dpo.py), JAMAIS branché à
+  l'API de l'Étape 4 : le déploiement cible sert
+  l'adaptateur LoRA via vLLM (~-~-enable-lora),
+  pas un chargement en mémoire du processus API.
+end note
+
+note bottom of MagasinConversationsMemoire
+  Délibérément HORS architecture hexagonale
+  ports/adapters : état de session éphémère du
+  processus API (perdu au redémarrage), jamais
+  une entité métier persistée. Les cas d'usage
+  restent purs (historique reçu en paramètre).
+end note
+
+note bottom of API
+  Nouveau paquet racine de ce projet : c'est le
+  premier adaptateur PRIMAIRE (driving adapter)
+  du dépôt (contrairement à interfaces/cli/,
+  déjà présent depuis l'Étape 1, qui est aussi
+  primaire mais synchrone/un-shot). interfaces/web
+  (mentionné dans une version antérieure de ce
+  tableau de couverture) n'existe TOUJOURS PAS :
+  seule interfaces/api/ a été implémentée.
+end note
+
+note bottom of LIVRAISON
+  Écrits et testés (Dockerfile jamais construit
+  réellement dans cette tâche : WSL2 sans
+  intégration Docker Desktop ; ci.yml, lui,
+  s'exécute réellement sur GitHub Actions à
+  chaque push/PR vers main). Aucun déploiement
+  réel (HF Spaces, registre Docker) déclenché
+  par l'un ou l'autre.
+end note
+
+note bottom of JournalAudit
+  Nouveau port (F6, traçabilité) : append-only,
+  jamais réécrit/muté. JsonlJournalAudit est le
+  seul adaptateur à ce jour (même famille que
+  ajouter_exemples_jsonl de
+  jsonl_dataset_repository.py, mais dédié à
+  EntreeAudit plutôt qu'à ExemplePivot).
+end note
+
+@enduml
