@@ -1,0 +1,188 @@
+@startuml classes_etape4
+!pragma layout smetana
+!include ../../_common/estilo.iuml
+
+title Étape 4 (déploiement) : Diagramme de classes\nClasses réelles du déploiement (domaine, ports, application, infrastructure, interfaces.api) : [FAIT] code écrit et testé, jamais déployé/exécuté contre un serveur vLLM réel (cf. AGENTS.md)
+
+package "domain.model" as MODEL {
+  class EntreeAudit {
+    +horodatage: str
+    +type_evenement: str
+    +conversation_id: str
+    +entree: str
+    +sortie: str
+    +version_modele: str
+    +metadonnees: dict
+  }
+  class DiagnosticClinique {
+    +raisonnement: str
+    +niveau: int
+    +categorie: str
+    +ressources_estimees: str
+  }
+  class Message <<existant, Étape 1, réutilisé>> {
+    +role: str
+    +contenu: str
+  }
+}
+
+package "domain.ports" as PORTS {
+  interface JournalAudit {
+    +consigner(entree: EntreeAudit) : None
+  }
+  interface MoteurInference <<existant, Étape 1bis, réutilisé>> {
+    +generer(messages: list[dict], parametres: dict | None) : ReponseModele
+  }
+  class ReponseModele <<existant, Étape 1bis, réutilisé>> {
+    +texte: str
+    +nombre_tokens_entree: int
+    +nombre_tokens_sortie: int
+    +latence_ms: float
+    +metadonnees: dict
+  }
+
+  JournalAudit ..> EntreeAudit
+  MoteurInference ..> ReponseModele
+}
+
+package "application" as APPLICATION {
+  class "validation_diagnostic" as ValidationFn <<module, fonction pure>> {
+    +parser_diagnostic_strict(texte: str) : DiagnosticClinique | None
+  }
+  class "validation_reformulation_dpo" as ValidationDpoFn <<existant, Étape 3, réutilisé\n(CLES_REFORMULATION_ATTENDUES)>>
+
+  ValidationFn ..> DiagnosticClinique
+  ValidationFn ..> ValidationDpoFn
+}
+
+package "application.use_cases" as USECASES {
+  class PoursuivreEntretienUseCase <<E4_00>> {
+    +moteur: MoteurInference
+    +journal: JournalAudit
+    +version_modele: str
+    +horloge: Callable[[], str]
+    +executer(conversation_id, historique, message_infirmier) : ResultatTourEntretien
+  }
+  class ResultatTourEntretien <<E4_00>> {
+    +message_utilisateur: Message
+    +message_assistant: Message
+  }
+  class ObtenirDiagnosticUseCase <<E4_01>> {
+    +moteur: MoteurInference
+    +journal: JournalAudit
+    +version_modele: str
+    +horloge: Callable[[], str]
+    +executer(conversation_id, historique) : ResultatDiagnostic
+  }
+  class ResultatDiagnostic <<E4_01>> {
+    +diagnostic: DiagnosticClinique | None
+    +texte_brut: str
+    +format_respecte: bool
+  }
+
+  PoursuivreEntretienUseCase --> MoteurInference
+  PoursuivreEntretienUseCase --> JournalAudit
+  PoursuivreEntretienUseCase --> Message
+  PoursuivreEntretienUseCase ..> ResultatTourEntretien
+
+  ObtenirDiagnosticUseCase --> MoteurInference
+  ObtenirDiagnosticUseCase --> JournalAudit
+  ObtenirDiagnosticUseCase --> Message
+  ObtenirDiagnosticUseCase ..> ValidationFn
+  ObtenirDiagnosticUseCase ..> ResultatDiagnostic
+  ResultatDiagnostic --> DiagnosticClinique
+}
+
+package "infrastructure.adapters" as ADAPTERS {
+  class VllmEndpointInferenceAdapter <<FAIT, jamais exécuté\ncontre un serveur vLLM réel>> {
+    +url_endpoint: str
+    +cle_api: str | None
+    +nom_modele: str = "dpo"
+    +timeout_secondes: float = 120.0
+    +generer(messages, parametres) : ReponseModele
+  }
+  class JsonlJournalAudit <<FAIT>> {
+    +chemin_fichier: Path
+    +consigner(entree: EntreeAudit) : None
+  }
+  class LlamaCppInferenceAdapter <<existant, Étape 1bis, réutilisé\n(mode local, dev sans GPU)>>
+
+  VllmEndpointInferenceAdapter ..|> MoteurInference
+  JsonlJournalAudit ..|> JournalAudit
+  LlamaCppInferenceAdapter ..|> MoteurInference
+}
+
+package "interfaces.api" as API {
+  class "app\n(creer_application())" as AppModule <<FAIT>> {
+    +moteur_inference: MoteurInference
+    +journal_audit: JournalAudit
+    +cle_api: str
+    +version_modele: str
+    +creer_application() : FastAPI
+  }
+  class "main\n(point d'entrée ASGI)" as MainModule <<FAIT>> {
+    +_construire_moteur_inference() : MoteurInference
+    +_cle_api_demo() : str
+    +app: FastAPI
+  }
+  class "securite\n(creer_dependance_verification_cle_api)" as SecuriteModule <<FAIT>>
+  class MagasinConversationsMemoire <<FAIT, HORS architecture\nhexagonale ports/adapters>> {
+    +creer() : str
+    +obtenir(conversation_id) : list[Message] | None
+    +ajouter(conversation_id, *messages) : None
+  }
+  class "schemas\n(modèles Pydantic requête/réponse)" as SchemasModule <<FAIT>>
+
+  AppModule --> PoursuivreEntretienUseCase
+  AppModule --> ObtenirDiagnosticUseCase
+  AppModule --> MagasinConversationsMemoire
+  AppModule --> SecuriteModule
+  AppModule --> SchemasModule
+  MainModule --> AppModule
+  MainModule --> VllmEndpointInferenceAdapter
+  MainModule --> LlamaCppInferenceAdapter
+  MainModule --> JsonlJournalAudit
+}
+
+note bottom of MagasinConversationsMemoire
+  Délibérément HORS architecture hexagonale
+  ports/adapters (cf. son propre docstring) :
+  une conversation vivante est un état de
+  session éphémère du processus API (perdu au
+  redémarrage), pas une entité métier persistée
+  entre exécutions comme ExemplePivot/
+  CheckpointEntraine. Les cas d'usage restent
+  purs : ils prennent l'historique en paramètre
+  et ne savent pas où il est stocké.
+end note
+
+note right of ObtenirDiagnosticUseCase
+  **TODO NF4 (non implémenté, décision produit
+  ouverte)** : le garde-fou de sécurité clinique
+  (juge LLM, "safety < 4/7" -> score forcé à 0)
+  n'existe pas ici. Point d'extension délibéré :
+  ResultatDiagnostic devrait passer par ce
+  contrôle AVANT présentation définitive à
+  l'infirmier (TODO explicite dans le code).
+end note
+
+note right of VllmEndpointInferenceAdapter
+  Sert nativement l'adaptateur LoRA DPO SANS
+  fusion préalable avec la base (décision Étape 4) :
+  parametres["model"] cible l'adaptateur vLLM
+  (~-~-lora-modules) chargé côté serveur. Un seul
+  mode HTTP (POST /v1/chat/completions), contrairement
+  à LlamaCppInferenceAdapter qui en a deux.
+end note
+
+note right of ValidationFn
+  Réutilise CLES_REFORMULATION_ATTENDUES de
+  validation_reformulation_dpo.py (Étape 3)
+  plutôt que de la redéfinir. Distinct de
+  parser_reformulation_stricte : ici l'appelant
+  (l'API live) a besoin des champs structurés
+  individuellement, pas seulement du texte
+  validé.
+end note
+
+@enduml

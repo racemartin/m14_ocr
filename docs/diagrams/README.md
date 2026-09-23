@@ -79,9 +79,14 @@ docs/diagrams/
 │                                      checkpoint SFT-LoRA) : réel (code), job JAMAIS
 │                                      ENCORE LANCÉ (décision de lancement en attente)
 └── 05_etape4_deploiement/
-    ├── activite/                  pipeline CI/CD (conceptuel)
-    ├── sequence/                   cas d'usage en production (conceptuel)
-    └── deploiement/                 architecture complète (conceptuel)
+    ├── activite/                  pipeline_ci_cd (réel, .github/workflows/ci.yml) +
+    │                                flux_clinique_entretien_diagnostic (réel, F1/F2/F3/F4/F6)
+    ├── sequence/                   poursuivre_entretien (E4_00) + obtenir_diagnostic (E4_01) :
+    │                                2 diagrammes, un par cas d'usage réel (réel)
+    ├── paquets/                     classes_etape4 (classes réelles) + etape4_paquets
+    │                                (relation à l'existant Étape 1/1bis/2/3) (réel)
+    └── deploiement/                 conteneur Docker (API FastAPI) vs composants externes
+                                       (serveur vLLM, HF Hub, HF Spaces jamais créé) (réel)
 ```
 
 ## État de couverture
@@ -95,12 +100,13 @@ docs/diagrams/
 | 02 : Étape 1 (données) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel) |
 | 03 : Étape 2 (SFT) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel) |
 | 04 : Étape 3 (DPO) | [FAIT] (conceptuel, écrit avant le code) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel, job jamais lancé) |
-| 05 : Étape 4 (déploiement) | [FAIT] (conceptuel) | [FAIT] (conceptuel) | [A FAIRE] | [FAIT] (conceptuel) |
+| 05 : Étape 4 (déploiement) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel, jamais déployé) |
 
 **« réel »** = généré à partir du code effectivement écrit
 (`src/chsa_triage/`, `interfaces/cli/`, `training/`, `monitoring/`).
 **« conceptuel »** = anticipe une architecture qui n'est pas encore
-codée (`interfaces/api/`, `interfaces/web/`), à mettre à jour dès que
+codée (`interfaces/web/`, seul reste dans ce cas : `interfaces/api/`
+est réel depuis le 23/09/2026, cf. plus bas), à mettre à jour dès que
 le code correspondant existe. Les diagrammes de l'Étape 2 (SFT) sont
 passés de « conceptuel » à « réel » le 14/09/2026 une fois
 `training/E2_04_sft_train.py` et `TrlSftEntraineurAdapter` effectivement
@@ -115,11 +121,29 @@ poids/métriques sur HF Hub, et les deux nouveaux CLI
 (`interfaces/cli/E2_00_formater_dataset_chatml.py`,
 `interfaces/cli/E2_05_evaluer_post_sft.py`) : cf. AGENTS.md pour le
 détail complet.
-**[A FAIRE]** = pas encore produit : seul le diagramme de paquets de
-l'Étape 4 reste à faire, une fois `interfaces/api` et `interfaces/web`
-implémentés (ou une proposition de conception documentée pour eux, sur
-le même principe que l'Étape 2). Le premier diagramme d'activité de
-l'Étape 3 (`04_etape3_dpo/activite/dpo_double_fonction_entrainement.puml`,
+**[A FAIRE]** = pas encore produit (aucune case du tableau ci-dessus
+n'est actuellement dans cet état). Les 4 diagrammes de l'Étape 4
+(déploiement) sont passés de « conceptuel » à « réel » le 23/09/2026,
+une fois `interfaces/api/` (FastAPI, entretien+diagnostic), le port
+`JournalAudit`/l'adaptateur `JsonlJournalAudit`, `VllmEndpointInferenceAdapter`,
+le `Dockerfile` et `.github/workflows/ci.yml` effectivement écrits et
+mergés (commit `bee3366`) : **constat fait à cette occasion** : les 3
+fichiers `activite/sequence/deploiement` que ce tableau donnait déjà
+comme « [FAIT] (conceptuel) » avant cette date n'avaient en réalité
+jamais été committés dans le dépôt (`git log --all` ne les retrouve
+sous aucune forme) ; seule cette ligne de tableau et l'arborescence
+ci-dessus en parlaient. Les 7 diagrammes réels ont donc été créés
+depuis zéro (jamais « mis à jour ») : `activite/pipeline_ci_cd.puml` (reflète
+`.github/workflows/ci.yml`), `activite/flux_clinique_entretien_diagnostic.puml`
+(F1 à F6), `sequence/poursuivre_entretien.puml` (E4_00),
+`sequence/obtenir_diagnostic.puml` (E4_01), `paquets/classes_etape4.puml`
++ `paquets/etape4_paquets.puml` (même patron à deux fichiers que
+`04_etape3_dpo/paquets/`), et `deploiement/deploiement_etape4.puml`
+(distingue explicitement le conteneur Docker de l'API des composants
+externes : serveur vLLM séparé, dépôts HF Hub, HF Spaces jamais créé).
+`interfaces/web` (mentionné dans une version antérieure de ce tableau)
+n'existe toujours pas et n'a pas de diagramme dédié. Le premier
+diagramme d'activité de l'Étape 3 (`04_etape3_dpo/activite/dpo_double_fonction_entrainement.puml`,
 18/09/2026) est conceptuel par nature et écrit AVANT le code (aucun
 script DPO n'existait alors) : il illustre comment une seule passe
 d'entraînement DPO enseignerait à la fois la préférence clinique et le

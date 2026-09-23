@@ -1,0 +1,92 @@
+@startuml obtenir_diagnostic
+!include ../../_common/estilo.iuml
+
+title Étape 4 (déploiement) : Diagramme de séquence\nObtenir le diagnostic structuré (F2/F3/F4, E4_01), sur bouton explicite infirmier : toutes les classes ci-dessous sont écrites et testées (`tests/interfaces/test_app_api.py`), jamais exécutées contre un serveur vLLM réel
+
+actor "Infirmier\n(client HTTP)" as Infirmier
+
+box "interfaces/api" #F0EEE7
+  participant "app.py\n(creer_application())" as API
+  participant "MagasinConversationsMemoire" as Magasin
+end box
+
+box "application/use_cases" #F0EEE7
+  participant "ObtenirDiagnosticUseCase\n(E4_01)" as UC
+end box
+
+box "application" #F0EEE7
+  participant "validation_diagnostic\n(parser_diagnostic_strict,\nfonction pure)" as Validation
+end box
+
+box "domain/ports" #F0EEE7
+  participant "MoteurInference\n(existant, réutilisé sans\nmodification)" as Moteur
+  participant "JournalAudit\n(nouveau port, F6)" as Journal
+end box
+
+autonumber "<b>0."
+
+Infirmier -> API : POST /conversations/{id}/diagnostic\n(en-tête X-API-Key)
+activate API
+API -> Magasin : obtenir(conversation_id)
+Magasin --> API : historique\n(404 si None, 400 si vide :\naucun diagnostic sans échange)
+
+API -> UC : executer(conversation_id, historique)
+activate UC
+
+UC -> UC : messages_pour_modele = historique\n+ {"role": "user", "content": PROMPT_DIAGNOSTIC}
+note right
+  PROMPT_DIAGNOSTIC exige STRICTEMENT
+  <think>raisonnement</think>{"niveau": <int ESI 1-5>,
+  "categorie": "...", "ressources_estimees": "..."},
+  rien d'autre avant/après, en UN SEUL appel
+  sur tout l'historique accumulé.
+end note
+
+UC -> Moteur : generer(messages_pour_modele,\n{"n_predict": 512})
+activate Moteur
+Moteur --> UC : ReponseModele(texte, ...)
+deactivate Moteur
+
+UC -> Validation : parser_diagnostic_strict(reponse.texte)
+activate Validation
+note right
+  Réutilise CLES_REFORMULATION_ATTENDUES
+  de application/validation_reformulation_dpo.py
+  (Étape 3) plutôt que de le redéfinir. Retourne
+  None (jamais une exception) dès que le format
+  n'est pas respecté (bloc <think> absent/vide,
+  JSON invalide, clé manquante/en trop, niveau
+  non entier).
+end note
+Validation --> UC : DiagnosticClinique | None
+deactivate Validation
+
+UC -> Journal : consigner(EntreeAudit(\ntype_evenement="diagnostic",\nentree=historique JSON, sortie=texte_brut,\nversion_modele,\nmetadonnees={"format_respecte": ...}))
+note right
+  Consigné MÊME si le format n'est pas
+  respecté : F6 exige la traçabilité de
+  l'appel, pas seulement des réponses
+  bien formées.
+end note
+
+UC --> API : ResultatDiagnostic\n(diagnostic, texte_brut, format_respecte)
+deactivate UC
+
+alt format_respecte == False
+  API --> Infirmier : DiagnosticReponse\n(format_respecte=false, texte_brut)
+else format_respecte == True
+  API --> Infirmier : DiagnosticReponse\n(format_respecte=true, niveau, categorie,\nressources_estimees, raisonnement, texte_brut)
+end
+deactivate API
+
+note over UC, Journal
+  **TODO NF4 (non implémenté, décision produit ouverte)** :
+  le garde-fou de sécurité clinique (juge LLM,
+  "safety < 4/7" -> score forcé à 0) n'existe pas ici.
+  Point d'extension déliberé : ResultatDiagnostic devrait
+  passer par ce contrôle AVANT présentation définitive
+  à l'infirmier (cf. TODO explicite dans
+  E4_01_uc_obtenir_diagnostic.py).
+end note
+
+@enduml

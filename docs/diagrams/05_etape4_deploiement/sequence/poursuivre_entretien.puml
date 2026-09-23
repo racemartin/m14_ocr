@@ -1,0 +1,79 @@
+@startuml poursuivre_entretien
+!include ../../_common/estilo.iuml
+
+title Étape 4 (déploiement) : Diagramme de séquence\nPoursuivre l'entretien clinique adaptatif (F1, E4_00) : toutes les classes ci-dessous sont écrites et testées (`tests/interfaces/test_app_api.py`), jamais exécutées contre un serveur vLLM réel
+
+actor "Infirmier\n(client HTTP)" as Infirmier
+
+box "interfaces/api" #F0EEE7
+  participant "app.py\n(creer_application())" as API
+  participant "securite.py\n(verifier_cle_api)" as Securite
+  participant "MagasinConversationsMemoire\n(hors architecture hexagonale,\nétat de session éphémère)" as Magasin
+end box
+
+box "application/use_cases" #F0EEE7
+  participant "PoursuivreEntretienUseCase\n(E4_00)" as UC
+end box
+
+box "domain/ports" #F0EEE7
+  participant "MoteurInference\n(existant, réutilisé sans\nmodification)" as Moteur
+  participant "JournalAudit\n(nouveau port, F6)" as Journal
+end box
+
+autonumber "<b>0."
+
+Infirmier -> API : POST /conversations\n(en-tête X-API-Key)
+activate API
+API -> Securite : verifier_cle_api(x_api_key)
+Securite --> API : OK (401 si clé invalide/absente)
+API -> Magasin : creer()
+Magasin --> API : conversation_id
+API --> Infirmier : DemarrerConversationReponse\n(conversation_id)
+deactivate API
+
+Infirmier -> API : POST /conversations/{id}/messages\n{"message": "..."}
+activate API
+API -> Securite : verifier_cle_api(x_api_key)
+API -> Magasin : obtenir(conversation_id)
+Magasin --> API : historique (404 si None)
+
+API -> UC : executer(conversation_id, historique, message_infirmier)
+activate UC
+
+alt historique vide (premier tour)
+  UC -> UC : contenu_utilisateur =\nPROMPT_ENTRETIEN + "\\n\\n" + message_infirmier
+  note right
+    Jamais de tour role="system" envoyé au
+    modèle (décision Etape 4, cf. AGENTS.md :
+    un rôle absent du fine-tuning DPO a déjà
+    causé une dégénérescence en sortie vide).
+    Le prompt d'entretien est donc PRÉFIXÉ au
+    premier message utilisateur et STOCKÉ tel
+    quel dans l'historique.
+  end note
+else historique non vide
+  UC -> UC : contenu_utilisateur = message_infirmier
+end
+
+UC -> Moteur : generer(messages_pour_modele,\n{"n_predict": 128})
+activate Moteur
+Moteur --> UC : ReponseModele(texte, ...)
+deactivate Moteur
+
+UC -> Journal : consigner(EntreeAudit(\ntype_evenement="tour_entretien",\nconversation_id, entree, sortie,\nversion_modele))
+note right
+  Consigné SYSTÉMATIQUEMENT, y compris si
+  l'appel au modèle échoue (l'exception se
+  propage, jamais avalee silencieusement :
+  une seule requête échoue pour un seul
+  utilisateur, pas de lot à protéger).
+end note
+
+UC --> API : ResultatTourEntretien\n(message_utilisateur, message_assistant)
+deactivate UC
+
+API -> Magasin : ajouter(conversation_id,\nmessage_utilisateur, message_assistant)
+API --> Infirmier : MessageEntretienReponse\n(conversation_id, message_assistant)
+deactivate API
+
+@enduml
