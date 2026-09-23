@@ -889,6 +889,7 @@ pour comparaison directe :**
 | (100, taux relevé) | 22/09 | 5e-5 | 4 | 0,1 | 100 | sous_apprentissage | 0,625 / 0,75 (éval) | +0,72 / +0,60 (éval) |
 | `6ab2ff0c52d0dbd7f1d80b0b` | 22-23/09 | 5e-5 | 4 | 0,1 | 5000 | **saine** | 0,725 | **+3,00** |
 | `6ab3c06852d0dbd7f1d84adc` | 23/09 | 5e-5 | 4 | **0,3** | 100 | sous_apprentissage (attendu à cette taille, cf. note ci-dessus) | 0,60 | 1,93 (marge non comparable entre beta differents, cf. definition beta×log-ratio) |
+| `6ab3f52a51992417dfcd7fe5` | 23/09 | 5e-5 | 4 | **0,3** | 5000 | **saine** | **0,75** | 4,84 (marge non comparable entre beta differents) |
 
 | Évaluation post-DPO (checkpoint `mombasstic/chsa-triage-dpo-lora`) | Date | beta du checkpoint | repetition_penalty | Exact match | F1 (token) | Latence moy. |
 |---|---|---|---|---|---|---|
