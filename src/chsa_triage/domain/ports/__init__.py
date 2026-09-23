@@ -29,6 +29,7 @@ from chsa_triage.domain.ports.formateur_invite_zero_shot import (
 from chsa_triage.domain.ports.formateur_preference import (
     FormateurPreference,
 )
+from chsa_triage.domain.ports.journal_audit import JournalAudit
 from chsa_triage.domain.ports.lecteur_corpus import LecteurCorpus
 from chsa_triage.domain.ports.moteur_inference import (
     MoteurInference,
@@ -52,6 +53,7 @@ __all__ = [
     "FormateurConversation",
     "FormateurInviteZeroShot",
     "FormateurPreference",
+    "JournalAudit",
     "LecteurCorpus",
     "MetriquesEntrainement",
     "MoteurInference",

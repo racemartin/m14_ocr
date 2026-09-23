@@ -1,0 +1,41 @@
+name: CI
+
+# Pipeline minimal (Etape 4, cahier des charges §"CI/CD imposé : GitHub
+# Actions") : suite de tests SANS GPU/vLLM reel + verification que
+# l'image Docker de l'API construit. Aucun deploiement reel ici
+# (decision Etape 4 : HF Spaces reste une action a autoriser
+# explicitement plus tard, cf. AGENTS.md/roadmap).
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installer uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Installer Python 3.11
+        run: uv python install 3.11
+
+      - name: Installer les dependances (dev+local+api, sans GPU/vLLM reel)
+        run: |
+          uv sync --extra dev --extra local --extra api
+          uv pip install "pyyaml>=6.0"
+
+      - name: Lancer la suite de tests
+        run: uv run pytest tests/ -q
+
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Construire l'image Docker de l'API (verification du build uniquement, jamais publiee)
+        run: docker build -t chsa-triage-api:ci .

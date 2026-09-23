@@ -54,6 +54,11 @@ Version détaillée (scripts/adaptateurs/dépôts HF réels, DPO marqué concept
   - [2.5 Evaluation Post-SFT](#25-evaluation-post-sft)
   - [2.6 Suivi d'entraînement](#26-suivi-entrainement)
 - [3. DPO](#3-dpo)
+- [4. Déploiement](#4-deploiement)
+  - [4.1 Adaptateur vLLM](#41-adaptateur-vllm)
+  - [4.2 API FastAPI](#42-api-fastapi)
+  - [4.3 Conteneurisation Docker](#43-conteneurisation-docker)
+  - [4.4 CI/CD](#44-cicd)
 - [Vérifications d'environnement](#verifications-environnement)
 
 <table id="tableau-récapitulatif-des-scripts" style="width:100%;"><tr><td style="background-color:#c9f1edff;">
@@ -117,6 +122,18 @@ Vue d'ensemble de tous les scripts exécutables du dépôt, classés par étape.
 |---|---|
 | `training/E3_03_dpo_train.py` | Point d'entrée d'entraînement DPO réel (continue le checkpoint SFT-LoRA), exécuté via HF Jobs (GPU requis) ; jamais lancé sur GPU à ce jour. |
 | `interfaces/cli/E3_04_evaluer_post_dpo.py` | Évaluation post-DPO : mêmes métriques/même sous-ensemble que les baselines et le post-SFT, mais via le modèle base+LoRA DPO. |
+
+</td></tr></table>
+
+<table id="etape-4-deploiement" style="width:100%; margin-left: 2cm;"><tr><td style="background-color:#f5b0e0;">
+<h3 style="border-bottom:none; margin:0;">Étape 4 — Déploiement</h3>
+
+
+| Script | Rôle |
+|---|---|
+| `interfaces/api/main.py` | Point d'entrée ASGI de l'API FastAPI de démonstration (`uvicorn interfaces.api.main:app`). |
+| `Dockerfile` | Conteneurise l'API FastAPI seule (pas vLLM, cf. §4.2). |
+| `.github/workflows/ci.yml` | Pipeline CI : suite de tests (sans GPU/vLLM réel) + vérification du build Docker, sur push/PR vers `main`. |
 
 </td></tr></table>
 
@@ -807,6 +824,128 @@ ré-appris pendant le DPO. Reste à décider si ce compromis est
 acceptable tel quel ou si le format doit être restauré autrement —
 décision à prendre avec la mise à jour du cahier des charges et de la
 documentation Étape 3, encore en attente.
+
+
+<table id="4-deploiement" style="width:100%;"><tr><td style="background-color:#f5b0e0;">
+<h1 style="border-bottom:none; margin:0;">4. Déploiement</h1>
+</td></tr></table>
+
+Code écrit et testé (`uv run pytest tests/ -q`, 433 passed / 5 skipped
+au moment de l'écriture), jamais déployé réellement (aucun Space HF ni
+job GPU lancés dans cette tâche, cf. décision de conception ci-dessous).
+Décisions de conception actées (roadmap
+[`docs/diagrams/00_vue_ensemble/activite/roadmap_activite.png`](docs/diagrams/00_vue_ensemble/activite/roadmap_activite.png)) :
+le LoRA DPO n'est jamais fusionné avec la base (vLLM le sert nativement,
+`--enable-lora`) ; F1 (entretien adaptatif) et F3/F4 (JSON strict +
+`<think>`) sont traités au niveau du prompting à l'inférence, jamais
+ré-appris pendant l'entraînement (cf. §3 ci-dessus) ; le garde-fou de
+sécurité clinique NF4 (juge LLM, `safety < 4/7`) reste un point
+d'extension documenté (TODO explicite dans
+`E4_01_uc_obtenir_diagnostic.py`), décision produit encore ouverte.
+
+<table id="41-adaptateur-vllm" style="width:100%;"><tr><td style="background-color:#f5b0e0;">
+<h2 style="border-bottom:none; margin:0;">4.1 Adaptateur vLLM</h2>
+</td></tr></table>
+
+`VllmEndpointInferenceAdapter`
+(`src/chsa_triage/infrastructure/adapters/vllm_endpoint_inference_adapter.py`)
+implémente le port `MoteurInference` existant (même port que
+`LlamaCppInferenceAdapter`/`TransformersLoraInferenceAdapter`, aucun
+nouveau port) via une requête HTTP `POST /v1/chat/completions` vers un
+serveur vLLM (API compatible OpenAI). Testé avec un faux client HTTP en
+mémoire (`tests/infrastructure/test_vllm_endpoint_inference_adapter.py`),
+aucun serveur vLLM/GPU réel n'étant provisionné dans cet environnement.
+
+Commande de démarrage réelle visée pour le serveur vLLM (jamais exécutée
+ici, GPU requis) : LoRA DPO servi nativement, sans fusion préalable avec
+la base.
+
+```bash
+vllm serve Qwen/Qwen3-1.7B-Base \
+    --enable-lora \
+    --lora-modules dpo=mombasstic/chsa-triage-dpo-lora
+```
+
+<table id="42-api-fastapi" style="width:100%;"><tr><td style="background-color:#f5b0e0;">
+<h2 style="border-bottom:none; margin:0;">4.2 API FastAPI</h2>
+</td></tr></table>
+
+`interfaces/api/` (F1/F2/F3/F4/F6/F7) : entretien clinique multi-tours
+(`POST /conversations`, `POST /conversations/{id}/messages`) et bouton
+explicite "obtenir le diagnostic" (`POST /conversations/{id}/diagnostic`,
+jamais déclenché automatiquement par le modèle), tous protégés par une
+clé API (en-tête `X-API-Key`) sauf `GET /sante`. Chaque tour et chaque
+appel diagnostic sont consignés dans un journal d'audit JSONL append-only
+(`JsonlJournalAudit`, F6 : horodatage, entrée, sortie, version du
+modèle). Testé de bout en bout via `fastapi.testclient.TestClient` avec
+un faux `MoteurInference`/`JournalAudit` en mémoire
+(`tests/interfaces/test_app_api.py`), et lancé réellement en local le
+temps de cette tâche (`uvicorn`, mode `local`/llama.cpp) pour confirmer
+que le serveur démarre et répond.
+
+```bash
+uv sync --extra api --extra local
+```
+
+```bash
+export CHSA_CLE_API_DEMO="change-moi"
+export CHSA_MOTEUR_INFERENCE=distant          # ou "local" (llama.cpp, dev sans GPU)
+export CHSA_URL_MOTEUR_INFERENCE="http://127.0.0.1:8000"
+export CHSA_NOM_MODELE_VLLM=dpo
+
+uv run uvicorn interfaces.api.main:app --host 0.0.0.0 --port 7860
+```
+
+```bash
+curl -s -X POST http://127.0.0.1:7860/conversations -H "X-API-Key: change-moi"
+curl -s -X POST http://127.0.0.1:7860/conversations/<id>/messages \
+    -H "X-API-Key: change-moi" -H "Content-Type: application/json" \
+    -d '{"message": "Douleur thoracique depuis ce matin."}'
+curl -s -X POST http://127.0.0.1:7860/conversations/<id>/diagnostic -H "X-API-Key: change-moi"
+```
+
+<table id="43-conteneurisation-docker" style="width:100%;"><tr><td style="background-color:#f5b0e0;">
+<h2 style="border-bottom:none; margin:0;">4.3 Conteneurisation Docker</h2>
+</td></tr></table>
+
+`Dockerfile` conteneurise l'API FastAPI **seule** (pas vLLM dans la même
+image) : vLLM tourne comme un service séparé, appelé en HTTP par
+`VllmEndpointInferenceAdapter` (`CHSA_URL_MOTEUR_INFERENCE`) exactement
+comme en local. Choix documenté dans le `Dockerfile` lui-même : vLLM
+demande un pilote GPU/CUDA dans le conteneur hôte, hors de portée d'une
+image API générique visant HF Spaces (Docker SDK) ; c'est le choix le
+plus simple à faire fonctionner et à reconstruire rapidement pour un POC.
+
+```bash
+docker build -t chsa-triage-api .
+docker run --rm -p 7860:7860 \
+    -e CHSA_CLE_API_DEMO="change-moi" \
+    -e CHSA_MOTEUR_INFERENCE=distant \
+    -e CHSA_URL_MOTEUR_INFERENCE="http://host.docker.internal:8000" \
+    chsa-triage-api
+```
+
+**Non vérifié dans cette tâche** : `docker` n'est pas utilisable depuis
+ce bac à sable (WSL2 sans intégration Docker Desktop) ; le build/run
+ci-dessus n'a donc pas pu être exécuté réellement ici. Les flags `uv
+sync`/`--frozen` utilisés dans le `Dockerfile` ont été vérifiés
+séparément (le `uv.lock` du dépôt résout déjà l'extra `api`).
+
+<table id="44-cicd" style="width:100%;"><tr><td style="background-color:#f5b0e0;">
+<h2 style="border-bottom:none; margin:0;">4.4 CI/CD</h2>
+</td></tr></table>
+
+`.github/workflows/ci.yml` : sur push/PR vers `main`, deux jobs
+séquentiels, aucun déploiement réel. `tests` installe `dev`+`local`+`api`
+(mêmes extras que ceux réellement utilisés dans cette tâche pour faire
+passer la suite complète sans GPU) plus `pyyaml` séparément (nécessaire
+à `training/E2_04_sft_train.py`/`E3_03_dpo_train.py`, autrement
+réservé à l'extra `remote`, cf. AGENTS.md), puis lance
+`uv run pytest tests/ -q`. `docker-build` (après `tests`) reconstruit
+l'image de l'API pour vérifier que le `Dockerfile` build, sans jamais
+la publier ni la déployer. Secrets (`HF_TOKEN` ou autre) : via GitHub
+Actions Secrets si un futur job en a besoin, jamais en dur dans le
+workflow.
 
 
 <table id="verifications-environnement" style="width:100%;"><tr><td style="background-color:#d9d9d9;">
