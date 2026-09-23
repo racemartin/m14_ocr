@@ -25,7 +25,8 @@ Secrets du Space a definir avant publication :
 - `CHSA_CLE_API_DEMO` : cle attendue en en-tete `X-API-Key`.
 
 Publication (jamais realisee dans cette tache, effet externe reel,
-GPU payant, a la charge du capitaine) : uploader
+GPU payant, a autoriser explicitement, action reservee a l'operateur
+humain) : uploader
 `deploy/space_gpu_api_vllm/Dockerfile` (renomme `Dockerfile` a la
 racine du Space), `deploy/space_gpu_api_vllm/demarrer.sh`, ce fichier
 (renomme `README.md` a la racine du Space), ainsi que `src/`,
