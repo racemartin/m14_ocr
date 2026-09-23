@@ -650,6 +650,10 @@ qui continue le checkpoint SFT-LoRA déjà entraîné
 (`mombasstic/chsa-triage-sft-lora`, §2.3). Suite complète : 428 tests
 passent, 4 ignorés (GPU absent).
 
+<table id="31-sous-ensemble-reduit" style="width:100%;"><tr><td style="background-color:#f5cf47;">
+<h2 style="border-bottom:none; margin:0;">3.1 Sous-ensemble réduit pour un prmier DPO Train</h2>
+</td></tr></table>
+
 Sous-ensemble réduit pour une vérification de lancement (même patron
 que l'extraction SFT, §1.5) :
 
@@ -739,6 +743,10 @@ le suivant :
    spécifiquement pour DPO si ce signal se confirme sur un run plus
    grand.
 
+<table id="31-5000-exemples" style="width:100%;"><tr><td style="background-color:#f5cf47;">
+<h2 style="border-bottom:none; margin:0;">3.2 Évaluation DPO avec 5000 exemples</h2>
+</td></tr></table>
+
 **Run complet, 5000 exemples (cahier des charges §7, Livrable 1)** —
 même patron exact, extraction locale puis publication et lancement :
 
@@ -783,6 +791,24 @@ de pas réels, pas un échec d'apprentissage — avec assez de données
 (3992 exemples train réels, ~998 pas), la perte d'entraînement bouge
 assez pour que le même seuil hérité du SFT reconnaisse la convergence.
 Poids publiés sur `mombasstic/chsa-triage-dpo-lora`.
+
+Pour parcourir la courbe d'entraînement DPO dans l'interface MLflow
+locale habituelle (même fichier SQLite que les imports précédents,
+§2.2/§2.6, tout regroupé au même endroit) :
+
+```bash
+uv run python monitoring/importer_mlflow_local.py \
+    --repo-id mombasstic/chsa-triage-dpo-metrics \
+    --base-sqlite data/processed/mlflow.db
+```
+
+Pour récupérer les poids LoRA en local (inspection directe, hors des
+commandes d'évaluation/`vllm serve` qui les chargent déjà à la volée
+par leur nom de dépôt, §3.3/§4.1) :
+
+```bash
+hf download mombasstic/chsa-triage-dpo-lora --local-dir outputs/dpo-lora-local
+```
 
 <table id="33-evaluation-post-dpo" style="width:100%;"><tr><td style="background-color:#f5cf47;">
 <h2 style="border-bottom:none; margin:0;">3.3 Évaluation post-DPO</h2>
