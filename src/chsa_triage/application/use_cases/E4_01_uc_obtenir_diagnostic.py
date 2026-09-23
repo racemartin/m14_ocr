@@ -48,6 +48,22 @@ PROMPT_DIAGNOSTIC = (
     'vraisemblables>"}'
 )
 
+# `REPETITION_PENALTY_DEFAUT = 1.2` (23/09/2026) : fixee ici comme
+# constante de module, JAMAIS un parametre optionnel que l'appelant
+# (frontend Streamlit, ou tout futur client de l'API) pourrait oublier
+# de passer. Un test manuel reel sur un serveur `vllm serve`
+# (checkpoint `mombasstic/chsa-triage-dpo-lora`, beta=0.3) a montre une
+# degenerescence de generation SANS repetition_penalty : changements de
+# langue aleatoires (EN/FR -> JA/ZH/AR) et une reponse cliniquement
+# dangereuse sur un cas de douleur thoracique classique. La valeur 1.2
+# est celle deja validee empiriquement lors de l'evaluation post-DPO
+# (`E3_04_evaluer_post_dpo.py`), qui avait ramene le F1 au niveau du
+# post-SFT. C'est un garde-fou de securite clinique (NF4), pas une
+# option d'ajustement de style de generation, ce qui compte d'autant
+# plus ici que ce cas d'usage produit le diagnostic final presente a
+# l'infirmier.
+REPETITION_PENALTY_DEFAUT = 1.2
+
 NOMBRE_TOKENS_GENERES_DIAGNOSTIC = 512
 
 
@@ -92,7 +108,11 @@ class ObtenirDiagnosticUseCase:
         ] + [{"role": "user", "content": PROMPT_DIAGNOSTIC}]
 
         reponse = self.moteur.generer(
-            messages_pour_modele, {"n_predict": NOMBRE_TOKENS_GENERES_DIAGNOSTIC}
+            messages_pour_modele,
+            {
+                "n_predict": NOMBRE_TOKENS_GENERES_DIAGNOSTIC,
+                "repetition_penalty": REPETITION_PENALTY_DEFAUT,
+            },
         )
 
         diagnostic = parser_diagnostic_strict(reponse.texte)

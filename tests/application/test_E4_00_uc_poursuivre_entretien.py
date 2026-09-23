@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from chsa_triage.application.use_cases.E4_00_uc_poursuivre_entretien import (
     PROMPT_ENTRETIEN,
+    REPETITION_PENALTY_DEFAUT,
     PoursuivreEntretienUseCase,
 )
 from chsa_triage.domain.model.entree_audit import EntreeAudit
@@ -20,9 +21,11 @@ class FauxMoteurInference:
     def __init__(self, texte_reponse: str = "Depuis quand avez-vous ces symptomes ?") -> None:
         self.texte_reponse = texte_reponse
         self.appels: list[list[dict]] = []
+        self.parametres_appels: list[dict] = []
 
     def generer(self, messages: list[dict], parametres: dict | None = None) -> ReponseModele:
         self.appels.append(messages)
+        self.parametres_appels.append(dict(parametres or {}))
         return ReponseModele(texte=self.texte_reponse, nombre_tokens_entree=10, nombre_tokens_sortie=5)
 
 
@@ -91,3 +94,12 @@ def test_consigne_une_entree_d_audit_avec_entree_sortie_et_version_modele():
     assert entree.sortie == "Avez-vous de la fievre ?"
     assert entree.version_modele == "mombasstic/chsa-triage-dpo-lora"
     assert entree.horodatage == "T0"
+
+
+def test_repetition_penalty_est_toujours_transmise_au_moteur():
+    moteur = FauxMoteurInference()
+    cas_usage = PoursuivreEntretienUseCase(moteur=moteur, journal=FauxJournalAudit())
+
+    cas_usage.executer("conv-1", historique=(), message_infirmier="Douleur au ventre.")
+
+    assert moteur.parametres_appels[0]["repetition_penalty"] == REPETITION_PENALTY_DEFAUT == 1.2
