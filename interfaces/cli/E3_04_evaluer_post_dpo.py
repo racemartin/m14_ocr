@@ -142,6 +142,15 @@ def main() -> None:
         help="Nombre max de tokens generes par exemple (max_new_tokens)",
     )
     parser.add_argument(
+        "--repetition-penalty",
+        type=float,
+        default=None,
+        help="Parametre repetition_penalty de transformers.generate() (ex. 1.2), transmis tel "
+             "quel (cf. _parametres_generation_transformers) ; absent par defaut (non transmis, "
+             "comportement inchange). A tester contre les boucles de repetition observees en "
+             "generation deterministe (temperature=0.0), cf. README §3 (23/09/2026).",
+    )
+    parser.add_argument(
         "--suivi-uri",
         default=URI_SUIVI_MLFLOW_DEFAUT,
         help="URI MLflow, utilise seulement si --suivi-hf-repo est absent",
@@ -183,6 +192,14 @@ def main() -> None:
         )
         suivi      = _construire_suivi(arguments)
 
+        parametres_generation = {
+            "temperature": arguments.temperature,
+            "n_predict": arguments.n_predict,
+        }
+        if arguments.repetition_penalty is not None:
+            parametres_generation["repetition_penalty"] = arguments.repetition_penalty
+        log.PARAMETER_VALUE("parametres de generation", parametres_generation)
+
         # ----- USE CASE EXECUTE --------------------------------------------------
         log.STEP(2, "Generation post-DPO + comparaison sur le split test (GPU, bf16, base+LoRA)")
         try:
@@ -191,10 +208,7 @@ def main() -> None:
                 formateur=formateur,
                 moteur=moteur,
                 suivi=suivi,
-                parametres_generation={
-                    "temperature": arguments.temperature,
-                    "n_predict": arguments.n_predict,
-                },
+                parametres_generation=parametres_generation,
                 nom_run=arguments.nom_run,
             )
             resultat = cas_usage.executer()
