@@ -1091,8 +1091,15 @@ créé ni poussé, code et fichiers de configuration seulement).
   `Dockerfile` racine (qui reste l'image API **seule**, cf. §4.3).
 - Un Space **Streamlit/CPU** (léger, laissé allumé en permanence) :
   interface de test de l'entretien clinique, préparée dans
-  [`interfaces/web/`](interfaces/web/) (`app_test_inference.py`,
-  `logica_test_inference.py`, `requirements.txt`, `README_space.md`).
+  [`interfaces/web/`](interfaces/web/) (`Dockerfile`,
+  `app_test_inference.py`, `logica_test_inference.py`,
+  `requirements.txt`, `README_space.md`). HF Spaces ne propose plus
+  "Streamlit" comme SDK de premier niveau dans son flux de création
+  actuel (confirmé par une erreur serveur 400 sur `hf repo create
+  --sdk streamlit` ; "Streamlit" y apparaît désormais comme un
+  **template à l'intérieur du SDK "Docker"**) : ce Space se crée donc
+  avec `--sdk docker` (jamais `--sdk streamlit`), même `Dockerfile`
+  dédié que le Space GPU compagnon, cf. `interfaces/web/README_space.md`.
 
 Le Space Streamlit ne sait jamais à l'avance si le Space GPU compagnon
 est allumé : il sonde `GET /sante` en boucle et affiche un état

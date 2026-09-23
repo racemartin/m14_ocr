@@ -3,8 +3,8 @@ title: CHSA Triage Test Chat
 emoji: 🩺
 colorFrom: green
 colorTo: blue
-sdk: streamlit
-app_file: interfaces/web/app_test_inference.py
+sdk: docker
+app_port: 7860
 pinned: false
 ---
 
@@ -23,9 +23,21 @@ Secrets du Space a definir avant publication :
 - `CHSA_API_URL_BASE` : URL du Space Docker/GPU compagnon.
 - `CHSA_API_CLE` : meme cle que `CHSA_CLE_API_DEMO` cote API.
 
+HF Spaces ne propose plus "Streamlit" comme SDK de premier niveau dans
+son flux de creation actuel (confirme par une erreur serveur 400 sur
+`hf repo create --sdk streamlit`, la docstring de
+`HfApi.create_repo` est obsolete sur ce point) : "Streamlit" y
+apparait desormais comme un TEMPLATE a l'interieur du SDK "Docker",
+d'ou `sdk: docker` ci-dessus plutot que le SDK natif streamlit prevu
+initialement.
+
 Publication (jamais realisee dans cette tache, effet externe reel,
-action reservee a l'operateur humain) : uploader `interfaces/web/app_test_inference.py`,
+action reservee a l'operateur humain) : uploader
+`interfaces/web/Dockerfile` (renomme `Dockerfile` a la racine du
+Space), `interfaces/web/app_test_inference.py`,
 `interfaces/web/logica_test_inference.py`, ce fichier (renomme
 `README.md` a la racine du Space) et `interfaces/web/requirements.txt`
-(renomme `requirements.txt` a la racine du Space) vers le depot HF
-Space cible, meme patron que `monitoring/README_space.md`.
+(renomme `requirements.txt` a la racine du Space, non utilise par le
+build Docker lui-meme qui passe par `uv sync --extra web`, mais
+conserve pour coherence avec le reste du depot) vers le depot HF Space
+cible, meme patron que `deploy/space_gpu_api_vllm/README_space.md`.
