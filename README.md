@@ -1003,13 +1003,20 @@ hf jobs cancel <job_id>
 explicite "obtenir le diagnostic" (`POST /conversations/{id}/diagnostic`,
 jamais déclenché automatiquement par le modèle), tous protégés par une
 clé API (en-tête `X-API-Key`) sauf `GET /sante`. Chaque tour et chaque
-appel diagnostic sont consignés dans un journal d'audit JSONL append-only
-(`JsonlJournalAudit`, F6 : horodatage, entrée, sortie, version du
-modèle). Testé de bout en bout via `fastapi.testclient.TestClient` avec
-un faux `MoteurInference`/`JournalAudit` en mémoire
-(`tests/interfaces/test_app_api.py`), et lancé réellement en local le
-temps de cette tâche (`uvicorn`, mode `local`/llama.cpp) pour confirmer
-que le serveur démarre et répond.
+appel diagnostic sont consignés dans un journal d'audit append-only
+(F6 : horodatage, entrée, sortie, version du modèle), via l'un de deux
+adaptateurs sélectionnables par variable d'environnement (`CHSA_JOURNAL_AUDIT`,
+même patron que `CHSA_MOTEUR_INFERENCE`) : `JsonlJournalAudit` (défaut,
+fichier local, **perdu à chaque redémarrage du Space Docker/GPU**,
+filesystem éphémère, aucun stockage persistant HF payant activé) ou
+`HfDatasetJournalAudit` (`CHSA_JOURNAL_AUDIT=hf_dataset`, persistance
+gratuite via un dataset HF Hub et un `huggingface_hub.CommitScheduler`,
+même mécanisme déjà réel/testé pour le suivi d'expérimentation,
+cf. `HfDatasetSuiviExperimentation`/AGENTS.md). Testé de bout en bout via
+`fastapi.testclient.TestClient` avec un faux `MoteurInference`/`JournalAudit`
+en mémoire (`tests/interfaces/test_app_api.py`), et lancé réellement en
+local le temps de cette tâche (`uvicorn`, mode `local`/llama.cpp) pour
+confirmer que le serveur démarre et répond.
 
 ```bash
 uv sync --extra api --extra local
@@ -1021,7 +1028,20 @@ export CHSA_MOTEUR_INFERENCE=distant          # ou "local" (llama.cpp, dev sans 
 export CHSA_URL_MOTEUR_INFERENCE="http://127.0.0.1:8000"
 export CHSA_NOM_MODELE_VLLM=dpo
 
+# Journal d'audit F6 : "jsonl" (défaut, fichier local, perdu au redémarrage
+# du Space) ou "hf_dataset" (persistance gratuite via un dataset HF Hub) :
+export CHSA_JOURNAL_AUDIT=hf_dataset
+export CHSA_JOURNAL_AUDIT_REPO="mombasstic/chsa-triage-audit-journal"
+
 uv run uvicorn interfaces.api.main:app --host 0.0.0.0 --port 7860
+```
+
+Dépôt dataset HF à créer une seule fois au préalable (mode `hf_dataset`
+seulement ; `HF_TOKEN`, déjà nécessaire ailleurs dans ce projet pour ce
+même mécanisme, cf. §2.6, doit être défini) :
+
+```bash
+hf repo create mombasstic/chsa-triage-audit-journal --repo-type dataset --private
 ```
 
 ```bash
