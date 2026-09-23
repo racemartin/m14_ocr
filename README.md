@@ -896,15 +896,17 @@ pour comparaison directe :**
 | `6ab3933152d0dbd7f1d83a16` | 23/09 | 0,1 | — | 0,000 | 0,049 | ~12,0 s |
 | `6ab3adaa52d0dbd7f1d8445b` | 23/09 | 0,1 | 1,2 | 0,000 | 0,063 | ~11,9 s |
 | `6ab3c38a52d0dbd7f1d84c5c` | 23/09 | **0,3** | 1,2 | 0,000 | **0,112** | ~10,7 s |
+| `6ab40ee752d0dbd7f1d86485` | 23/09 | **0,3** (5000) | 1,2 | 0,000 | **0,110** | ~11,2 s |
 
 **`beta=0,3` + `repetition_penalty=1,2` ramène le F1 au niveau du
-post-SFT (0,112 == 0,112, sur le checkpoint pas cher à 100
-exemples)** : confirme que la dégénérescence venait bien d'un ancrage
+post-SFT, ET ce gain TIENT à l'échelle réelle** : 0,112 sur le
+checkpoint pas cher à 100 exemples, 0,110 sur le run complet à 5000
+(job `6ab3f52a51992417dfcd7fe5`, verdict `saine`, `rewards/accuracies=0,75`)
+— essentiellement le même niveau, aucune régression en passant à
+l'échelle. Confirme que la dégénérescence venait bien d'un ancrage
 trop faible à `pi_ref`, pas d'un problème de décodage seul ou du
-découplage reformulation. Prochaine étape : rengager le run complet à
-5000 avec `beta=0,3` (déjà dans la recette) pour confirmer que ce
-gain tient à l'échelle réelle, avant de considérer ce hyperparamètre
-validé.
+découplage reformulation. `beta=0,3` est désormais l'hyperparamètre
+retenu pour ce projet.
 
 
 <table id="4-deploiement" style="width:100%;"><tr><td style="background-color:#f5b0e0;">
