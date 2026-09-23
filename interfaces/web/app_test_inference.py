@@ -5,29 +5,24 @@ contre l'API FastAPI REELLE (`interfaces/api/`, `POST /conversations`,
 pas un faux moteur. Distinct de `monitoring/app_suivi_entrainement.py`
 (courbes d'apprentissage SFT/DPO, aucun chat, but different).
 
-Cible de deploiement (jamais realisee dans cette tache : effet externe
-reel, action reservee a l'operateur humain, meme patron que le reste
-de cette session) : DEUX HF Spaces separes.
-- Space Docker/GPU (couteux, allume seulement pendant les tests) :
-  `interfaces/api/` + `Dockerfile` a la racine du depot (existant,
-  Etape 4).
-- Space Streamlit/CPU (leger, allume en permanence) : CE fichier, cf.
-  `interfaces/web/README_space.md` pour le frontmatter YAML attendu
-  par HF Spaces (SDK Streamlit) et `interfaces/web/requirements.txt`
-  pour ses dependances a publier a la racine de ce Space.
+Architecture a 2 pieces (decision produit du 24/09/2026, cf. AGENTS.md) :
+un unique Space HF Docker/GPU (API+vLLM, cf. `interfaces/api/` +
+`deploy/space_gpu_api_vllm/`), coute et allume seulement pendant les
+tests, et CE fichier, execute EN LOCAL sur la machine de l'operateur
+humain (jamais deploye comme Space separe : cf.
+`interfaces/web/README_space.md`).
 
-Le Space Streamlit ne sait JAMAIS a l'avance si le Space GPU compagnon
-est allume : il sonde `/sante` en boucle (polling leger, meme patron
-`time.sleep()` + `st.rerun()` que `monitoring/app_suivi_entrainement.py`)
-et affiche un etat d'attente clair tant que la reponse est negative ou
-que l'API elle-meme est injoignable ; jamais d'erreur brute affichee
-(cf. `logica_test_inference.py::interroger_sante`).
+Ce frontend ne sait JAMAIS a l'avance si le Space GPU est allume : il
+sonde `/sante` en boucle (polling leger, meme patron `time.sleep()` +
+`st.rerun()` que `monitoring/app_suivi_entrainement.py`) et affiche un
+etat d'attente clair tant que la reponse est negative ou que l'API
+elle-meme est injoignable ; jamais d'erreur brute affichee (cf.
+`logica_test_inference.py::interroger_sante`).
 
-Variables d'environnement (jamais de valeur en dur dans le code ; sur
-le Space, definies comme "Repository secrets") :
+Variables d'environnement (jamais de valeur en dur dans le code) :
 - `CHSA_API_URL_BASE` (defaut `http://127.0.0.1:7860`, utile pour un
-  test local contre l'API lancee via `uvicorn`/`docker run`) : URL du
-  Space Docker/GPU, DIFFERENTE de celle de ce Space Streamlit.
+  test local contre l'API lancee via `uvicorn`/`docker run` ; pointer
+  vers l'URL reelle du Space GPU une fois celui-ci publie).
 - `CHSA_API_CLE` (obligatoire, aucun defaut permissif) : meme valeur
   que `CHSA_CLE_API_DEMO` cote API (`interfaces/api/main.py`).
 
@@ -79,8 +74,8 @@ def main() -> None:
     cle_api = os.environ.get("CHSA_API_CLE")
     if not cle_api:
         st.error(
-            "CHSA_API_CLE doit etre definie (secret du Space Streamlit, "
-            "meme valeur que CHSA_CLE_API_DEMO cote API)."
+            "CHSA_API_CLE doit etre definie (variable d'environnement "
+            "locale, meme valeur que CHSA_CLE_API_DEMO cote API)."
         )
         return
 

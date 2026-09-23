@@ -33,6 +33,10 @@ node "Hugging Face Spaces\n(cible de déploiement PRÉVUE,\n**JAMAIS ENCORE CRÉ
   component "Docker SDK\n(hébergerait l'image ci-dessus)" as SPACE_DOCKER
 }
 
+node "Poste de l'opérateur humain\n(machine locale, HORS HF Spaces)" as OPERATEUR #FFFFFF {
+  component "interfaces/web/app_test_inference.py\n(Streamlit, exécuté localement,\njamais déployé comme Space séparé)" as STREAMLIT
+}
+
 ' ----------------------------------------------------------------------
 ' Flux reel
 ' ----------------------------------------------------------------------
@@ -53,6 +57,9 @@ GITHUB --> CI : push/PR vers main
 CI ..> DOCKER : docker build -t chsa-triage-api:ci .\n(vérification du build UNIQUEMENT,\njamais publiée/déployée)
 
 DOCKER ..> HFSPACE : déploiement PRÉVU, JAMAIS EFFECTUÉ\n(README §4 : "jamais déployé réellement")
+
+STREAMLIT ..> UVICORN : GET /sante (sondage en boucle),\nPOST /conversations/...\n(dev local, CHSA_API_URL_BASE=\nhttp://127.0.0.1:7860)
+STREAMLIT ..> HFSPACE : même flux HTTP,\nCHSA_API_URL_BASE=<URL réelle du Space>\n(cible réelle une fois le Space créé)
 
 note bottom of DOCKER
   Décision Étape 4 documentée (cf. Dockerfile) :
@@ -107,6 +114,20 @@ note bottom of REPO_DPO_LORA
   LoRA DPO n'est JAMAIS fusionné avec la base.
   vLLM le sert nativement via ~-~-enable-lora,
   ~-~-lora-modules dpo=<ce dépôt>.
+end note
+
+note bottom of OPERATEUR
+  Décision produit (24/09/2026) : architecture à
+  2 pièces, pas 3. Le frontend Streamlit n'est PAS
+  déployé comme Space HF séparé : créer un Space
+  Docker rien que pour Streamlit exigerait un
+  abonnement HF PRO (hardware gratuit cpu-basic) ou
+  du hardware payant, alors que ce frontend ne fait
+  qu'appeler l'API en HTTP, aucun calcul GPU. Il
+  tourne donc en LOCAL sur la machine de l'opérateur
+  humain (`uv run streamlit run
+  interfaces/web/app_test_inference.py`), jamais
+  publié sur HF Spaces. Cf. README.md §4.5.
 end note
 
 @enduml
