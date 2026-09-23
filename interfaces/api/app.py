@@ -17,11 +17,28 @@ note du 23/09/2026) :
   cote client, ex. reaffichage apres reconnexion).
 
 Toutes les routes metier exigent la cle API (`securite.py`) ; `/sante`
-reste ouverte (verification de vivacite du conteneur, ex. Docker
-HEALTHCHECK).
+reste ouverte.
+
+`/sante` sert un double usage, distingue explicitement dans son corps
+de reponse plutot que par le code HTTP : verification de vivacite du
+conteneur (Docker HEALTHCHECK, `Dockerfile`) ET verification de
+disponibilite du moteur d'inference distant (vLLM, cf. Space
+Streamlit/CPU de test qui sonde cet endpoint en boucle jusqu'a ce que
+le Space Docker/GPU compagnon soit pret, `interfaces/web/`). L'endpoint
+retourne donc TOUJOURS HTTP 200 (jamais 503) : un Docker HEALTHCHECK
+qui redemarrerait le conteneur API parce que vLLM met du temps a
+charger le modele n'aiderait en rien (redemarrer l'API ne demarre pas
+vLLM plus vite) ; seul le champ `disponible` du corps JSON distingue
+les deux etats. `verificateur_sante_moteur` est injecte (meme
+discipline que `moteur_inference`/`journal_audit`) : `main.py` le
+branche sur `VllmEndpointInferenceAdapter.verifier_sante()` en mode
+`distant`, ou laisse le defaut (`disponible=True`, aucune verification
+pertinente) en mode `local`/llama.cpp.
 """
 
 from __future__ import annotations
+
+from typing import Callable
 
 from fastapi import Depends, FastAPI, HTTPException
 
@@ -40,11 +57,16 @@ from interfaces.api.schemas import (
     DiagnosticReponse,
     MessageEntretienReponse,
     MessageEntretienRequete,
+    SanteReponse,
     TourHistorique,
 )
 from interfaces.api.securite import creer_dependance_verification_cle_api
 
 VERSION_MODELE_PAR_DEFAUT = "mombasstic/chsa-triage-dpo-lora"
+
+
+def _verificateur_sante_par_defaut() -> dict:
+    return {"disponible": True, "detail": "aucune verification specifique pour ce moteur d'inference"}
 
 
 def creer_application(
@@ -53,6 +75,7 @@ def creer_application(
     journal_audit: JournalAudit,
     cle_api: str,
     version_modele: str = VERSION_MODELE_PAR_DEFAUT,
+    verificateur_sante_moteur: Callable[[], dict] | None = None,
 ) -> FastAPI:
     app = FastAPI(
         title="CHSA Triage API",
@@ -68,10 +91,12 @@ def creer_application(
         moteur=moteur_inference, journal=journal_audit, version_modele=version_modele
     )
     verifier_cle_api = creer_dependance_verification_cle_api(cle_api)
+    verifier_sante_moteur = verificateur_sante_moteur or _verificateur_sante_par_defaut
 
-    @app.get("/sante")
-    def sante() -> dict:
-        return {"statut": "ok"}
+    @app.get("/sante", response_model=SanteReponse)
+    def sante() -> SanteReponse:
+        resultat = verifier_sante_moteur()
+        return SanteReponse(disponible=resultat["disponible"], detail=resultat["detail"])
 
     @app.post(
         "/conversations",

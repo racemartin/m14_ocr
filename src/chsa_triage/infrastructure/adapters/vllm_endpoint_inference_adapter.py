@@ -96,3 +96,23 @@ class VllmEndpointInferenceAdapter:
             latence_ms=latence_ms,
             metadonnees={"modele": donnees.get("model", modele), "reponse_brute": donnees},
         )
+
+    def verifier_sante(self) -> dict:
+        """
+        Interroge `/health`, le endpoint natif de `vllm serve` (200 si le
+        serveur est vivant et le modele charge). Ne laisse jamais une
+        erreur de connexion brute (serveur pas encore demarre, DNS,
+        timeout) remonter a l'appelant : `interfaces/api/app.py` compte
+        sur ce contrat pour que `GET /sante` reste toujours HTTP 200
+        (le conteneur Docker HEALTHCHECK verifie la vivacite de l'API
+        elle-meme, pas celle de vLLM), seul le corps JSON change.
+        """
+        import httpx
+
+        client = self._obtenir_client()
+        try:
+            reponse = client.get(f"{self.url_endpoint}/health")
+            reponse.raise_for_status()
+        except httpx.HTTPError as erreur:
+            return {"disponible": False, "detail": f"serveur vLLM indisponible : {erreur}"}
+        return {"disponible": True, "detail": "serveur vLLM disponible"}

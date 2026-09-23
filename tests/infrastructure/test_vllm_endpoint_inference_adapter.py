@@ -10,6 +10,8 @@ le mapping de la reponse JSON vers `ReponseModele`. Meme patron que
 
 from __future__ import annotations
 
+import httpx
+
 from chsa_triage.infrastructure.adapters.vllm_endpoint_inference_adapter import (
     VllmEndpointInferenceAdapter,
 )
@@ -38,6 +40,17 @@ class FauxClientHttp:
         self.dernier_url = url
         self.dernier_corps = json
         return FauxReponseHttp(self._donnees_reponse)
+
+    def get(self, url: str) -> FauxReponseHttp:
+        self.dernier_url = url
+        return FauxReponseHttp(self._donnees_reponse)
+
+
+class FauxClientHttpConnexionRefusee:
+    """Simule un serveur vLLM pas encore demarre (connexion refusee)."""
+
+    def get(self, url: str) -> FauxReponseHttp:
+        raise httpx.ConnectError("connexion refusee", request=httpx.Request("GET", url))
 
 
 def test_generer_poste_vers_chat_completions_avec_le_modele_par_defaut():
@@ -101,3 +114,24 @@ def test_sans_cle_api_aucun_en_tete_authorization():
     client = adaptateur._obtenir_client()
 
     assert "Authorization" not in client.headers
+
+
+def test_verifier_sante_interroge_le_endpoint_health():
+    faux_client = FauxClientHttp({})
+    adaptateur = VllmEndpointInferenceAdapter(url_endpoint="http://127.0.0.1:8000", _client=faux_client)
+
+    resultat = adaptateur.verifier_sante()
+
+    assert faux_client.dernier_url == "http://127.0.0.1:8000/health"
+    assert resultat == {"disponible": True, "detail": "serveur vLLM disponible"}
+
+
+def test_verifier_sante_ne_laisse_jamais_remonter_une_erreur_de_connexion_brute():
+    adaptateur = VllmEndpointInferenceAdapter(
+        url_endpoint="http://127.0.0.1:8000", _client=FauxClientHttpConnexionRefusee()
+    )
+
+    resultat = adaptateur.verifier_sante()
+
+    assert resultat["disponible"] is False
+    assert "vLLM" in resultat["detail"]

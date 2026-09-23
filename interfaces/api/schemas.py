@@ -5,6 +5,11 @@ from __future__ import annotations
 from pydantic import BaseModel
 
 
+class SanteReponse(BaseModel):
+    disponible: bool
+    detail: str
+
+
 class DemarrerConversationReponse(BaseModel):
     conversation_id: str
 

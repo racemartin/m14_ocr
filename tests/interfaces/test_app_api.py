@@ -43,12 +43,16 @@ class FauxJournalAudit:
         self.entrees.append(entree)
 
 
-def _client(texte_reponse: str = "Depuis quand avez-vous ces symptomes ?") -> tuple[TestClient, FauxJournalAudit]:
+def _client(
+    texte_reponse: str = "Depuis quand avez-vous ces symptomes ?",
+    verificateur_sante_moteur=None,
+) -> tuple[TestClient, FauxJournalAudit]:
     journal = FauxJournalAudit()
     app = creer_application(
         moteur_inference=FauxMoteurInference(texte_reponse=texte_reponse),
         journal_audit=journal,
         cle_api=CLE_API_TEST,
+        verificateur_sante_moteur=verificateur_sante_moteur,
     )
     return TestClient(app), journal
 
@@ -59,7 +63,44 @@ def test_sante_ne_requiert_aucune_cle_api():
     reponse = client.get("/sante")
 
     assert reponse.status_code == 200
-    assert reponse.json() == {"statut": "ok"}
+
+
+def test_sante_sans_verificateur_injecte_est_toujours_disponible():
+    """Mode `local`/llama.cpp (`main.py`) : aucun verificateur specifique n'est branche."""
+    client, _ = _client()
+
+    reponse = client.get("/sante")
+
+    assert reponse.status_code == 200
+    assert reponse.json()["disponible"] is True
+
+
+def test_sante_relaie_la_disponibilite_du_verificateur_injecte():
+    """Double en memoire simulant `VllmEndpointInferenceAdapter.verifier_sante()`, moteur pas encore demarre."""
+    client, _ = _client(
+        verificateur_sante_moteur=lambda: {
+            "disponible": False,
+            "detail": "serveur vLLM indisponible : connexion refusee",
+        }
+    )
+
+    reponse = client.get("/sante")
+
+    # Toujours HTTP 200 (jamais d'erreur brute, cf. app.py) : seul le
+    # corps distingue l'indisponibilite du moteur distant.
+    assert reponse.status_code == 200
+    corps = reponse.json()
+    assert corps["disponible"] is False
+    assert "vLLM" in corps["detail"]
+
+
+def test_sante_relaie_la_disponibilite_positive_du_verificateur_injecte():
+    client, _ = _client(verificateur_sante_moteur=lambda: {"disponible": True, "detail": "serveur vLLM disponible"})
+
+    reponse = client.get("/sante")
+
+    assert reponse.status_code == 200
+    assert reponse.json() == {"disponible": True, "detail": "serveur vLLM disponible"}
 
 
 def test_demarrer_conversation_sans_cle_api_est_rejete():

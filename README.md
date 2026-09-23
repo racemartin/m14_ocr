@@ -62,6 +62,7 @@ Version détaillée (scripts/adaptateurs/dépôts HF réels, DPO marqué concept
   - [4.2 API FastAPI](#42-api-fastapi)
   - [4.3 Conteneurisation Docker](#43-conteneurisation-docker)
   - [4.4 CI/CD](#44-cicd)
+  - [4.5 Healthcheck vLLM et frontend Streamlit de test](#45-healthcheck-vllm-et-frontend-streamlit-de-test)
 - [Vérifications d'environnement](#verifications-environnement)
 
 <table id="tableau-récapitulatif-des-scripts" style="width:100%;"><tr><td style="background-color:#c9f1edff;">
@@ -137,6 +138,8 @@ Vue d'ensemble de tous les scripts exécutables du dépôt, classés par étape.
 | `interfaces/api/main.py` | Point d'entrée ASGI de l'API FastAPI de démonstration (`uvicorn interfaces.api.main:app`). |
 | `Dockerfile` | Conteneurise l'API FastAPI seule (pas vLLM, cf. §4.2). |
 | `.github/workflows/ci.yml` | Pipeline CI : suite de tests (sans GPU/vLLM réel) + vérification du build Docker, sur push/PR vers `main`. |
+| `interfaces/web/app_test_inference.py` | Frontend Streamlit de test de l'entretien clinique (Space CPU, cf. §4.5). |
+| `deploy/space_gpu_api_vllm/` | Config Docker/GPU combinant API+vLLM pour le second Space (cf. §4.5). |
 
 </td></tr></table>
 
@@ -990,6 +993,45 @@ la publier ni la déployer. Secrets (`HF_TOKEN` ou autre) : via GitHub
 Actions Secrets si un futur job en a besoin, jamais en dur dans le
 workflow.
 
+
+<table id="45-healthcheck-vllm-et-frontend-streamlit-de-test" style="width:100%;"><tr><td style="background-color:#f5b0e0;">
+<h2 style="border-bottom:none; margin:0;">4.5 Healthcheck vLLM et frontend Streamlit de test</h2>
+</td></tr></table>
+
+Cible de déploiement réelle (décidée avec le capitaine) : **deux HF
+Spaces séparés**, jamais réalisée dans cette tâche (aucun Space HF
+créé ni poussé, code et fichiers de configuration seulement).
+
+- Un Space **Docker/GPU** (coûteux, à n'allumer que pendant les tests) :
+  API FastAPI + serveur vLLM, préparé dans
+  [`deploy/space_gpu_api_vllm/`](deploy/space_gpu_api_vllm/)
+  (`Dockerfile`, `demarrer.sh`, `README_space.md`), séparé du
+  `Dockerfile` racine (qui reste l'image API **seule**, cf. §4.3).
+- Un Space **Streamlit/CPU** (léger, laissé allumé en permanence) :
+  interface de test de l'entretien clinique, préparée dans
+  [`interfaces/web/`](interfaces/web/) (`app_test_inference.py`,
+  `logica_test_inference.py`, `requirements.txt`, `README_space.md`).
+
+Le Space Streamlit ne sait jamais à l'avance si le Space GPU compagnon
+est allumé : il sonde `GET /sante` en boucle et affiche un état
+d'attente clair tant que le modèle n'est pas prêt, sans synchronisation
+manuelle des deux démarrages. `/sante`
+(`interfaces/api/app.py`) interroge à son tour le `/health` natif de
+`vllm serve` et retourne toujours HTTP 200 (jamais une erreur de
+connexion brute), avec un corps structuré `{"disponible": ...,
+"detail": ...}` : un Docker HEALTHCHECK qui redémarrerait le conteneur
+API parce que vLLM met du temps à charger le modèle n'aiderait en rien.
+Testé avec un double en mémoire du serveur vLLM
+(`tests/interfaces/test_app_api.py`,
+`tests/infrastructure/test_vllm_endpoint_inference_adapter.py`), aucun
+GPU/vLLM réel requis.
+
+```bash
+uv sync --extra web
+export CHSA_API_URL_BASE="http://127.0.0.1:7860"
+export CHSA_API_CLE="change-moi"
+uv run streamlit run interfaces/web/app_test_inference.py
+```
 
 <table id="verifications-environnement" style="width:100%;"><tr><td style="background-color:#d9d9d9;">
 <h1 style="border-bottom:none; margin:0;">Vérifications d'environnement</h1>

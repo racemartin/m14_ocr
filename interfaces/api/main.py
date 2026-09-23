@@ -70,9 +70,16 @@ def _cle_api_demo() -> str:
     return cle
 
 
+_moteur_inference = _construire_moteur_inference()
+
 app = creer_application(
-    moteur_inference=_construire_moteur_inference(),
+    moteur_inference=_moteur_inference,
     journal_audit=JsonlJournalAudit(os.environ.get("CHSA_CHEMIN_JOURNAL_AUDIT", CHEMIN_JOURNAL_AUDIT_PAR_DEFAUT)),
     cle_api=_cle_api_demo(),
     version_modele=os.environ.get("CHSA_VERSION_MODELE", "mombasstic/chsa-triage-dpo-lora"),
+    # Seul VllmEndpointInferenceAdapter (mode `distant`) expose une
+    # verification de sante reelle (`/health` vLLM) ; LlamaCppInferenceAdapter
+    # (mode `local`, dev sans GPU) n'a pas d'equivalent branche ici, `/sante`
+    # retombe alors sur le defaut "toujours disponible" de `creer_application()`.
+    verificateur_sante_moteur=getattr(_moteur_inference, "verifier_sante", None),
 )
