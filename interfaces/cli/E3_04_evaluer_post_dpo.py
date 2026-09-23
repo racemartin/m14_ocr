@@ -204,6 +204,15 @@ def main() -> None:
             )
             raise
 
+        # ----- ECHANTILLON DE GENERATIONS (diagnostic) -------------------------
+        # Inspecter reellement ce que le modele genere (verbosite, format JSON
+        # ou non, etc.) plutot que deviner a partir des seules metriques
+        # agregees, meme principe que l'echantillon de diagnostic de
+        # ReformulerPreferenceDpoUseCase (E3_00).
+        for index, (genere, reference) in enumerate(cas_usage.echantillon_generations):
+            log.PARAMETER_VALUE(f"  genere [{index}]", genere)
+            log.PARAMETER_VALUE(f"  reference [{index}]", reference)
+
     # ----- LOG FINAL INFO -----------------------------------------------------
     log.PARAMETER_VALUE("nombre d'exemples evalues", resultat.nombre_exemples)
     log.PARAMETER_VALUE("exact match", resultat.exact_match)

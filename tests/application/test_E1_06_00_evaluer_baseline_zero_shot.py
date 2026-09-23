@@ -13,6 +13,9 @@ import pytest
 from chsa_triage.application.use_cases import (
     EvaluerBaselineZeroShotUseCase,
 )
+from chsa_triage.application.use_cases.E1_06_00_evaluer_baseline_zero_shot import (
+    TAILLE_MAX_ECHANTILLON_GENERATIONS,
+)
 from chsa_triage.domain.model import ExemplePivot, Langue, Message, TypeExemple, TypeSplit
 from chsa_triage.domain.ports.moteur_inference import ReponseModele
 
@@ -286,6 +289,41 @@ def test_executer_un_echec_isole_du_moteur_n_abandonne_pas_le_run():
 
     metriques = dict((nom, valeur) for nom, valeur, _ in suivi.metriques)
     assert metriques["nombre_echecs_inference"] == 1
+
+
+def test_executer_capture_un_echantillon_de_generations_pour_diagnostic():
+    """
+    Meme principe que ReformulerPreferenceDpoUseCase.echantillon_echecs_reformulation
+    (E3_00) : inspecter reellement ce que le modele genere, plutot que
+    deviner a partir des seules metriques agregees (23/09/2026).
+    """
+    exemple = _exemple_sft_test("a", "Q ?", "Reference attendue.")
+    repository = FauxRepository([exemple])
+    moteur = FauxMoteurInference(reponse_defaut="Texte genere.")
+
+    cas_usage = EvaluerBaselineZeroShotUseCase(
+        repository=repository, formateur=FauxFormateur(), moteur=moteur, suivi=FauxSuivi()
+    )
+    cas_usage.executer()
+
+    assert cas_usage.echantillon_generations == [("Texte genere.", "Reference attendue.")]
+
+
+def test_executer_plafonne_l_echantillon_de_generations():
+    exemples = [
+        _exemple_sft_test(str(i), f"Q{i} ?", f"R{i}.")
+        for i in range(TAILLE_MAX_ECHANTILLON_GENERATIONS + 5)
+    ]
+    repository = FauxRepository(exemples)
+    moteur = FauxMoteurInference(reponse_defaut="Texte genere.")
+
+    cas_usage = EvaluerBaselineZeroShotUseCase(
+        repository=repository, formateur=FauxFormateur(), moteur=moteur, suivi=FauxSuivi()
+    )
+    resultat = cas_usage.executer()
+
+    assert resultat.nombre_exemples == TAILLE_MAX_ECHANTILLON_GENERATIONS + 5
+    assert len(cas_usage.echantillon_generations) == TAILLE_MAX_ECHANTILLON_GENERATIONS
 
 
 def test_executer_leve_si_tous_les_exemples_echouent_a_l_inference():
