@@ -22,19 +22,18 @@
 #
 # Suite du deploiement reel du 24/09/2026 : une fois le compilateur
 # regle, vLLM segfaultait au demarrage juste apres le chargement des
-# poids ("Using PunicaWrapperGPU"), dans le processus EngineCore
-# separe du processus APIServer (architecture V1 : deux processus
-# distincts, meme sur une seule carte, sans parallelisme). Aucun
-# message d'erreur exploitable dans la trace (frames Python generiques
-# uniquement). VLLM_ENABLE_V1_MULTIPROCESSING=0 est la recommandation
-# officielle du guide de resolution de problemes de vLLM pour ce cas
-# precis : garde le moteur dans le MEME processus que le serveur API,
-# ce qui evite la cause du crash. Sans parallelisme (une seule GPU
-# L4 ici), le cout de performance de ce mode est negligeable pour ce
-# POC (une requete a la fois).
+# poids ("Using PunicaWrapperGPU"), au tout premier appel reel d'un
+# noyau Triton (Punica/LoRA). VLLM_ENABLE_V1_MULTIPROCESSING=0 a ete
+# essaye en premier (recommandation generale du guide de resolution de
+# problemes de vLLM pour un crash du processus EngineCore) mais n'a
+# aucun effet ici : verifie dans le code source de vLLM 0.20.2, cette
+# variable ne s'applique qu'a l'usage programmatique LLM(), jamais au
+# serveur `vllm serve` (toujours un processus EngineCore separe). Cause
+# reelle et correction : cf. le Dockerfile de ce meme dossier (creation
+# de l'utilisateur UID 1000, requis par tout Space Docker HF au
+# runtime -- $HOME incoherent cassait la resolution du cache JIT de
+# Triton, ~/.triton/cache).
 set -euo pipefail
-
-export VLLM_ENABLE_V1_MULTIPROCESSING=0
 
 vllm serve Qwen/Qwen3-1.7B-Base \
     --enable-lora \
