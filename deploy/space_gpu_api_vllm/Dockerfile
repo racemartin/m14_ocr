@@ -35,12 +35,15 @@
 # massivement l'execution, inutilisable en production) evite le crash,
 # signature de condition de course dependante du temps reel.
 #
-# PISTE TESTEE ICI : la version de vLLM verrouillee par uv.lock (0.20.2)
-# est tres en retard sur la version stable actuelle (0.28.0+, plusieurs
-# mois de correctifs V1/EngineCore). `uv pip install` ci-dessous force
-# une version plus recente UNIQUEMENT dans cette image de deploiement,
-# sans toucher au uv.lock partage par tout le reste du projet
-# (entrainement, tests) -- portee volontairement limitee a ce fichier.
+# PISTE TESTEE ET EXCLUE : forcer vllm==0.28.0 (au lieu du 0.20.2
+# verrouille par uv.lock) UNIQUEMENT dans cette image, via `uv pip
+# install` apres le `uv sync --frozen`. Resultat reel : un saut de 8
+# versions mineures entraine un torch incompatible avec ce conteneur
+# (AttributeError: module 'sys' has no attribute
+# 'get_int_max_str_digits', import de vllm.env_override) -- probleme
+# DIFFERENT du segfault, jamais atteint. Retire ; une eventuelle
+# version intermediaire (saut plus petit, compatibilite verifiee)
+# resterait a explorer si cette piste est reprise.
 
 FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04
 
@@ -63,12 +66,6 @@ COPY --chown=user monitoring/ monitoring/
 # image ici, contrairement au `Dockerfile` racine qui n'installe que
 # `api` : c'est exactement ce qui distingue les deux fichiers.
 RUN uv sync --extra api --extra remote --no-dev --frozen
-
-# Surcharge ponctuelle : version de vLLM plus recente que celle verrouillee
-# par uv.lock, testee UNIQUEMENT pour cette image (cf. note en tete de
-# fichier). A retirer si sans effet sur le segfault, ou a reporter dans
-# uv.lock pour tout le projet si elle s'avere etre la solution reelle.
-RUN uv pip install "vllm==0.28.0"
 
 ENV PATH="$HOME/app/.venv/bin:${PATH}"
 ENV PYTHONUNBUFFERED=1
