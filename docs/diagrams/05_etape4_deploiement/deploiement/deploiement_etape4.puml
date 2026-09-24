@@ -2,36 +2,36 @@
 !pragma layout smetana
 !include ../../_common/estilo.iuml
 
-title Étape 4 (déploiement) : Diagramme de déploiement\nAPI FastAPI conteneurisée (Docker) + serveur vLLM en service séparé : code [FAIT] et testé, jamais déployé réellement (aucun Space HF ni serveur vLLM/GPU réel provisionné, cf. README §4)
+title Étape 4 (déploiement) : Diagramme de déploiement\nConteneur unique (API FastAPI + vLLM) sur un Space HF Docker/GPU RÉELLEMENT CRÉÉ\n(mombasstic/chsa-triage-api, --flavor l4x1, cf. README §4)
 
 actor "Infirmier\n(client HTTP)" as INFIRMIER
 
-node "Conteneur Docker\n(image chsa-triage-api, Dockerfile)\n[FAIT] jamais construit/déployé réellement\n(WSL2 sans intégration Docker Desktop ici)" as DOCKER #EFEAE0 {
-  component "uvicorn\n(interfaces.api.main:app,\nport 7860)" as UVICORN
-  component "interfaces.api.app\n(creer_application(), routes\nFastAPI, dependances par\ninjection explicite)" as APP
-  component "interfaces.api.securite\n(cle X-API-Key,\nCHSA_CLE_API_DEMO)" as SECURITE
-  database "MagasinConversationsMemoire\n(en mémoire, PERDU au\nredémarrage du conteneur)" as MAGASIN
-  component "PoursuivreEntretienUseCase\nObtenirDiagnosticUseCase\n(E4_00 / E4_01)" as USECASES
-  component "VllmEndpointInferenceAdapter\n(implémente MoteurInference,\nclient HTTP httpx sortant)" as ADAPT_VLLM
-  database "data/processed/journal_audit.jsonl\n(JsonlJournalAudit, F6, append-only ;\nPERDU sans volume monté)" as JOURNAL
-}
-
-node "Serveur vLLM\n(service SÉPARÉ, GPU requis,\nJAMAIS dans l'image Docker ci-dessus)\n[CIBLE MISSION] jamais provisionné ici" as VLLM #FCEBE6 {
-  component "vllm serve Qwen/Qwen3-1.7B-Base\n~-~-enable-lora\n~-~-lora-modules dpo=<chsa-triage-dpo-lora>\n(API compatible OpenAI)" as VLLM_SERVER
+node "Hugging Face Space Docker/GPU\n(mombasstic/chsa-triage-api, --flavor l4x1)\n[FAIT] espace réellement créé\n(vérifié 24/09/2026 via l'API HF publique)" as HFSPACE #E8F5E9 {
+  node "Conteneur UNIQUE\n(image deploy/space_gpu_api_vllm/Dockerfile,\nPAS le Dockerfile racine)" as CONTAINER #EFEAE0 {
+    component "vllm serve Qwen/Qwen3-1.7B-Base\n~-~-enable-lora\n~-~-lora-modules dpo=<chsa-triage-dpo-lora>\n(sous-processus en arrière-plan,\nport 8000 interne, API compatible OpenAI)" as VLLM_SERVER
+    component "uvicorn\n(interfaces.api.main:app,\npremier plan, port 7860)" as UVICORN
+    component "interfaces.api.app\n(creer_application(), routes\nFastAPI, dependances par\ninjection explicite)" as APP
+    component "interfaces.api.securite\n(cle X-API-Key,\nCHSA_CLE_API_DEMO)" as SECURITE
+    database "MagasinConversationsMemoire\n(en mémoire, PERDU au\nredémarrage du conteneur)" as MAGASIN
+    component "PoursuivreEntretienUseCase\nObtenirDiagnosticUseCase\n(E4_00 / E4_01)" as USECASES
+    component "VllmEndpointInferenceAdapter\n(implémente MoteurInference,\nclient HTTP httpx sortant)" as ADAPT_VLLM
+    component "JournalAudit (port)\nsélection par CHSA_JOURNAL_AUDIT" as JOURNAL_PORT
+    database "JsonlJournalAudit\n(CHSA_JOURNAL_AUDIT=jsonl, défaut)\nfichier local, PERDU au\nredémarrage du conteneur" as JOURNAL_JSONL
+    component "HfDatasetJournalAudit\n(CHSA_JOURNAL_AUDIT=hf_dataset)\nCommitScheduler, push périodique" as JOURNAL_HFDS
+  }
 }
 
 cloud "Hugging Face Hub" as HFHUB {
   artifact "Qwen/Qwen3-1.7B-Base\n(poids de base, publics)" as MODELE_BASE
   database "model\nchsa-triage-dpo-lora (privé)\nadaptateur LoRA DPO, JAMAIS FUSIONNÉ\navec la base" as REPO_DPO_LORA
+  database "dataset\nchsa-triage-audit-journal (privé)\njournal d'audit F6 persistant" as REPO_AUDIT_HF
 }
 
 cloud "GitHub" as GITHUB {
   component "GitHub Actions CI\n(.github/workflows/ci.yml)\n[FAIT] tests sans GPU +\nverif. build Docker, AUCUN déploiement" as CI
 }
 
-node "Hugging Face Spaces\n(cible de déploiement PRÉVUE,\n**JAMAIS ENCORE CRÉÉE**\ndécision de déploiement en attente)" as HFSPACE #FCEBE6 {
-  component "Docker SDK\n(hébergerait l'image ci-dessus)" as SPACE_DOCKER
-}
+node "Dockerfile racine\n(image chsa-triage-api:ci, API SEULE)\nvérification CI UNIQUEMENT,\nJAMAIS l'image déployée sur le Space ci-dessus" as DOCKER_CI #EFEAE0
 
 node "Poste de l'opérateur humain\n(machine locale, HORS HF Spaces)" as OPERATEUR #FFFFFF {
   component "interfaces/web/app_test_inference.py\n(Streamlit, exécuté localement,\njamais déployé comme Space séparé)" as STREAMLIT
@@ -41,45 +41,54 @@ node "Poste de l'opérateur humain\n(machine locale, HORS HF Spaces)" as OPERATE
 ' Flux reel
 ' ----------------------------------------------------------------------
 
-INFIRMIER --> UVICORN : HTTPS, en-tête X-API-Key\n(POST /conversations,\n.../messages, .../diagnostic)
+INFIRMIER --> UVICORN : HTTPS, en-tête X-API-Key\n(https://mombasstic-chsa-triage-api.hf.space,\nPOST /conversations, .../messages, .../diagnostic)
 UVICORN --> APP
 APP --> SECURITE : verifier_cle_api()\n(dependency FastAPI)
 APP --> MAGASIN : creer() / obtenir() / ajouter()
 APP --> USECASES : executer(...)
 USECASES --> ADAPT_VLLM : generer(messages, parametres)
-USECASES --> JOURNAL : consigner(EntreeAudit)\n(F6, systematique)
+USECASES --> JOURNAL_PORT : consigner(EntreeAudit)\n(F6, systematique)
 
-ADAPT_VLLM --> VLLM_SERVER : POST /v1/chat/completions\n(CHSA_URL_MOTEUR_INFERENCE,\nAuthorization: Bearer <CHSA_CLE_API_VLLM>)
+ADAPT_VLLM --> VLLM_SERVER : POST http://127.0.0.1:8000/v1/chat/completions\n(localhost interne au conteneur,\nplus de saut réseau externe)
 VLLM_SERVER --> MODELE_BASE : charge au démarrage\n(huggingface_hub)
 VLLM_SERVER --> REPO_DPO_LORA : charge l'adaptateur LoRA\n(~-~-lora-modules, jamais fusionné)
 
+JOURNAL_PORT ..> JOURNAL_JSONL : CHSA_JOURNAL_AUDIT=jsonl\n(défaut)
+JOURNAL_PORT ..> JOURNAL_HFDS : CHSA_JOURNAL_AUDIT=hf_dataset\n(alternative)
+JOURNAL_HFDS --> REPO_AUDIT_HF : push périodique\n(CommitScheduler, ~1 min)
+
 GITHUB --> CI : push/PR vers main
-CI ..> DOCKER : docker build -t chsa-triage-api:ci .\n(vérification du build UNIQUEMENT,\njamais publiée/déployée)
+CI ..> DOCKER_CI : docker build -t chsa-triage-api:ci .\n(vérification du build UNIQUEMENT,\njamais publiée/déployée)
 
-DOCKER ..> HFSPACE : déploiement PRÉVU, JAMAIS EFFECTUÉ\n(README §4 : "jamais déployé réellement")
+STREAMLIT ..> UVICORN : GET /sante (sondage en boucle),\nPOST /conversations/...\nCHSA_API_URL_BASE=https://mombasstic-chsa-triage-api.hf.space\n(Space réel) ou http://127.0.0.1:7860 (dev local)
 
-STREAMLIT ..> UVICORN : GET /sante (sondage en boucle),\nPOST /conversations/...\n(dev local, CHSA_API_URL_BASE=\nhttp://127.0.0.1:7860)
-STREAMLIT ..> HFSPACE : même flux HTTP,\nCHSA_API_URL_BASE=<URL réelle du Space>\n(cible réelle une fois le Space créé)
-
-note bottom of DOCKER
-  Décision Étape 4 documentée (cf. Dockerfile) :
-  l'image contient l'API FastAPI SEULE. `torch`
-  est une dépendance de base inconditionnelle du
-  paquet (héritée des Étapes 1-3), installée en
-  CPU via `uv sync ~-~-extra api`, mais jamais
-  importée par cette image (aucun adaptateur
-  transformers/trl chargé en mode "distant").
+note bottom of HFSPACE
+  RÉELLEMENT CRÉÉ : confirmé le 24/09/2026 via
+  GET https://huggingface.co/api/spaces/mombasstic/chsa-triage-api
+  (sdk=docker, hardware demandé=l4x1, sous-domaine
+  mombasstic-chsa-triage-api.hf.space). À cette même
+  vérification, le dépôt du Space ne contenait encore que
+  les fichiers par défaut (stage HF "NO_APP_FILE") : l'image
+  ci-dessous est celle PRÉVUE/prête pour ce Space (code
+  fusionné, deploy/space_gpu_api_vllm/), pas confirmée comme
+  déjà servant des requêtes réelles à cette date.
 end note
 
-note bottom of VLLM
-  JAMAIS provisionné dans cette tâche : GPU/CUDA
-  requis dans le conteneur hôte, hors de portée
-  d'une image API générique visant HF Spaces
-  (Docker SDK, souvent sans GPU pour le seul
-  frontal). Décision : service SÉPARÉ, appelé en
-  HTTP par VllmEndpointInferenceAdapter, exactement
-  le découplage que permet l'architecture
-  hexagonale du projet.
+note bottom of CONTAINER
+  `demarrer.sh` (deploy/space_gpu_api_vllm/) : lance
+  `vllm serve` en arrière-plan (&) PUIS `exec uvicorn`
+  au premier plan, dans le MÊME conteneur (contrairement
+  au modèle de conception initial : vLLM comme service
+  HTTP séparé). `GET /sante` sonde `vLLM /health` en
+  interne et reste toujours HTTP 200, même si vLLM met
+  plusieurs minutes à charger le modèle.
+end note
+
+note bottom of JOURNAL_PORT
+  Les deux adaptateurs sont alternatifs, JAMAIS actifs
+  simultanément : `CHSA_JOURNAL_AUDIT` (variable
+  d'environnement du Space) en sélectionne un seul au
+  démarrage (interfaces/api/main.py::_construire_journal_audit).
 end note
 
 note bottom of MAGASIN
@@ -92,21 +101,30 @@ note bottom of MAGASIN
   (Redis, base), hors périmètre de ce POC.
 end note
 
-note bottom of JOURNAL
+note bottom of JOURNAL_JSONL
   Fichier local au conteneur : sans volume monté,
   perdu à chaque redémarrage/reconstruction du
   conteneur (même limite déjà documentée pour le
   disque éphémère des jobs HF Jobs, Étapes 2/3).
-  Aucun mécanisme de volume/persistance n'est
-  câblé dans le Dockerfile actuel.
 end note
 
-note bottom of HFSPACE
-  **JAMAIS ENCORE CRÉÉE.** Le Dockerfile et le
-  workflow CI sont écrits et testés pour être
-  compatibles avec cette cible (port 7860,
-  HEALTHCHECK /sante), mais aucun Space HF n'a
-  été créé ni configuré dans cette tâche.
+note bottom of JOURNAL_HFDS
+  Même mécanisme que `HfDatasetSuiviExperimentation`
+  (suivi d'expérimentation, Étapes 2/3) :
+  `huggingface_hub.CommitScheduler`, un seul fichier
+  JSONL append-only pour toute la durée de vie du
+  processus. Nécessite `HF_TOKEN` (secret du Space)
+  et un dépôt dataset PRIVÉ déjà créé.
+end note
+
+note bottom of DOCKER_CI
+  Décision Étape 4 documentée (cf. Dockerfile racine) :
+  l'image CI contient l'API FastAPI SEULE, sans vLLM.
+  `torch` est une dépendance de base inconditionnelle du
+  paquet (héritée des Étapes 1-3), installée en CPU via
+  `uv sync ~-~-extra api`, mais jamais importée par cette
+  image (aucun adaptateur transformers/trl chargé). Cette
+  image n'est JAMAIS celle déployée sur le Space ci-dessus.
 end note
 
 note bottom of REPO_DPO_LORA
