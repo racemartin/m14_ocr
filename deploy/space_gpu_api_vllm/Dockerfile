@@ -40,10 +40,15 @@
 # install` apres le `uv sync --frozen`. Resultat reel : un saut de 8
 # versions mineures entraine un torch incompatible avec ce conteneur
 # (AttributeError: module 'sys' has no attribute
-# 'get_int_max_str_digits', import de vllm.env_override) -- probleme
-# DIFFERENT du segfault, jamais atteint. Retire ; une eventuelle
-# version intermediaire (saut plus petit, compatibilite verifiee)
-# resterait a explorer si cette piste est reprise.
+# 'get_int_max_str_digits', import de vllm.env_override -- cette
+# fonction n'existe qu'a partir de Python 3.12, ce conteneur reste en
+# 3.11) -- probleme DIFFERENT du segfault, jamais atteint.
+#
+# PISTE TESTEE ICI : vllm==0.22.0 (sortie 2026-05-29, ~4 mois de
+# correctifs apres le 0.20.2 verrouille, saut bien plus petit que
+# 0.28.0). Verifie via PyPI avant de tester : cette version fixe
+# torch==2.11.0, qui publie bien une roue cp311 (Python 3.11) reelle
+# -- compatibilite confirmee AVANT ce test, pas une simple hypothese.
 
 FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04
 
@@ -66,6 +71,12 @@ COPY --chown=user monitoring/ monitoring/
 # image ici, contrairement au `Dockerfile` racine qui n'installe que
 # `api` : c'est exactement ce qui distingue les deux fichiers.
 RUN uv sync --extra api --extra remote --no-dev --frozen
+
+# Surcharge ponctuelle testee (cf. note en tete de fichier) : version de
+# vLLM plus recente que celle verrouillee par uv.lock, UNIQUEMENT pour
+# cette image. A retirer si sans effet sur le segfault, ou a reporter
+# dans uv.lock pour tout le projet si elle s'avere etre la solution reelle.
+RUN uv pip install "vllm==0.22.0"
 
 ENV PATH="$HOME/app/.venv/bin:${PATH}"
 ENV PYTHONUNBUFFERED=1
