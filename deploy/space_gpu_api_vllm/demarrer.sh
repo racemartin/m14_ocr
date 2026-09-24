@@ -32,10 +32,24 @@
 # dependante du temps reel d'execution.
 #
 # NON RESOLU. Reproduction solide sur deux versions de vLLM et sept
-# pistes ciblees exclues : candidat serieux pour un signalement en
-# amont du projet vLLM, ou test d'un autre "flavor" de GPU HF pour
-# isoler une eventuelle cause materielle a cette instance L4 precise.
+# pistes ciblees exclues : signalement fait en amont du projet vLLM
+# (https://github.com/vllm-project/vllm/issues/58616).
+#
+# DIAGNOSTIC PONCTUEL (24/09/2026) : le Dockerfile officiel de vLLM
+# utilise une image de base CUDA differente de la notre, et torch
+# (2.11.0, verifie pour vllm==0.22.0) telecharge des paquets
+# nvidia-*-cu13 (CUDA 13) alors que notre image de base est CUDA 12.4.1
+# -- jamais verifie si le driver NVIDIA reel de cette instance L4 HF
+# supporte CUDA 13. `nvidia-smi` + la version CUDA vue par torch,
+# logues ci-dessous avant le lancement de vLLM, pour comparer. A
+# retirer une fois l'information obtenue (n'affecte pas le
+# comportement de vLLM lui-meme).
 set -euo pipefail
+
+echo "===== Diagnostic GPU/driver (avant vLLM) ====="
+nvidia-smi || echo "nvidia-smi indisponible ou a echoue"
+python3 -c "import torch; print('torch.version.cuda =', torch.version.cuda); print('torch CUDA disponible =', torch.cuda.is_available())" || echo "verification torch echouee"
+echo "==============================================="
 
 vllm serve Qwen/Qwen3-1.7B-Base \
     --enable-lora \
