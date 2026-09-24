@@ -32,13 +32,15 @@
 # vLLM (teste aussi, meme segfault exact malgre le delai -- exclut
 # l'hypothese d'un GPU/driver pas encore stabilise a l'allocation
 # fraiche du conteneur) ne sont une solution de production viable a ce
-# jour. Pistes non testees pour la suite : version de vLLM differente
-# (bug potentiel de cette version 0.20.2 precise), autre "flavor" de
-# GPU HF (isoler une eventuelle cause materielle a cette instance L4
-# precise), ou signalement en amont du projet vLLM avec cette
-# reproduction (multiprocessing, permissions, LoRA, attention backend,
-# async scheduling et delai de demarrage tous deja exclus par tests
-# reels -- reproduction solide pour un rapport de bug).
+# jour.
+#
+# PISTE EN COURS : version de vLLM plus recente forcee cote Dockerfile
+# (0.28.0 au lieu du 0.20.2 verrouille par uv.lock, uniquement pour
+# cette image -- cf. Dockerfile de ce dossier). Si toujours sans effet,
+# reste : autre "flavor" de GPU HF (isoler une eventuelle cause
+# materielle a cette instance L4 precise), ou signalement en amont du
+# projet vLLM avec cette reproduction (six pistes deja exclues par
+# tests reels -- reproduction solide pour un rapport de bug).
 set -euo pipefail
 
 vllm serve Qwen/Qwen3-1.7B-Base \

@@ -19,30 +19,28 @@
 # met plusieurs minutes a charger le modele (cf. ce fichier pour le
 # raisonnement complet).
 #
-# Deploiement reel du 24/09/2026 (mombasstic/chsa-triage-api) : vLLM
-# echoue au demarrage sans compilateur C ("Failed to find C compiler"),
-# meme avec --enforce-eager (cf. demarrer.sh) -- ce flag desactive
-# seulement torch.compile du graphe du modele, mais vLLM compile aussi
-# via Triton un kernel de tri/echantillonnage separe
-# (topk_topp_sampler) qui a lui aussi besoin d'un compilateur, quel que
-# soit le mode eager/compile. build-essential ajoute (gcc present),
-# MAIS gcc echoue ensuite (exit status 1) en compilant cuda_utils.c
-# contre les en-tetes Python (-I/usr/include/python3.11) : le paquet
-# python3.11-dev (Python.h) manquait. Hypothese fondee (pas le texte
-# d'erreur gcc exact, stdout redirige vers DEVNULL par Triton), mais
-# cause la plus probable et la plus courante pour ce symptome precis.
+# Deploiement reel du 24/09/2026 (mombasstic/chsa-triage-api). Causes
+# reelles rencontrees et reglees (voir historique git pour le detail
+# complet) : compilateur C absent de l'image "runtime" -> build-essential
+# + python3.11-dev ajoutes ; UID 1000 requis par tout Space Docker HF
+# au runtime -> utilisateur cree explicitement ci-dessous
+# (https://huggingface.co/docs/hub/spaces-sdks-docker#permissions).
 #
-# Etape suivante du meme deploiement : une fois le compilateur regle,
-# vLLM segfaultait (crash natif, sans message Python exploitable) au
-# tout premier appel reel d'un noyau Triton (Punica/LoRA), juste apres
-# le chargement des poids. Cause reelle trouvee dans la documentation
-# officielle HF : un Space Docker execute TOUJOURS son conteneur avec
-# l'UID 1000 au runtime, quel que soit l'utilisateur du build -- or ce
-# Dockerfile ne creait jamais cet utilisateur, donc $HOME restait
-# incoherent avec l'UID reel a l'execution, cassant la resolution du
-# cache JIT de Triton (~/.triton/cache). D'ou la creation explicite de
-# l'utilisateur UID 1000 ci-dessous, exactement le patron documente par
-# HF (https://huggingface.co/docs/hub/spaces-sdks-docker#permissions).
+# Segfault natif persistant ensuite, TOUJOURS au meme endroit (juste
+# apres le chargement des poids, pendant le profile_run interne). Six
+# pistes ciblees exclues par tests reels (meme crash identique malgre
+# chaque changement) : multiprocessing V1, LoRA/Punica, backend
+# d'attention, async scheduling, delai de demarrage fixe -- voir
+# demarrer.sh pour le detail. Seul VLLM_TRACE_FUNCTION=1 (ralentit
+# massivement l'execution, inutilisable en production) evite le crash,
+# signature de condition de course dependante du temps reel.
+#
+# PISTE TESTEE ICI : la version de vLLM verrouillee par uv.lock (0.20.2)
+# est tres en retard sur la version stable actuelle (0.28.0+, plusieurs
+# mois de correctifs V1/EngineCore). `uv pip install` ci-dessous force
+# une version plus recente UNIQUEMENT dans cette image de deploiement,
+# sans toucher au uv.lock partage par tout le reste du projet
+# (entrainement, tests) -- portee volontairement limitee a ce fichier.
 
 FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04
 
@@ -65,6 +63,12 @@ COPY --chown=user monitoring/ monitoring/
 # image ici, contrairement au `Dockerfile` racine qui n'installe que
 # `api` : c'est exactement ce qui distingue les deux fichiers.
 RUN uv sync --extra api --extra remote --no-dev --frozen
+
+# Surcharge ponctuelle : version de vLLM plus recente que celle verrouillee
+# par uv.lock, testee UNIQUEMENT pour cette image (cf. note en tete de
+# fichier). A retirer si sans effet sur le segfault, ou a reporter dans
+# uv.lock pour tout le projet si elle s'avere etre la solution reelle.
+RUN uv pip install "vllm==0.28.0"
 
 ENV PATH="$HOME/app/.venv/bin:${PATH}"
 ENV PYTHONUNBUFFERED=1
