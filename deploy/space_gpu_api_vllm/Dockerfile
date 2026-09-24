@@ -25,15 +25,18 @@
 # seulement torch.compile du graphe du modele, mais vLLM compile aussi
 # via Triton un kernel de tri/echantillonnage separe
 # (topk_topp_sampler) qui a lui aussi besoin d'un compilateur, quel que
-# soit le mode eager/compile. build-essential est donc necessaire ici,
-# l'image de base "runtime" (par opposition a "devel") n'en a pas par
-# defaut.
+# soit le mode eager/compile. build-essential ajoute (gcc present),
+# MAIS gcc echoue ensuite (exit status 1) en compilant cuda_utils.c
+# contre les en-tetes Python (-I/usr/include/python3.11) : le paquet
+# python3.11-dev (Python.h) manquait. Hypothese fondee (pas le texte
+# d'erreur gcc exact, stdout redirige vers DEVNULL par Triton), mais
+# cause la plus probable et la plus courante pour ce symptome precis.
 
 FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends python3.11 python3-pip curl build-essential \
+RUN apt-get update && apt-get install -y --no-install-recommends python3.11 python3.11-dev python3-pip curl build-essential \
     && rm -rf /var/lib/apt/lists/*
 RUN pip install --no-cache-dir uv
 
