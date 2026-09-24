@@ -77,4 +77,11 @@ EXPOSE 7860
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
     CMD python3 -c "import httpx; httpx.get('http://127.0.0.1:7860/sante').raise_for_status()" || exit 1
 
+# L'image officielle definit ENTRYPOINT ["vllm", "serve"] -- sans
+# le vider ici, notre CMD serait ajoute comme ARGUMENT de cet
+# entrypoint (`vllm serve ./demarrer.sh`) au lieu de le remplacer.
+# Build reel : erreur "config file at './demarrer.sh' is not a valid
+# JSON file" (vLLM essayait de charger le script comme s'il etait le
+# modele).
+ENTRYPOINT []
 CMD ["./demarrer.sh"]
