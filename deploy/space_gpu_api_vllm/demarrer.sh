@@ -16,42 +16,31 @@
 # - UID 1000 requis par tout Space Docker HF au runtime -> utilisateur
 #   cree explicitement cote Dockerfile (correction legitime, gardee).
 #
-# Segfault natif (crash silencieux, sans message Python) juste apres le
-# chargement des poids, pendant le "profile_run" interne, TOUJOURS au
-# meme endroit exact, quoi que change dans la configuration. Pistes
-# EXCLUES par tests reels (meme crash identique malgre le changement) :
-# multiprocessing V1, permissions UID 1000, LoRA/Punica, backend
-# d'attention (FLASHINFER), --no-async-scheduling. Preuve decisive :
-# VLLM_TRACE_FUNCTION=1 (trace chaque appel Python, tres lent) a permis
-# un demarrage COMPLET et sain -- le ralentissement massif fait
-# disparaitre le crash, signature typique d'une CONDITION DE COURSE
-# dependante du temps reel d'execution, pas d'une erreur de
-# configuration isolable par un seul flag. NON RESOLU : ni
-# VLLM_TRACE_FUNCTION=1 (>100x plus lent, inutilisable en usage reel)
-# ni aucun flag cible, ni une pause fixe de 20s avant le lancement de
-# vLLM (teste aussi, meme segfault exact malgre le delai -- exclut
-# l'hypothese d'un GPU/driver pas encore stabilise a l'allocation
-# fraiche du conteneur) ne sont une solution de production viable a ce
-# jour.
+# Segfault natif (crash silencieux, sans message Python exploitable)
+# juste apres le chargement des poids, pendant le "profile_run" interne,
+# TOUJOURS au meme endroit exact, sur DEUX versions de vLLM (0.20.2 et
+# 0.22.0). Pistes EXCLUES par tests reels, chacune avec le meme crash
+# identique malgre le changement : multiprocessing V1, permissions UID
+# 1000, LoRA/Punica (teste desactive sur les DEUX versions), backend
+# d'attention (FLASHINFER), --no-async-scheduling, delai de demarrage
+# fixe, vllm==0.22.0 (torch==2.11.0, compatibilite Python 3.11
+# verifiee -- vllm==0.28.0 lui-meme exclu differemment : torch
+# incompatible avec Python 3.11, jamais atteint le segfault). Preuve
+# decisive : VLLM_TRACE_FUNCTION=1 (trace chaque appel Python, tres
+# lent) permet un demarrage COMPLET et sain -- le ralentissement massif
+# fait disparaitre le crash, signature d'une CONDITION DE COURSE
+# dependante du temps reel d'execution.
 #
-# vllm==0.28.0 (Dockerfile) exclu : torch incompatible avec Python 3.11
-# de ce conteneur. vllm==0.22.0 (compatibilite Python 3.11 verifiee via
-# PyPI avant test, cf. Dockerfile) : MEME segfault, mais trace native
-# bien plus detaillee cette fois -- crash dans le dispatcher d'operateurs
-# JIT de torch (torch::jit::invokeOperatorFromPython ->
-# PythonKernelHolder), juste apres un nouveau log absent en 0.20.2 :
-# "Using default LoRA kernel configs". Piste LoRA jamais testee
-# specifiquement sur 0.22.0 (seulement sur 0.20.2, ou elle avait ete
-# exclue) -- le chemin de kernel LoRA differe visiblement entre les deux
-# versions.
-#
-# DIAGNOSTIC EN COURS : LoRA desactive ci-dessous, specifiquement pour
-# vllm==0.22.0. A REVERTIR (remettre --enable-lora --lora-modules
-# dpo=mombasstic/chsa-triage-dpo-lora --max-lora-rank 16) des que le
-# resultat de ce test est connu.
+# NON RESOLU. Reproduction solide sur deux versions de vLLM et sept
+# pistes ciblees exclues : candidat serieux pour un signalement en
+# amont du projet vLLM, ou test d'un autre "flavor" de GPU HF pour
+# isoler une eventuelle cause materielle a cette instance L4 precise.
 set -euo pipefail
 
 vllm serve Qwen/Qwen3-1.7B-Base \
+    --enable-lora \
+    --lora-modules dpo=mombasstic/chsa-triage-dpo-lora \
+    --max-lora-rank 16 \
     --enforce-eager \
     --port 8000 &
 
