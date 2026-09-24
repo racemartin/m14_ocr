@@ -69,7 +69,11 @@ COPY --chown=user monitoring/ monitoring/
 COPY --chown=user deploy/space_gpu_api_vllm/demarrer.sh ./demarrer.sh
 RUN chmod +x ./demarrer.sh
 
-ENV PYTHONPATH="$HOME/app:${PYTHONPATH}"
+# $HOME/app rend `interfaces` importable ; $HOME/app/src rend
+# `chsa_triage` importable (le paquet vit dans src/chsa_triage/, pas
+# directement sous $HOME/app). Build reel : ModuleNotFoundError sans
+# ce deuxieme chemin.
+ENV PYTHONPATH="$HOME/app:$HOME/app/src:${PYTHONPATH}"
 ENV PYTHONUNBUFFERED=1
 
 EXPOSE 7860
