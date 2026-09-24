@@ -18,28 +18,28 @@
 #
 # Segfault natif (crash silencieux, sans message Python) juste apres le
 # chargement des poids, pendant le "profile_run" interne, TOUJOURS au
-# meme endroit exact. Pistes EXCLUES par tests reels (meme crash
-# identique malgre le changement) : multiprocessing V1,
-# LoRA/Punica, backend d'attention (FLASHINFER). Preuve decisive :
+# meme endroit exact, quoi que change dans la configuration. Pistes
+# EXCLUES par tests reels (meme crash identique malgre le changement) :
+# multiprocessing V1, permissions UID 1000, LoRA/Punica, backend
+# d'attention (FLASHINFER), --no-async-scheduling. Preuve decisive :
 # VLLM_TRACE_FUNCTION=1 (trace chaque appel Python, tres lent) a permis
-# un demarrage COMPLET et sain -- le ralentissement massif a fait
+# un demarrage COMPLET et sain -- le ralentissement massif fait
 # disparaitre le crash, signature typique d'une CONDITION DE COURSE
-# dependante du temps reel, pas d'une erreur de configuration.
-#
-# Hypothese testee ici : `--no-async-scheduling`. Le log montrait
-# "Asynchronous scheduling is enabled" -- ce mecanisme compose le lot
-# suivant avant que l'actuel ne se termine, dependant explicitement de
-# l'horloge (documente en amont), exactement le type de mecanisme
-# qu'une execution ralentie peut faire disparaitre par hasard. Bien
-# moins couteux a tester que VLLM_TRACE_FUNCTION=1 (pas de ralentissement
-# massif). Si confirme, retirer ce commentaire de piste ouverte.
+# dependante du temps reel d'execution, pas d'une erreur de
+# configuration isolable par un seul flag. NON RESOLU : ni
+# VLLM_TRACE_FUNCTION=1 (>100x plus lent, inutilisable en usage reel)
+# ni aucun flag cible testes a ce jour ne sont une solution de
+# production viable. Pistes non testees pour la suite : version de
+# vLLM differente (bug potentiel de cette version 0.20.2 precise),
+# autre "flavor" de GPU HF (isoler une eventuelle cause materielle a
+# cette instance L4 precise), ou signalement en amont du projet vLLM
+# avec cette reproduction.
 set -euo pipefail
 
 vllm serve Qwen/Qwen3-1.7B-Base \
     --enable-lora \
     --lora-modules dpo=mombasstic/chsa-triage-dpo-lora \
     --max-lora-rank 16 \
-    --no-async-scheduling \
     --enforce-eager \
     --port 8000 &
 
