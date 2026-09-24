@@ -35,15 +35,15 @@
 # pistes ciblees exclues : signalement fait en amont du projet vLLM
 # (https://github.com/vllm-project/vllm/issues/58616).
 #
-# DIAGNOSTIC PONCTUEL (24/09/2026) : le Dockerfile officiel de vLLM
-# utilise une image de base CUDA differente de la notre, et torch
-# (2.11.0, verifie pour vllm==0.22.0) telecharge des paquets
-# nvidia-*-cu13 (CUDA 13) alors que notre image de base est CUDA 12.4.1
-# -- jamais verifie si le driver NVIDIA reel de cette instance L4 HF
-# supporte CUDA 13. `nvidia-smi` + la version CUDA vue par torch,
-# logues ci-dessous avant le lancement de vLLM, pour comparer. A
-# retirer une fois l'information obtenue (n'affecte pas le
-# comportement de vLLM lui-meme).
+# HYPOTHESE TESTEE ET EXCLUE (24/09/2026) : le Dockerfile officiel de
+# vLLM utilise une image de base CUDA differente de la notre, et torch
+# (2.11.0) telecharge des paquets nvidia-*-cu13 (CUDA 13) alors que
+# notre image de base est CUDA 12.4.1 -- desaccord driver/CUDA
+# suspecte. EXCLU par `nvidia-smi` reel (garde ci-dessous a titre de
+# diagnostic permanent, cout nul) : driver 580.178.04, CUDA 13.0
+# supporte nativement, `torch.version.cuda=13.0`,
+# `torch.cuda.is_available()=True`. Le GPU/driver est sain ; ce n'est
+# pas la cause du segfault.
 set -euo pipefail
 
 echo "===== Diagnostic GPU/driver (avant vLLM) ====="
