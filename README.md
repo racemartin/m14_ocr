@@ -63,6 +63,7 @@ Version détaillée (scripts/adaptateurs/dépôts HF réels, DPO marqué concept
   - [4.3 Conteneurisation Docker](#43-conteneurisation-docker)
   - [4.4 CI/CD](#44-cicd)
   - [4.5 Healthcheck vLLM et frontend Streamlit de test](#45-healthcheck-vllm-et-frontend-streamlit-de-test)
+  - [4.6 Guide rapide de déploiement](#46-guide-rapide-de-deploiement)
 - [Dépannage](#depannage)
 - [Vérifications d'environnement](#verifications-environnement)
 
@@ -1171,6 +1172,81 @@ export CHSA_API_URL_BASE="https://mombasstic-chsa-triage-api.hf.space"
 export CHSA_API_CLE="change-moi"
 uv run streamlit run interfaces/web/app_test_inference.py
 ```
+
+<table id="46-guide-rapide-de-deploiement" style="width:100%;"><tr><td style="background-color:#f5b0e0;">
+<h2 style="border-bottom:none; margin:0;">4.6 Guide rapide de déploiement</h2>
+</td></tr></table>
+
+Séquence complète, dans l'ordre idéal (chemin heureux, sans les
+détours de mise au point réels documentés en section Dépannage), du
+Space vide jusqu'à l'interface de dialogue.
+
+**1. Créer le Space Docker/GPU** (une seule fois)
+```bash
+hf repo create mombasstic/chsa-triage-api --repo-type space --space-sdk docker
+hf spaces settings mombasstic/chsa-triage-api --hardware l4x1
+```
+
+**2. Configurer le secret `HF_TOKEN`** (nécessaire pour le LoRA privé et le journal d'audit sur dataset HF)
+```bash
+python3 -c "from huggingface_hub import HfApi; HfApi().add_space_secret('mombasstic/chsa-triage-api', 'HF_TOKEN', '<votre-token>')"
+```
+
+**3. Configurer le secret `CHSA_CLE_API_DEMO`** (clé d'accès à l'API elle-même)
+```bash
+python3 -c "from huggingface_hub import HfApi; HfApi().add_space_secret('mombasstic/chsa-triage-api', 'CHSA_CLE_API_DEMO', '<votre-cle>')"
+```
+
+**4. Publier le `Dockerfile`**
+```bash
+hf upload mombasstic/chsa-triage-api deploy/space_gpu_api_vllm/Dockerfile Dockerfile --repo-type space
+```
+
+**5. Publier `demarrer.sh`** (même chemin imbriqué que celui attendu par le `COPY` du Dockerfile — jamais aplati)
+```bash
+hf upload mombasstic/chsa-triage-api deploy/space_gpu_api_vllm/demarrer.sh deploy/space_gpu_api_vllm/demarrer.sh --repo-type space
+```
+
+**6. Publier le code source**
+```bash
+hf upload mombasstic/chsa-triage-api src src --repo-type space
+hf upload mombasstic/chsa-triage-api interfaces interfaces --repo-type space
+hf upload mombasstic/chsa-triage-api training training --repo-type space
+hf upload mombasstic/chsa-triage-api monitoring monitoring --repo-type space
+```
+
+**7. Publier le README public du Space**
+```bash
+hf upload mombasstic/chsa-triage-api deploy/space_gpu_api_vllm/README_space.md README.md --repo-type space
+```
+
+**8. Reconstruire et démarrer**
+```bash
+hf spaces restart mombasstic/chsa-triage-api
+hf spaces wait mombasstic/chsa-triage-api
+```
+
+**9. Vérifier que l'API répond** (toujours 200, même si vLLM charge encore)
+```bash
+curl https://mombasstic-chsa-triage-api.hf.space/sante
+# attendu : {"disponible":true,"detail":"serveur vLLM disponible"}
+```
+
+**10. Tester une conversation réelle bout-en-bout via l'API**
+```bash
+curl -X POST https://mombasstic-chsa-triage-api.hf.space/conversations \
+  -H "X-API-Key: <votre-cle>"
+```
+
+**11. Lancer le frontend Streamlit en local, pointé vers le Space réel**
+```bash
+uv sync --extra web
+export CHSA_API_URL_BASE="https://mombasstic-chsa-triage-api.hf.space"
+export CHSA_API_CLE="<votre-cle>"
+uv run streamlit run interfaces/web/app_test_inference.py
+```
+
+**12. Ouvrir le navigateur** (Streamlit s'ouvre seul sur `localhost:8501`) et dialoguer avec l'agent.
 
 <table id="depannage" style="width:100%;"><tr><td style="background-color:#d9d9d9;">
 <h1 style="border-bottom:none; margin:0;">Dépannage</h1>
