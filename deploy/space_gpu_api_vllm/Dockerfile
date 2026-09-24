@@ -48,7 +48,16 @@ RUN pip install --no-cache-dir fastapi "uvicorn[standard]" httpx pydantic
 # l'utilisateur du build (root par defaut sur cette image officielle)
 # -- meme raisonnement que precedemment
 # (https://huggingface.co/docs/hub/spaces-sdks-docker#permissions).
-RUN useradd -m -u 1000 user
+# Contrairement a notre precedente image nvidia/cuda, celle-ci a DEJA
+# un compte UID 1000 (heritee de sa base Ubuntu -- `useradd -u 1000`
+# echoue avec "UID 1000 is not unique"). On renomme ce compte existant
+# plutot que d'en creer un nouveau.
+RUN existant=$(getent passwd 1000 | cut -d: -f1); \
+    if [ -n "$existant" ]; then \
+        usermod --login user --home /home/user --move-home "$existant"; \
+    else \
+        useradd -m -u 1000 user; \
+    fi
 ENV HOME=/home/user
 USER user
 WORKDIR $HOME/app
