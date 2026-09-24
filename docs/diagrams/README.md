@@ -85,10 +85,13 @@ docs/diagrams/
     │                                2 diagrammes, un par cas d'usage réel (réel)
     ├── paquets/                     classes_etape4 (classes réelles) + etape4_paquets
     │                                (relation à l'existant Étape 1/1bis/2/3) (réel)
-    └── deploiement/                 conteneur Docker (API FastAPI) vs composants externes
-                                       (serveur vLLM, HF Hub, HF Space jamais créé) vs poste
-                                       local de l'opérateur (frontend Streamlit, hors HF
-                                       Spaces, architecture à 2 pièces) (réel)
+    └── deploiement/                 conteneur UNIQUE (API FastAPI + vLLM, image
+                                       deploy/space_gpu_api_vllm/Dockerfile) sur le Space HF
+                                       Docker/GPU RÉELLEMENT CRÉÉ (mombasstic/chsa-triage-api,
+                                       l4x1) vs composants externes (HF Hub, dont le nouvel
+                                       adaptateur HfDatasetJournalAudit) vs poste local de
+                                       l'opérateur (frontend Streamlit, hors HF Spaces,
+                                       architecture à 2 pièces) (réel)
 ```
 
 ## État de couverture
@@ -102,7 +105,7 @@ docs/diagrams/
 | 02 : Étape 1 (données) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel) |
 | 03 : Étape 2 (SFT) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel) |
 | 04 : Étape 3 (DPO) | [FAIT] (conceptuel, écrit avant le code) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel, job jamais lancé) |
-| 05 : Étape 4 (déploiement) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel, jamais déployé) |
+| 05 : Étape 4 (déploiement) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel) | [FAIT] (réel, Space GPU réellement créé) |
 
 **« réel »** = généré à partir du code effectivement écrit
 (`src/chsa_triage/`, `interfaces/cli/`, `training/`, `monitoring/`).
@@ -149,7 +152,21 @@ comme n'existant pas encore) a depuis été écrit (23/09/2026) ; mis à
 jour le 24/09/2026 dans `deploiement/deploiement_etape4.puml` pour le
 représenter comme un processus LOCAL côté opérateur humain (hors HF
 Spaces), l'architecture ayant été simplifiée de 3 à 2 pièces (plus de
-Space HF Streamlit/CPU dédié, cf. AGENTS.md et README §4.5). Le premier
+Space HF Streamlit/CPU dédié, cf. AGENTS.md et README §4.5).
+`deploiement/deploiement_etape4.puml` a été corrigé une nouvelle fois
+le 24/09/2026 pour refléter trois faits devenus réels depuis : (1) le
+Space HF Docker/GPU cible (`mombasstic/chsa-triage-api`, `--flavor
+l4x1`) est réellement créé (vérifié via l'API HF publique), le
+diagramme ne dit donc plus « jamais créé » ; (2) l'image effectivement
+prévue pour ce Space combine API+vLLM dans un SEUL conteneur
+(`deploy/space_gpu_api_vllm/Dockerfile` + `demarrer.sh`), remplaçant le
+modèle initial à deux nœuds séparés (conteneur API / serveur vLLM
+externe), le `Dockerfile` racine restant réservé à la seule
+vérification CI (build, jamais publié) ; (3) le nouvel adaptateur
+`HfDatasetJournalAudit` (journal d'audit F6 persistant via un dataset
+HF Hub, `mombasstic/chsa-triage-audit-journal`) est représenté comme
+alternative sélectionnable par `CHSA_JOURNAL_AUDIT`, à côté de
+`JsonlJournalAudit`. Le premier
 diagramme d'activité de l'Étape 3 (`04_etape3_dpo/activite/dpo_double_fonction_entrainement.puml`,
 18/09/2026) est conceptuel par nature et écrit AVANT le code (aucun
 script DPO n'existait alors) : il illustre comment une seule passe
