@@ -7,47 +7,39 @@
 # disponibilite reelle du modele via GET /sante, jamais en attendant ce
 # script (qui ne bloque pas sur le chargement de vLLM).
 #
-# Deploiement reel du 24/09/2026 (mombasstic/chsa-triage-api) : l'image
-# de base nvidia/cuda:12.4.1-runtime-ubuntu22.04 n'a pas de compilateur
-# C par defaut (variante "runtime", pas "devel"), donc vLLM echouait au
-# demarrage ("Failed to find C compiler") -- pas seulement pour
-# torch.compile du graphe du modele (que --enforce-eager desactive),
-# mais aussi pour un kernel Triton de tri/echantillonnage separe
-# (topk_topp_sampler) qui compile quel que soit le mode eager/compile.
-# Root cause reglee cote Dockerfile (build-essential ajoute) ; garde
-# --enforce-eager ici en plus, cout de demarrage/memoire plus faible,
-# acceptable pour ce POC. --max-lora-rank 16 fixe explicitement (rang
-# reel du LoRA DPO, cf. recipes/dpo_qwen3_lora.yaml) plutot que de
-# compter sur le defaut.
+# Deploiement reel du 24/09/2026 (mombasstic/chsa-triage-api). Journal
+# condense des causes reelles rencontrees et reglees (voir historique
+# git de ce fichier et du Dockerfile pour le detail complet) :
+# - Compilateur C absent de l'image de base "runtime" -> build-essential
+#   + python3.11-dev ajoutes cote Dockerfile (Triton a aussi besoin
+#   d'un compilateur, meme sous --enforce-eager).
+# - UID 1000 requis par tout Space Docker HF au runtime -> utilisateur
+#   cree explicitement cote Dockerfile (correction legitime, gardee).
 #
-# Suite du deploiement reel du 24/09/2026 : une fois le compilateur
-# regle, vLLM segfaultait (crash natif, sans message Python exploitable)
-# juste apres le chargement des poids, pendant le "profile_run" interne
-# (avant le calcul de la taille du cache KV), TOUJOURS au meme endroit
-# exact. Pistes EXCLUES par des tests reels, chacune avec le MEME
-# segfault identique malgre le changement : VLLM_ENABLE_V1_MULTIPROCESSING=0
-# (sans effet, ignoree par `vllm serve`) ; utilisateur UID 1000 cote
-# Dockerfile (correction legitime, gardee, mais n'a pas supprime le
-# segfault) ; LoRA/Punica (teste desactive, meme crash) ;
-# --attention-backend FLASHINFER a la place de FlashAttention2 (meme
-# crash, log confirme "Using AttentionBackendEnum.FLASHINFER backend").
+# Segfault natif (crash silencieux, sans message Python) juste apres le
+# chargement des poids, pendant le "profile_run" interne, TOUJOURS au
+# meme endroit exact. Pistes EXCLUES par tests reels (meme crash
+# identique malgre le changement) : multiprocessing V1,
+# LoRA/Punica, backend d'attention (FLASHINFER). Preuve decisive :
+# VLLM_TRACE_FUNCTION=1 (trace chaque appel Python, tres lent) a permis
+# un demarrage COMPLET et sain -- le ralentissement massif a fait
+# disparaitre le crash, signature typique d'une CONDITION DE COURSE
+# dependante du temps reel, pas d'une erreur de configuration.
 #
-# DIAGNOSTIC EN COURS (24/09/2026) : VLLM_TRACE_FUNCTION=1 (recommande
-# par le guide officiel de resolution de problemes de vLLM) trace
-# chaque appel de fonction Python dans les logs pour identifier la
-# ligne exacte avant le crash natif, au lieu de la trace generique
-# inutilisable vue jusqu'ici. Ralentit enormement l'execution (avertit
-# vLLM, >100x) mais le crash survient en quelques secondes normalement,
-# donc reste exploitable pour ce diagnostic ponctuel. A RETIRER apres
-# ce test, jamais en usage normal.
+# Hypothese testee ici : `--no-async-scheduling`. Le log montrait
+# "Asynchronous scheduling is enabled" -- ce mecanisme compose le lot
+# suivant avant que l'actuel ne se termine, dependant explicitement de
+# l'horloge (documente en amont), exactement le type de mecanisme
+# qu'une execution ralentie peut faire disparaitre par hasard. Bien
+# moins couteux a tester que VLLM_TRACE_FUNCTION=1 (pas de ralentissement
+# massif). Si confirme, retirer ce commentaire de piste ouverte.
 set -euo pipefail
-
-export VLLM_TRACE_FUNCTION=1
 
 vllm serve Qwen/Qwen3-1.7B-Base \
     --enable-lora \
     --lora-modules dpo=mombasstic/chsa-triage-dpo-lora \
     --max-lora-rank 16 \
+    --no-async-scheduling \
     --enforce-eager \
     --port 8000 &
 
