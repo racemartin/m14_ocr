@@ -23,26 +23,31 @@
 # Suite du deploiement reel du 24/09/2026 : une fois le compilateur
 # regle, vLLM segfaultait (crash natif, sans message Python exploitable)
 # juste apres le chargement des poids, pendant le "profile_run" interne
-# (avant le calcul de la taille du cache KV). Pistes deja EXCLUES par
-# des tests reels : VLLM_ENABLE_V1_MULTIPROCESSING=0 (sans effet,
-# ignoree par `vllm serve`) ; utilisateur UID 1000 cote Dockerfile
-# (correction legitime, gardee, mais n'a pas supprime le segfault) ;
-# LoRA/Punica (teste desactive, MEME segfault identique sans LoRA --
-# donc pas la cause, contrairement a l'hypothese initiale).
+# (avant le calcul de la taille du cache KV), TOUJOURS au meme endroit
+# exact. Pistes EXCLUES par des tests reels, chacune avec le MEME
+# segfault identique malgre le changement : VLLM_ENABLE_V1_MULTIPROCESSING=0
+# (sans effet, ignoree par `vllm serve`) ; utilisateur UID 1000 cote
+# Dockerfile (correction legitime, gardee, mais n'a pas supprime le
+# segfault) ; LoRA/Punica (teste desactive, meme crash) ;
+# --attention-backend FLASHINFER a la place de FlashAttention2 (meme
+# crash, log confirme "Using AttentionBackendEnum.FLASHINFER backend").
 #
-# DIAGNOSTIC EN COURS (24/09/2026) : `--attention-backend FLASHINFER`
-# ci-dessous remplace FlashAttention2 (utilise par defaut, log "Using
-# FLASH_ATTN attention backend"), bibliotheque precompilee dont un
-# desaccord d'ABI avec le driver/CUDA reel de cette GPU L4 est une
-# cause plausible et deja documentee de segfault silencieux. Non
-# confirme, prochain test.
+# DIAGNOSTIC EN COURS (24/09/2026) : VLLM_TRACE_FUNCTION=1 (recommande
+# par le guide officiel de resolution de problemes de vLLM) trace
+# chaque appel de fonction Python dans les logs pour identifier la
+# ligne exacte avant le crash natif, au lieu de la trace generique
+# inutilisable vue jusqu'ici. Ralentit enormement l'execution (avertit
+# vLLM, >100x) mais le crash survient en quelques secondes normalement,
+# donc reste exploitable pour ce diagnostic ponctuel. A RETIRER apres
+# ce test, jamais en usage normal.
 set -euo pipefail
+
+export VLLM_TRACE_FUNCTION=1
 
 vllm serve Qwen/Qwen3-1.7B-Base \
     --enable-lora \
     --lora-modules dpo=mombasstic/chsa-triage-dpo-lora \
     --max-lora-rank 16 \
-    --attention-backend FLASHINFER \
     --enforce-eager \
     --port 8000 &
 
