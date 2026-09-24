@@ -34,19 +34,24 @@
 # fraiche du conteneur) ne sont une solution de production viable a ce
 # jour.
 #
-# PISTE EN COURS : version de vLLM plus recente forcee cote Dockerfile
-# (0.28.0 au lieu du 0.20.2 verrouille par uv.lock, uniquement pour
-# cette image -- cf. Dockerfile de ce dossier). Si toujours sans effet,
-# reste : autre "flavor" de GPU HF (isoler une eventuelle cause
-# materielle a cette instance L4 precise), ou signalement en amont du
-# projet vLLM avec cette reproduction (six pistes deja exclues par
-# tests reels -- reproduction solide pour un rapport de bug).
+# vllm==0.28.0 (Dockerfile) exclu : torch incompatible avec Python 3.11
+# de ce conteneur. vllm==0.22.0 (compatibilite Python 3.11 verifiee via
+# PyPI avant test, cf. Dockerfile) : MEME segfault, mais trace native
+# bien plus detaillee cette fois -- crash dans le dispatcher d'operateurs
+# JIT de torch (torch::jit::invokeOperatorFromPython ->
+# PythonKernelHolder), juste apres un nouveau log absent en 0.20.2 :
+# "Using default LoRA kernel configs". Piste LoRA jamais testee
+# specifiquement sur 0.22.0 (seulement sur 0.20.2, ou elle avait ete
+# exclue) -- le chemin de kernel LoRA differe visiblement entre les deux
+# versions.
+#
+# DIAGNOSTIC EN COURS : LoRA desactive ci-dessous, specifiquement pour
+# vllm==0.22.0. A REVERTIR (remettre --enable-lora --lora-modules
+# dpo=mombasstic/chsa-triage-dpo-lora --max-lora-rank 16) des que le
+# resultat de ce test est connu.
 set -euo pipefail
 
 vllm serve Qwen/Qwen3-1.7B-Base \
-    --enable-lora \
-    --lora-modules dpo=mombasstic/chsa-triage-dpo-lora \
-    --max-lora-rank 16 \
     --enforce-eager \
     --port 8000 &
 
