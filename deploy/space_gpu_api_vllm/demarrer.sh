@@ -19,7 +19,22 @@
 # acceptable pour ce POC. --max-lora-rank 16 fixe explicitement (rang
 # reel du LoRA DPO, cf. recipes/dpo_qwen3_lora.yaml) plutot que de
 # compter sur le defaut.
+#
+# Suite du deploiement reel du 24/09/2026 : une fois le compilateur
+# regle, vLLM segfaultait au demarrage juste apres le chargement des
+# poids ("Using PunicaWrapperGPU"), dans le processus EngineCore
+# separe du processus APIServer (architecture V1 : deux processus
+# distincts, meme sur une seule carte, sans parallelisme). Aucun
+# message d'erreur exploitable dans la trace (frames Python generiques
+# uniquement). VLLM_ENABLE_V1_MULTIPROCESSING=0 est la recommandation
+# officielle du guide de resolution de problemes de vLLM pour ce cas
+# precis : garde le moteur dans le MEME processus que le serveur API,
+# ce qui evite la cause du crash. Sans parallelisme (une seule GPU
+# L4 ici), le cout de performance de ce mode est negligeable pour ce
+# POC (une requete a la fois).
 set -euo pipefail
+
+export VLLM_ENABLE_V1_MULTIPROCESSING=0
 
 vllm serve Qwen/Qwen3-1.7B-Base \
     --enable-lora \
