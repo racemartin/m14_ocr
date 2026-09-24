@@ -9,12 +9,16 @@
 #
 # Deploiement reel du 24/09/2026 (mombasstic/chsa-triage-api) : l'image
 # de base nvidia/cuda:12.4.1-runtime-ubuntu22.04 n'a pas de compilateur
-# C (variante "runtime", pas "devel"), donc torch.compile/Triton
-# echoue au demarrage ("Failed to find C compiler"). --enforce-eager
-# desactive cette optimisation plutot que d'alourdir l'image avec
-# build-essential : perte de performance negligeable pour ce POC.
-# --max-lora-rank 16 fixe explicitement (rang reel du LoRA DPO, cf.
-# recipes/dpo_qwen3_lora.yaml) plutot que de compter sur le defaut.
+# C par defaut (variante "runtime", pas "devel"), donc vLLM echouait au
+# demarrage ("Failed to find C compiler") -- pas seulement pour
+# torch.compile du graphe du modele (que --enforce-eager desactive),
+# mais aussi pour un kernel Triton de tri/echantillonnage separe
+# (topk_topp_sampler) qui compile quel que soit le mode eager/compile.
+# Root cause reglee cote Dockerfile (build-essential ajoute) ; garde
+# --enforce-eager ici en plus, cout de demarrage/memoire plus faible,
+# acceptable pour ce POC. --max-lora-rank 16 fixe explicitement (rang
+# reel du LoRA DPO, cf. recipes/dpo_qwen3_lora.yaml) plutot que de
+# compter sur le defaut.
 set -euo pipefail
 
 vllm serve Qwen/Qwen3-1.7B-Base \

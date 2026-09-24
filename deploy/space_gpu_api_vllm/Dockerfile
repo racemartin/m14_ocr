@@ -18,12 +18,22 @@
 # `vLLM /health` en interne et reste toujours HTTP 200, meme si vLLM
 # met plusieurs minutes a charger le modele (cf. ce fichier pour le
 # raisonnement complet).
+#
+# Deploiement reel du 24/09/2026 (mombasstic/chsa-triage-api) : vLLM
+# echoue au demarrage sans compilateur C ("Failed to find C compiler"),
+# meme avec --enforce-eager (cf. demarrer.sh) -- ce flag desactive
+# seulement torch.compile du graphe du modele, mais vLLM compile aussi
+# via Triton un kernel de tri/echantillonnage separe
+# (topk_topp_sampler) qui a lui aussi besoin d'un compilateur, quel que
+# soit le mode eager/compile. build-essential est donc necessaire ici,
+# l'image de base "runtime" (par opposition a "devel") n'en a pas par
+# defaut.
 
 FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends python3.11 python3-pip curl \
+RUN apt-get update && apt-get install -y --no-install-recommends python3.11 python3-pip curl build-essential \
     && rm -rf /var/lib/apt/lists/*
 RUN pip install --no-cache-dir uv
 
