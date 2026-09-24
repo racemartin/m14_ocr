@@ -1220,6 +1220,17 @@ hf upload mombasstic/chsa-triage-api monitoring monitoring --repo-type space
 hf upload mombasstic/chsa-triage-api deploy/space_gpu_api_vllm/README_space.md README.md --repo-type space
 ```
 
+Chaque commande `hf upload` ci-dessus crée son propre commit, et **chaque
+commit déclenche automatiquement une reconstruction** (doc officielle
+HF : "Each time a new commit is pushed, the Space will automatically
+rebuild and restart"). Les étapes 4 à 7 provoquent donc plusieurs
+reconstructions intermédiaires, forcément en échec tant que tous les
+fichiers ne sont pas encore présents (`COPY` du `Dockerfile` introuvable)
+-- sans gravité ni coût (la facturation ne démarre qu'au lancement du
+conteneur, jamais pendant le build). Seul le `hf spaces restart`
+explicite de l'étape 8, une fois tous les fichiers publiés, est celui
+qui compte réellement.
+
 **8. Reconstruire et démarrer**
 ```bash
 hf spaces restart mombasstic/chsa-triage-api
@@ -1247,6 +1258,13 @@ uv run streamlit run interfaces/web/app_test_inference.py
 ```
 
 **12. Ouvrir le navigateur** (Streamlit s'ouvre seul sur `localhost:8501`) et dialoguer avec l'agent.
+
+**13. Mettre le Space en pause une fois les tests terminés** (le Space
+GPU coûte à l'heure tant qu'il tourne, cf. §4.5 -- le temps en pause
+n'est jamais facturé)
+```bash
+hf spaces pause mombasstic/chsa-triage-api
+```
 
 <table id="depannage" style="width:100%;"><tr><td style="background-color:#d9d9d9;">
 <h1 style="border-bottom:none; margin:0;">Dépannage</h1>
