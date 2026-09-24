@@ -71,8 +71,6 @@ class TransformersLoraInferenceAdapter:
     def _obtenir_modele_et_tokenizer(self) -> tuple[Any, Any]:
         if self._modele is None or self._tokenizer is None:
             import torch
-            from peft import PeftModel
-            from transformers import AutoModelForCausalLM, AutoTokenizer
 
             if not torch.cuda.is_available():
                 raise RuntimeError(
@@ -83,6 +81,15 @@ class TransformersLoraInferenceAdapter:
                     "sur un job HF Jobs avec GPU "
                     "(interfaces/cli/E2_05_evaluer_post_sft.py)."
                 )
+
+            # `peft`/`transformers` importes seulement ici (pas plus haut) : ce
+            # sont des dependances de l'extra `remote` uniquement, jamais
+            # installees en CI (qui n'installe que dev+local+api, sans GPU) --
+            # importer avant la verification GPU ci-dessus faisait echouer ce
+            # test en CI sur un ModuleNotFoundError au lieu du RuntimeError
+            # explicite attendu.
+            from peft import PeftModel
+            from transformers import AutoModelForCausalLM, AutoTokenizer
 
             self._tokenizer = AutoTokenizer.from_pretrained(
                 self.nom_modele_base, trust_remote_code=True
