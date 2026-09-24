@@ -1135,6 +1135,33 @@ Testé avec un double en mémoire du serveur vLLM
 `tests/infrastructure/test_vllm_endpoint_inference_adapter.py`), aucun
 GPU/vLLM réel requis.
 
+**Publier/mettre à jour le code sur le Space GPU réel** (chaque
+commande cible exactement le chemin attendu par le `COPY` du
+`Dockerfile` de ce dossier — un chemin aplati au lieu du chemin imbriqué
+attendu casse silencieusement le build, cf. section Dépannage) :
+
+```bash
+hf upload mombasstic/chsa-triage-api deploy/space_gpu_api_vllm/Dockerfile Dockerfile --repo-type space
+hf upload mombasstic/chsa-triage-api deploy/space_gpu_api_vllm/demarrer.sh deploy/space_gpu_api_vllm/demarrer.sh --repo-type space
+hf upload mombasstic/chsa-triage-api src src --repo-type space
+hf upload mombasstic/chsa-triage-api interfaces interfaces --repo-type space
+hf upload mombasstic/chsa-triage-api training training --repo-type space
+hf upload mombasstic/chsa-triage-api monitoring monitoring --repo-type space
+hf upload mombasstic/chsa-triage-api deploy/space_gpu_api_vllm/README_space.md README.md --repo-type space
+```
+
+`pyproject.toml`/`uv.lock` ne sont **plus** nécessaires depuis le
+passage à l'image officielle `vllm/vllm-openai` (plus de `uv sync`
+dans ce `Dockerfile`, cf. section Dépannage) — ne pas les publier ici
+sans mettre le `Dockerfile` à jour en conséquence.
+
+Redémarrer pour appliquer les changements, puis vérifier :
+
+```bash
+hf spaces restart mombasstic/chsa-triage-api
+curl https://mombasstic-chsa-triage-api.hf.space/sante
+```
+
 ```bash
 uv sync --extra web
 # Exemple illustratif : remplacer par l'URL réelle du Space Docker/GPU
