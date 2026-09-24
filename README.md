@@ -63,6 +63,7 @@ Version détaillée (scripts/adaptateurs/dépôts HF réels, DPO marqué concept
   - [4.3 Conteneurisation Docker](#43-conteneurisation-docker)
   - [4.4 CI/CD](#44-cicd)
   - [4.5 Healthcheck vLLM et frontend Streamlit de test](#45-healthcheck-vllm-et-frontend-streamlit-de-test)
+- [Dépannage](#depannage)
 - [Vérifications d'environnement](#verifications-environnement)
 
 <table id="tableau-récapitulatif-des-scripts" style="width:100%;"><tr><td style="background-color:#c9f1edff;">
@@ -1101,8 +1102,7 @@ workflow.
 </td></tr></table>
 
 Architecture de déploiement retenue (décision produit du 24/09/2026,
-**à 2 pièces**, jamais réalisée dans cette tâche : aucun Space HF créé
-ni poussé, code et fichiers de configuration seulement) :
+**à 2 pièces**) :
 
 - Un unique Space HF **Docker/GPU** (coûteux, à n'allumer que pendant
   les tests) : API FastAPI + serveur vLLM, préparé dans
@@ -1151,6 +1151,22 @@ PowerPoint de soutenance (toutes étapes, chiffres déjà mesurés) :
 ```bash
 uv run --with python-pptx python monitoring/generer_presentation_soutenance.py
 ```
+
+<table id="depannage" style="width:100%;"><tr><td style="background-color:#d9d9d9;">
+<h1 style="border-bottom:none; margin:0;">Dépannage</h1>
+</td></tr></table>
+
+Problèmes réels ayant coûté le plus de temps sur ce projet, résumés
+pour ne pas les redécouvrir. Détail complet dans l'historique git des
+fichiers concernés (`deploy/space_gpu_api_vllm/`, §3 pour le DPO).
+
+| Problème | Cause réelle | Statut |
+|---|---|---|
+| Segfault vLLM au démarrage (Space GPU) | Crash natif juste après le chargement des poids, pendant le profiling interne de vLLM. Six pistes exclues par tests réels (multiprocessing, permissions, LoRA, backend d'attention, async scheduling, délai de démarrage) — signature d'une condition de course dépendante du temps réel d'exécution, pas d'une erreur de configuration. | **Non résolu.** Seul `VLLM_TRACE_FUNCTION=1` (ralentit >100x) l'évite, inutilisable en production. |
+| Chemins de destination `hf upload` | Le 3ᵉ argument est le chemin **dans le dépôt HF**, pas le nom du fichier local. Un chemin aplati au lieu du chemin imbriqué attendu par le `COPY` du `Dockerfile` a fait retester silencieusement d'anciennes versions à plusieurs reprises. | Résolu — toujours faire correspondre exactement le chemin de destination au chemin source du `COPY`. |
+| Compilateur C absent de `nvidia/cuda:...-runtime` | vLLM/Triton compilent des noyaux CUDA au démarrage, même sous `--enforce-eager`. L'image "runtime" (vs "devel") n'a pas de compilateur par défaut. | Résolu — `build-essential` + `python3.11-dev` ajoutés au `Dockerfile`. |
+| Secret `HF_TOKEN` corrompu | Le formulaire web du Space rejetait le `_` dans la valeur du secret ; retirer le préfixe littéral `hf_` a produit un token invalide. | Résolu — `HfApi().add_space_secret()` en direct, en contournant le formulaire web. |
+| Instabilité DPO (OOM éval / sous-apprentissage / dégénérescence) | `per_device_eval_batch_size` jamais fixé (défaut TRL = 8, double du lot d'entraînement) -> OOM. Puis `beta=0,1` trop faible -> ancrage insuffisant à `pi_ref`, dégénérescence (changements de langue, répétitions). | Résolu — `per_device_eval_batch_size=taille_lot` fixé ; `beta=0,3` validé à 100 puis 5000 exemples (§3.2). |
 
 <table id="verifications-environnement" style="width:100%;"><tr><td style="background-color:#d9d9d9;">
 <h1 style="border-bottom:none; margin:0;">Vérifications d'environnement</h1>
