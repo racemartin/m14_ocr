@@ -21,29 +21,28 @@
 # compter sur le defaut.
 #
 # Suite du deploiement reel du 24/09/2026 : une fois le compilateur
-# regle, vLLM segfaultait au demarrage juste apres le chargement des
-# poids ("Using PunicaWrapperGPU"), au tout premier appel reel d'un
-# noyau Triton (Punica/LoRA). Deux hypotheses testees en conditions
-# reelles, AUCUNE n'a resolu le segfault (meme trace identique a
-# chaque fois) : (1) VLLM_ENABLE_V1_MULTIPROCESSING=0, sans effet
-# verifie dans le code source de vLLM 0.20.2 (variable ignoree par le
-# serveur `vllm serve`) ; (2) creation de l'utilisateur UID 1000 cote
-# Dockerfile (requis par tout Space Docker HF au runtime), qui reglait
-# une cause plausible de resolution de $HOME/cache JIT Triton mais n'a
-# PAS supprime le segfault en pratique. Diagnostic en cours : plusieurs
-# incidents similaires reels documentes dans le suivi de vLLM pointent
-# vers le chemin Punica/LoRA specifiquement pendant le "profile_run"
-# (juste apres le chargement des poids, avant le calcul de la taille
-# du cache KV) -- exactement ou ce crash se produit.
+# regle, vLLM segfaultait (crash natif, sans message Python exploitable)
+# juste apres le chargement des poids, pendant le "profile_run" interne
+# (avant le calcul de la taille du cache KV). Pistes deja EXCLUES par
+# des tests reels : VLLM_ENABLE_V1_MULTIPROCESSING=0 (sans effet,
+# ignoree par `vllm serve`) ; utilisateur UID 1000 cote Dockerfile
+# (correction legitime, gardee, mais n'a pas supprime le segfault) ;
+# LoRA/Punica (teste desactive, MEME segfault identique sans LoRA --
+# donc pas la cause, contrairement a l'hypothese initiale).
 #
-# DIAGNOSTIC TEMPORAIRE (24/09/2026) : LoRA desactive ci-dessous pour
-# isoler si le segfault vient specifiquement du chemin Punica/LoRA ou
-# d'une cause plus profonde. A REVERTIR (remettre --enable-lora
-# --lora-modules dpo=mombasstic/chsa-triage-dpo-lora --max-lora-rank 16)
-# des que le resultat de ce test est connu.
+# DIAGNOSTIC EN COURS (24/09/2026) : `--attention-backend FLASHINFER`
+# ci-dessous remplace FlashAttention2 (utilise par defaut, log "Using
+# FLASH_ATTN attention backend"), bibliotheque precompilee dont un
+# desaccord d'ABI avec le driver/CUDA reel de cette GPU L4 est une
+# cause plausible et deja documentee de segfault silencieux. Non
+# confirme, prochain test.
 set -euo pipefail
 
 vllm serve Qwen/Qwen3-1.7B-Base \
+    --enable-lora \
+    --lora-modules dpo=mombasstic/chsa-triage-dpo-lora \
+    --max-lora-rank 16 \
+    --attention-backend FLASHINFER \
     --enforce-eager \
     --port 8000 &
 
