@@ -1145,13 +1145,6 @@ export CHSA_API_CLE="change-moi"
 uv run streamlit run interfaces/web/app_test_inference.py
 ```
 
-Une fois les résultats des sections 1 à 4 à jour, régénérer le support
-PowerPoint de soutenance (toutes étapes, chiffres déjà mesurés) :
-
-```bash
-uv run --with python-pptx python monitoring/generer_presentation_soutenance.py
-```
-
 <table id="depannage" style="width:100%;"><tr><td style="background-color:#d9d9d9;">
 <h1 style="border-bottom:none; margin:0;">Dépannage</h1>
 </td></tr></table>
