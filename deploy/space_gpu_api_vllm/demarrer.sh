@@ -29,12 +29,22 @@
 # configuration isolable par un seul flag. NON RESOLU : ni
 # VLLM_TRACE_FUNCTION=1 (>100x plus lent, inutilisable en usage reel)
 # ni aucun flag cible testes a ce jour ne sont une solution de
-# production viable. Pistes non testees pour la suite : version de
-# vLLM differente (bug potentiel de cette version 0.20.2 precise),
-# autre "flavor" de GPU HF (isoler une eventuelle cause materielle a
-# cette instance L4 precise), ou signalement en amont du projet vLLM
-# avec cette reproduction.
+# production viable. Pistes non testees pour la suite si celle-ci
+# echoue aussi : version de vLLM differente (bug potentiel de cette
+# version 0.20.2 precise), autre "flavor" de GPU HF (isoler une
+# eventuelle cause materielle a cette instance L4 precise), ou
+# signalement en amont du projet vLLM avec cette reproduction.
+#
+# DIAGNOSTIC EN COURS (24/09/2026) : pause fixe de 20s avant de lancer
+# vLLM, hypothese differente de VLLM_TRACE_FUNCTION=1 (qui ralentit
+# l'EXECUTION interne) -- ici on teste si l'environnement (driver GPU,
+# contexte CUDA) a simplement besoin de se stabiliser apres
+# l'allocation fraiche du conteneur sur le GPU, AVANT que vLLM ne
+# commence a l'utiliser. Peu couteux (pas de ralentissement massif),
+# a retirer si sans effet.
 set -euo pipefail
+
+sleep 20
 
 vllm serve Qwen/Qwen3-1.7B-Base \
     --enable-lora \
