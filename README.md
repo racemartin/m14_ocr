@@ -1243,10 +1243,27 @@ curl https://mombasstic-chsa-triage-api.hf.space/sante
 # attendu : {"disponible":true,"detail":"serveur vLLM disponible"}
 ```
 
-**10. Tester une conversation réelle bout-en-bout via l'API**
+**10. Tester une conversation réelle bout-en-bout via l'API** (créer,
+envoyer un message, puis demander le diagnostic -- l'équivalent en
+ligne de commande du bouton "obtenir les conclusions" du frontend)
 ```bash
-curl -X POST https://mombasstic-chsa-triage-api.hf.space/conversations \
-  -H "X-API-Key: <votre-cle>"
+export CHSA_CLE="<votre-cle>"
+export CHSA_BASE="https://mombasstic-chsa-triage-api.hf.space"
+
+# 1. Démarrer une conversation
+CONVERSATION_ID=$(curl -sS -X POST "$CHSA_BASE/conversations" \
+  -H "X-API-Key: $CHSA_CLE" | python3 -c "import sys,json; print(json.load(sys.stdin)['conversation_id'])")
+echo "conversation_id=$CONVERSATION_ID"
+
+# 2. Envoyer un message (répéter pour poursuivre l'entretien)
+curl -sS -X POST "$CHSA_BASE/conversations/$CONVERSATION_ID/messages" \
+  -H "X-API-Key: $CHSA_CLE" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Patient de 45 ans, douleur thoracique depuis 2 heures."}'
+
+# 3. Demander le diagnostic (niveau ESI, catégorie, ressources, raisonnement)
+curl -sS -X POST "$CHSA_BASE/conversations/$CONVERSATION_ID/diagnostic" \
+  -H "X-API-Key: $CHSA_CLE"
 ```
 
 **11. Lancer le frontend Streamlit en local, pointé vers le Space réel**
