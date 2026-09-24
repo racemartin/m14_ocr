@@ -23,22 +23,27 @@
 # Suite du deploiement reel du 24/09/2026 : une fois le compilateur
 # regle, vLLM segfaultait au demarrage juste apres le chargement des
 # poids ("Using PunicaWrapperGPU"), au tout premier appel reel d'un
-# noyau Triton (Punica/LoRA). VLLM_ENABLE_V1_MULTIPROCESSING=0 a ete
-# essaye en premier (recommandation generale du guide de resolution de
-# problemes de vLLM pour un crash du processus EngineCore) mais n'a
-# aucun effet ici : verifie dans le code source de vLLM 0.20.2, cette
-# variable ne s'applique qu'a l'usage programmatique LLM(), jamais au
-# serveur `vllm serve` (toujours un processus EngineCore separe). Cause
-# reelle et correction : cf. le Dockerfile de ce meme dossier (creation
-# de l'utilisateur UID 1000, requis par tout Space Docker HF au
-# runtime -- $HOME incoherent cassait la resolution du cache JIT de
-# Triton, ~/.triton/cache).
+# noyau Triton (Punica/LoRA). Deux hypotheses testees en conditions
+# reelles, AUCUNE n'a resolu le segfault (meme trace identique a
+# chaque fois) : (1) VLLM_ENABLE_V1_MULTIPROCESSING=0, sans effet
+# verifie dans le code source de vLLM 0.20.2 (variable ignoree par le
+# serveur `vllm serve`) ; (2) creation de l'utilisateur UID 1000 cote
+# Dockerfile (requis par tout Space Docker HF au runtime), qui reglait
+# une cause plausible de resolution de $HOME/cache JIT Triton mais n'a
+# PAS supprime le segfault en pratique. Diagnostic en cours : plusieurs
+# incidents similaires reels documentes dans le suivi de vLLM pointent
+# vers le chemin Punica/LoRA specifiquement pendant le "profile_run"
+# (juste apres le chargement des poids, avant le calcul de la taille
+# du cache KV) -- exactement ou ce crash se produit.
+#
+# DIAGNOSTIC TEMPORAIRE (24/09/2026) : LoRA desactive ci-dessous pour
+# isoler si le segfault vient specifiquement du chemin Punica/LoRA ou
+# d'une cause plus profonde. A REVERTIR (remettre --enable-lora
+# --lora-modules dpo=mombasstic/chsa-triage-dpo-lora --max-lora-rank 16)
+# des que le resultat de ce test est connu.
 set -euo pipefail
 
 vllm serve Qwen/Qwen3-1.7B-Base \
-    --enable-lora \
-    --lora-modules dpo=mombasstic/chsa-triage-dpo-lora \
-    --max-lora-rank 16 \
     --enforce-eager \
     --port 8000 &
 
