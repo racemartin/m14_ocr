@@ -64,6 +64,13 @@ PROMPT_DIAGNOSTIC = (
 # l'infirmier.
 REPETITION_PENALTY_DEFAUT = 1.2
 
+# `TEMPERATURE_DEFAUT = 0.0` (25/09/2026) : meme raisonnement que
+# REPETITION_PENALTY_DEFAUT ci-dessus -- cf.
+# E4_00_uc_poursuivre_entretien.py pour le detail complet du bug reel
+# trouve en deploiement (temperature jamais fixee explicitement, vLLM
+# retombait sur son propre defaut d'echantillonnage).
+TEMPERATURE_DEFAUT = 0.0
+
 NOMBRE_TOKENS_GENERES_DIAGNOSTIC = 512
 
 
@@ -112,6 +119,7 @@ class ObtenirDiagnosticUseCase:
             {
                 "n_predict": NOMBRE_TOKENS_GENERES_DIAGNOSTIC,
                 "repetition_penalty": REPETITION_PENALTY_DEFAUT,
+                "temperature": TEMPERATURE_DEFAUT,
             },
         )
 
