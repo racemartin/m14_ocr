@@ -5,7 +5,6 @@ description = "POC d'agent IA de triage medical pour le CHSA, architecture hexag
 requires-python = ">=3.11,<3.12"
 dependencies = [
     "pydantic>=2.7",
-    "torch",
     "tqdm>=4.66",
 ]
 
@@ -17,6 +16,9 @@ local = [
     "setuptools<81",  # requis par ydata-profiling (dependance pkg_resources
                        # retiree des versions recentes de setuptools --
                        # decouvert lors du smoke test d'integration)
+    "torch",  # build CPU (cf. tool.uv.sources ci-dessous) -- transformers
+              # (tokenizers) et au moins un test (verification GPU
+              # explicite) en ont besoin meme sans l'extra remote.
     "pandas>=2.2",
     "datasets>=2.20",
     "ydata-profiling>=4.9",
@@ -81,6 +83,17 @@ dev = [
 [tool.uv]
 package = true
 
+# local et remote ne sont JAMAIS installes ensemble en pratique
+# (Environnement A local-CPU vs Environnement B distant-GPU, cf.
+# commentaires ci-dessus) -- declare pour permettre a uv de resoudre
+# torch differemment selon l'extra actif (tool.uv.sources ci-dessous).
+conflicts = [
+    [
+        { extra = "local" },
+        { extra = "remote" },
+    ],
+]
+
 # Configurar PyPI como origen primario y PyTorch como secundario
 [[tool.uv.index]]
 name = "pypi"
@@ -91,6 +104,17 @@ default = true
 name = "pytorch"
 url = "https://download.pytorch.org/whl/cpu"
 explicit = true
+
+# torch en CPU (leger) quand seul l'extra local est actif ; sinon
+# (extra remote, GPU reel) le PyPI par defaut fournit le build CUDA
+# complet. Root cause reglee : avant, torch etait une dependance BASE
+# inconditionnelle, toujours le build CUDA complet (~500 Mo + paquets
+# nvidia-*), meme pour un usage 100% local/CPU (Environnement A, cf.
+# section Depannage/Dockerfile racine).
+[tool.uv.sources]
+torch = [
+    { index = "pytorch", extra = "local" },
+]
 
 [tool.ruff]
 line-length = 80
