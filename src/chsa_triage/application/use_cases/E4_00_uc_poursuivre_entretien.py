@@ -66,6 +66,18 @@ PROMPT_ENTRETIEN = (
 # option d'ajustement de style de generation.
 REPETITION_PENALTY_DEFAUT = 1.2
 
+# `TEMPERATURE_DEFAUT = 0.0` (25/09/2026) : meme raisonnement que
+# REPETITION_PENALTY_DEFAUT ci-dessus -- constante de module, jamais un
+# parametre optionnel oubliable. Bug reel trouve en deploiement : ce
+# cas d'usage n'envoyait AUCUNE temperature explicite, donc vLLM
+# appliquait son propre defaut (echantillonnage aleatoire), alors que
+# l'evaluation post-DPO qui a valide repetition_penalty=1.2
+# (`E3_04_evaluer_post_dpo.py --temperature 0.0`, generation
+# deterministe) n'a jamais ete testee dans ces conditions. Sans
+# temperature=0.0, meme repetition_penalty=1.2 ne suffit pas a eviter
+# la degenerescence (constate en conditions reelles, L4 et T4).
+TEMPERATURE_DEFAUT = 0.0
+
 NOMBRE_TOKENS_GENERES_ENTRETIEN = 128
 
 
@@ -121,6 +133,7 @@ class PoursuivreEntretienUseCase:
             {
                 "n_predict": NOMBRE_TOKENS_GENERES_ENTRETIEN,
                 "repetition_penalty": REPETITION_PENALTY_DEFAUT,
+                "temperature": TEMPERATURE_DEFAUT,
             },
         )
         message_assistant = Message(role="assistant", contenu=reponse.texte)
