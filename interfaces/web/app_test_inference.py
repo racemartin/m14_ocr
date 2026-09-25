@@ -92,6 +92,13 @@ def main() -> None:
         st.session_state.conversation_id = demarrer_conversation(client)
         st.session_state.historique = []
 
+    with st.sidebar:
+        st.caption(f"Conversation : `{st.session_state.conversation_id}`")
+        if st.button("🆕 Nouveau patient"):
+            del st.session_state.conversation_id
+            del st.session_state.historique
+            st.rerun()
+
     for tour in st.session_state.historique:
         with st.chat_message(tour["role"]):
             st.write(tour["contenu"])
