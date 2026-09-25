@@ -39,6 +39,7 @@ Version détaillée (scripts/adaptateurs/dépôts HF réels, DPO marqué concept
 <h1 style="border-bottom:none; margin:0;">Table des matières</h1>
 </td></tr></table>
 
+- [Démarrage rapide](#démarrage-rapide)
 - [Tableau récapitulatif des scripts](#tableau-récapitulatif-des-scripts)
 - [1. Préparation de données](#1-préparation-de-données)
   - [1.1 Télécharger Corpus](#11-télécharger-corpus)
@@ -65,7 +66,50 @@ Version détaillée (scripts/adaptateurs/dépôts HF réels, DPO marqué concept
   - [4.5 Healthcheck vLLM et frontend Streamlit de test](#45-healthcheck-vllm-et-frontend-streamlit-de-test)
   - [4.6 Guide rapide de déploiement](#46-guide-rapide-de-deploiement)
 - [Dépannage](#depannage)
-- [Vérifications d'environnement](#verifications-environnement)
+
+<table id="démarrage-rapide" style="width:100%;"><tr><td style="background-color:#c9f1edff;">
+<h1 style="border-bottom:none; margin:0;">Démarrage rapide</h1>
+</td></tr></table>
+
+**Installation** (Environnement A, local, WSL2, sans GPU — avant l'Étape 1) :
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv sync --extra local --extra dev
+uv run python -m spacy download fr_core_news_md
+uv run python -m spacy download en_core_web_sm
+```
+
+`torch` se résout automatiquement en version CPU légère pour cet extra
+(`tool.uv.sources` dans `pyproject.toml`, cf. section Dépannage) — pas
+de commande séparée nécessaire.
+
+**Vérification de l'environnement**, à relancer avant de démarrer
+chaque étape correspondante :
+
+```bash
+uv run python scripts/check_env_local.py
+```
+
+```bash
+uv run python scripts/check_env_gpu.py
+```
+
+```bash
+uv run python scripts/check_env_remote_hf.py
+```
+
+`check_env_local.py` vérifie l'environnement local (Environnement A,
+sans GPU, avant l'étape 1) ; `check_env_gpu.py` vérifie l'environnement
+GPU (Environnement B, avant un run `SFTTrainer` coûteux, chat template,
+tokens ChatML, chargement 4-bit) ; `check_env_remote_hf.py` vérifie
+l'accès Hugging Face (Jobs + Spaces) avant tout lancement distant.
+
+**Tests**
+
+```bash
+uv run pytest tests/ -q
+```
 
 <table id="tableau-récapitulatif-des-scripts" style="width:100%;"><tr><td style="background-color:#c9f1edff;">
 <h1 style="border-bottom:none; margin:0;">Tableau récapitulatif des scripts</h1>
@@ -1300,30 +1344,6 @@ fichiers concernés (`deploy/space_gpu_api_vllm/`, §3 pour le DPO).
 | Réponses interminables de `VllmEndpointInferenceAdapter` | `n_predict` (vocabulaire domaine, déjà traduit côté `TransformersInferenceAdapter`) n'était jamais traduit vers `max_tokens`, le nom réel attendu par l'API compatible OpenAI de vLLM — champ inconnu ignoré silencieusement, génération jusqu'au défaut du modèle (2048 tokens). | Résolu — traduction `n_predict` -> `max_tokens` ajoutée dans `VllmEndpointInferenceAdapter.generer()`. |
 | Dégénérescence (mélange de langues) en déploiement réel | `PoursuivreEntretienUseCase`/`ObtenirDiagnosticUseCase` n'envoyaient aucune `temperature` explicite ; vLLM retombait sur son propre défaut d'échantillonnage. L'évaluation post-DPO qui avait validé `repetition_penalty=1.2` utilisait `--temperature 0.0`, jamais testée sans ce réglage. Confirmé indépendant du matériel (même symptôme sur L4 bf16 et T4 fp16). | Résolu — `TEMPERATURE_DEFAUT = 0.0` fixé explicitement dans les deux cas d'usage. |
 | Instabilité DPO (OOM éval / sous-apprentissage / dégénérescence) | `per_device_eval_batch_size` jamais fixé (défaut TRL = 8, double du lot d'entraînement) -> OOM. Puis `beta=0,1` trop faible -> ancrage insuffisant à `pi_ref`, dégénérescence (changements de langue, répétitions). | Résolu — `per_device_eval_batch_size=taille_lot` fixé ; `beta=0,3` validé à 100 puis 5000 exemples (§3.2). |
-
-<table id="verifications-environnement" style="width:100%;"><tr><td style="background-color:#d9d9d9;">
-<h1 style="border-bottom:none; margin:0;">Vérifications d'environnement</h1>
-</td></tr></table>
-
-Trois scripts, à lancer avant de démarrer l'étape correspondante :
-
-```bash
-uv run python scripts/check_env_local.py
-```
-
-```bash
-uv run python scripts/check_env_gpu.py
-```
-
-```bash
-uv run python scripts/check_env_remote_hf.py
-```
-
-`check_env_local.py` vérifie l'environnement local (Environnement A,
-sans GPU, avant l'étape 1) ; `check_env_gpu.py` vérifie l'environnement
-GPU (Environnement B, avant un run `SFTTrainer` coûteux, chat template,
-tokens ChatML, chargement 4-bit) ; `check_env_remote_hf.py` vérifie
-l'accès Hugging Face (Jobs + Spaces) avant tout lancement distant.
 
 
 <table id="introduction" style="width:100%;"><tr><td style="background-color:#c9f1edff;">
