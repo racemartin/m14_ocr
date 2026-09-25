@@ -84,6 +84,20 @@ uv run python -m spacy download en_core_web_sm
 (`tool.uv.sources` dans `pyproject.toml`, cf. section Dépannage) — pas
 de commande séparée nécessaire.
 
+**Configurer Hugging Face** (obligatoire avant `check_env_remote_hf.py`
+ci-dessous, et avant toute Étape 2-4 qui pousse ou télécharge sur le
+Hub) :
+
+```bash
+uv tool install huggingface_hub[cli]
+hf auth login
+# Colle un token avec le role "write" (push dataset/modele, lancer des Jobs)
+```
+
+Détail complet (compte payant, HF Jobs, Spaces Dev Mode SSH/VSCode,
+discipline de facturation) :
+[`docs/01_environnement/00_guide_installation_environnement.md`](docs/01_environnement/00_guide_installation_environnement.md).
+
 **Vérification de l'environnement**, à relancer avant de démarrer
 chaque étape correspondante :
 
