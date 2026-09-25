@@ -170,7 +170,7 @@ def construire() -> None:
     _paragraphe(d, "Septembre 2026")
     d.add_paragraph()
     _figure(d, DIAGRAMMES / "00_vue_ensemble" / "vision_generale_etapes_v3_detaille.png",
-            "Figure 0 — Vue d'ensemble du pipeline, des données brutes à l'endpoint déployé.",
+            "Figure 1 — Vue d'ensemble du pipeline, des données brutes à l'endpoint déployé.",
             largeur_cm=16)
 
     # ------------------------------------------------------------------
@@ -212,6 +212,17 @@ def construire() -> None:
         "préparation des données, spécialisation du modèle par SFT puis "
         "DPO, et déploiement d'un endpoint d'inférence réel."
     )
+    _paragraphe(
+        d,
+        "L'agent n'a volontairement aucun pouvoir de décision clinique "
+        "autonome : il recueille l'information et propose une "
+        "classification, mais chaque diagnostic reste soumis à "
+        "validation par un infirmier avant toute action. Cette limite "
+        "de périmètre, posée dès le départ, structure une grande partie "
+        "des choix techniques décrits dans ce rapport (traçabilité "
+        "systématique, garde-fous de sécurité, format structuré "
+        "vérifiable)."
+    )
     _paragraphe(d, "Contraintes techniques imposées")
     _paragraphe(
         d,
@@ -233,10 +244,100 @@ def construire() -> None:
         "le déploiement (§4) : la même logique d'entretien fonctionne "
         "indifféremment contre un moteur local (llama.cpp), un moteur "
         "distant (vLLM) ou un double en mémoire dans les tests, sans "
-        "aucune modification du code métier."
+        "aucune modification du code métier. Concrètement, le domaine "
+        "définit un port `MoteurInference` (une interface abstraite : "
+        "« générer une réponse à partir de messages ») dont trois "
+        "adaptateurs distincts implémentent chacun un moyen technique "
+        "différent d'y répondre — c'est ce découplage qui a permis, "
+        "pendant l'incident de déploiement (§4.2), de continuer à "
+        "développer et tester le reste du système sans dépendre en "
+        "permanence d'un GPU réel disponible."
     )
     _figure(d, DIAGRAMMES / "01_environnement" / "paquets" / "architecture_hexagonale.png",
-            "Figure 1 — Architecture hexagonale du projet : domaine, cas d'usage et adaptateurs.")
+            "Figure 2 — Architecture hexagonale du projet : domaine, cas d'usage et adaptateurs.")
+
+    d.add_heading("Concepts clés", level=2)
+    _paragraphe(
+        d,
+        "Quatre notions techniques structurent ce rapport ; elles sont "
+        "introduites brièvement ici pour un lecteur non spécialiste, "
+        "puis reprises en contexte dans les sections correspondantes."
+    )
+    _paragraphe(
+        d,
+        "LoRA (Low-Rank Adaptation) — au lieu de réentraîner les "
+        "milliards de paramètres d'un modèle de langage, LoRA insère de "
+        "petites matrices supplémentaires de rang réduit dans certaines "
+        "couches (typiquement l'attention) et n'entraîne que celles-ci. "
+        "Le modèle de base reste inchangé et gelé ; l'adaptateur LoRA, "
+        "lui, ne pèse que quelques dizaines de mégaoctets et peut être "
+        "chargé ou déchargé à la volée."
+    )
+    _paragraphe(
+        d,
+        "SFT (Supervised Fine-Tuning) — spécialisation supervisée "
+        "classique : le modèle apprend, exemple par exemple, à "
+        "reproduire une réponse attendue à partir d'un prompt donné. "
+        "C'est la première phase d'entraînement de ce projet (§2)."
+    )
+    _paragraphe(
+        d,
+        "DPO (Direct Preference Optimization) — seconde phase "
+        "d'alignement, qui n'apprend plus à partir d'une seule réponse "
+        "« vraie » mais à partir de paires (réponse préférée, réponse "
+        "rejetée) : le modèle apprend à préférer la première à la "
+        "seconde, ce qui permet d'orienter des qualités plus difficiles "
+        "à spécifier par un simple exemple (concision, pertinence "
+        "clinique, absence de dérive)."
+    )
+    _paragraphe(
+        d,
+        "vLLM et PagedAttention — moteur de service d'inférence "
+        "imposé par le cahier des charges. PagedAttention gère la "
+        "mémoire GPU du cache d'attention par pages (comme la mémoire "
+        "virtuelle d'un système d'exploitation) plutôt que par bloc "
+        "contigu réservé à l'avance, ce qui permet de servir plusieurs "
+        "requêtes simultanées sans gaspillage de VRAM. vLLM expose une "
+        "API compatible OpenAI et sait servir un adaptateur LoRA "
+        "nativement, sans jamais le fusionner avec le modèle de base."
+    )
+
+    d.add_heading("Environnement de développement", level=1)
+    _paragraphe(
+        d,
+        "Le projet distingue deux environnements de travail, chacun "
+        "avec son propre jeu de dépendances Python (gérées par `uv`) : "
+        "un Environnement A local (WSL2, sans GPU, 5 Go de RAM), "
+        "utilisé pour la préparation des données et le développement "
+        "courant, et un Environnement B distant (GPU à la demande via "
+        "Hugging Face Jobs et Spaces Dev Mode), utilisé pour "
+        "l'entraînement et l'évaluation coûteuse. Un script de "
+        "vérification dédié à chacun (`check_env_local.py`, "
+        "`check_env_gpu.py`, `check_env_remote_hf.py`) contrôle les "
+        "prérequis avant de lancer une étape, plutôt que de découvrir un "
+        "problème de configuration en cours de run facturé."
+    )
+    _paragraphe(
+        d,
+        "La dépendance `torch` est résolue différemment selon "
+        "l'environnement actif (mécanisme `tool.uv.sources` de `uv`) : "
+        "une version CPU légère pour l'Environnement A, la version CUDA "
+        "complète pour l'Environnement B — un défaut d'origine (`torch` "
+        "toujours résolu en version CUDA, même en local) a été corrigé "
+        "pendant ce projet et documenté en section Dépannage du "
+        "README."
+    )
+    _paragraphe(
+        d,
+        "La suite de tests automatisés (448 tests au moment de la "
+        "rédaction, tous verts) couvre le domaine métier, les "
+        "adaptateurs (avec des doubles en mémoire pour ceux qui "
+        "nécessitent normalement un GPU ou un réseau réel) et la couche "
+        "API. Elle s'exécute entièrement dans l'Environnement A, sans "
+        "GPU, ce qui la rend gratuite à relancer aussi souvent que "
+        "nécessaire — c'est cette même suite qui s'exécute dans le "
+        "pipeline CI/CD (§4.3)."
+    )
 
     # === 1. Préparation des données ======================================
     d.add_heading("1. Préparation des données", level=1)
@@ -245,37 +346,84 @@ def construire() -> None:
     _paragraphe(
         d,
         "Quatre corpus publics ont été collectés et unifiés dans un "
-        "schéma pivot commun (JSON, bilingue FR/EN) : MediQAl et "
-        "MedQuAD (questions/réponses médicales), FrenchMedMCQA (QCM "
-        "pharmacie/médecine) et UltraMedical-Preference (paires "
-        "choisies/rejetées, seule source directement exploitable pour "
-        "le DPO). Chaque exemple pivot porte une source, une langue, un "
-        "type (sft ou dpo) et, lorsqu'ils sont disponibles, des champs "
+        "schéma pivot commun (JSON, bilingue FR/EN) : MediQAl "
+        "(questions/réponses médicales, déclinées en trois sous-formats "
+        "OEQ, MCQU, MCQM), FrenchMedMCQA (QCM pharmacie/médecine), "
+        "MedQuAD (questions/réponses médicales) et "
+        "UltraMedical-Preference (paires choisies/rejetées, seule "
+        "source directement exploitable pour le DPO sans reformulation). "
+        "Chaque exemple pivot porte un identifiant déterministe "
+        "(`chsa-<source>-<uuid>`), une source, une langue, un type "
+        "(sft ou dpo) et, lorsqu'ils sont disponibles, des champs "
         "cliniques structurés (symptômes, antécédents, constantes "
-        "vitales)."
+        "vitales : pression artérielle, fréquence cardiaque, SpO2, "
+        "fréquence respiratoire)."
     )
+    _paragraphe(
+        d,
+        "La fusion des quatre sources en un pivot unique déduplique par "
+        "identifiant déterministe : sur l'ensemble des exemples "
+        "collectés, 12 321 doublons exacts ont été détectés et écartés "
+        "(archivés séparément plutôt que simplement supprimés, pour "
+        "traçabilité)."
+    )
+    _figure(d, DIAGRAMMES / "02_etape1_donnees" / "sequence" / "construction_dataset_pivot.png",
+            "Figure 3 — Construction du dataset pivot : fusion et déduplication des quatre sources.")
+
+    d.add_heading("1.2 Anonymisation et contrôle qualité", level=2)
     _paragraphe(
         d,
         "L'anonymisation (Microsoft Presidio, imposée au cahier des "
         "charges) retire les identifiants directs (noms, dates, "
-        "identifiants de dossier) avant toute publication sur le Hub "
-        "Hugging Face, avec une révision manuelle de la PII résiduelle "
-        "et un contrôle qualité systématique sur un échantillon "
-        "stratifié. Le découpage final respecte une répartition "
-        "train/validation/test stratifiée par source, vérifiée "
-        "automatiquement (écart maximal toléré entre strates)."
+        "identifiants de dossier, coordonnées) avant toute publication "
+        "sur le Hub Hugging Face. Presidio fonctionne par détection "
+        "d'entités (reconnaisseurs dédiés par type de PII, combinables "
+        "avec des règles spécifiques au domaine médical) suivie d'une "
+        "stratégie de remplacement configurable ; une révision manuelle "
+        "de la PII résiduelle et un contrôle qualité systématique sur un "
+        "échantillon stratifié complètent la détection automatique, "
+        "qui n'est jamais supposée parfaite à elle seule sur un texte "
+        "clinique libre."
     )
-    _figure(d, DIAGRAMMES / "02_etape1_donnees" / "activite" / "pipeline_donnees.png",
-            "Figure 2 — Pipeline de préparation des données : collecte, pivot, anonymisation, splits.")
-
-    d.add_heading("1.2 Résultat", level=2)
+    _figure(d, DIAGRAMMES / "02_etape1_donnees" / "sequence" / "anonymiser_dataset.png",
+            "Figure 4 — Séquence d'anonymisation : détection Presidio, remplacement, contrôle qualité.")
     _paragraphe(
         d,
-        "Le jeu de données final atteint l'ordre de grandeur visé par "
-        "le cahier des charges (Livrable 1 : environ 5000 paires SFT "
-        "plus les paires de préférence DPO), publié et versionné sur le "
-        "Hub Hugging Face (dépôts privés dédiés à chaque étape), "
-        "bilingue, anonymisé et prêt pour l'entraînement."
+        "L'anonymisation complète a porté sur 134 883 exemples (pivot "
+        "dédupliqué). Le découpage final, stratifié par source et "
+        "vérifié automatiquement (écart maximal toléré entre strates), "
+        "répartit ces exemples en 37 802 exemples éligibles SFT et "
+        "97 081 exemples éligibles DPO."
+    )
+    _figure(d, DIAGRAMMES / "02_etape1_donnees" / "activite" / "pipeline_donnees.png",
+            "Figure 5 — Pipeline complet de préparation des données : collecte, pivot, anonymisation, splits.")
+
+    d.add_heading("1.3 Résultat", level=2)
+    _tableau(
+        d,
+        ["Étape", "Volume"],
+        [
+            ["Exemples collectés (4 corpus bruts)", "134 883 + 12 321 doublons écartés"],
+            ["Pivot anonymisé (après déduplication)", "134 883 exemples"],
+            ["Split éligible SFT", "37 802 exemples"],
+            ["Split éligible DPO", "97 081 exemples"],
+            ["Sous-ensemble publié SFT (Livrable 1)", "5 000 exemples"],
+            ["Sous-ensemble publié DPO (Livrable 1)", "5 000 exemples"],
+            ["Jeu de test clinique (évaluation)", "278 exemples"],
+        ],
+        legende="Tableau 1 — Volumes réels du jeu de données à chaque étape (README §1).",
+    )
+    _paragraphe(
+        d,
+        "Le cahier des charges (Livrable 1) demandant un jeu "
+        "d'entraînement de l'ordre de 5000 paires, un sous-ensemble "
+        "filtré et stratifié de cette taille est extrait de chaque "
+        "split (SFT et DPO) pour publication et entraînement réel — le "
+        "pivot complet (134 883 exemples) reste disponible pour "
+        "d'éventuels travaux futurs à plus grande échelle. L'ensemble "
+        "est publié et versionné sur le Hub Hugging Face (dépôts privés "
+        "dédiés à chaque étape), bilingue, anonymisé et prêt pour "
+        "l'entraînement."
     )
 
     # === 2. SFT + LoRA ====================================================
@@ -285,33 +433,62 @@ def construire() -> None:
     _paragraphe(
         d,
         "Le modèle de base Qwen3-1.7B-Base est spécialisé par "
-        "fine-tuning supervisé (SFT) avec un adaptateur LoRA (Low-Rank "
-        "Adaptation) plutôt qu'un fine-tuning complet : seule une "
-        "fraction des paramètres est entraînée (matrices de rang "
-        "réduit insérées dans les couches d'attention), ce qui réduit "
-        "drastiquement le coût mémoire et de calcul tout en conservant "
-        "les capacités générales du modèle de base — un compromis "
-        "adapté à un POC avec budget de calcul contraint. Le chargement "
-        "s'effectue en quantification 4-bit (BitsAndBytesConfig) pour "
-        "l'entraînement sur une seule GPU distante (HF Jobs)."
+        "fine-tuning supervisé (SFT) avec un adaptateur LoRA plutôt "
+        "qu'un fine-tuning complet : seule une fraction des paramètres "
+        "est entraînée, ce qui réduit drastiquement le coût mémoire et "
+        "de calcul tout en conservant les capacités générales du modèle "
+        "de base — un compromis adapté à un POC avec budget de calcul "
+        "contraint. Le chargement s'effectue en quantification 4-bit "
+        "(`BitsAndBytesConfig`) pour l'entraînement sur une seule GPU "
+        "distante (HF Jobs)."
+    )
+    _tableau(
+        d,
+        ["Paramètre", "Valeur", "Rôle"],
+        [
+            ["Quantification", "nf4, double, bf16", "Divise par 4 la VRAM du modèle base"],
+            ["Rang LoRA (r)", "16", "Capacité de l'adaptateur"],
+            ["Alpha LoRA", "32 (2r)", "Échelle de la mise à jour, règle standard"],
+            ["Dropout LoRA", "0,05", "Régularisation anti-surapprentissage"],
+            ["Modules cibles", "q, k, v, o_proj", "Attention seulement, adaptateur léger"],
+            ["Taux d'apprentissage", "2·10⁻⁴", "Valeur typique LoRA"],
+            ["Époques", "3", "Compromis apprentissage/mémorisation"],
+            ["Taille de lot", "4", "Limité par la VRAM disponible"],
+            ["Packing", "activé", "GPU utilisé à ~100% (vs 40-60% en padding classique)"],
+        ],
+        legende="Tableau 2 — Configuration réelle de l'entraînement SFT-LoRA "
+                "(recipes/sft_qwen3_lora.yaml, README « Explication du contenu de la recette »).",
+    )
+    _paragraphe(
+        d,
+        "Le type de quantification `nf4` (« NormalFloat 4-bit ») est un "
+        "format numérique optimisé pour des poids à distribution "
+        "approximativement gaussienne, plus précis à taille égale que "
+        "le format `fp4` générique — à ne pas confondre avec le "
+        "garde-fou de sécurité clinique NF4 discuté en §5, homonyme "
+        "sans lien technique."
     )
     _paragraphe(
         d,
         "L'évaluation baseline zero-shot (modèle non spécialisé) sert "
         "de point de comparaison avant tout entraînement, sur le même "
-        "jeu de test clinique que les évaluations post-SFT et post-DPO."
+        "jeu de test clinique (278 exemples) que les évaluations "
+        "post-SFT et post-DPO."
     )
     _figure(d, DIAGRAMMES / "03_etape2_sft" / "activite" / "pipeline_sft_lora.png",
-            "Figure 3 — Pipeline SFT+LoRA : baseline, entraînement, évaluation post-SFT.")
+            "Figure 6 — Pipeline SFT+LoRA : baseline, entraînement, évaluation post-SFT.")
 
     d.add_heading("2.2 Résultat", level=2)
     _paragraphe(
         d,
-        "Le checkpoint SFT-LoRA atteint un F1 (token) d'environ 0,112 "
-        "sur le jeu de test clinique — la valeur de référence à "
-        "laquelle le DPO est ensuite comparé (§3). C'est ce checkpoint "
-        "qui sert de politique de référence (π_ref) pour l'alignement "
-        "par préférences."
+        "Le premier entraînement réel a été mené à son terme sur GPU "
+        "L4 en environ 20 minutes (342 pas, 3 époques), verdict de "
+        "convergence SAINE. Le checkpoint SFT-LoRA atteint un F1 "
+        "(token) d'environ 0,112 sur le jeu de test clinique — la "
+        "valeur de référence à laquelle le DPO est ensuite comparé "
+        "(§3). C'est ce checkpoint qui sert de politique de référence "
+        "(π_ref) pour l'alignement par préférences, et ses poids sont "
+        "publiés durablement sur le Hub (dépôt privé dédié)."
     )
 
     # === 3. DPO ============================================================
@@ -327,10 +504,13 @@ def construire() -> None:
         "politique de référence figée (le checkpoint SFT). "
         "L'hyperparamètre β contrôle la force de cet ancrage à la "
         "référence : plus β est faible, plus le modèle est autorisé à "
-        "s'écarter de π_ref."
+        "s'écarter de π_ref, au risque d'une dérive de génération non "
+        "capturée par la seule perte d'entraînement (§3.2)."
     )
     _figure(d, DIAGRAMMES / "04_etape3_dpo" / "activite" / "dpo_double_fonction_entrainement.png",
-            "Figure 4 — Boucle d'entraînement DPO : double passage (politique + référence figée).")
+            "Figure 7 — Boucle d'entraînement DPO : double passage (politique + référence figée).")
+    _figure(d, DIAGRAMMES / "04_etape3_dpo" / "sequence" / "entrainer_dpo.png",
+            "Figure 8 — Séquence d'entraînement DPO, du dataset de préférence au checkpoint publié.")
 
     d.add_heading("3.2 Métriques et itérations réelles", level=2)
     _paragraphe(
@@ -350,7 +530,7 @@ def construire() -> None:
             ["4", "0,3", "100", "sous-apprentissage*", "0,60", "1,93"],
             ["5 (final)", "0,3", "5000", "saine", "0,75", "4,84"],
         ],
-        legende="Tableau 1 — Journal des runs DPO (extrait, README §3.2). "
+        legende="Tableau 3 — Journal des runs DPO (extrait, README §3.2). "
                 "*Verdict basé sur un seuil de perte hérité du SFT, non "
                 "recalibré pour DPO ; rewards/accuracies et margins "
                 "indiquent un apprentissage réel malgré ce verdict.",
@@ -377,7 +557,7 @@ def construire() -> None:
             ["0,3 (100)", "1,2", "0,112", "~10,7 s"],
             ["0,3 (5000, final)", "1,2", "0,110", "~11,2 s"],
         ],
-        legende="Tableau 2 — Évaluation post-DPO (checkpoint "
+        legende="Tableau 4 — Évaluation post-DPO (checkpoint "
                 "mombasstic/chsa-triage-dpo-lora, README §3.3). β=0,3 + "
                 "repetition_penalty=1,2 ramène le F1 au niveau du "
                 "post-SFT (0,112), sans régression au passage à "
@@ -390,7 +570,27 @@ def construire() -> None:
         "(recipes/dpo_qwen3_lora.yaml). Le checkpoint DPO n'est jamais "
         "fusionné avec la base : il est servi nativement par vLLM comme "
         "adaptateur LoRA (§4), ce qui permet de revenir au modèle de "
-        "base à tout moment sans réentraînement."
+        "base à tout moment sans réentraînement, et de comparer "
+        "facilement plusieurs versions du garde-fou d'alignement sans "
+        "dupliquer les 3,2 Go de poids du modèle de base."
+    )
+
+    d.add_heading("3.4 Portée de la reformulation des préférences", level=2)
+    _paragraphe(
+        d,
+        "Les paires de préférence brutes d'UltraMedical-Preference ne "
+        "portent pas nativement le format de sortie structuré ciblé par "
+        "ce projet (niveau ESI, catégorie, ressources) : un cas d'usage "
+        "dédié reformule chaque paire choisie/rejetée dans ce format "
+        "avant l'entraînement DPO proprement dit. Ce découplage "
+        "reformulation/DPO — les réponses choisies ne sont pas "
+        "reformulées, seul le prompt système change — reste une cause "
+        "probable, distincte de la dégénérescence de fluidité (§3.2), "
+        "de la perte partielle du format JSON constatée à "
+        "l'évaluation : la mission ne demande que l'alignement SFT+DPO "
+        "sur les préférences, le format JSON strict étant un ajout du "
+        "cahier des charges local visé plutôt au niveau du prompting de "
+        "l'endpoint déployé (§5, §6.1)."
     )
 
     # === 4. Déploiement ====================================================
@@ -407,39 +607,88 @@ def construire() -> None:
         "poste de l'opérateur, car il ne fait qu'appeler l'API en HTTP "
         "sans aucun calcul GPU — un Space dédié uniquement pour cette "
         "interface aurait exigé un abonnement payant sans bénéfice "
-        "réel."
+        "réel. Le frontend ne sait jamais à l'avance si le modèle est "
+        "chargé : il sonde en boucle un endpoint de santé applicatif "
+        "qui répond toujours HTTP 200, y compris pendant les "
+        "plusieurs minutes de chargement du modèle, avec un corps "
+        "structuré distinguant explicitement « serveur d'inférence "
+        "indisponible » d'une véritable erreur — un simple health-check "
+        "Docker qui redémarrerait le conteneur sur ce délai normal "
+        "aurait été contre-productif."
     )
     _figure(d, DIAGRAMMES / "05_etape4_deploiement" / "deploiement" / "deploiement_etape4.png",
-            "Figure 5 — Architecture de déploiement réelle : Space Docker/GPU (API+vLLM), "
+            "Figure 9 — Architecture de déploiement réelle : Space Docker/GPU (API+vLLM), "
             "frontend local, journal d'audit persistant.")
+    _figure(d, DIAGRAMMES / "05_etape4_deploiement" / "sequence" / "poursuivre_entretien.png",
+            "Figure 10 — Séquence d'un tour d'entretien : de la requête infirmier à la "
+            "réponse du modèle, en passant par le journal d'audit.")
 
     d.add_heading("4.2 Incident technique majeur et résolution", level=2)
     _paragraphe(
         d,
         "Le premier déploiement réel s'est heurté à un segfault natif "
-        "systématique de vLLM, survenant juste après le chargement des "
-        "poids du modèle, sur l'instance GPU réelle (NVIDIA L4). Huit "
-        "pistes ciblées ont été testées et exclues méthodiquement, "
-        "chacune avec le même échec identique malgré le changement : "
-        "configuration du multiprocessing interne de vLLM, permissions "
-        "utilisateur du conteneur, adaptateur LoRA, moteur d'attention, "
-        "ordonnancement asynchrone, délai de démarrage, version de "
-        "vLLM, et désaccord pilote/CUDA. Un test décisif "
-        "(ralentissement extrême de l'exécution via une trace complète "
-        "des appels Python) a permis un démarrage sain, signature "
-        "caractéristique d'une condition de course dépendante du temps "
-        "réel d'exécution."
+        "(crash silencieux du processus, sans message Python "
+        "exploitable) systématique de vLLM, survenant à chaque fois "
+        "exactement au même point : juste après le chargement des "
+        "poids du modèle, pendant le profilage interne que vLLM "
+        "effectue pour dimensionner son cache de mémoire GPU, sur "
+        "l'instance GPU réelle (NVIDIA L4). Huit pistes ciblées ont été "
+        "testées methodiquement en conditions réelles, chacune "
+        "produisant le même échec identique malgré le changement — la "
+        "liste complète, dans l'ordre où elles ont été écartées :"
+    )
+    _tableau(
+        d,
+        ["#", "Piste testée", "Résultat"],
+        [
+            ["1", "Désactivation du multiprocessing interne de vLLM "
+                   "(variable d'environnement dédiée)", "Sans effet — "
+             "cette variable ne s'applique qu'à l'usage programmatique "
+             "de vLLM, jamais au serveur lancé en ligne de commande"],
+            ["2", "Exécution du conteneur sous un utilisateur non "
+                   "root explicite (au lieu de root par défaut)",
+             "Correction légitime conservée, mais sans effet sur le crash"],
+            ["3", "Adaptateur LoRA désactivé entièrement", "Même crash "
+             "identique, sans le module de chargement LoRA en cause"],
+            ["4", "Moteur d'attention alternatif (FlashInfer au lieu "
+                   "du moteur par défaut)", "Même crash identique"],
+            ["5", "Ordonnancement asynchrone désactivé", "Même crash identique"],
+            ["6", "Délai fixe de démarrage avant le lancement de vLLM",
+             "Même crash identique — écarte un GPU/pilote pas encore stabilisé"],
+            ["7", "Version de vLLM différente (deux versions testées)",
+             "Même crash identique sur les deux versions"],
+            ["8", "Désaccord pilote NVIDIA / version CUDA (vérifié "
+                   "directement via l'outil de diagnostic du pilote)",
+             "Pilote et CUDA confirmés sains, écarté"],
+        ],
+        legende="Tableau 5 — Les huit pistes de diagnostic testées et écartées pour le "
+                "segfault de démarrage vLLM (issue publique vllm-project/vllm#58616).",
     )
     _paragraphe(
         d,
-        "La résolution est venue d'un changement de stratégie plutôt "
-        "que d'un correctif ciblé supplémentaire : reconstruire l'image "
-        "du Space à partir de l'image Docker officielle "
-        "vllm/vllm-openai (construite et testée par l'équipe vLLM "
-        "elle-même) plutôt que d'installer vLLM manuellement dans une "
-        "image CUDA générique. Le problème a disparu entièrement. Cet "
-        "incident, sa reproduction complète et sa résolution ont été "
-        "signalés en amont au projet vLLM (issue publique "
+        "Un test décisif a permis de caractériser la nature du "
+        "problème sans le résoudre directement : activer une trace "
+        "complète de chaque appel de fonction Python (diagnostic "
+        "officiel de vLLM, qui ralentit l'exécution de plus de 100 "
+        "fois) a permis, à lui seul, un démarrage complet et sain. Ce "
+        "ralentissement massif faisant disparaître le crash est la "
+        "signature caractéristique d'une condition de course "
+        "dépendante du temps réel d'exécution — un défaut jamais isolé "
+        "à une seule cause identifiable dans le code du projet ou de "
+        "vLLM lui-même."
+    )
+    _paragraphe(
+        d,
+        "La résolution effective est venue d'un changement de "
+        "stratégie plutôt que d'un neuvième correctif ciblé : "
+        "reconstruire l'image du Space à partir de l'image Docker "
+        "officielle vllm/vllm-openai (construite et testée par "
+        "l'équipe vLLM elle-même, avec son propre environnement Python "
+        "cohérent) plutôt que d'installer vLLM manuellement dans une "
+        "image CUDA générique. Le problème a disparu entièrement, sans "
+        "qu'une cause racine précise n'ait pu être établie côté vLLM. "
+        "Cet incident, sa reproduction complète et sa résolution ont "
+        "été signalés en amont au projet vLLM (issue publique "
         "vllm-project/vllm#58616) pour bénéficier à d'autres équipes "
         "confrontées au même symptôme."
     )
@@ -447,51 +696,139 @@ def construire() -> None:
         d,
         "Deux bugs applicatifs supplémentaires ont ensuite été trouvés "
         "et corrigés lors de la toute première conversation réelle "
-        "contre ce vLLM enfin fonctionnel : (1) le paramètre de nombre "
-        "de tokens n'était jamais traduit vers le vocabulaire réel de "
-        "l'API compatible OpenAI de vLLM, laissant la génération partir "
-        "sans limite de tour de conversation ; (2) aucune température "
-        "de génération n'était fixée explicitement, laissant vLLM "
-        "retomber sur un échantillonnage aléatoire non validé, "
-        "provoquant des réponses incohérentes (mélange de langues) "
-        "indépendamment du matériel GPU utilisé (confirmé identique sur "
-        "L4 et T4). Les deux corrections ont rétabli des réponses "
-        "cohérentes en conditions réelles."
+        "contre ce vLLM enfin fonctionnel — un rappel concret que la "
+        "disponibilité du serveur d'inférence n'implique pas à elle "
+        "seule la correction du comportement applicatif :"
+    )
+    _paragraphe(
+        d,
+        "(1) Le paramètre de nombre maximal de tokens générés utilisait "
+        "en interne le vocabulaire du moteur local llama.cpp "
+        "(`n_predict`), jamais traduit vers le nom réellement attendu "
+        "par l'API compatible OpenAI de vLLM (`max_tokens`) — un "
+        "adaptateur voisin du projet effectuait déjà cette traduction "
+        "pour un troisième moteur, mais elle avait été omise pour "
+        "l'adaptateur vLLM, resté non testé en conditions réelles "
+        "jusqu'à la résolution du segfault. Le champ inconnu était "
+        "ignoré silencieusement par vLLM, laissant la génération partir "
+        "jusqu'à la limite par défaut du modèle (2048 tokens) sans "
+        "aucune limite de tour de conversation."
+    )
+    _paragraphe(
+        d,
+        "(2) Aucune température de génération n'était fixée "
+        "explicitement dans les cas d'usage d'entretien et de "
+        "diagnostic, laissant vLLM retomber sur un échantillonnage "
+        "aléatoire non validé — alors que l'évaluation post-DPO qui "
+        "avait validé la pénalité de répétition (§3.3) utilisait "
+        "systématiquement une génération déterministe. Sans "
+        "température explicite, le symptôme observé (réponses "
+        "incohérentes, mélange spontané de langues au sein d'une même "
+        "réponse) s'est reproduit à l'identique sur deux générations de "
+        "GPU différentes (L4 en bfloat16, T4 en float16 par repli "
+        "automatique), ce qui a permis d'écarter une cause matérielle "
+        "avant de trouver la cause réelle. Les deux corrections ont "
+        "rétabli des réponses cohérentes en conditions réelles, "
+        "vérifiées par une conversation complète de bout en bout."
     )
 
     d.add_heading("4.3 CI/CD et endpoint réel", level=2)
     _paragraphe(
         d,
         "Le pipeline GitHub Actions (imposé au cahier des charges) "
-        "exécute la suite de tests automatisés (448 tests, 0 échec) "
-        "et vérifie la construction de l'image Docker de l'API à "
-        "chaque push, sans dépendance GPU. L'endpoint réel "
-        "(mombasstic/chsa-triage-api) répond de façon opérationnelle : "
-        "chargement du modèle et de l'adaptateur LoRA DPO, healthcheck "
-        "applicatif ne renvoyant jamais d'erreur brute, latence de "
-        "réponse observée de l'ordre de 5 à 30 secondes par tour "
-        "d'entretien selon le matériel GPU alloué (L4 ou T4) — cette "
-        "latence n'a pas encore fait l'objet d'une mesure statistique "
-        "systématique (§6)."
+        "comprend deux jobs : l'exécution de la suite de tests "
+        "automatisés (448 tests, 0 échec, aucune dépendance GPU) et la "
+        "vérification que l'image Docker de l'API se construit "
+        "correctement, à chaque push sur la branche principale. "
+        "L'endpoint réel (mombasstic/chsa-triage-api) répond de façon "
+        "opérationnelle : chargement du modèle et de l'adaptateur LoRA "
+        "DPO, healthcheck applicatif ne renvoyant jamais d'erreur "
+        "brute, latence de réponse observée de l'ordre de 5 à 30 "
+        "secondes par tour d'entretien selon le matériel GPU alloué (L4 "
+        "ou T4, en fonction de la disponibilité côté fournisseur) — "
+        "cette latence n'a pas encore fait l'objet d'une mesure "
+        "statistique systématique sur un échantillon représentatif "
+        "(recommandation §6.1)."
     )
     _figure(d, DIAGRAMMES / "05_etape4_deploiement" / "activite" / "pipeline_ci_cd.png",
-            "Figure 6 — Pipeline CI/CD : tests automatisés + vérification du build Docker.")
+            "Figure 11 — Pipeline CI/CD : tests automatisés + vérification du build Docker.")
 
-    d.add_heading("4.4 Traçabilité (garde-fou F6)", level=2)
+    d.add_heading("4.4 Traçabilité et sécurité applicative", level=2)
     _paragraphe(
         d,
         "Chaque tour d'entretien et chaque demande de diagnostic est "
         "consigné dans un journal d'audit horodaté (conversation, "
-        "entrée, sortie, version du modèle), persisté gratuitement dans "
-        "un dataset privé Hugging Face via un mécanisme de publication "
-        "périodique déjà utilisé ailleurs dans le projet pour le suivi "
-        "d'expérimentation — le journal survit ainsi aux redémarrages "
-        "du conteneur, contrairement à une simple écriture sur le "
-        "disque éphémère du Space."
+        "entrée, sortie, version du modèle), garde-fou de traçabilité "
+        "imposé au projet — persisté gratuitement dans un dataset privé "
+        "Hugging Face via un mécanisme de publication périodique en "
+        "arrière-plan, déjà utilisé ailleurs dans le projet pour le "
+        "suivi d'expérimentation d'entraînement. Ce choix évite un "
+        "abonnement de stockage persistant payant tout en garantissant "
+        "que le journal survit aux redémarrages du conteneur, "
+        "contrairement à une simple écriture sur le disque éphémère du "
+        "Space, qui aurait perdu tout l'historique à chaque "
+        "reconstruction de l'image (redémarrages nombreux pendant "
+        "l'incident décrit en §4.2)."
+    )
+    _figure(d, DIAGRAMMES / "05_etape4_deploiement" / "sequence" / "obtenir_diagnostic.png",
+            "Figure 12 — Séquence de demande de diagnostic : de l'historique d'entretien "
+            "à la classification ESI proposée.")
+    _paragraphe(
+        d,
+        "L'accès à l'API est protégé par une clé (en-tête `X-API-Key`), "
+        "vérifiée par une dépendance FastAPI sur chaque route sensible, "
+        "distincte du jeton d'accès Hugging Face lui-même utilisé pour "
+        "les opérations internes (téléchargement de modèle, publication "
+        "du journal d'audit). Le stockage du jeton Hugging Face a "
+        "lui-même donné lieu à un incident réel pendant ce déploiement "
+        "(formulaire web du Space rejetant un caractère du jeton, "
+        "contournable en le déposant directement via l'API "
+        "programmatique plutôt que le formulaire), documenté en détail "
+        "dans le README du projet."
     )
 
-    # === 5. Analyse des resultats vs criteres d'acceptation ==============
-    d.add_heading("5. Analyse des résultats", level=1)
+    # === 5. Sécurité, conformité et vie privée ============================
+    d.add_heading("5. Sécurité, conformité et vie privée", level=1)
+    _paragraphe(
+        d,
+        "Le projet distingue explicitement deux notions homonymes qui "
+        "portent toutes deux le sigle « NF4 » dans la documentation du "
+        "projet, à ne pas confondre : le format de quantification "
+        "`nf4` (NormalFloat 4-bit, §2.1, un détail d'implémentation "
+        "de l'entraînement, déjà en place) et le garde-fou de sécurité "
+        "clinique NF4 du cahier des charges (un juge automatique "
+        "censé rejeter toute réponse dont le score de sécurité serait "
+        "inférieur à 4 sur 7, non encore conçu ni implémenté — voir "
+        "statut réel en §6)."
+    )
+    _paragraphe(
+        d,
+        "La protection des données personnelles s'appuie sur trois "
+        "mécanismes complémentaires, à des étapes différentes du "
+        "cycle de vie de la donnée : l'anonymisation Presidio en amont "
+        "de tout entraînement (§1.2, retire les identifiants directs "
+        "avant publication) ; le contrôle d'accès applicatif par clé "
+        "d'API sur l'endpoint déployé (§4.4) ; et le journal d'audit, "
+        "qui ne consigne que les échanges cliniques de l'entretien "
+        "(jamais d'identité de patient, celle-ci restant hors du "
+        "périmètre technique de l'agent, dont le rôle se limite à "
+        "l'entretien symptomatique)."
+    )
+    _paragraphe(
+        d,
+        "Le magasin de conversations actif (état d'une conversation en "
+        "cours) est délibérément gardé hors de l'architecture "
+        "hexagonale ports/adaptateurs : c'est un état de session "
+        "éphémère du processus, en mémoire, jamais persisté ni "
+        "consigné dans le journal d'audit lui-même — seuls les tours "
+        "d'entretien et les diagnostics le sont. Cette conception a une "
+        "conséquence directe pour le passage à l'échelle, discutée "
+        "en §6.3 : elle est incompatible avec plusieurs instances de "
+        "l'API sans état partagé externe."
+    )
+
+    # === 6. Analyse des resultats vs criteres d'acceptation ==============
+    d.add_heading("6. Analyse des résultats", level=1)
     _paragraphe(
         d,
         "Statut réel de chaque critère d'acceptation du POC "
@@ -504,13 +841,13 @@ def construire() -> None:
             ["Endpoint vLLM opérationnel, latence documentée", "Atteint (§4.3)"],
             ["Pipeline CI/CD exécute les tests à chaque push", "Atteint (448 tests, 0 échec)"],
             ["JSON de diagnostic valide sur ≥95% des requêtes", "Non atteint — format non "
-             "toujours respecté en sortie réelle de vLLM (voir §6)"],
+             "toujours respecté en sortie réelle de vLLM (voir §7)"],
             ["Accuracy ESI > baseline zéro-shot, mesurable", "Non mesurable tant que le "
              "format JSON n'est pas fiable"],
             ["Aucune réponse < 4/7 en sécurité (garde-fou NF4)", "Non implémenté — juge de "
              "sécurité clinique non encore conçu"],
         ],
-        legende="Tableau 3 — Statut réel des critères d'acceptation du POC.",
+        legende="Tableau 6 — Statut réel des critères d'acceptation du POC (cahier des charges §9).",
     )
     _paragraphe(
         d,
@@ -523,55 +860,135 @@ def construire() -> None:
         "correctement aligné peut sembler défaillant à cause d'un "
         "maillon d'infrastructure non validé — est probablement le "
         "résultat méthodologique le plus transférable de ce POC pour la "
-        "suite du projet."
+        "suite du projet : évaluer un modèle uniquement hors ligne, "
+        "sans jamais l'exercer contre le serveur d'inférence réellement "
+        "visé pour la production, laisse une classe entière de défauts "
+        "invisible jusqu'au déploiement."
+    )
+    _paragraphe(
+        d,
+        "Sur le plan de l'ingénierie du projet, deux disciplines se "
+        "sont révélées particulièrement rentables pendant cette "
+        "mission : ne jamais accepter une affirmation sans preuve "
+        "directement vérifiable (logs réels, code source lu plutôt que "
+        "supposé, tests exécutés plutôt qu'estimés), et traiter chaque "
+        "correctif de déploiement comme une hypothèse à valider "
+        "explicitement plutôt qu'une certitude — la moitié des huit "
+        "pistes du Tableau 5, par exemple, semblaient plausibles a "
+        "priori et ont dû être écartées une à une par des tests réels, "
+        "pas par intuition."
     )
 
-    # === 6. Roadmap ========================================================
-    d.add_heading("6. Roadmap et recommandations pour le passage à l'échelle", level=1)
+    # === 7. Roadmap ========================================================
+    d.add_heading("7. Roadmap et recommandations pour le passage à l'échelle", level=1)
+    _paragraphe(
+        d,
+        "Les recommandations suivantes sont organisées par horizon, "
+        "et découlent directement des écarts réels constatés pendant "
+        "cette mission (§6) plutôt que de bonnes pratiques génériques "
+        "de mise en production de LLM."
+    )
 
-    d.add_heading("6.1 Court terme (avant toute extension de périmètre)", level=2)
+    d.add_heading("7.1 Court terme (avant toute extension de périmètre)", level=2)
     _paragraphe(
         d,
         "Contraindre la sortie du diagnostic à un schéma JSON strict "
         "au niveau du serveur d'inférence (grammaire de génération "
-        "contrainte, disponible nativement côté vLLM) plutôt que par le "
-        "seul prompt — c'est l'écart le plus bloquant identifié (§5) et "
-        "le plus directement actionnable. Concevoir et implémenter le "
-        "juge de sécurité clinique (garde-fou NF4), aujourd'hui "
-        "explicitement en attente d'une décision produit. Mesurer la "
-        "latence de façon statistique (p50/p95 sur un échantillon "
-        "représentatif de conversations), pas seulement de façon "
-        "ponctuelle comme actuellement."
+        "contrainte, disponible nativement côté vLLM et déjà exposée "
+        "par sa configuration de sorties structurées) plutôt que par le "
+        "seul prompt — c'est l'écart le plus bloquant identifié (§6) et "
+        "le plus directement actionnable : il conditionne à la fois le "
+        "critère d'acceptation JSON et la mesure d'accuracy ESI, "
+        "aujourd'hui non mesurable pour cette seule raison."
     )
-
-    d.add_heading("6.2 Moyen terme (fiabilisation avant extension d'usage)", level=2)
     _paragraphe(
         d,
-        "Ajouter une supervision applicative (alertes sur les "
-        "réponses hors format, tableau de bord de latence réelle à "
-        "partir du journal d'audit déjà persisté). Étendre le jeu de "
-        "test clinique au-delà du périmètre actuel pour fiabiliser la "
-        "mesure d'accuracy ESI. Documenter et tester une procédure de "
-        "restauration du service en cas d'indisponibilité prolongée de "
-        "l'infrastructure GPU sous-jacente — un point de fragilité "
-        "concret rencontré plusieurs fois pendant ce déploiement, "
-        "indépendant du code du projet."
+        "Concevoir et implémenter le juge de sécurité clinique "
+        "(garde-fou NF4), aujourd'hui explicitement en attente d'une "
+        "décision produit : quel modèle ou quelle règle sert de juge, "
+        "sur quel échantillon il est validé lui-même, et comment son "
+        "propre taux d'erreur est mesuré avant d'en faire un filtre de "
+        "sécurité sur lequel s'appuyer."
+    )
+    _paragraphe(
+        d,
+        "Mesurer la latence de façon statistique (percentiles p50/p95 "
+        "sur un échantillon représentatif de conversations réelles, "
+        "par type de matériel GPU alloué), pas seulement de façon "
+        "ponctuelle comme actuellement — le journal d'audit déjà "
+        "persisté (§4.4) porte l'horodatage nécessaire pour cette "
+        "mesure sans instrumentation supplémentaire."
     )
 
-    d.add_heading("6.3 Long terme (déploiement à l'échelle du CHSA)", level=2)
+    d.add_heading("7.2 Moyen terme (fiabilisation avant extension d'usage)", level=2)
+    _paragraphe(
+        d,
+        "Ajouter une supervision applicative minimale : alertes sur "
+        "les réponses hors format JSON ou en échec, tableau de bord de "
+        "latence réelle construit directement à partir du journal "
+        "d'audit déjà persisté (aucune nouvelle télémétrie à mettre en "
+        "place, seulement à exploiter ce qui existe déjà). Étendre le "
+        "jeu de test clinique (278 exemples aujourd'hui) au-delà du "
+        "périmètre actuel pour fiabiliser statistiquement la mesure "
+        "d'accuracy ESI une fois le format JSON corrigé."
+    )
+    _paragraphe(
+        d,
+        "Documenter et tester une procédure de restauration du "
+        "service en cas d'indisponibilité prolongée de l'infrastructure "
+        "GPU sous-jacente — un point de fragilité concret rencontré à "
+        "plusieurs reprises pendant ce déploiement (échecs "
+        "d'initialisation de conteneur imputables à la plateforme "
+        "d'hébergement elle-même, résolus par un changement de "
+        "configuration matérielle plutôt que par une action côté "
+        "projet), donc indépendant du code du projet mais bien réel "
+        "en exploitation."
+    )
+    _paragraphe(
+        d,
+        "Ajouter une interface de reprise explicite (« nouveau "
+        "patient ») dans le frontend de test, déjà identifiée et "
+        "corrigée pendant ce projet — sans elle, un opérateur "
+        "poursuivant la saisie après un diagnostic mélangeait "
+        "silencieusement le patient suivant avec l'historique du "
+        "précédent, un risque d'erreur clinique par confusion "
+        "d'identité d'entretien qui mérite une vigilance équivalente "
+        "dans toute interface future."
+    )
+
+    d.add_heading("7.3 Long terme (déploiement à l'échelle du CHSA)", level=2)
     _paragraphe(
         d,
         "Avant toute mise en production clinique réelle : validation "
         "médicale formelle des diagnostics proposés par un comité "
-        "clinique du CHSA, étude d'impact réglementaire (dispositif "
-        "médical logiciel), et mécanisme de retour d'expérience "
-        "structuré depuis le terrain vers une boucle de réentraînement "
-        "périodique du modèle. Sur le plan technique, prévoir une "
-        "architecture à plusieurs instances (le magasin de conversations "
-        "actuel est volontairement en mémoire, donc incompatible avec "
-        "plusieurs instances sans état partagé externe) et un budget "
-        "GPU dimensionné sur la charge réelle observée plutôt que sur "
-        "l'usage ponctuel de ce POC."
+        "clinique du CHSA sur un échantillon représentatif, étude "
+        "d'impact réglementaire (le logiciel relève potentiellement du "
+        "cadre des dispositifs médicaux logiciels selon l'usage final "
+        "retenu), et mécanisme de retour d'expérience structuré depuis "
+        "le terrain vers une boucle de réentraînement périodique du "
+        "modèle plutôt qu'un modèle figé une fois pour toutes."
+    )
+    _paragraphe(
+        d,
+        "Sur le plan technique, prévoir une architecture à plusieurs "
+        "instances de l'API avant toute charge réelle : le magasin de "
+        "conversations actuel est volontairement en mémoire (§5), donc "
+        "incompatible avec plusieurs instances sans état partagé "
+        "externe (base de données ou cache partagé). Dimensionner le "
+        "budget GPU sur la charge réelle observée en usage clinique "
+        "plutôt que sur l'usage ponctuel de ce POC — le choix du "
+        "matériel (L4 ou équivalent) devra être revalidé une fois un "
+        "volume de requêtes concurrentes réaliste connu, et non plus "
+        "supposé."
+    )
+    _paragraphe(
+        d,
+        "Enfin, conserver la discipline de traçabilité déjà en place "
+        "(garde-fou F6) comme fondation de toute extension future plutôt "
+        "que comme une case à cocher : c'est ce même journal d'audit "
+        "qui permettra, à l'échelle, de mesurer objectivement l'impact "
+        "clinique réel de l'agent plutôt que ses seules métriques "
+        "d'entraînement hors ligne."
     )
 
     # === Conclusion ========================================================
@@ -581,16 +998,72 @@ def construire() -> None:
         "Ce POC démontre la faisabilité technique d'un agent de "
         "triage médical spécialisé par SFT+DPO et servi par un endpoint "
         "vLLM réel, avec une architecture hexagonale qui a concrètement "
-        "facilité le déploiement (bascule entre moteurs d'inférence "
-        "sans changement du domaine métier). Le principal apprentissage "
-        "de la phase de déploiement est que la validation d'un modèle "
-        "aligné ne peut pas se limiter à son évaluation hors ligne : "
-        "deux défauts d'intégration invisibles en évaluation "
-        "(traduction de paramètres, température de génération) ont "
-        "suffi à masquer un alignement DPO par ailleurs correctement "
-        "validé. Les prochaines étapes (§6) sont concrètes, priorisées, "
-        "et directement issues des écarts réels constatés pendant cette "
-        "mission plutôt que de recommandations génériques."
+        "facilité le développement et le déploiement (bascule entre "
+        "trois moteurs d'inférence — local, distant, double de test — "
+        "sans changement du domaine métier). Chaque étape du pipeline "
+        "(données, SFT, DPO, déploiement) a produit des artefacts "
+        "réels et vérifiables : jeux de données publiés et versionnés, "
+        "checkpoints LoRA hébergés sur le Hub, endpoint opérationnel "
+        "avec pipeline CI/CD vert, journal d'audit persistant."
+    )
+    _paragraphe(
+        d,
+        "Le principal apprentissage de la phase de déploiement est que "
+        "la validation d'un modèle aligné ne peut pas se limiter à son "
+        "évaluation hors ligne : deux défauts d'intégration invisibles "
+        "en évaluation (traduction de paramètres vers le vocabulaire "
+        "réel du serveur d'inférence, température de génération jamais "
+        "fixée explicitement) ont suffi à masquer un alignement DPO par "
+        "ailleurs correctement validé et mesuré. Un incident "
+        "d'infrastructure majeur (segfault systématique de vLLM, huit "
+        "hypothèses testées et écartées avant résolution) a par "
+        "ailleurs occupé une part significative du temps de "
+        "déploiement — un rappel que l'intégration d'un composant "
+        "d'inférence tiers récent, même imposé par le cahier des "
+        "charges pour de bonnes raisons de performance, reste un risque "
+        "projet à budgéter explicitement, pas un détail d'exécution."
+    )
+    _paragraphe(
+        d,
+        "Les prochaines étapes (§7) sont concrètes, priorisées, et "
+        "directement issues des écarts réels constatés pendant cette "
+        "mission plutôt que de recommandations génériques : contraindre "
+        "le format de sortie, concevoir le garde-fou de sécurité "
+        "clinique encore manquant, et mesurer statistiquement ce qui "
+        "n'a pour l'instant été observé que ponctuellement. Le POC "
+        "pose une base technique solide ; le chemin vers un déploiement "
+        "clinique réel au CHSA reste conditionné à une validation "
+        "médicale et réglementaire qui dépasse le périmètre de ce "
+        "rapport."
+    )
+
+    # === Glossaire ==========================================================
+    d.add_heading("Glossaire", level=1)
+    _tableau(
+        d,
+        ["Terme", "Définition"],
+        [
+            ["DPO", "Direct Preference Optimization — alignement à "
+                    "partir de paires (réponse préférée, réponse rejetée)."],
+            ["ESI", "Emergency Severity Index — échelle de triage aux "
+                    "urgences, niveaux 1 (critique) à 5 (non urgent)."],
+            ["LoRA", "Low-Rank Adaptation — fine-tuning par matrices "
+                     "de rang réduit, modèle de base gelé."],
+            ["NF4 (quantification)", "NormalFloat 4-bit — format de "
+                                      "quantification des poids, distinct du garde-fou "
+                                      "de sécurité clinique homonyme."],
+            ["PagedAttention", "Gestion par pages du cache d'attention "
+                               "GPU dans vLLM, comme une mémoire virtuelle."],
+            ["POC", "Proof of Concept — démonstrateur de faisabilité, "
+                    "pas un produit de production."],
+            ["QLoRA", "LoRA appliqué sur un modèle chargé en "
+                      "quantification 4-bit."],
+            ["SFT", "Supervised Fine-Tuning — spécialisation "
+                    "supervisée classique, exemple par exemple."],
+            ["vLLM", "Moteur de service d'inférence LLM haute "
+                     "performance, imposé par le cahier des charges."],
+        ],
+        legende="Tableau 7 — Glossaire des sigles et termes techniques utilisés dans ce rapport.",
     )
 
     d.add_heading("Références", level=1)
@@ -600,6 +1073,8 @@ def construire() -> None:
     _paragraphe(d, "docs/00_cadrage/05_presentation_soutenance.pptx — support de soutenance détaillé.")
     _paragraphe(d, "vllm-project/vllm, issue #58616 — signalement du segfault et de sa résolution.")
     _paragraphe(d, "docs/01_environnement/00_guide_installation_environnement.md — guide d'installation.")
+    _paragraphe(d, "docs/references/M14 Support de presentation_V3.pptx.pdf — support de "
+                   "présentation détaillé, référence complémentaire.")
 
     d.save(str(SORTIE))
     print(f"Rapport genere : {SORTIE}")
