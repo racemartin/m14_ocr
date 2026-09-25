@@ -72,9 +72,23 @@ class VllmEndpointInferenceAdapter:
         retire de `parametres` avant transmission (place explicitement
         au niveau superieur du corps de requete, comme l'exige l'API
         compatible OpenAI de vLLM).
+
+        `n_predict` (vocabulaire llama.cpp, cf.
+        `transformers_inference_adapter.py::_parametres_generation_transformers`
+        pour le meme renommage cote transformers) est traduit ici en
+        `max_tokens`, le nom reel attendu par l'API compatible OpenAI de
+        vLLM. Bug reel trouve en deploiement (25/09/2026) : sans cette
+        traduction, `n_predict` est un champ inconnu que vLLM ignore
+        silencieusement -- la generation part alors sur le
+        `max_tokens` par defaut du modele (2048, cf.
+        `generation_config.json`) sans aucune limite de tour de
+        conversation, produisant des reponses demesurement longues et
+        incoherentes (changements de langue, texte hors sujet).
         """
         parametres = dict(parametres or {})
         modele = parametres.pop("model", self.nom_modele)
+        if "n_predict" in parametres:
+            parametres["max_tokens"] = parametres.pop("n_predict")
 
         client = self._obtenir_client()
         corps = {"model": modele, "messages": messages, **parametres}
