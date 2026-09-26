@@ -1,88 +1,56 @@
 """
 Point d'entree CLI, Etape 2, evaluation "post-SFT" (README §2.4) :
-mesure la performance du modele REELLEMENT entraine par SFT-LoRA
-(poids publies sur `mombasstic/chsa-triage-sft-lora`, verdict `SAINE`,
-cf. README §2.3/AGENTS.md), sur le MEME sous-ensemble de 278 exemples
-`split=test`/`type_exemple=sft` deja evalue par les deux baselines
-zero-shot (`mombasstic/chsa-triage-baseline-test`, §2.2), avec les
-MEMES metriques (`application/metriques_evaluation_baseline.py`), pour
-une comparaison numero-contre-numero directe.
+mesure la performance du modele reellement entraine par SFT-LoRA sur le
+meme sous-ensemble de 278 exemples deja evalue par les deux baselines
+zero-shot, avec les memes metriques, pour une comparaison directe.
 
-Decision de conception (README §2.4 pour le detail complet) :
-`EvaluerBaselineZeroShotUseCase` (application) est REUTILISE SANS
-MODIFICATION une troisieme fois (apres CPU/GGUF puis GPU/bf16
-zero-shot, §2.2) : c'est un cas d'usage generique "generer une reponse
-par exemple du split test via un `MoteurInference`, comparer a la
-reference, agreger les metriques", agnostique au fait que le modele
-injecte soit entraine ou non. Seul l'adaptateur d'inference change,
-meme patron exact que `E1_06_01_evaluer_baseline_gpu.py` vs
-`E1_06_00_evaluer_baseline.py`. Le nom "Baseline"/"ZeroShot" du cas
-d'usage garde son vocabulaire d'origine plutot que d'etre renomme :
-renommer aurait touche 3 scripts CLI deja publies (celui-ci et les
-deux baselines) et leurs tests pour un gain cosmetique seul, sans
-changer le comportement ; ce script documente explicitement ce
-reemploi plutot que de le masquer.
+`EvaluerBaselineZeroShotUseCase` est reutilise sans modification une
+troisieme fois : seul l'adaptateur d'inference change (base+LoRA au
+lieu de base seule). Le dataset est telecharge depuis le meme depot HF
+prive que les baselines (`--dataset-hf-repo`), pour garantir que les
+trois runs portent exactement sur le meme sous-ensemble.
 
-Le dataset a evaluer N'EST PAS lu depuis `data/processed/` (gitignore,
-absent d'un job distant) : il est telecharge depuis le MEME depot HF
-prive deja utilise par `E1_06_01_evaluer_baseline_gpu.py`,
-`--dataset-hf-repo` (defaut `mombasstic/chsa-triage-baseline-test`,
-fichier `dataset_pivot_test_sft.jsonl`), pour garantir que les trois
-runs (CPU zero-shot, GPU zero-shot, post-SFT) portent EXACTEMENT sur
-le meme sous-ensemble.
-
-Usage (sur un job HF Jobs GPU, cf. README §2.4 pour la commande
-`hf jobs uv run` complete et son statut de verification) :
+Usage (sur un job HF Jobs GPU, cf. README §2.4) :
     uv run python interfaces/cli/E2_05_evaluer_post_sft.py \
         --dataset-hf-repo mombasstic/chsa-triage-baseline-test \
         --depot-lora mombasstic/chsa-triage-sft-lora \
         --suivi-hf-repo mombasstic/chsa-triage-baseline-metrics
 
-Suivi : par defaut MLflow local (`--suivi-uri`, meme defaut que les
-deux baselines) ; si `--suivi-hf-repo` est fourni, le run est publie a
-la place vers un depot dataset HF via `HfDatasetSuiviExperimentation`
-(meme mecanisme que `E1_06_01_evaluer_baseline_gpu.py`/
-`training/E2_04_sft_train.py --suivi-hf-repo`).
+Suivi : MLflow local par defaut (`--suivi-uri`) ; `--suivi-hf-repo`
+publie le run vers un depot dataset HF a la place.
 """
 
-from __future__ import annotations  # Annotations de type differees
+from __future__ import annotations
 
-# Bibliotheque standard
-import argparse  # Parsing des arguments CLI
-import tempfile  # Fichier temporaire pour le JSONL telecharge depuis le Hub
+import argparse
+import tempfile
 
-# Bibliotheques du projet (cas d'usage, adaptateurs, logging)
-from chsa_triage.application.use_cases   import EvaluerBaselineZeroShotUseCase  # Cas d'usage d'evaluation (reutilise sans modification)
-from chsa_triage.infrastructure.adapters import (  # Adaptateurs concrets (dataset, LLM, suivi)
+from chsa_triage.application.use_cases import EvaluerBaselineZeroShotUseCase
+from chsa_triage.infrastructure.adapters import (
     ChatMLFormateurAdapter,
     HfDatasetSuiviExperimentation,
     JsonlDatasetRepository,
     MlflowSuiviExperimentation,
     TransformersLoraInferenceAdapter,
 )
-from tools.rafael.log_tool               import LogTool  # Utilitaire de logging du projet
+from tools.rafael.log_tool import LogTool
 
 log = LogTool(origin="evaluer_post_sft")
 
-DEPOT_DATASET_HF_DEFAUT      = "mombasstic/chsa-triage-baseline-test"
-NOM_FICHIER_DATASET_HF       = "dataset_pivot_test_sft.jsonl"
-MODELE_BASE_DEFAUT           = "Qwen/Qwen3-1.7B-Base"
-DEPOT_LORA_DEFAUT            = "mombasstic/chsa-triage-sft-lora"
-URI_SUIVI_MLFLOW_DEFAUT      = "sqlite:///data/processed/mlflow.db"
+DEPOT_DATASET_HF_DEFAUT = "mombasstic/chsa-triage-baseline-test"
+NOM_FICHIER_DATASET_HF = "dataset_pivot_test_sft.jsonl"
+MODELE_BASE_DEFAUT = "Qwen/Qwen3-1.7B-Base"
+DEPOT_LORA_DEFAUT = "mombasstic/chsa-triage-sft-lora"
+URI_SUIVI_MLFLOW_DEFAUT = "sqlite:///data/processed/mlflow.db"
 REPERTOIRE_SUIVI_HF_LOCAL_DEFAUT = "data/processed/suivi_hf_dataset_post_sft"
-NOM_RUN_DEFAUT                = "evaluation-post-sft"
+NOM_RUN_DEFAUT = "evaluation-post-sft"
 
 
 # ##############################################################################
 def _telecharger_dataset(depot_hf: str, repertoire_local: str) -> str:
-    """
-    Telecharge `NOM_FICHIER_DATASET_HF` depuis `depot_hf` vers
-    `repertoire_local`, meme fonction que `E1_06_01_evaluer_baseline_gpu.py`
-    (non partagee via un module commun : deux fichiers de 4 lignes
-    identiques ont ete juges preferables a une abstraction pour une
-    fonction aussi triviale, cf. principe de non-sur-abstraction du
-    projet).
-    """
+    """Telecharge `NOM_FICHIER_DATASET_HF` depuis `depot_hf`. Duplique de
+    `E1_06_01_evaluer_baseline_gpu.py` (4 lignes identiques prefere a
+    une abstraction pour une fonction aussi triviale)."""
     from huggingface_hub import hf_hub_download
 
     return hf_hub_download(
@@ -113,7 +81,7 @@ def main() -> None:
         "--dataset-hf-repo",
         default=DEPOT_DATASET_HF_DEFAUT,
         help=f"Depot dataset HF contenant {NOM_FICHIER_DATASET_HF} (split=test, type_exemple=sft), "
-             "MEME sous-ensemble que les baselines zero-shot (§2.2)",
+        "MEME sous-ensemble que les baselines zero-shot (§2.2)",
     )
     parser.add_argument(
         "--modele-base",
@@ -146,8 +114,8 @@ def main() -> None:
         "--suivi-hf-repo",
         default=None,
         help="Depot dataset HF pour publier le run via HfDatasetSuiviExperimentation au lieu de "
-             "MLflow local (pertinent sur un job distant dont le disque ne survit pas au job) ; "
-             "cf. README §2.4",
+        "MLflow local (pertinent sur un job distant dont le disque ne survit pas au job) ; "
+        "cf. README §2.4",
     )
     parser.add_argument(
         "--suivi-hf-repertoire-local",
@@ -158,29 +126,41 @@ def main() -> None:
     arguments = parser.parse_args()
 
     log.START_ACTION(
-        "evaluer_post_sft", "main", "evaluation post-SFT (Etape 2, base+LoRA, transformers/bf16)"
+        "evaluer_post_sft",
+        "main",
+        "evaluation post-SFT (Etape 2, base+LoRA, transformers/bf16)",
     )
     log.PARAMETER_VALUE("depot dataset HF", arguments.dataset_hf_repo)
-    log.PARAMETER_VALUE("modele de base (tokenizer + poids, bf16)", arguments.modele_base)
+    log.PARAMETER_VALUE(
+        "modele de base (tokenizer + poids, bf16)", arguments.modele_base
+    )
     log.PARAMETER_VALUE("depot LoRA", arguments.depot_lora)
     log.PARAMETER_VALUE("suivi", arguments.suivi_hf_repo or arguments.suivi_uri)
 
     # ----- TELECHARGEMENT DU DATASET DEPUIS LE HUB -----------------------------
-    log.STEP(1, "Telechargement du dataset depuis le Hub", arguments.dataset_hf_repo)
+    log.STEP(
+        1, "Telechargement du dataset depuis le Hub", arguments.dataset_hf_repo
+    )
     with tempfile.TemporaryDirectory() as repertoire_temporaire:
-        chemin_dataset = _telecharger_dataset(arguments.dataset_hf_repo, repertoire_temporaire)
+        chemin_dataset = _telecharger_dataset(
+            arguments.dataset_hf_repo, repertoire_temporaire
+        )
         log.PARAMETER_VALUE("dataset telecharge", chemin_dataset)
 
         # ----- PREPARE ADAPTERS (Dependency Injection) -------------------------
         repository = JsonlDatasetRepository(chemin_dataset)
-        formateur  = ChatMLFormateurAdapter(nom_modele=arguments.modele_base)
-        moteur     = TransformersLoraInferenceAdapter(
-            depot_lora=arguments.depot_lora, nom_modele_base=arguments.modele_base
+        formateur = ChatMLFormateurAdapter(nom_modele=arguments.modele_base)
+        moteur = TransformersLoraInferenceAdapter(
+            depot_lora=arguments.depot_lora,
+            nom_modele_base=arguments.modele_base,
         )
-        suivi      = _construire_suivi(arguments)
+        suivi = _construire_suivi(arguments)
 
         # ----- USE CASE EXECUTE --------------------------------------------------
-        log.STEP(2, "Generation post-SFT + comparaison sur le split test (GPU, bf16, base+LoRA)")
+        log.STEP(
+            2,
+            "Generation post-SFT + comparaison sur le split test (GPU, bf16, base+LoRA)",
+        )
         try:
             cas_usage = EvaluerBaselineZeroShotUseCase(
                 repository=repository,

@@ -1,17 +1,10 @@
 """
-Validation STRICTE de la sortie "obtenir diagnostic" (F2/F3/F4 :
-bloc `<think>...</think>` suivi d'un JSON strict
-`{niveau, categorie, ressources_estimees}`). Meme famille de fonction
-pure que `application/validation_reformulation_dpo.py::parser_reformulation_stricte`
-(dont ce module reutilise le jeu de cles `CLES_REFORMULATION_ATTENDUES`,
-plutot que de le redefinir) : aucun port, aucun acces reseau/GPU,
-testable independamment de tout modele.
-
-Distinct de `parser_reformulation_stricte` (retient les tours
-`Message` reconstitues, utile a l'entrainement DPO) : ici, l'appelant
-(l'API live) a besoin des champs structures `niveau`/`categorie`/
-`ressources_estimees` individuellement (ex. badge ESI colore dans une
-UI), pas seulement du texte brut valide.
+Validation STRICTE de la sortie "obtenir diagnostic" (F2/F3/F4 : bloc
+`<think>...</think>` suivi d'un JSON strict `{niveau, categorie,
+ressources_estimees}`). Fonction pure, aucun port. Reutilise
+`CLES_REFORMULATION_ATTENDUES` de `validation_reformulation_dpo.py`
+mais reste distincte : ici l'appelant (l'API live) a besoin des champs
+individuellement (ex. badge ESI colore), pas du texte brut validé.
 """
 
 from __future__ import annotations
@@ -63,7 +56,9 @@ def parser_diagnostic_strict(texte: str) -> DiagnosticClinique | None:
 
     categorie = objet["categorie"]
     ressources_estimees = objet["ressources_estimees"]
-    if not isinstance(categorie, str) or not isinstance(ressources_estimees, str):
+    if not isinstance(categorie, str) or not isinstance(
+        ressources_estimees, str
+    ):
         return None
 
     return DiagnosticClinique(

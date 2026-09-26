@@ -2,21 +2,22 @@
 
 # Étape 3 : Introduction aux concepts (DPO)
 
-> **Statut réel (18/09/2026) : Étape 3 non implémentée.** Aucun script
-> d'entraînement DPO n'existe dans `training/` à ce jour, et aucun
-> port de dominio dédié n'existe dans `src/chsa_triage/domain/ports/`
-> (vérifié par grep réel, cf. §4). Les données sont en revanche
-> prêtes : 97 081 exemples DPO déjà extraits du dataset pivot anonymisé
-> et déjà splittés train/val/test (`docs/references/livre_theorique_llm_triage_chsa.md`
-> §"Vue d'ensemble", ligne "1. Données"), un sous-ensemble déjà publié
-> comme jeu de données Hugging Face
-> (`docs/02_etape1_donnees/dataset_card_dpo_hf.md`). Ce document est
-> donc, comme `docs/03_etape2_sft/00_introduction_concepts.md` l'était
-> avant l'écriture du code SFT, un document de **conception et de
-> décisions**, pas d'implémentation : il tranche les ambiguïtés
-> ouvertes pour que l'implémentation réelle (guide pas-à-pas, cas
-> d'usage, adaptateur GPU) puisse suivre sans avoir à re-débattre ces
-> choix.
+> **Statut réel (26/09/2026) : Étape 3 implémentée, entraînée et
+> déployée.** Ce document a été écrit le 18/09/2026, avant tout code
+> DPO, pour trancher les décisions de conception ci-dessous ; il reste
+> volontairement en l'état comme trace de ce raisonnement, mais la
+> situation a changé depuis : le port `EntraineurPreference`, l'adaptateur
+> `TrlDpoEntraineurAdapter`, les cas d'usage `E3_0X` et le script
+> `training/E3_03_dpo_train.py` existent tous, l'entraînement DPO-LoRA a
+> tourné pour de vrai sur GPU cloud et les poids sont publiés sur
+> `mombasstic/chsa-triage-dpo-lora` (chargés en production par
+> `deploy/space_gpu_api_vllm/demarrer.sh`). Pour l'état d'implémentation
+> réel, voir `02_etapes_cas_usage.md` et `03_guide_implementation_pas_a_pas.md`
+> (même dossier) plutôt que les statuts `[CONCEPTION]` ci-dessous, et
+> pour les métriques et le journal des runs, le `README.md` racine
+> (Dépannage) et `docs/05_etude/M14_Rapport_technique_CHSA_Triage.docx`.
+> Les décisions et leur justification restent, elles, toujours valides
+> et lisibles ci-dessous.
 
 Public visé : quelqu'un qui connaît le SFT (chapitre précédent) mais
 n'a jamais fait d'alignement par préférences. Chaque concept est
@@ -335,11 +336,11 @@ class EntraineurPreference(Protocol):
 
     def entrainer(
         self,
-        dataset_train             : Iterable[ExempleFormatePreference],
-        dataset_validation         : Iterable[ExempleFormatePreference],
-        config_lora                  : ConfigurationLora,
-        hyperparametres                : HyperparametresEntrainementDpo,
-        chemin_checkpoint_politique_depart : str,  # le SFT-LoRA du §0
+        dataset_train: Iterable[ExempleFormatePreference],
+        dataset_validation: Iterable[ExempleFormatePreference],
+        config_lora: ConfigurationLora,
+        hyperparametres: HyperparametresEntrainementDpo,
+        chemin_checkpoint_politique_depart: str,  # le SFT-LoRA du §0
     ) -> ResultatEntrainementDPO: ...
 ```
 
@@ -367,10 +368,10 @@ class ExempleFormatePreference:
     prompt/chosen/rejected distinct, jamais concatene en un seul texte
     (cf. domain/ports/entraineur_preference.py, format DPOTrainer)."""
 
-    identifiant   : str   # repris de ExemplePivot.identifiant
-    texte_prompt   : str
-    texte_chosen    : str
-    texte_rejected   : str
+    identifiant: str  # repris de ExemplePivot.identifiant
+    texte_prompt: str
+    texte_chosen: str
+    texte_rejected: str
 ```
 
 Le rendu de chaque champ reste, comme pour `formater_invite_zero_shot`
@@ -522,9 +523,9 @@ l'implémentation réelle plutôt que par anticipation :
 ## Document suivant
 
 `02_etapes_cas_usage.md` (Étape 3) : correspondance entre les
-décisions ci-dessus et les fichiers réels à écrire
+décisions ci-dessus et les fichiers réels écrits depuis
 (`domain/ports/entraineur_preference.py`,
 `domain/model/exemple_formate_preference.py`, le cas d'usage de
-reformulation, `E3_0X_uc_*`), une fois ce document de conception
-disponible comme référence stable. Document non encore écrit au
-moment de la rédaction de ce chapitre.
+reformulation, `E3_0X_uc_*`). Puis `03_guide_implementation_pas_a_pas.md`
+pour l'ordre concret d'écriture suivi, et le `README.md` racine pour le
+déploiement réel du checkpoint qui en résulte.

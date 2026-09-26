@@ -32,6 +32,8 @@ class VerifierRepartitionSplitsUseCase:
                 continue
             cle = (exemple.type_exemple.value, exemple.source)
             compteur_strate = repartition.setdefault(cle, {})
-            compteur_strate[exemple.split.value] = compteur_strate.get(exemple.split.value, 0) + 1
+            compteur_strate[exemple.split.value] = (
+                compteur_strate.get(exemple.split.value, 0) + 1
+            )
 
         return repartition

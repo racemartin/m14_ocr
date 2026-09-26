@@ -26,23 +26,16 @@ FonctionMapping = Callable[[dict], "ExemplePivot | None"]
 class ConstruireDatasetPivotUseCase:
     """Orchestre la conversion d'un corpus brut vers le schema pivot.
 
-    Dedoublonnage reel (08/09/2026) : depuis que
-    `ExemplePivot.nouvel_identifiant` est deterministe (meme cle
-    naturelle -> meme identifiant), deux enregistrements bruts qui
-    produisent le meme identifiant sont, par construction, strictement
-    identiques sur tous les champs qui alimentent le pivot ; de vrais
-    doublons, pas une collision de cle insuffisante (verifie
-    corpus par corpus sur les donnees reelles, cf.
-    `interfaces/cli/E1_03_01_mappers_corpus.py`). Seul le PREMIER exemple
-    rencontre pour un identifiant donne est conserve dans le pivot ;
-    les suivants sont ecartes et exposes via `self.doublons` pour que
-    l'appelant (CLI) puisse les archiver avant de les jeter ; jamais
-    silencieusement perdus.
+    Dedoublonnage : `nouvel_identifiant` etant deterministe, deux
+    enregistrements qui produisent le meme identifiant sont de vrais
+    doublons, pas une collision. Seul le premier est conserve ; les
+    suivants sont ecartes et exposes via `self.doublons` (jamais
+    silencieusement perdus).
     """
 
-    lecteur    : LecteurCorpus
-    repository  : RepositoryLectureEcriture
-    doublons     : list[ExemplePivot] = field(default_factory=list, init=False)
+    lecteur: LecteurCorpus
+    repository: RepositoryLectureEcriture
+    doublons: list[ExemplePivot] = field(default_factory=list, init=False)
 
     def executer(self, mapper: FonctionMapping) -> int:
         """

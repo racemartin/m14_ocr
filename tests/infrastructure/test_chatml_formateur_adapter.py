@@ -39,7 +39,9 @@ NOM_MODELE = "Qwen/Qwen3-1.7B-Base"
 
 def _tokenizer_disponible() -> bool:
     try:
-        transformers.AutoTokenizer.from_pretrained(NOM_MODELE, trust_remote_code=True)
+        transformers.AutoTokenizer.from_pretrained(
+            NOM_MODELE, trust_remote_code=True
+        )
         return True
     except Exception:  # noqa: BLE001 - reseau/HF indisponible, pas un bug de code
         return False
@@ -58,8 +60,16 @@ def _exemple_pivot() -> ExemplePivot:
         source="Test",
         type_exemple=TypeExemple.SFT,
         langue=Langue.FRANCAIS,
-        prompt=(Message(role="user", contenu="Le patient presente une fievre a 39."),),
-        completion=(Message(role="assistant", contenu="Suspicion d'infection, a surveiller."),),
+        prompt=(
+            Message(
+                role="user", contenu="Le patient presente une fievre a 39."
+            ),
+        ),
+        completion=(
+            Message(
+                role="assistant", contenu="Suspicion d'infection, a surveiller."
+            ),
+        ),
     )
 
 
@@ -84,15 +94,24 @@ def _exemple_pivot_dpo() -> ExemplePivot:
         source="Test",
         type_exemple=TypeExemple.DPO,
         langue=Langue.FRANCAIS,
-        prompt=(Message(role="user", contenu="Le patient presente une douleur thoracique."),),
+        prompt=(
+            Message(
+                role="user",
+                contenu="Le patient presente une douleur thoracique.",
+            ),
+        ),
         chosen=(
             Message(
                 role="assistant",
-                contenu='<think>Douleur thoracique, risque cardiaque.</think>'
+                contenu="<think>Douleur thoracique, risque cardiaque.</think>"
                 '{"niveau": 2, "categorie": "cardio-vasculaire", "ressources_estimees": "ECG"}',
             ),
         ),
-        rejected=(Message(role="assistant", contenu="Ce n'est probablement rien de grave."),),
+        rejected=(
+            Message(
+                role="assistant", contenu="Ce n'est probablement rien de grave."
+            ),
+        ),
     )
 
 
@@ -119,7 +138,10 @@ def test_formater_preference_rend_un_triplet_texte_distinct():
     assert resultat.identifiant == exemple.identifiant
     assert "Le patient presente une douleur thoracique" in resultat.texte_prompt
     assert '"niveau": 2' in resultat.texte_chosen
-    assert "<think>Douleur thoracique, risque cardiaque.</think>" in resultat.texte_chosen
+    assert (
+        "<think>Douleur thoracique, risque cardiaque.</think>"
+        in resultat.texte_chosen
+    )
     assert "Ce n'est probablement rien de grave" in resultat.texte_rejected
     assert '"niveau": 2' not in resultat.texte_rejected
     assert "Ce n'est probablement rien de grave" not in resultat.texte_prompt
@@ -131,8 +153,9 @@ def test_formater_preference_texte_prompt_ne_contient_jamais_le_tour_assistant()
 
     resultat = adaptateur.formater_preference(exemple)
 
-    assert "<|im_start|>assistant" not in resultat.texte_prompt or resultat.texte_prompt.rstrip().endswith(
-        "<|im_start|>assistant"
+    assert (
+        "<|im_start|>assistant" not in resultat.texte_prompt
+        or resultat.texte_prompt.rstrip().endswith("<|im_start|>assistant")
     )
     assert '"niveau"' not in resultat.texte_prompt
     assert resultat.texte_prompt.rstrip().endswith("<|im_start|>assistant")

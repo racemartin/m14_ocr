@@ -1,16 +1,11 @@
 """
 Stockage en memoire de l'historique des conversations d'entretien.
-
-DELIBEREMENT hors de l'architecture hexagonale ports/adapters : une
-conversation vivante est un etat de session ephemere du processus API
-(perdu au redemarrage), pas une entite metier persistee entre
-executions comme `ExemplePivot`/`CheckpointEntraine`. Les cas d'usage
-(`E4_00_uc_poursuivre_entretien.py`/`E4_01_uc_obtenir_diagnostic.py`)
-restent purs : ils prennent l'historique complet en parametre et ne
-savent pas ou il est stocke, c'est `interfaces/api/app.py` (adaptateur
-PRIMAIRE) qui possede ce magasin et le passe explicitement a chaque
-appel. Un vrai deploiement multi-instance voudrait un stockage partage
-(Redis, base) ; hors perimetre de ce POC (une seule instance API).
+Deliberement hors de l'architecture hexagonale ports/adapters : une
+conversation vivante est un etat de session ephemere (perdu au
+redemarrage), pas une entite metier persistee. Les cas d'usage restent
+purs (historique pris en parametre) ; `interfaces/api/app.py` possede
+ce magasin. Un deploiement multi-instance voudrait un stockage partage
+(Redis, base) : hors perimetre de ce POC.
 """
 
 from __future__ import annotations

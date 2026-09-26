@@ -6,7 +6,9 @@ from pathlib import Path
 
 from chsa_triage.domain.model import ExemplePivot, Langue, Message, TypeExemple
 from chsa_triage.infrastructure.adapters import JsonlDatasetRepository
-from chsa_triage.infrastructure.adapters.jsonl_dataset_repository import ajouter_exemples_jsonl
+from chsa_triage.infrastructure.adapters.jsonl_dataset_repository import (
+    ajouter_exemples_jsonl,
+)
 
 
 def test_round_trip_sauvegarde_et_lecture(tmp_path: Path):
@@ -83,11 +85,25 @@ def test_ajouter_exemples_jsonl_ne_fusionne_pas_par_identifiant(tmp_path: Path):
     le meme identifiant (doublons ecartes du pivot).
     """
     chemin = tmp_path / "doublons_supprimes.jsonl"
-    exemple_1 = ExemplePivot(identifiant="dup-1", source="test", type_exemple=TypeExemple.SFT, langue=Langue.FRANCAIS, symptomes="A")
-    exemple_2 = ExemplePivot(identifiant="dup-1", source="test", type_exemple=TypeExemple.SFT, langue=Langue.FRANCAIS, symptomes="B")
+    exemple_1 = ExemplePivot(
+        identifiant="dup-1",
+        source="test",
+        type_exemple=TypeExemple.SFT,
+        langue=Langue.FRANCAIS,
+        symptomes="A",
+    )
+    exemple_2 = ExemplePivot(
+        identifiant="dup-1",
+        source="test",
+        type_exemple=TypeExemple.SFT,
+        langue=Langue.FRANCAIS,
+        symptomes="B",
+    )
 
     ajouter_exemples_jsonl(chemin, [exemple_1])
     ajouter_exemples_jsonl(chemin, [exemple_2])
 
     lignes = chemin.read_text(encoding="utf-8").strip().splitlines()
-    assert len(lignes) == 2  # les deux entrees sont conservees, meme si meme identifiant
+    assert (
+        len(lignes) == 2
+    )  # les deux entrees sont conservees, meme si meme identifiant

@@ -22,6 +22,8 @@ from chsa_triage.domain.model.exemple_pivot import Message
 class ChosenReformule:
     """Chosen reformule vers <think>+JSON pour un ExemplePivot DPO donne."""
 
-    identifiant       : str               # repris de ExemplePivot.identifiant, jamais regenere
-    chosen_reformule    : tuple[Message, ...]  # nouveau tour assistant, remplace chosen a l'usage
-    horodatage            : str
+    identifiant: str  # repris de ExemplePivot.identifiant, jamais regenere
+    chosen_reformule: tuple[
+        Message, ...
+    ]  # nouveau tour assistant, remplace chosen a l'usage
+    horodatage: str

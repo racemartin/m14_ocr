@@ -29,7 +29,9 @@ from chsa_triage.domain.model.enums import (
     TypeSplit,
 )
 from chsa_triage.domain.model.exemple_formate import ExempleFormate
-from chsa_triage.domain.model.exemple_formate_preference import ExempleFormatePreference
+from chsa_triage.domain.model.exemple_formate_preference import (
+    ExempleFormatePreference,
+)
 from chsa_triage.domain.model.exemple_pivot import (
     ConstantesVitales,
     ExemplePivot,

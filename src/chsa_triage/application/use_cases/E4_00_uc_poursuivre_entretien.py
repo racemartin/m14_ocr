@@ -1,34 +1,17 @@
 """
-Cas d'usage : poursuivre l'entretien clinique adaptatif avec le
-patient/infirmier (F1). Decision de conception (cahier des charges
-§3, note du 23/09/2026) : F1 n'est PAS une exigence de donnees
-d'entrainement supplementaires, mais une exigence de **prompting au
-moment de l'inference** - le modele deja SFT+DPO recoit l'historique
-de conversation accumule et un prompt systeme d'entretien, et propose
-la question suivante ; c'est l'infirmier (humain), jamais le modele
-de facon autonome, qui decide quand declencher le diagnostic final
-(cf. `E4_01_uc_obtenir_diagnostic.py`).
+Cas d'usage : poursuivre l'entretien clinique adaptatif (F1). F1 n'est
+PAS une exigence de donnees d'entrainement supplementaires, mais de
+prompting au moment de l'inference : le modele SFT+DPO recoit
+l'historique et un prompt systeme d'entretien, et propose la question
+suivante ; c'est l'infirmier (humain), jamais le modele, qui declenche
+le diagnostic final (cf. `E4_01_uc_obtenir_diagnostic.py`).
 
-Reutilise `MoteurInference` sans modification (cinquieme reemploi du
-projet, apres les deux baselines zero-shot, l'evaluation post-SFT et
-la reformulation DPO). "Demarrer" un entretien n'est qu'un cas
-particulier de "poursuivre" avec un historique vide : aucun cas
-d'usage separe pour cela (pas de logique metier propre, juste une
-liste vide - l'API cree l'identifiant de conversation et appelle ce
-meme cas d'usage).
-
-**Jamais de tour `role: "system"` envoye au modele** (meme decision
-que `E3_00_uc_reformuler_preference_dpo.py`, cf. AGENTS.md : verifie
-empiriquement que ce checkpoint n'a jamais vu de tour `system` pendant
-son propre entrainement, un role absent du fine-tuning ayant deja
-cause une degenerescence en sortie vide lors des runs DPO reels). Le
-prompt d'entretien est donc prefixe au PREMIER message utilisateur
-(stocke ainsi dans l'historique, pas seulement au moment de l'envoi) :
-comme chaque appel HTTP vers vLLM est sans etat (l'historique complet
-est renvoye a chaque tour), le modele doit revoir cette instruction a
-chaque appel ulterieur, et la stocker dans l'historique est la facon
-la plus simple de le garantir sans re-detecter "est-ce le premier
-tour" a chaque appel.
+"Demarrer" un entretien est juste "poursuivre" avec un historique vide,
+pas de cas d'usage separe. Jamais de tour `role: "system"` envoye (ce
+checkpoint n'en a jamais vu a l'entrainement, ce qui causait une sortie
+vide, meme decision qu'en Etape 3) : le prompt d'entretien est prefixe
+au PREMIER message utilisateur et stocke ainsi dans l'historique, pour
+que le modele le revoie a chaque appel HTTP sans etat.
 """
 
 from __future__ import annotations
@@ -52,29 +35,18 @@ PROMPT_ENTRETIEN = (
     "juge l'entretien suffisant."
 )
 
-# `REPETITION_PENALTY_DEFAUT = 1.2` (23/09/2026) : fixee ici comme
-# constante de module, JAMAIS un parametre optionnel que l'appelant
-# (frontend Streamlit, ou tout futur client de l'API) pourrait oublier
-# de passer. Un test manuel reel sur un serveur `vllm serve`
-# (checkpoint `mombasstic/chsa-triage-dpo-lora`, beta=0.3) a montre une
-# degenerescence de generation SANS repetition_penalty : changements de
-# langue aleatoires (EN/FR -> JA/ZH/AR) et une reponse cliniquement
-# dangereuse sur un cas de douleur thoracique classique. La valeur 1.2
-# est celle deja validee empiriquement lors de l'evaluation post-DPO
-# (`E3_04_evaluer_post_dpo.py`), qui avait ramene le F1 au niveau du
-# post-SFT. C'est un garde-fou de securite clinique (NF4), pas une
-# option d'ajustement de style de generation.
+# Constante de module (jamais un parametre optionnel oubliable par
+# l'appelant) : garde-fou de securite clinique (NF4), pas un simple
+# reglage de style. Sans repetition_penalty, un test reel a produit un
+# changement de langue aleatoire (EN/FR -> JA/ZH/AR) et une reponse
+# dangereuse sur un cas de douleur thoracique ; 1.2 est la valeur
+# validee lors de l'evaluation post-DPO.
 REPETITION_PENALTY_DEFAUT = 1.2
 
-# `TEMPERATURE_DEFAUT = 0.0` (25/09/2026) : meme raisonnement que
-# REPETITION_PENALTY_DEFAUT ci-dessus -- constante de module, jamais un
-# parametre optionnel oubliable. Bug reel trouve en deploiement : ce
-# cas d'usage n'envoyait AUCUNE temperature explicite, donc vLLM
-# appliquait son propre defaut (echantillonnage aleatoire), alors que
-# l'evaluation post-DPO qui a valide repetition_penalty=1.2
-# (`E3_04_evaluer_post_dpo.py --temperature 0.0`, generation
-# deterministe) n'a jamais ete testee dans ces conditions. Sans
-# temperature=0.0, meme repetition_penalty=1.2 ne suffit pas a eviter
+# Bug reel trouve en deploiement : sans temperature explicite, vLLM
+# retombait sur son propre defaut (echantillonnage aleatoire), jamais
+# teste avec repetition_penalty=1.2 lors de l'evaluation post-DPO.
+# Sans temperature=0.0, repetition_penalty seul ne suffit pas a eviter
 # la degenerescence (constate en conditions reelles, L4 et T4).
 TEMPERATURE_DEFAUT = 0.0
 
@@ -89,35 +61,30 @@ def _horodatage_utc_iso() -> str:
 class ResultatTourEntretien:
     """Les deux nouveaux tours produits par `executer()`, a ajouter par l'appelant a son historique."""
 
-    message_utilisateur : Message
-    message_assistant     : Message
+    message_utilisateur: Message
+    message_assistant: Message
 
 
 @dataclass(slots=True)
 class PoursuivreEntretienUseCase:
     """Orchestre un tour d'entretien : historique + nouveau message -> question suivante du modele."""
 
-    moteur           : MoteurInference
-    journal            : JournalAudit
-    version_modele    : str = "mombasstic/chsa-triage-dpo-lora"
-    horloge             : Callable[[], str] = _horodatage_utc_iso
+    moteur: MoteurInference
+    journal: JournalAudit
+    version_modele: str = "mombasstic/chsa-triage-dpo-lora"
+    horloge: Callable[[], str] = _horodatage_utc_iso
 
     def executer(
-        self, conversation_id: str, historique: Sequence[Message], message_infirmier: str
+        self,
+        conversation_id: str,
+        historique: Sequence[Message],
+        message_infirmier: str,
     ) -> ResultatTourEntretien:
-        """
-        Construit le message utilisateur a stocker (prefixe de
-        `PROMPT_ENTRETIEN` si `historique` est vide, tel quel sinon),
-        l'ajoute a l'historique existant et appelle `self.moteur.generer()`.
-        Consigne systematiquement un `EntreeAudit` (F6), y compris si
-        l'appel au moteur echoue (le domaine ne connait pas le type
-        d'exception concret de l'adaptateur : laissee se propager, jamais
-        avalee silencieusement, contrairement a
-        `EvaluerBaselineZeroShotUseCase`/`ReformulerPreferenceDpoUseCase`
-        ou un echec individuel est tolere dans un lot ; ici, une seule
-        requete HTTP echoue pour un seul utilisateur, il n'y a pas de lot
-        a proteger).
-        """
+        """Construit le message utilisateur (prefixe de `PROMPT_ENTRETIEN`
+        si `historique` est vide), l'ajoute a l'historique et appelle le
+        moteur. Une erreur d'inference se propage plutot que d'etre
+        avalee (contrairement aux cas d'usage par lot : ici une seule
+        requete pour un seul utilisateur, pas de lot a proteger)."""
         if not historique:
             contenu_utilisateur = f"{PROMPT_ENTRETIEN}\n\n{message_infirmier}"
         else:
@@ -125,7 +92,8 @@ class PoursuivreEntretienUseCase:
 
         message_utilisateur = Message(role="user", contenu=contenu_utilisateur)
         messages_pour_modele = [
-            {"role": m.role, "content": m.contenu} for m in (*historique, message_utilisateur)
+            {"role": m.role, "content": m.contenu}
+            for m in (*historique, message_utilisateur)
         ]
 
         reponse = self.moteur.generer(
@@ -149,4 +117,7 @@ class PoursuivreEntretienUseCase:
             )
         )
 
-        return ResultatTourEntretien(message_utilisateur=message_utilisateur, message_assistant=message_assistant)
+        return ResultatTourEntretien(
+            message_utilisateur=message_utilisateur,
+            message_assistant=message_assistant,
+        )

@@ -18,15 +18,9 @@ import httpx
 
 
 def interroger_sante(client: httpx.Client) -> dict:
-    """
-    Ne laisse jamais une erreur de connexion brute remonter a
-    l'appelant : l'API elle-meme (Space Docker/GPU) peut etre
-    injoignable (pas encore allumee), pas seulement le moteur vLLM
-    qu'elle sonde en interne via `/sante` (cf.
-    `interfaces/api/app.py`, qui retourne toujours HTTP 200 pour la
-    partie vLLM, mais ne protege pas contre une API totalement
-    injoignable).
-    """
+    """Ne laisse jamais une erreur de connexion brute remonter :
+    l'API elle-meme (Space Docker/GPU) peut etre injoignable, pas
+    seulement le moteur vLLM qu'elle sonde en interne via `/sante`."""
     try:
         reponse = client.get("/sante")
         reponse.raise_for_status()
@@ -41,8 +35,12 @@ def demarrer_conversation(client: httpx.Client) -> str:
     return reponse.json()["conversation_id"]
 
 
-def poursuivre_conversation(client: httpx.Client, conversation_id: str, message: str) -> str:
-    reponse = client.post(f"/conversations/{conversation_id}/messages", json={"message": message})
+def poursuivre_conversation(
+    client: httpx.Client, conversation_id: str, message: str
+) -> str:
+    reponse = client.post(
+        f"/conversations/{conversation_id}/messages", json={"message": message}
+    )
     reponse.raise_for_status()
     return reponse.json()["message_assistant"]
 

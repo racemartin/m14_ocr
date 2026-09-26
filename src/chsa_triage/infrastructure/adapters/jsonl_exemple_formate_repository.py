@@ -1,16 +1,11 @@
 """
 Adaptateur secondaire : persistance JSONL des `ExempleFormate` (rendu
-ChatML), produits par `FormaterDatasetChatMLUseCase`.
-
-Implemente `RepositoryLectureEcriture[ExempleFormate]`. Adaptateur
-DEDIE (pas une generalisation de `JsonlDatasetRepository`, qui reste
-specifique a `ExemplePivot`) : meme discipline que
-`jsonl_decisions_revision_humaine.py`, chaque entite du domaine a son
-propre adaptateur JSONL plutot qu'une classe generique parametree.
-Meme mecanisme de sauvegarde que `JsonlDatasetRepository` (relit puis
-reecrit tout le fichier a chaque `sauvegarder()`/`sauvegarder_plusieurs()`,
-dedoublonne par `identifiant`) : mêmes limites de performance, cf.
-AGENTS.md (jamais `sauvegarder()` dans une boucle par item).
+ChatML). Adaptateur DEDIE, pas une generalisation de
+`JsonlDatasetRepository` (specifique a `ExemplePivot`) : chaque entite
+du domaine a son propre adaptateur plutot qu'une classe generique.
+Meme mecanisme (relit/reecrit tout, dedoublonne par `identifiant`) que
+`JsonlDatasetRepository` : mêmes limites, jamais `sauvegarder()` par
+item dans une boucle.
 """
 
 from __future__ import annotations
@@ -48,7 +43,10 @@ class JsonlExempleFormateRepository:
 
     def lister(self, filtre: dict | None = None) -> Iterator[ExempleFormate]:
         for exemple in self._lire_tous():
-            if filtre is None or all(getattr(exemple, cle, None) == valeur for cle, valeur in filtre.items()):
+            if filtre is None or all(
+                getattr(exemple, cle, None) == valeur
+                for cle, valeur in filtre.items()
+            ):
                 yield exemple
 
     def compter(self, filtre: dict | None = None) -> int:
@@ -74,11 +72,18 @@ class JsonlExempleFormateRepository:
                 ligne = ligne.strip()
                 if ligne:
                     d = json.loads(ligne)
-                    exemples.append(ExempleFormate(identifiant=d["identifiant"], texte=d["texte"]))
+                    exemples.append(
+                        ExempleFormate(
+                            identifiant=d["identifiant"], texte=d["texte"]
+                        )
+                    )
         return exemples
 
     def _ecrire_tous(self, exemples: Iterable[ExempleFormate]) -> None:
         with self._chemin.open("w", encoding="utf-8") as f:
             for exemple in exemples:
-                ligne = {"identifiant": exemple.identifiant, "texte": exemple.texte}
+                ligne = {
+                    "identifiant": exemple.identifiant,
+                    "texte": exemple.texte,
+                }
                 f.write(json.dumps(ligne, ensure_ascii=False) + "\n")

@@ -16,10 +16,22 @@ from chsa_triage.infrastructure.adapters.jsonl_decisions_revision_humaine import
 )
 
 
-def _decision(identifiant: str = "id-1", decision: str = DECISION_ACCEPTE) -> DecisionRevisionHumaine:
-    cle = CleCandidatRevision(SOURCE_CANDIDATS_PII, identifiant, "symptomes", "bigramme_capitalise", 10, 21)
+def _decision(
+    identifiant: str = "id-1", decision: str = DECISION_ACCEPTE
+) -> DecisionRevisionHumaine:
+    cle = CleCandidatRevision(
+        SOURCE_CANDIDATS_PII,
+        identifiant,
+        "symptomes",
+        "bigramme_capitalise",
+        10,
+        21,
+    )
     return DecisionRevisionHumaine(
-        cle=cle, passage="...Jean Dupont...", decision=decision, horodatage="2026-09-09T10:00:00+00:00"
+        cle=cle,
+        passage="...Jean Dupont...",
+        decision=decision,
+        horodatage="2026-09-09T10:00:00+00:00",
     )
 
 
@@ -79,5 +91,7 @@ def test_nouvelle_instance_relit_le_meme_fichier(tmp_path: Path):
 
 def test_trouver_cle_inexistante_retourne_none(tmp_path: Path):
     registre = JsonlDecisionsRevisionHumaine(tmp_path / "decisions.jsonl")
-    cle_absente = CleCandidatRevision(SOURCE_CANDIDATS_PII, "id-x", "champ", "email", 0, 5)
+    cle_absente = CleCandidatRevision(
+        SOURCE_CANDIDATS_PII, "id-x", "champ", "email", 0, 5
+    )
     assert registre.trouver(cle_absente) is None

@@ -1,44 +1,24 @@
 """
-Reconstruit a posteriori la courbe de metriques (perte_train,
-perte_validation, norme_gradient, etc.) d'un run SFT-LoRA reel deja
-termine, a partir de son log brut sauvegarde, quand ce run n'a jamais
-ecrit vers un backend `SuiviExperimentation` durable (ex.
-`suivi.backend: mlflow` avec un SQLite local dans un conteneur HF Jobs
-ephemere, deja detruit).
-
-Cas d'usage concret documente : le run du 16/09/2026 (job HF Jobs
-`6aaab9a95527934177eeaac8`, GPU L4, verdict "saine", poids publies dans
-`mombasstic/chsa-triage-sft-lora`) avait `recipes/sft_qwen3_lora.yaml::
-suivi.backend` a `mlflow` au lieu de `hf_dataset` : sa courbe n'a jamais
-atteint un depot durable. Ce script est un outil d'ANALYSE DE LOG A
-POSTERIORI, pas un composant du pipeline d'entrainement ; il ne touche
-ni a la recette ni a `training/E2_04_sft_train.py`. Voir AGENTS.md pour
-le contexte complet et la correction (dans une autre tache) du defaut
-de configuration qui a cause la perte de cette courbe.
+Reconstruit a posteriori la courbe de metriques d'un run SFT-LoRA reel
+deja termine, a partir de son log brut, quand ce run n'a jamais ecrit
+vers un backend `SuiviExperimentation` durable. Cas reel qui a motive
+ce script : un run reussi (GPU L4, verdict SAINE, poids publies) avait
+`suivi.backend: mlflow` au lieu de `hf_dataset` dans la recette, donc
+sa courbe n'a jamais atteint un depot durable (ecrite dans un SQLite
+local detruit avec le conteneur). Outil d'analyse a posteriori, ne
+touche ni la recette ni `training/E2_04_sft_train.py`.
 
 Produit un `metriques.jsonl` au format LONG attendu par
-`HfDatasetSuiviExperimentation`/`monitoring/hf_dataset_runs.py` (une
-ligne JSON par metrique-etape : `{"etape", "nom", "valeur",
-"horodatage"}`), et un `parametres.json` avec les hyperparametres reels
-de la recette au commit utilise par le job (lu via `git show`, jamais
-en modifiant le fichier courant) et des metadonnees marquant
-explicitement qu'il s'agit d'une reconstruction.
+`HfDatasetSuiviExperimentation`, et un `parametres.json` (recette reelle
+au commit du job, via `git show`, jamais le fichier courant du
+worktree) marquant explicitement qu'il s'agit d'une reconstruction.
 
-Horodatage (`horodatage`, epoch secondes) : RECONSTRUIT, pas mesure
-ligne a ligne (le job n'imprime pas d'horodatage a chaque pas
-d'entrainement). Methode : les barres de progression tqdm de
-`transformers`/`trl` impriment un temps ecoule REEL depuis le debut de
-la boucle a chaque pas (ex. "150/342 [08:23<10:12, 3.35s/it]") ; ce
-temps ecoule est ancre sur un horodatage REEL extrait du nom du
-repertoire de checkpoint que `TrlSftEntraineurAdapter` cree juste avant
-`trainer.train()` (`run-YYYYmmddTHHMMSSZ`, cf.
-`_horodatage_nom_run()` dans `trl_sft_entraineur.py`). Ce ne sont donc
-pas des horodatages synthetiques/invente : ils sont deduits de deux
-sources reelles imprimees par le job lui-meme. Coherence verifiee sur
-ce run precis : ecart tqdm au dernier pas (~1182s) vs. `train_runtime`
-rapporte par trl en fin de run (1182.9999s) vs. ecart entre l'horodatage
-d'ancrage et le message de fin de run loggue par `E2_04_sft_train`
-(~19min50s) concordent a quelques secondes pres.
+Horodatage RECONSTRUIT, pas mesure ligne a ligne : les barres tqdm de
+`transformers`/`trl` impriment un temps ecoule reel a chaque pas, ancre
+sur l'horodatage reel du nom de repertoire de checkpoint
+(`run-YYYYmmddTHHMMSSZ`). Coherence verifiee sur le run reel : l'ecart
+tqdm au dernier pas concorde a quelques secondes du `train_runtime`
+rapporte par trl.
 
 Usage :
     uv run python monitoring/reconstruire_courbe_sft_depuis_log.py \\
@@ -73,7 +53,9 @@ RE_BARRE_ENTRAINEMENT = re.compile(
 # avant `trainer.train()` (cf. `_horodatage_nom_run` dans
 # trl_sft_entraineur.py).
 RE_HORODATAGE_CHECKPOINT = re.compile(r"run-(?P<horodatage>\d{8}T\d{6})Z")
-RE_COMMIT_GIT = re.compile(r"chsa-triage @ git\+https://github\.com/\S+@(?P<sha>[0-9a-f]{40})")
+RE_COMMIT_GIT = re.compile(
+    r"chsa-triage @ git\+https://github\.com/\S+@(?P<sha>[0-9a-f]{40})"
+)
 
 # Mappe les cles du dictionnaire imprime par `transformers`/`trl` vers
 # les noms de metriques deja utilises par `E2_01_uc_entrainer_sft.py`
@@ -96,10 +78,10 @@ MAPPING_NOMS_METRIQUES = {
 class PointMetrique:
     """Une ligne du futur `metriques.jsonl` format LONG."""
 
-    etape       : int
-    nom           : str
-    valeur          : float
-    horodatage        : float
+    etape: int
+    nom: str
+    valeur: float
+    horodatage: float
 
 
 def extraire_barres_entrainement(texte_log: str) -> tuple[int, dict[int, int]]:
@@ -112,10 +94,13 @@ def extraire_barres_entrainement(texte_log: str) -> tuple[int, dict[int, int]]:
     """
     correspondances = list(RE_BARRE_ENTRAINEMENT.finditer(texte_log))
     if not correspondances:
-        raise ValueError("aucune barre de progression d'entrainement trouvee dans le log")
+        raise ValueError(
+            "aucune barre de progression d'entrainement trouvee dans le log"
+        )
     total_pas = max(int(m.group("total")) for m in correspondances)
     elapsed_par_etape = {
-        int(m.group("etape")): int(m.group("minutes")) * 60 + int(m.group("secondes"))
+        int(m.group("etape")): int(m.group("minutes")) * 60
+        + int(m.group("secondes"))
         for m in correspondances
         if int(m.group("total")) == total_pas
     }
@@ -126,8 +111,12 @@ def extraire_horodatage_ancrage(texte_log: str) -> float:
     """Horodatage reel (epoch UTC) du debut de la boucle d'entrainement (pas 0)."""
     correspondance = RE_HORODATAGE_CHECKPOINT.search(texte_log)
     if correspondance is None:
-        raise ValueError("aucun horodatage de checkpoint (run-YYYYmmddTHHMMSSZ) trouve dans le log")
-    horodatage = datetime.strptime(correspondance.group("horodatage"), "%Y%m%dT%H%M%S")
+        raise ValueError(
+            "aucun horodatage de checkpoint (run-YYYYmmddTHHMMSSZ) trouve dans le log"
+        )
+    horodatage = datetime.strptime(
+        correspondance.group("horodatage"), "%Y%m%dT%H%M%S"
+    )
     return float(timegm(horodatage.timetuple()))
 
 
@@ -166,7 +155,10 @@ def extraire_points_metriques(texte_log: str) -> list[PointMetrique]:
     dernier_pas_entrainement = 0
     for ligne in texte_log.splitlines():
         correspondance_barre = RE_BARRE_ENTRAINEMENT.search(ligne)
-        if correspondance_barre and int(correspondance_barre.group("total")) == total_pas:
+        if (
+            correspondance_barre
+            and int(correspondance_barre.group("total")) == total_pas
+        ):
             dernier_pas_entrainement = int(correspondance_barre.group("etape"))
             continue
         objet = _parser_ligne_dictionnaire(ligne)
@@ -174,17 +166,30 @@ def extraire_points_metriques(texte_log: str) -> list[PointMetrique]:
             objets_avec_dernier_pas.append((dernier_pas_entrainement, objet))
 
     if not objets_avec_dernier_pas:
-        raise ValueError("aucune ligne de metrique ('loss'/'eval_loss') trouvee dans le log")
+        raise ValueError(
+            "aucune ligne de metrique ('loss'/'eval_loss') trouvee dans le log"
+        )
 
-    nombre_epoques = round(max(float(objet.get("epoch", 0.0)) for _, objet in objets_avec_dernier_pas))
+    nombre_epoques = round(
+        max(
+            float(objet.get("epoch", 0.0))
+            for _, objet in objets_avec_dernier_pas
+        )
+    )
     if nombre_epoques <= 0 or total_pas % nombre_epoques != 0:
-        raise ValueError(f"nombre de pas total ({total_pas}) non divisible par le nombre d'epoques deduit ({nombre_epoques})")
+        raise ValueError(
+            f"nombre de pas total ({total_pas}) non divisible par le nombre d'epoques deduit ({nombre_epoques})"
+        )
     pas_par_epoque = total_pas // nombre_epoques
 
     points: list[PointMetrique] = []
     for dernier_pas, objet in objets_avec_dernier_pas:
         est_evaluation = "eval_loss" in objet
-        etape = round(float(objet["epoch"]) * pas_par_epoque) if est_evaluation else dernier_pas
+        etape = (
+            round(float(objet["epoch"]) * pas_par_epoque)
+            if est_evaluation
+            else dernier_pas
+        )
         elapsed = elapsed_par_etape.get(etape)
         if elapsed is None:
             etape_proche = min(elapsed_par_etape, key=lambda e: abs(e - etape))
@@ -192,14 +197,28 @@ def extraire_points_metriques(texte_log: str) -> list[PointMetrique]:
         horodatage = horodatage_t0 + elapsed
         for cle_source, nom_cible in MAPPING_NOMS_METRIQUES.items():
             if cle_source in objet:
-                points.append(PointMetrique(etape=etape, nom=nom_cible, valeur=float(objet[cle_source]), horodatage=horodatage))
+                points.append(
+                    PointMetrique(
+                        etape=etape,
+                        nom=nom_cible,
+                        valeur=float(objet[cle_source]),
+                        horodatage=horodatage,
+                    )
+                )
     return points
 
 
 def points_vers_jsonl(points: list[PointMetrique]) -> str:
     """Serialise les points au format LONG attendu par `HfDatasetSuiviExperimentation` (une ligne JSON par point)."""
     lignes = [
-        json.dumps({"etape": p.etape, "nom": p.nom, "valeur": p.valeur, "horodatage": p.horodatage})
+        json.dumps(
+            {
+                "etape": p.etape,
+                "nom": p.nom,
+                "valeur": p.valeur,
+                "horodatage": p.horodatage,
+            }
+        )
         for p in points
     ]
     return "\n".join(lignes) + ("\n" if lignes else "")
@@ -222,7 +241,9 @@ def extraire_metadonnees_log(texte_log: str) -> dict:
     verdict = _chercher(r"verdict retenu\.+:\s*(\S+)")
     nombre_essais = _chercher(r"nombre d'essais\.+:\s*(\d+)")
     checkpoint_local = _chercher(r"checkpoint retenu\.+:\s*(\S+)")
-    checkpoint_hf_repo = _chercher(r"Publication des poids .* sur HF Hub \((\S+)\)")
+    checkpoint_hf_repo = _chercher(
+        r"Publication des poids .* sur HF Hub \((\S+)\)"
+    )
 
     if exemples_train is not None:
         metadonnees["nombre_exemples_train"] = int(exemples_train)
@@ -249,7 +270,9 @@ def extraire_metadonnees_log(texte_log: str) -> dict:
     return metadonnees
 
 
-def extraire_recette_au_commit(texte_log: str, chemin_recette: str = "recipes/sft_qwen3_lora.yaml") -> tuple[dict, str | None]:
+def extraire_recette_au_commit(
+    texte_log: str, chemin_recette: str = "recipes/sft_qwen3_lora.yaml"
+) -> tuple[dict, str | None]:
     """
     Recupere le contenu de la recette TEL QU'IL ETAIT au commit
     reellement utilise par le job (extrait du log, ex. "Building
@@ -268,7 +291,9 @@ def extraire_recette_au_commit(texte_log: str, chemin_recette: str = "recipes/sf
 
         resultat = subprocess.run(
             ["git", "show", f"{sha}:{chemin_recette}"],
-            capture_output=True, text=True, check=True,
+            capture_output=True,
+            text=True,
+            check=True,
         )
         return yaml.safe_load(resultat.stdout), sha
     except (subprocess.CalledProcessError, ImportError):
@@ -313,32 +338,75 @@ def publier_run(repo_id: str, nom_run: str, repertoire_local: Path) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--log", required=True, help="Chemin du fichier log brut sauvegarde du job")
-    parser.add_argument("--nom-run", default=NOM_RUN_PAR_DEFAUT, help=f"Nom du run publie (defaut {NOM_RUN_PAR_DEFAUT})")
-    parser.add_argument("--job-id", default=JOB_ID_PAR_DEFAUT, help=f"Identifiant du job HF Jobs source (defaut {JOB_ID_PAR_DEFAUT})")
-    parser.add_argument("--repo-metriques", default=REPO_METRIQUES_PAR_DEFAUT, help=f"Depot dataset HF cible (defaut {REPO_METRIQUES_PAR_DEFAUT})")
-    parser.add_argument("--sortie-dir", default=None, help="Repertoire local de sortie (defaut : data/demos/<nom-run>/)")
-    parser.add_argument("--publier", action="store_true", help="Publie reellement vers le depot HF (reseau reel) apres ecriture locale")
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--log",
+        required=True,
+        help="Chemin du fichier log brut sauvegarde du job",
+    )
+    parser.add_argument(
+        "--nom-run",
+        default=NOM_RUN_PAR_DEFAUT,
+        help=f"Nom du run publie (defaut {NOM_RUN_PAR_DEFAUT})",
+    )
+    parser.add_argument(
+        "--job-id",
+        default=JOB_ID_PAR_DEFAUT,
+        help=f"Identifiant du job HF Jobs source (defaut {JOB_ID_PAR_DEFAUT})",
+    )
+    parser.add_argument(
+        "--repo-metriques",
+        default=REPO_METRIQUES_PAR_DEFAUT,
+        help=f"Depot dataset HF cible (defaut {REPO_METRIQUES_PAR_DEFAUT})",
+    )
+    parser.add_argument(
+        "--sortie-dir",
+        default=None,
+        help="Repertoire local de sortie (defaut : data/demos/<nom-run>/)",
+    )
+    parser.add_argument(
+        "--publier",
+        action="store_true",
+        help="Publie reellement vers le depot HF (reseau reel) apres ecriture locale",
+    )
     arguments = parser.parse_args()
 
     texte_log = Path(arguments.log).read_text(encoding="utf-8")
     points = extraire_points_metriques(texte_log)
     parametres = construire_parametres(texte_log, arguments.job_id)
 
-    repertoire_sortie = Path(arguments.sortie_dir) if arguments.sortie_dir else Path("data/demos") / arguments.nom_run
+    repertoire_sortie = (
+        Path(arguments.sortie_dir)
+        if arguments.sortie_dir
+        else Path("data/demos") / arguments.nom_run
+    )
     repertoire_sortie.mkdir(parents=True, exist_ok=True)
-    (repertoire_sortie / "metriques.jsonl").write_text(points_vers_jsonl(points), encoding="utf-8")
-    (repertoire_sortie / "parametres.json").write_text(json.dumps(parametres, indent=2, default=str), encoding="utf-8")
+    (repertoire_sortie / "metriques.jsonl").write_text(
+        points_vers_jsonl(points), encoding="utf-8"
+    )
+    (repertoire_sortie / "parametres.json").write_text(
+        json.dumps(parametres, indent=2, default=str), encoding="utf-8"
+    )
 
-    print(f"{len(points)} points de metrique ecrits dans {repertoire_sortie}/metriques.jsonl")
+    print(
+        f"{len(points)} points de metrique ecrits dans {repertoire_sortie}/metriques.jsonl"
+    )
     print(f"parametres ecrits dans {repertoire_sortie}/parametres.json")
 
     if arguments.publier:
-        publier_run(arguments.repo_metriques, arguments.nom_run, repertoire_sortie)
-        print(f"publie : {arguments.repo_metriques}/{arguments.nom_run}/{{metriques.jsonl,parametres.json}}")
+        publier_run(
+            arguments.repo_metriques, arguments.nom_run, repertoire_sortie
+        )
+        print(
+            f"publie : {arguments.repo_metriques}/{arguments.nom_run}/{{metriques.jsonl,parametres.json}}"
+        )
     else:
-        print("Non publie (passer --publier pour envoyer reellement au Hub). Commande equivalente manuelle :")
+        print(
+            "Non publie (passer --publier pour envoyer reellement au Hub). Commande equivalente manuelle :"
+        )
         print(
             f"  hf upload {arguments.repo_metriques} {repertoire_sortie}/metriques.jsonl "
             f"{arguments.nom_run}/metriques.jsonl --repo-type dataset"

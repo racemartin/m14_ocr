@@ -19,7 +19,10 @@ from chsa_triage.domain.model.configuration_entrainement import (
     HyperparametresEntrainement,
 )
 from chsa_triage.domain.model.exemple_formate import ExempleFormate
-from chsa_triage.domain.ports.entraineur_supervise import EntraineurSupervise, ResultatEntrainementSFT
+from chsa_triage.domain.ports.entraineur_supervise import (
+    EntraineurSupervise,
+    ResultatEntrainementSFT,
+)
 from chsa_triage.domain.ports.suivi_experimentation import SuiviExperimentation
 
 NOM_RUN_PAR_DEFAUT = "sft-lora"
@@ -29,16 +32,16 @@ NOM_RUN_PAR_DEFAUT = "sft-lora"
 class EntrainerSftUseCase:
     """Orchestre un run d'entrainement SFT-LoRA complet, du demarrage a la cloture du suivi."""
 
-    entraineur : EntraineurSupervise
-    suivi        : SuiviExperimentation
+    entraineur: EntraineurSupervise
+    suivi: SuiviExperimentation
 
     def entrainer(
         self,
-        dataset_train      : Iterable[ExempleFormate],
-        dataset_validation  : Iterable[ExempleFormate],
-        config_lora          : ConfigurationLora,
-        hyperparametres       : HyperparametresEntrainement,
-        nom_run                : str = NOM_RUN_PAR_DEFAUT,
+        dataset_train: Iterable[ExempleFormate],
+        dataset_validation: Iterable[ExempleFormate],
+        config_lora: ConfigurationLora,
+        hyperparametres: HyperparametresEntrainement,
+        nom_run: str = NOM_RUN_PAR_DEFAUT,
     ) -> ResultatEntrainementSFT:
         """
         Ouvre un run de suivi, delegue l'entrainement a
@@ -50,13 +53,21 @@ class EntrainerSftUseCase:
         parametres_run = {**asdict(config_lora), **asdict(hyperparametres)}
         self.suivi.demarrer_run(nom_run, parametres_run)
 
-        resultat = self.entraineur.entrainer(dataset_train, dataset_validation, config_lora, hyperparametres)
+        resultat = self.entraineur.entrainer(
+            dataset_train, dataset_validation, config_lora, hyperparametres
+        )
 
         for point in resultat.courbe_metriques:
-            self.suivi.logger_metrique("perte_train", point.perte_train, point.etape)
+            self.suivi.logger_metrique(
+                "perte_train", point.perte_train, point.etape
+            )
             if point.perte_validation is not None:
-                self.suivi.logger_metrique("perte_validation", point.perte_validation, point.etape)
-            self.suivi.logger_metrique("norme_gradient", point.norme_gradient, point.etape)
+                self.suivi.logger_metrique(
+                    "perte_validation", point.perte_validation, point.etape
+                )
+            self.suivi.logger_metrique(
+                "norme_gradient", point.norme_gradient, point.etape
+            )
 
         self.suivi.terminer_run()
         return resultat

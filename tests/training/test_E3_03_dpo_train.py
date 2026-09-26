@@ -24,7 +24,10 @@ def test_verifier_type_perte_dpo_valide_accepte_les_valeurs_sures(type_perte):
     E3_03_dpo_train._verifier_type_perte_dpo_valide(type_perte)
 
 
-@pytest.mark.parametrize("type_perte", ["nll", "dft", "chunked_nll", "hinge", "ipo", "une_valeur_qui_nexiste_pas"])
+@pytest.mark.parametrize(
+    "type_perte",
+    ["nll", "dft", "chunked_nll", "hinge", "ipo", "une_valeur_qui_nexiste_pas"],
+)
 def test_verifier_type_perte_dpo_valide_rejette_le_reste(type_perte):
     """
     `nll`/`dft`/`chunked_nll` sont le vocabulaire SFT (trl.SFTConfig.loss_type),
@@ -43,7 +46,10 @@ def test_verifier_suivi_hf_repo_coherent_est_bien_celle_de_e2_04_sft_train():
     Reutilisation TELLE QUELLE (pas une copie) : meme fonction, meme
     objet, importee directement, cf. AGENTS.md et l'en-tete du module.
     """
-    assert E3_03_dpo_train._verifier_suivi_hf_repo_coherent is E2_04_sft_train._verifier_suivi_hf_repo_coherent
+    assert (
+        E3_03_dpo_train._verifier_suivi_hf_repo_coherent
+        is E2_04_sft_train._verifier_suivi_hf_repo_coherent
+    )
 
 
 def test_construire_suivi_refuse_suivi_hf_repo_sans_backend_hf_dataset():
@@ -75,8 +81,14 @@ def test_identifiant_checkpoint_deterministe_et_distinct_du_sft():
     collisionnent jamais dans `data/processed/checkpoints_sft.jsonl`
     (fichier partage, cf. docs/04_etape3_dpo/02_etapes_cas_usage.md §7).
     """
-    id_dpo = E3_03_dpo_train._identifiant_checkpoint("Qwen/Qwen3-1.7B-Base", "outputs/dpo-lora/run-1")
-    id_sft = E2_04_sft_train._identifiant_checkpoint("Qwen/Qwen3-1.7B-Base", "outputs/dpo-lora/run-1")
+    id_dpo = E3_03_dpo_train._identifiant_checkpoint(
+        "Qwen/Qwen3-1.7B-Base", "outputs/dpo-lora/run-1"
+    )
+    id_sft = E2_04_sft_train._identifiant_checkpoint(
+        "Qwen/Qwen3-1.7B-Base", "outputs/dpo-lora/run-1"
+    )
     assert id_dpo != id_sft
     # Deterministe : meme entree, meme sortie.
-    assert id_dpo == E3_03_dpo_train._identifiant_checkpoint("Qwen/Qwen3-1.7B-Base", "outputs/dpo-lora/run-1")
+    assert id_dpo == E3_03_dpo_train._identifiant_checkpoint(
+        "Qwen/Qwen3-1.7B-Base", "outputs/dpo-lora/run-1"
+    )

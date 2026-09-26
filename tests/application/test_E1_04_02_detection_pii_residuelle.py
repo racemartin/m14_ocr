@@ -14,13 +14,17 @@ from chsa_triage.application.detection_pii_residuelle import (
 
 
 def test_detecte_un_email():
-    candidats = detecter_candidats("Contactez jean.dupont@example.com pour un avis.")
+    candidats = detecter_candidats(
+        "Contactez jean.dupont@example.com pour un avis."
+    )
     types = {c.type_motif for c in candidats}
     assert "email" in types
 
 
 def test_detecte_une_url():
-    candidats = detecter_candidats("Voir https://example.com/article pour plus de details.")
+    candidats = detecter_candidats(
+        "Voir https://example.com/article pour plus de details."
+    )
     types = {c.type_motif for c in candidats}
     assert "url" in types
 
@@ -54,12 +58,16 @@ def test_texte_vide_ne_produit_aucun_candidat():
 
 
 def test_texte_sans_pii_ne_produit_aucun_candidat():
-    candidats = detecter_candidats("le patient presente une fievre et une toux depuis trois jours.")
+    candidats = detecter_candidats(
+        "le patient presente une fievre et une toux depuis trois jours."
+    )
     assert candidats == []
 
 
 def test_passage_contient_le_contexte_autour_du_match():
-    texte = "Avant. " + "x" * 5 + "jean.dupont@example.com" + "y" * 5 + " Apres."
+    texte = (
+        "Avant. " + "x" * 5 + "jean.dupont@example.com" + "y" * 5 + " Apres."
+    )
     candidats = detecter_candidats(texte)
     (candidat,) = [c for c in candidats if c.type_motif == "email"]
     assert "jean.dupont@example.com" in candidat.passage

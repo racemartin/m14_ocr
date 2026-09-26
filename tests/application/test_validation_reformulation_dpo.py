@@ -8,10 +8,18 @@ from __future__ import annotations
 
 import json
 
-from chsa_triage.application.validation_reformulation_dpo import parser_reformulation_stricte
+from chsa_triage.application.validation_reformulation_dpo import (
+    parser_reformulation_stricte,
+)
 from chsa_triage.domain.model.exemple_pivot import Message
 
-JSON_VALIDE = json.dumps({"niveau": 2, "categorie": "cardio-vasculaire", "ressources_estimees": "ECG, troponine"})
+JSON_VALIDE = json.dumps(
+    {
+        "niveau": 2,
+        "categorie": "cardio-vasculaire",
+        "ressources_estimees": "ECG, troponine",
+    }
+)
 TEXTE_VALIDE = f"<think>Douleur thoracique aigue, risque cardiaque eleve.</think>{JSON_VALIDE}"
 
 
@@ -42,7 +50,12 @@ def test_cle_manquante_retourne_none():
 
 def test_cle_en_trop_retourne_none():
     json_en_trop = json.dumps(
-        {"niveau": 2, "categorie": "cardio-vasculaire", "ressources_estimees": "ECG", "extra": "non attendu"}
+        {
+            "niveau": 2,
+            "categorie": "cardio-vasculaire",
+            "ressources_estimees": "ECG",
+            "extra": "non attendu",
+        }
     )
     texte = f"<think>raisonnement</think>{json_en_trop}"
 

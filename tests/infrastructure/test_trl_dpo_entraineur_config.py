@@ -22,11 +22,17 @@ import pytest
 
 pytest.importorskip("trl")
 
-from chsa_triage.domain.model.configuration_entrainement import HyperparametresEntrainementDpo
-from chsa_triage.infrastructure.adapters.trl_dpo_entraineur import _construire_dpo_config
+from chsa_triage.domain.model.configuration_entrainement import (
+    HyperparametresEntrainementDpo,
+)
+from chsa_triage.infrastructure.adapters.trl_dpo_entraineur import (
+    _construire_dpo_config,
+)
 
 
-def test_construire_dpo_config_aligne_le_batch_eval_sur_le_batch_train(monkeypatch):
+def test_construire_dpo_config_aligne_le_batch_eval_sur_le_batch_train(
+    monkeypatch,
+):
     # `trl.DPOConfig` met `bf16=True` par defaut (si `fp16` n'est pas
     # positionne) ; sa validation `TrainingArguments.__post_init__`
     # refuse ce defaut sans GPU bf16-capable. Ce test ne verifie que la
@@ -46,8 +52,13 @@ def test_construire_dpo_config_aligne_le_batch_eval_sur_le_batch_train(monkeypat
         precompute_ref_log_probs=False,
     )
 
-    dpo_config = _construire_dpo_config("outputs/dpo-lora/run-test", hyperparametres)
+    dpo_config = _construire_dpo_config(
+        "outputs/dpo-lora/run-test", hyperparametres
+    )
 
     assert dpo_config.per_device_train_batch_size == 4
     assert dpo_config.per_device_eval_batch_size == 4
-    assert dpo_config.per_device_eval_batch_size == dpo_config.per_device_train_batch_size
+    assert (
+        dpo_config.per_device_eval_batch_size
+        == dpo_config.per_device_train_batch_size
+    )

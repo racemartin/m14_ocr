@@ -39,20 +39,33 @@ class _HfApiFactice:
 
     def create_repo(self, *, repo_id, repo_type, private, exist_ok):
         self.appels_create_repo.append(
-            {"repo_id": repo_id, "repo_type": repo_type, "private": private, "exist_ok": exist_ok}
+            {
+                "repo_id": repo_id,
+                "repo_type": repo_type,
+                "private": private,
+                "exist_ok": exist_ok,
+            }
         )
 
     def upload_folder(self, *, repo_id, folder_path, repo_type):
         self.appels_upload_folder.append(
-            {"repo_id": repo_id, "folder_path": folder_path, "repo_type": repo_type}
+            {
+                "repo_id": repo_id,
+                "folder_path": folder_path,
+                "repo_type": repo_type,
+            }
         )
 
 
-def test_publier_checkpoint_hf_cree_le_depot_prive_puis_publie_le_dossier(monkeypatch):
+def test_publier_checkpoint_hf_cree_le_depot_prive_puis_publie_le_dossier(
+    monkeypatch,
+):
     api_factice = _HfApiFactice()
     monkeypatch.setattr(E2_04_sft_train, "HfApi", lambda: api_factice)
 
-    E2_04_sft_train._publier_checkpoint_hf("outputs/sft-lora/run-20260916", "mombasstic/chsa-triage-sft-lora")
+    E2_04_sft_train._publier_checkpoint_hf(
+        "outputs/sft-lora/run-20260916", "mombasstic/chsa-triage-sft-lora"
+    )
 
     assert api_factice.appels_create_repo == [
         {
@@ -90,7 +103,9 @@ def test_verifier_type_perte_valide_rejette_chunked_nll():
 
 def test_verifier_type_perte_valide_rejette_toute_valeur_inconnue():
     with pytest.raises(SystemExit):
-        E2_04_sft_train._verifier_type_perte_valide("une_valeur_qui_nexiste_pas")
+        E2_04_sft_train._verifier_type_perte_valide(
+            "une_valeur_qui_nexiste_pas"
+        )
 
 
 class TestVerifierSuiviHfRepoCoherent:
@@ -108,14 +123,20 @@ class TestVerifierSuiviHfRepoCoherent:
 
     def test_refuse_suivi_hf_repo_sans_backend_hf_dataset(self):
         with pytest.raises(SystemExit, match="suivi-hf-repo"):
-            E2_04_sft_train._verifier_suivi_hf_repo_coherent("mlflow", "mombasstic/chsa-triage-sft-metrics")
+            E2_04_sft_train._verifier_suivi_hf_repo_coherent(
+                "mlflow", "mombasstic/chsa-triage-sft-metrics"
+            )
 
     def test_refuse_suivi_hf_repo_avec_backend_tensorboard(self):
         with pytest.raises(SystemExit):
-            E2_04_sft_train._verifier_suivi_hf_repo_coherent("tensorboard", "mombasstic/chsa-triage-sft-metrics")
+            E2_04_sft_train._verifier_suivi_hf_repo_coherent(
+                "tensorboard", "mombasstic/chsa-triage-sft-metrics"
+            )
 
     def test_accepte_suivi_hf_repo_avec_backend_hf_dataset(self):
-        E2_04_sft_train._verifier_suivi_hf_repo_coherent("hf_dataset", "mombasstic/chsa-triage-sft-metrics")
+        E2_04_sft_train._verifier_suivi_hf_repo_coherent(
+            "hf_dataset", "mombasstic/chsa-triage-sft-metrics"
+        )
 
     def test_accepte_absence_de_suivi_hf_repo_quel_que_soit_le_backend(self):
         E2_04_sft_train._verifier_suivi_hf_repo_coherent("mlflow", None)

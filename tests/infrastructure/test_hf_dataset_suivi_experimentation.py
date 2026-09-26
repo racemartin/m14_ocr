@@ -60,16 +60,25 @@ def test_run_demarre_metriques_ecrites_en_jsonl_format_long(tmp_path):
     lignes = _lire_jsonl(chemin_jsonl)
 
     assert len(lignes) == 3
-    assert lignes[0] == {"etape": 0, "nom": "perte_train", "valeur": 1.2, "horodatage": lignes[0]["horodatage"]}
+    assert lignes[0] == {
+        "etape": 0,
+        "nom": "perte_train",
+        "valeur": 1.2,
+        "horodatage": lignes[0]["horodatage"],
+    }
     assert lignes[1]["nom"] == "perte_validation"
     assert lignes[1]["valeur"] == 1.5
     assert lignes[2]["etape"] == 1
 
-    parametres = json.loads((tmp_path / "run-test" / "parametres.json").read_text(encoding="utf-8"))
+    parametres = json.loads(
+        (tmp_path / "run-test" / "parametres.json").read_text(encoding="utf-8")
+    )
     assert parametres == {"rang_lora": 8}
 
     # Un seul scheduler cree pour tout le run (pas un par appel).
-    assert appels == [("mombasstic/chsa-triage-sft-metrics", str(tmp_path), 1.0)]
+    assert appels == [
+        ("mombasstic/chsa-triage-sft-metrics", str(tmp_path), 1.0)
+    ]
     # `terminer_run` force une synchronisation finale, sans attendre le
     # prochain tick en arriere-plan du scheduler.
     assert scheduler.nombre_push_to_hub == 1
@@ -93,7 +102,9 @@ def test_plusieurs_runs_successifs_reutilisent_le_meme_scheduler(tmp_path):
     suivi.terminer_run()
 
     assert len(appels) == 1  # un seul scheduler cree, reutilise pour essai-2
-    assert scheduler.nombre_push_to_hub == 2  # une synchronisation finale par run
+    assert (
+        scheduler.nombre_push_to_hub == 2
+    )  # une synchronisation finale par run
     assert (tmp_path / "essai-1" / "metriques.jsonl").exists()
     assert (tmp_path / "essai-2" / "metriques.jsonl").exists()
 
@@ -111,7 +122,9 @@ def test_nouveau_run_meme_nom_repart_d_un_fichier_jsonl_vide(tmp_path):
     suivi.logger_metrique("perte_train", 1.2, 0)
     suivi.terminer_run()
 
-    suivi.demarrer_run("run-test", {})  # relance sous le meme nom : fichier remis a zero
+    suivi.demarrer_run(
+        "run-test", {}
+    )  # relance sous le meme nom : fichier remis a zero
     suivi.logger_metrique("perte_train", 0.5, 0)
     suivi.terminer_run()
 

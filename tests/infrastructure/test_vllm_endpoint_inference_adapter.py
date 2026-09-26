@@ -50,24 +50,38 @@ class FauxClientHttpConnexionRefusee:
     """Simule un serveur vLLM pas encore demarre (connexion refusee)."""
 
     def get(self, url: str) -> FauxReponseHttp:
-        raise httpx.ConnectError("connexion refusee", request=httpx.Request("GET", url))
+        raise httpx.ConnectError(
+            "connexion refusee", request=httpx.Request("GET", url)
+        )
 
 
 def test_generer_poste_vers_chat_completions_avec_le_modele_par_defaut():
     faux_client = FauxClientHttp(
         {
-            "choices": [{"message": {"content": "Niveau ESI 3, orientation vers..."}}],
+            "choices": [
+                {"message": {"content": "Niveau ESI 3, orientation vers..."}}
+            ],
             "usage": {"prompt_tokens": 42, "completion_tokens": 17},
             "model": "dpo",
         }
     )
-    adaptateur = VllmEndpointInferenceAdapter(url_endpoint="http://127.0.0.1:8000", _client=faux_client)
-    messages = [{"role": "user", "content": "Patient de 40 ans, douleur thoracique."}]
+    adaptateur = VllmEndpointInferenceAdapter(
+        url_endpoint="http://127.0.0.1:8000", _client=faux_client
+    )
+    messages = [
+        {"role": "user", "content": "Patient de 40 ans, douleur thoracique."}
+    ]
 
     reponse = adaptateur.generer(messages, {"temperature": 0.0})
 
-    assert faux_client.dernier_url == "http://127.0.0.1:8000/v1/chat/completions"
-    assert faux_client.dernier_corps == {"model": "dpo", "messages": messages, "temperature": 0.0}
+    assert (
+        faux_client.dernier_url == "http://127.0.0.1:8000/v1/chat/completions"
+    )
+    assert faux_client.dernier_corps == {
+        "model": "dpo",
+        "messages": messages,
+        "temperature": 0.0,
+    }
     assert reponse.texte == "Niveau ESI 3, orientation vers..."
     assert reponse.nombre_tokens_entree == 42
     assert reponse.nombre_tokens_sortie == 17
@@ -77,9 +91,15 @@ def test_generer_poste_vers_chat_completions_avec_le_modele_par_defaut():
 
 def test_generer_permet_de_cibler_un_autre_modele_via_parametres():
     faux_client = FauxClientHttp(
-        {"choices": [{"message": {"content": "ok"}}], "usage": {}, "model": "base"}
+        {
+            "choices": [{"message": {"content": "ok"}}],
+            "usage": {},
+            "model": "base",
+        }
     )
-    adaptateur = VllmEndpointInferenceAdapter(url_endpoint="http://127.0.0.1:8000", _client=faux_client)
+    adaptateur = VllmEndpointInferenceAdapter(
+        url_endpoint="http://127.0.0.1:8000", _client=faux_client
+    )
 
     adaptateur.generer([{"role": "user", "content": "x"}], {"model": "base"})
 
@@ -87,8 +107,12 @@ def test_generer_permet_de_cibler_un_autre_modele_via_parametres():
 
 
 def test_parametre_model_jamais_duplique_dans_les_parametres_transmis():
-    faux_client = FauxClientHttp({"choices": [{"message": {"content": "ok"}}], "usage": {}})
-    adaptateur = VllmEndpointInferenceAdapter(url_endpoint="http://127.0.0.1:8000", _client=faux_client)
+    faux_client = FauxClientHttp(
+        {"choices": [{"message": {"content": "ok"}}], "usage": {}}
+    )
+    adaptateur = VllmEndpointInferenceAdapter(
+        url_endpoint="http://127.0.0.1:8000", _client=faux_client
+    )
 
     adaptateur.generer([{"role": "user", "content": "x"}], {"temperature": 0.2})
 
@@ -101,7 +125,9 @@ def test_parametre_model_jamais_duplique_dans_les_parametres_transmis():
 
 def test_cle_api_envoyee_en_en_tete_authorization():
     """`cle_api` doit produire un en-tete `Authorization: Bearer <cle>` sur le client HTTP reel."""
-    adaptateur = VllmEndpointInferenceAdapter(url_endpoint="http://127.0.0.1:8000", cle_api="secret-123")
+    adaptateur = VllmEndpointInferenceAdapter(
+        url_endpoint="http://127.0.0.1:8000", cle_api="secret-123"
+    )
 
     client = adaptateur._obtenir_client()
 
@@ -109,7 +135,9 @@ def test_cle_api_envoyee_en_en_tete_authorization():
 
 
 def test_sans_cle_api_aucun_en_tete_authorization():
-    adaptateur = VllmEndpointInferenceAdapter(url_endpoint="http://127.0.0.1:8000")
+    adaptateur = VllmEndpointInferenceAdapter(
+        url_endpoint="http://127.0.0.1:8000"
+    )
 
     client = adaptateur._obtenir_client()
 
@@ -118,7 +146,9 @@ def test_sans_cle_api_aucun_en_tete_authorization():
 
 def test_verifier_sante_interroge_le_endpoint_health():
     faux_client = FauxClientHttp({})
-    adaptateur = VllmEndpointInferenceAdapter(url_endpoint="http://127.0.0.1:8000", _client=faux_client)
+    adaptateur = VllmEndpointInferenceAdapter(
+        url_endpoint="http://127.0.0.1:8000", _client=faux_client
+    )
 
     resultat = adaptateur.verifier_sante()
 
@@ -128,7 +158,8 @@ def test_verifier_sante_interroge_le_endpoint_health():
 
 def test_verifier_sante_ne_laisse_jamais_remonter_une_erreur_de_connexion_brute():
     adaptateur = VllmEndpointInferenceAdapter(
-        url_endpoint="http://127.0.0.1:8000", _client=FauxClientHttpConnexionRefusee()
+        url_endpoint="http://127.0.0.1:8000",
+        _client=FauxClientHttpConnexionRefusee(),
     )
 
     resultat = adaptateur.verifier_sante()

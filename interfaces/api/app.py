@@ -19,21 +19,13 @@ note du 23/09/2026) :
 Toutes les routes metier exigent la cle API (`securite.py`) ; `/sante`
 reste ouverte.
 
-`/sante` sert un double usage, distingue explicitement dans son corps
-de reponse plutot que par le code HTTP : verification de vivacite du
-conteneur (Docker HEALTHCHECK, `Dockerfile`) ET verification de
-disponibilite du moteur d'inference distant (vLLM, cf. Space
-Streamlit/CPU de test qui sonde cet endpoint en boucle jusqu'a ce que
-le Space Docker/GPU compagnon soit pret, `interfaces/web/`). L'endpoint
-retourne donc TOUJOURS HTTP 200 (jamais 503) : un Docker HEALTHCHECK
-qui redemarrerait le conteneur API parce que vLLM met du temps a
-charger le modele n'aiderait en rien (redemarrer l'API ne demarre pas
-vLLM plus vite) ; seul le champ `disponible` du corps JSON distingue
-les deux etats. `verificateur_sante_moteur` est injecte (meme
-discipline que `moteur_inference`/`journal_audit`) : `main.py` le
-branche sur `VllmEndpointInferenceAdapter.verifier_sante()` en mode
-`distant`, ou laisse le defaut (`disponible=True`, aucune verification
-pertinente) en mode `local`/llama.cpp.
+`/sante` sert un double usage, distingue dans le corps de reponse
+plutot que par le code HTTP : vivacite du conteneur (Docker
+HEALTHCHECK) ET disponibilite du moteur d'inference distant (vLLM, le
+frontend Streamlit sonde cet endpoint en boucle). Retourne TOUJOURS
+HTTP 200 : redemarrer le conteneur API n'aiderait en rien si c'est vLLM
+qui met du temps a charger — seul le champ `disponible` distingue les
+deux etats.
 """
 
 from __future__ import annotations
@@ -66,7 +58,10 @@ VERSION_MODELE_PAR_DEFAUT = "mombasstic/chsa-triage-dpo-lora"
 
 
 def _verificateur_sante_par_defaut() -> dict:
-    return {"disponible": True, "detail": "aucune verification specifique pour ce moteur d'inference"}
+    return {
+        "disponible": True,
+        "detail": "aucune verification specifique pour ce moteur d'inference",
+    }
 
 
 def creer_application(
@@ -85,18 +80,26 @@ def creer_application(
 
     magasin = MagasinConversationsMemoire()
     poursuivre_entretien = PoursuivreEntretienUseCase(
-        moteur=moteur_inference, journal=journal_audit, version_modele=version_modele
+        moteur=moteur_inference,
+        journal=journal_audit,
+        version_modele=version_modele,
     )
     obtenir_diagnostic = ObtenirDiagnosticUseCase(
-        moteur=moteur_inference, journal=journal_audit, version_modele=version_modele
+        moteur=moteur_inference,
+        journal=journal_audit,
+        version_modele=version_modele,
     )
     verifier_cle_api = creer_dependance_verification_cle_api(cle_api)
-    verifier_sante_moteur = verificateur_sante_moteur or _verificateur_sante_par_defaut
+    verifier_sante_moteur = (
+        verificateur_sante_moteur or _verificateur_sante_par_defaut
+    )
 
     @app.get("/sante", response_model=SanteReponse)
     def sante() -> SanteReponse:
         resultat = verifier_sante_moteur()
-        return SanteReponse(disponible=resultat["disponible"], detail=resultat["detail"])
+        return SanteReponse(
+            disponible=resultat["disponible"], detail=resultat["detail"]
+        )
 
     @app.post(
         "/conversations",
@@ -115,10 +118,15 @@ def creer_application(
     def lire_conversation(conversation_id: str) -> ConversationReponse:
         historique = magasin.obtenir(conversation_id)
         if historique is None:
-            raise HTTPException(status_code=404, detail="Conversation introuvable")
+            raise HTTPException(
+                status_code=404, detail="Conversation introuvable"
+            )
         return ConversationReponse(
             conversation_id=conversation_id,
-            historique=[TourHistorique(role=m.role, contenu=m.contenu) for m in historique],
+            historique=[
+                TourHistorique(role=m.role, contenu=m.contenu)
+                for m in historique
+            ],
         )
 
     @app.post(
@@ -131,13 +139,22 @@ def creer_application(
     ) -> MessageEntretienReponse:
         historique = magasin.obtenir(conversation_id)
         if historique is None:
-            raise HTTPException(status_code=404, detail="Conversation introuvable")
+            raise HTTPException(
+                status_code=404, detail="Conversation introuvable"
+            )
 
-        resultat = poursuivre_entretien.executer(conversation_id, historique, requete.message)
-        magasin.ajouter(conversation_id, resultat.message_utilisateur, resultat.message_assistant)
+        resultat = poursuivre_entretien.executer(
+            conversation_id, historique, requete.message
+        )
+        magasin.ajouter(
+            conversation_id,
+            resultat.message_utilisateur,
+            resultat.message_assistant,
+        )
 
         return MessageEntretienReponse(
-            conversation_id=conversation_id, message_assistant=resultat.message_assistant.contenu
+            conversation_id=conversation_id,
+            message_assistant=resultat.message_assistant.contenu,
         )
 
     @app.post(
@@ -145,12 +162,19 @@ def creer_application(
         response_model=DiagnosticReponse,
         dependencies=[Depends(verifier_cle_api)],
     )
-    def obtenir_diagnostic_conversation(conversation_id: str) -> DiagnosticReponse:
+    def obtenir_diagnostic_conversation(
+        conversation_id: str,
+    ) -> DiagnosticReponse:
         historique = magasin.obtenir(conversation_id)
         if historique is None:
-            raise HTTPException(status_code=404, detail="Conversation introuvable")
+            raise HTTPException(
+                status_code=404, detail="Conversation introuvable"
+            )
         if not historique:
-            raise HTTPException(status_code=400, detail="L'entretien est vide, aucun diagnostic possible")
+            raise HTTPException(
+                status_code=400,
+                detail="L'entretien est vide, aucun diagnostic possible",
+            )
 
         resultat = obtenir_diagnostic.executer(conversation_id, historique)
 

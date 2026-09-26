@@ -20,7 +20,10 @@ def test_fichier_vide_liste_rien(tmp_path: Path):
 def test_sauvegarder_plusieurs_puis_relire(tmp_path: Path):
     repo = JsonlExempleFormateRepository(tmp_path / "formate.jsonl")
     repo.sauvegarder_plusieurs(
-        [ExempleFormate(identifiant="a", texte="hello"), ExempleFormate(identifiant="b", texte="world")]
+        [
+            ExempleFormate(identifiant="a", texte="hello"),
+            ExempleFormate(identifiant="b", texte="world"),
+        ]
     )
 
     assert repo.compter() == 2
@@ -42,7 +45,10 @@ def test_sauvegarder_remplace_par_identifiant(tmp_path: Path):
 def test_lister_avec_filtre(tmp_path: Path):
     repo = JsonlExempleFormateRepository(tmp_path / "formate.jsonl")
     repo.sauvegarder_plusieurs(
-        [ExempleFormate(identifiant="a", texte="hello"), ExempleFormate(identifiant="b", texte="hello")]
+        [
+            ExempleFormate(identifiant="a", texte="hello"),
+            ExempleFormate(identifiant="b", texte="hello"),
+        ]
     )
 
     filtres = list(repo.lister(filtre={"identifiant": "a"}))
@@ -52,7 +58,9 @@ def test_lister_avec_filtre(tmp_path: Path):
 
 def test_nouvelle_instance_relit_le_meme_fichier(tmp_path: Path):
     chemin = tmp_path / "formate.jsonl"
-    JsonlExempleFormateRepository(chemin).sauvegarder(ExempleFormate(identifiant="a", texte="hello"))
+    JsonlExempleFormateRepository(chemin).sauvegarder(
+        ExempleFormate(identifiant="a", texte="hello")
+    )
 
     repo_relu = JsonlExempleFormateRepository(chemin)
     assert repo_relu.trouver_par_id("a") is not None

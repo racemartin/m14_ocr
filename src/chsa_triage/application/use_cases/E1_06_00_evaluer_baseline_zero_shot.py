@@ -12,35 +12,36 @@ generation a la `completion` reelle via les metriques pures de
 `application/metriques_evaluation_baseline.py`.
 """
 
-from __future__ import annotations  # Annotations de type differees
+from __future__ import annotations
 
-# Bibliotheque standard
-from dataclasses import dataclass, field  # dataclass et champ a valeur par defaut
+from dataclasses import dataclass, field
 
-# Bibliotheques du projet (couche application/domaine)
-from chsa_triage.application.metriques_evaluation_baseline import (  # Metriques de comparaison reponse/reference
+from chsa_triage.application.metriques_evaluation_baseline import (
     ResultatExactitudeNiveau,
     exactitude_classification_niveau,
     f1_moyen,
     taux_exact_match,
 )
-from chsa_triage.domain.model.enums                        import TypeExemple, TypeSplit  # Enums de filtrage du repository
-from chsa_triage.domain.model.exemple_pivot                import ExemplePivot  # Entite pivot (prompt/completion)
-from chsa_triage.domain.ports.dataset_repository           import RepositoryLectureEcriture  # Port de lecture du dataset
-from chsa_triage.domain.ports.formateur_invite_zero_shot   import FormateurInviteZeroShot  # Port : formate l'invite zero-shot
-from chsa_triage.domain.ports.moteur_inference             import MoteurInference  # Port : moteur d'inference
-from chsa_triage.domain.ports.suivi_experimentation        import SuiviExperimentation  # Port : suivi du run (MLflow)
-from tools.rafael.log_tool                                 import LogTool  # Log warning par exemple en echec, sans abandonner le run
+from chsa_triage.domain.model.enums import TypeExemple, TypeSplit
+from chsa_triage.domain.model.exemple_pivot import ExemplePivot
+from chsa_triage.domain.ports.dataset_repository import (
+    RepositoryLectureEcriture,
+)
+from chsa_triage.domain.ports.formateur_invite_zero_shot import (
+    FormateurInviteZeroShot,
+)
+from chsa_triage.domain.ports.moteur_inference import MoteurInference
+from chsa_triage.domain.ports.suivi_experimentation import (
+    SuiviExperimentation,
+)
+from tools.rafael.log_tool import LogTool
 
 NOM_RUN_PAR_DEFAUT = "baseline-zero-shot"
 
 log = LogTool(origin="evaluer_baseline_zero_shot")
 
-# Taille max de `echantillon_generations` : diagnostic (inspecter reellement
-# ce que le modele genere, ex. verbosite/format, plutot que deviner a partir
-# des seules metriques agregees), jamais une garantie de couverture ; meme
-# principe et meme taille que `TAILLE_MAX_ECHANTILLON_ECHECS_REFORMULATION`
-# dans `E3_00_uc_reformuler_preference_dpo.py` (23/09/2026).
+# Taille max de `echantillon_generations` : diagnostic (inspecter ce que
+# le modele genere reellement), pas une garantie de couverture.
 TAILLE_MAX_ECHANTILLON_GENERATIONS = 20
 
 
@@ -48,12 +49,12 @@ TAILLE_MAX_ECHANTILLON_GENERATIONS = 20
 class ResultatEvaluationBaseline:
     """Resultat agrege d'un run d'evaluation baseline zero-shot."""
 
-    nombre_exemples          : int
-    exact_match              : float
-    f1_moyen                 : float
-    exactitude_niveau        : ResultatExactitudeNiveau
-    latence_ms_moyenne       : float
-    nombre_echecs_inference  : int = 0
+    nombre_exemples: int
+    exact_match: float
+    f1_moyen: float
+    exactitude_niveau: ResultatExactitudeNiveau
+    latence_ms_moyenne: float
+    nombre_echecs_inference: int = 0
 
 
 # ##############################################################################
@@ -74,16 +75,18 @@ class EvaluerBaselineZeroShotUseCase:
     tracking : demarrer_run/logger_metrique/terminer_run).
     """
 
-    repository             : RepositoryLectureEcriture
-    formateur              : FormateurInviteZeroShot
-    moteur                 : MoteurInference
-    suivi                  : SuiviExperimentation
-    parametres_generation  : dict = field(default_factory=dict)
-    nom_run                : str  = NOM_RUN_PAR_DEFAUT
+    repository: RepositoryLectureEcriture
+    formateur: FormateurInviteZeroShot
+    moteur: MoteurInference
+    suivi: SuiviExperimentation
+    parametres_generation: dict = field(default_factory=dict)
+    nom_run: str = NOM_RUN_PAR_DEFAUT
 
     # Jusqu'a TAILLE_MAX_ECHANTILLON_GENERATIONS paires (texte genere, texte
     # reference), dans l'ordre du split test.
-    echantillon_generations: list[tuple[str, str]] = field(default_factory=list, init=False)
+    echantillon_generations: list[tuple[str, str]] = field(
+        default_factory=list, init=False
+    )
 
     # ##########################################################################
     def executer(self) -> ResultatEvaluationBaseline:
@@ -121,8 +124,8 @@ class EvaluerBaselineZeroShotUseCase:
         # Un exemple degenere (generation corrompue rejetee par le serveur
         # d'inference, ex. 500 sur un checkpoint BASE pres de n_predict) ne
         # doit jamais abandonner tout le run : on logue et on continue.
-        paires      : list[tuple[str, str]] = []
-        latences_ms : list[float]           = []
+        paires: list[tuple[str, str]] = []
+        latences_ms: list[float] = []
         nombre_echecs_inference = 0
         for indice, exemple in enumerate(exemples):
             invite = self.formateur.formater_invite_zero_shot(exemple)
@@ -145,7 +148,10 @@ class EvaluerBaselineZeroShotUseCase:
                 continue
             paire = (reponse.texte, _extraire_texte_reponse_reelle(exemple))
             paires.append(paire)
-            if len(self.echantillon_generations) < TAILLE_MAX_ECHANTILLON_GENERATIONS:
+            if (
+                len(self.echantillon_generations)
+                < TAILLE_MAX_ECHANTILLON_GENERATIONS
+            ):
                 self.echantillon_generations.append(paire)
             latences_ms.append(reponse.latence_ms)
 

@@ -35,6 +35,8 @@ class VerdictEntiteNommee(str, Enum):
 class VerificateurEntitesNommees(Protocol):
     """Port generique de verification d'entite nommee sur un passage de texte."""
 
-    def verifier(self, texte: str, langue: str, debut: int, fin: int) -> VerdictEntiteNommee:
+    def verifier(
+        self, texte: str, langue: str, debut: int, fin: int
+    ) -> VerdictEntiteNommee:
         """Indique si le passage [debut:fin] de `texte` chevauche une entite nommee."""
         ...

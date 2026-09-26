@@ -36,13 +36,21 @@ class MlflowSuiviExperimentation:
         if parametres:
             mlflow.log_params(parametres)
 
-    def logger_metrique(self, nom: str, valeur: float, etape: int, horodatage: float | None = None) -> None:
+    def logger_metrique(
+        self,
+        nom: str,
+        valeur: float,
+        etape: int,
+        horodatage: float | None = None,
+    ) -> None:
         import mlflow
 
         if horodatage is None:
             mlflow.log_metric(nom, valeur, step=etape)
         else:
-            mlflow.log_metric(nom, valeur, step=etape, timestamp=int(horodatage * 1000))
+            mlflow.log_metric(
+                nom, valeur, step=etape, timestamp=int(horodatage * 1000)
+            )
 
     def terminer_run(self) -> None:
         import mlflow

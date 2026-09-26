@@ -16,14 +16,19 @@ from uuid import uuid4
 
 from chsa_triage.application.use_cases import AnonymiserDatasetUseCase
 from chsa_triage.domain.model import ExemplePivot, Langue, Message, TypeExemple
-from chsa_triage.domain.ports.anonymiseur import EntiteDetectee, ResultatAnonymisation
+from chsa_triage.domain.ports.anonymiseur import (
+    EntiteDetectee,
+    ResultatAnonymisation,
+)
 
 
 class FauxRepository:
     """Faux adaptateur RepositoryLectureEcriture, en memoire, filtre inclus."""
 
     def __init__(self, items: list[ExemplePivot] | None = None) -> None:
-        self.items: dict[str, ExemplePivot] = {item.identifiant: item for item in (items or [])}
+        self.items: dict[str, ExemplePivot] = {
+            item.identifiant: item for item in (items or [])
+        }
 
     def sauvegarder(self, item: ExemplePivot) -> None:
         self.items[item.identifiant] = item
@@ -37,7 +42,10 @@ class FauxRepository:
 
     def lister(self, filtre: dict | None = None):
         for exemple in self.items.values():
-            if filtre is None or all(getattr(exemple, cle) == valeur for cle, valeur in filtre.items()):
+            if filtre is None or all(
+                getattr(exemple, cle) == valeur
+                for cle, valeur in filtre.items()
+            ):
                 yield exemple
 
     def compter(self, filtre: dict | None = None) -> int:
@@ -56,15 +64,25 @@ class FauxAnonymiseur:
     def anonymiser(self, texte: str, langue: str) -> ResultatAnonymisation:
         self.appels += 1
         if not texte:
-            return ResultatAnonymisation(texte_original=texte, texte_anonymise=texte, entites_detectees=())
+            return ResultatAnonymisation(
+                texte_original=texte,
+                texte_anonymise=texte,
+                entites_detectees=(),
+            )
         return ResultatAnonymisation(
             texte_original=texte,
             texte_anonymise=f"[ANON]{texte}",
-            entites_detectees=(EntiteDetectee(type_entite="PERSON", debut=0, fin=1, score=1.0),),
+            entites_detectees=(
+                EntiteDetectee(type_entite="PERSON", debut=0, fin=1, score=1.0),
+            ),
         )
 
 
-def _exemple(source: str, type_exemple: TypeExemple = TypeExemple.SFT, langue: Langue = Langue.FRANCAIS) -> ExemplePivot:
+def _exemple(
+    source: str,
+    type_exemple: TypeExemple = TypeExemple.SFT,
+    langue: Langue = Langue.FRANCAIS,
+) -> ExemplePivot:
     cle = uuid4().hex
     return ExemplePivot(
         identifiant=ExemplePivot.nouvel_identifiant(source, cle),
@@ -85,7 +103,10 @@ def test_anonymiser_dataset_traite_tout_sans_limite():
     anonymiseur = FauxAnonymiseur()
 
     cas_usage = AnonymiserDatasetUseCase(
-        repository_source=source, repository_sortie=sortie, anonymiseur=anonymiseur, limite=None
+        repository_source=source,
+        repository_sortie=sortie,
+        anonymiseur=anonymiseur,
+        limite=None,
     )
     nombre = cas_usage.executer()
 
@@ -103,26 +124,34 @@ def test_anonymiser_dataset_ne_retraite_jamais_les_exemples_deja_presents_en_sor
     exemple_a_faire = _exemple("MediQAl")
     source = FauxRepository([exemple_deja_fait, exemple_a_faire])
     # Le fichier de sortie contient DEJA une version anonymisee de exemple_deja_fait.
-    sortie = FauxRepository([
-        ExemplePivot(
-            identifiant=exemple_deja_fait.identifiant,
-            identifiant_source_brute=exemple_deja_fait.identifiant_source_brute,
-            source=exemple_deja_fait.source,
-            type_exemple=exemple_deja_fait.type_exemple,
-            langue=exemple_deja_fait.langue,
-            symptomes="[DEJA ANONYMISE]",
-            anonymise=True,
-        )
-    ])
+    sortie = FauxRepository(
+        [
+            ExemplePivot(
+                identifiant=exemple_deja_fait.identifiant,
+                identifiant_source_brute=exemple_deja_fait.identifiant_source_brute,
+                source=exemple_deja_fait.source,
+                type_exemple=exemple_deja_fait.type_exemple,
+                langue=exemple_deja_fait.langue,
+                symptomes="[DEJA ANONYMISE]",
+                anonymise=True,
+            )
+        ]
+    )
     anonymiseur = FauxAnonymiseur()
 
     cas_usage = AnonymiserDatasetUseCase(
-        repository_source=source, repository_sortie=sortie, anonymiseur=anonymiseur, limite=None
+        repository_source=source,
+        repository_sortie=sortie,
+        anonymiseur=anonymiseur,
+        limite=None,
     )
     nombre = cas_usage.executer()
 
     assert nombre == 1  # seul exemple_a_faire est traite
-    assert sortie.items[exemple_deja_fait.identifiant].symptomes == "[DEJA ANONYMISE]"  # inchange
+    assert (
+        sortie.items[exemple_deja_fait.identifiant].symptomes
+        == "[DEJA ANONYMISE]"
+    )  # inchange
     assert "[ANON]" in sortie.items[exemple_a_faire.identifiant].symptomes
 
 
@@ -133,12 +162,17 @@ def test_anonymiser_dataset_ne_modifie_jamais_le_repository_source():
     anonymiseur = FauxAnonymiseur()
 
     cas_usage = AnonymiserDatasetUseCase(
-        repository_source=source, repository_sortie=sortie, anonymiseur=anonymiseur, limite=None
+        repository_source=source,
+        repository_sortie=sortie,
+        anonymiseur=anonymiseur,
+        limite=None,
     )
     cas_usage.executer()
 
     # Aucune ecriture sur `source` : memes objets, meme texte, `anonymise` toujours False.
-    for identifiant, exemple_original in {e.identifiant: e for e in exemples}.items():
+    for identifiant, exemple_original in {
+        e.identifiant: e for e in exemples
+    }.items():
         assert source.items[identifiant] is exemple_original
         assert source.items[identifiant].anonymise is False
 
@@ -147,14 +181,21 @@ def test_anonymiser_dataset_limite_selectionne_un_echantillon_stratifie():
     exemples = (
         [_exemple("MediQAl", TypeExemple.SFT) for _ in range(80)]
         + [_exemple("MedQuAD", TypeExemple.SFT) for _ in range(15)]
-        + [_exemple("UltraMedical-Preference", TypeExemple.DPO) for _ in range(5)]
+        + [
+            _exemple("UltraMedical-Preference", TypeExemple.DPO)
+            for _ in range(5)
+        ]
     )
     source = FauxRepository(exemples)
     sortie = FauxRepository()
     anonymiseur = FauxAnonymiseur()
 
     cas_usage = AnonymiserDatasetUseCase(
-        repository_source=source, repository_sortie=sortie, anonymiseur=anonymiseur, limite=20, graine_aleatoire=42
+        repository_source=source,
+        repository_sortie=sortie,
+        anonymiseur=anonymiseur,
+        limite=20,
+        graine_aleatoire=42,
     )
     nombre = cas_usage.executer()
 
@@ -174,7 +215,10 @@ def test_anonymiser_dataset_limite_superieure_au_reste_traite_tout():
     anonymiseur = FauxAnonymiseur()
 
     cas_usage = AnonymiserDatasetUseCase(
-        repository_source=source, repository_sortie=sortie, anonymiseur=anonymiseur, limite=5000
+        repository_source=source,
+        repository_sortie=sortie,
+        anonymiseur=anonymiseur,
+        limite=5000,
     )
     nombre = cas_usage.executer()
 
@@ -189,16 +233,18 @@ def test_anonymiser_dataset_accumule_les_statistiques_rgpd_par_source():
     detail des entites par type ; sans quoi ces chiffres devraient
     etre estimes a la main.
     """
-    exemples = (
-        [_exemple("MediQAl", TypeExemple.SFT) for _ in range(2)]
-        + [_exemple("MedQuAD", TypeExemple.SFT) for _ in range(1)]
-    )
+    exemples = [_exemple("MediQAl", TypeExemple.SFT) for _ in range(2)] + [
+        _exemple("MedQuAD", TypeExemple.SFT) for _ in range(1)
+    ]
     source = FauxRepository(exemples)
     sortie = FauxRepository()
     anonymiseur = FauxAnonymiseur()
 
     cas_usage = AnonymiserDatasetUseCase(
-        repository_source=source, repository_sortie=sortie, anonymiseur=anonymiseur, limite=None
+        repository_source=source,
+        repository_sortie=sortie,
+        anonymiseur=anonymiseur,
+        limite=None,
     )
     cas_usage.executer()
 
@@ -223,7 +269,10 @@ def test_anonymiser_dataset_fonctionne_sans_barre_de_progression():
     anonymiseur = FauxAnonymiseur()
 
     cas_usage = AnonymiserDatasetUseCase(
-        repository_source=source, repository_sortie=sortie, anonymiseur=anonymiseur, limite=None
+        repository_source=source,
+        repository_sortie=sortie,
+        anonymiseur=anonymiseur,
+        limite=None,
     )
     nombre = cas_usage.executer(envelopper_iterable=None)
 
@@ -235,7 +284,10 @@ def test_anonymiser_dataset_accepte_un_envelopper_iterable_pour_la_progression()
     exemples = (
         [_exemple("MediQAl", TypeExemple.SFT) for _ in range(80)]
         + [_exemple("MedQuAD", TypeExemple.SFT) for _ in range(15)]
-        + [_exemple("UltraMedical-Preference", TypeExemple.DPO) for _ in range(5)]
+        + [
+            _exemple("UltraMedical-Preference", TypeExemple.DPO)
+            for _ in range(5)
+        ]
     )
     source = FauxRepository(exemples)
     sortie = FauxRepository()
@@ -249,7 +301,11 @@ def test_anonymiser_dataset_accepte_un_envelopper_iterable_pour_la_progression()
         return elements
 
     cas_usage = AnonymiserDatasetUseCase(
-        repository_source=source, repository_sortie=sortie, anonymiseur=anonymiseur, limite=20, graine_aleatoire=42
+        repository_source=source,
+        repository_sortie=sortie,
+        anonymiseur=anonymiseur,
+        limite=20,
+        graine_aleatoire=42,
     )
     nombre = cas_usage.executer(envelopper_iterable=envelopper)
 

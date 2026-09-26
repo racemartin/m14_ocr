@@ -33,12 +33,13 @@
 # =============================================================================
 
 # --- Bibliothèques standard ---------------------------------------------------
-import json     # Sérialisation des objets pour LOG_DICT et DUMP_VARIABLE
-import os       # Lecture des variables d'environnement (LOG_LEVEL)
-import sys      # Écriture sur stderr (équivalent de error_log PHP)
-import time     # Mesure du temps d'exécution pour START/FINISH_ACTION
-from   pathlib import Path  # Manipulation des chemins pour update_env_log_level
+import json  # Sérialisation des objets pour LOG_DICT et DUMP_VARIABLE
+import os  # Lecture des variables d'environnement (LOG_LEVEL)
+import sys  # Écriture sur stderr (équivalent de error_log PHP)
+import time  # Mesure du temps d'exécution pour START/FINISH_ACTION
+from pathlib import Path  # Manipulation des chemins pour update_env_log_level
 from datetime import datetime
+
 
 # =============================================================================
 # CLASSE : LogTool
@@ -60,25 +61,25 @@ class LogTool:
     """
 
     # Codes de couleur ANSI ------------------------------------------------
-    _COLOR_WHITE                = "\033[97m"
-    _COLOR_BOLD                 = "\033[1m"
-    _COLOR_0_BRIGHT_RED         = "\033[1;31m"
-    _COLOR_1_BRIGHT_YELLOW      = "\033[1;33m"
-    _COLOR_2_RED                = "\033[31m"
-    _COLOR_3_RED                = "\033[31m"
-    _COLOR_4_YELLOW             = "\033[33m"
-    _COLOR_5_CYAN               = "\033[36m"
-    _COLOR_6_GREEN              = "\033[32m"
-    _COLOR_7_MAGENTA            = "\033[35m"
-    _COLOR_RESET                = "\033[0m"
-    _COLOR_GREY                 = "\033[90m"
-    _COLOR_WHITE_ON_RED         = "\033[37;41m"   # Blanc sur fond rouge
-    _COLOR_YELLOW_ON_RED        = "\033[33;41m"
-    _COLOR_BRIGHT_YELLOW_ON_RED = "\033[93;41m"   # Jaune vif sur fond rouge
-    _COLOR_BROWNLIGHT           = "\033[38;5;180m" # Marron clair
-    _COLOR_BLACK_ON_GREEN       = "\033[30;42m"   # Texte noir sur fond vert
+    _COLOR_WHITE = "\033[97m"
+    _COLOR_BOLD = "\033[1m"
+    _COLOR_0_BRIGHT_RED = "\033[1;31m"
+    _COLOR_1_BRIGHT_YELLOW = "\033[1;33m"
+    _COLOR_2_RED = "\033[31m"
+    _COLOR_3_RED = "\033[31m"
+    _COLOR_4_YELLOW = "\033[33m"
+    _COLOR_5_CYAN = "\033[36m"
+    _COLOR_6_GREEN = "\033[32m"
+    _COLOR_7_MAGENTA = "\033[35m"
+    _COLOR_RESET = "\033[0m"
+    _COLOR_GREY = "\033[90m"
+    _COLOR_WHITE_ON_RED = "\033[37;41m"  # Blanc sur fond rouge
+    _COLOR_YELLOW_ON_RED = "\033[33;41m"
+    _COLOR_BRIGHT_YELLOW_ON_RED = "\033[93;41m"  # Jaune vif sur fond rouge
+    _COLOR_BROWNLIGHT = "\033[38;5;180m"  # Marron clair
+    _COLOR_BLACK_ON_GREEN = "\033[30;42m"  # Texte noir sur fond vert
 
-    ACTIF      = True
+    ACTIF = True
     _log_level = 8  # Valeur par défaut : tous les niveaux affichés
 
     # -------------------------------------------------------------------------
@@ -100,15 +101,14 @@ class LogTool:
             except ValueError:
                 pass  # Valeur invalide → on conserve la valeur par défaut
 
-        self._origin          = origin      # Préfixe affiché dans les logs
-        self._timestart       = None        # Horodatage de début (START_ACTION)
-        self._animation       = ['|', '/', '-', '\\', '|', '/', '-', '\\', '|']
+        self._origin = origin  # Préfixe affiché dans les logs
+        self._timestart = None  # Horodatage de début (START_ACTION)
+        self._animation = ["|", "/", "-", "\\", "|", "/", "-", "\\", "|"]
         self._animation_index = 0
-        self._progress_width  = 50          # Largeur de la barre de progression
-        self._progress_char   = '='         # Caractère de remplissage
-        self._total_items     = 0           # Nombre total d'éléments
-        self._processed_items = 0           # Éléments déjà traités
-
+        self._progress_width = 50  # Largeur de la barre de progression
+        self._progress_char = "="  # Caractère de remplissage
+        self._total_items = 0  # Nombre total d'éléments
+        self._processed_items = 0  # Éléments déjà traités
 
     # ##########################################################################
     # MÉTHODES DE CONFIGURATION
@@ -141,14 +141,14 @@ class LogTool:
         """
         # Correspondance nom → valeur numérique RFC 5424 ------------------
         log_levels = {
-            "EMERGENCY" : 1,
-            "ALERT"     : 2,
-            "CRITICAL"  : 3,
-            "ERROR"     : 4,
-            "WARNING"   : 5,
-            "NOTICE"    : 6,
-            "INFO"      : 7,
-            "DEBUG"     : 8,
+            "EMERGENCY": 1,
+            "ALERT": 2,
+            "CRITICAL": 3,
+            "ERROR": 4,
+            "WARNING": 5,
+            "NOTICE": 6,
+            "INFO": 7,
+            "DEBUG": 8,
         }
 
         # Validation de la valeur fournie ---------------------------------
@@ -161,9 +161,9 @@ class LogTool:
                 f"Valeurs acceptées : {', '.join(log_levels.keys())}"
             )
 
-        new_value  = log_levels[input_value]
-        key        = "LOG_LEVEL"
-        env_file   = Path(project_dir) / ".env"
+        new_value = log_levels[input_value]
+        key = "LOG_LEVEL"
+        env_file = Path(project_dir) / ".env"
 
         # Lecture du fichier .env -----------------------------------------
         try:
@@ -172,23 +172,25 @@ class LogTool:
             raise IOError(f"Impossible de lire le fichier .env : {e}") from e
 
         # Remplacement ou ajout de la ligne LOG_LEVEL ---------------------
-        lines   = content.splitlines()
+        lines = content.splitlines()
         updated = False
 
         for i, line in enumerate(lines):
             if line.startswith(key + "="):
                 lines[i] = f"{key}={new_value}"
-                updated  = True
+                updated = True
                 break
 
         if not updated:
-            lines.append(f"{key}={new_value}")   # Ajout si absent
+            lines.append(f"{key}={new_value}")  # Ajout si absent
 
         # Sauvegarde du fichier .env --------------------------------------
         try:
             env_file.write_text("\n".join(lines), encoding="utf-8")
         except OSError as e:
-            raise IOError(f"Impossible d'écrire dans le fichier .env : {e}") from e
+            raise IOError(
+                f"Impossible d'écrire dans le fichier .env : {e}"
+            ) from e
 
         # Affichage du résultat -------------------------------------------
         self.STEP(1, "Valeurs possibles de LOG_LEVEL :")
@@ -200,7 +202,6 @@ class LogTool:
             f"{new_value} ({input_value})",
         )
         return True
-
 
     # ##########################################################################
     # BARRE DE PROGRESSION
@@ -217,7 +218,7 @@ class LogTool:
             Nombre total d'éléments à traiter.
         """
         self._processed_items = 0
-        self._total_items     = total_items
+        self._total_items = total_items
 
     # =========================================================================
     def progressAdvance(self, processed: int, message: str) -> None:
@@ -231,12 +232,18 @@ class LogTool:
         message : str
             Message court affiché à la fin de la barre.
         """
-        pct        = round(processed / self._total_items * 100) if self._total_items else 0
+        pct = (
+            round(processed / self._total_items * 100)
+            if self._total_items
+            else 0
+        )
         bar_length = round(pct / 100 * self._progress_width)
 
-        self._animation_index = (self._animation_index + 1) % len(self._animation)
-        anim_char  = self._animation[self._animation_index]
-        bar        = self._progress_char * bar_length
+        self._animation_index = (self._animation_index + 1) % len(
+            self._animation
+        )
+        anim_char = self._animation[self._animation_index]
+        bar = self._progress_char * bar_length
 
         line = (
             f"\r {anim_char} [{bar:<{self._progress_width}}] "
@@ -259,8 +266,7 @@ class LogTool:
         sys.stderr.write(f"[{self._origin}]\n\r")
         sys.stderr.flush()
         self._processed_items = 0
-        self._total_items     = 0
-
+        self._total_items = 0
 
     # ##########################################################################
     # NIVEAUX DE LOG RFC 5424
@@ -271,37 +277,56 @@ class LogTool:
         """Niveau 1, EMERGENCY : le système est inutilisable."""
         if not self.ACTIF or 1 > self._log_level:
             return
-        label   = f"[{'EMERGENCY':<9}]"
+        label = f"[{'EMERGENCY':<9}]"
         content = (
-            self._COLOR_RESET + self._COLOR_WHITE + f" {where}" +
-            self._COLOR_RESET + " " +
-            self._COLOR_BRIGHT_YELLOW_ON_RED + message + self._COLOR_RESET
+            self._COLOR_RESET
+            + self._COLOR_WHITE
+            + f" {where}"
+            + self._COLOR_RESET
+            + " "
+            + self._COLOR_BRIGHT_YELLOW_ON_RED
+            + message
+            + self._COLOR_RESET
         )
-        self._split_and_log(0, label + content, self._COLOR_BRIGHT_YELLOW_ON_RED)
+        self._split_and_log(
+            0, label + content, self._COLOR_BRIGHT_YELLOW_ON_RED
+        )
 
     # =========================================================================
     def LEVEL_2_ALERT(self, where: str, message: str) -> None:
         """Niveau 2, ALERT : une action immédiate est requise."""
         if not self.ACTIF or 2 > self._log_level:
             return
-        label   = f"[{'ALERT':<9}]"
+        label = f"[{'ALERT':<9}]"
         content = (
-            self._COLOR_RESET + self._COLOR_WHITE + f" {where}" +
-            self._COLOR_RESET + " " +
-            self._COLOR_BRIGHT_YELLOW_ON_RED + message + self._COLOR_RESET
+            self._COLOR_RESET
+            + self._COLOR_WHITE
+            + f" {where}"
+            + self._COLOR_RESET
+            + " "
+            + self._COLOR_BRIGHT_YELLOW_ON_RED
+            + message
+            + self._COLOR_RESET
         )
-        self._split_and_log(1, label + content, self._COLOR_BRIGHT_YELLOW_ON_RED)
+        self._split_and_log(
+            1, label + content, self._COLOR_BRIGHT_YELLOW_ON_RED
+        )
 
     # =========================================================================
     def LEVEL_3_CRITICAL(self, where: str, message: str) -> None:
         """Niveau 3, CRITICAL : conditions critiques."""
         if not self.ACTIF or 3 > self._log_level:
             return
-        label   = f"[{'CRITICAL':<9}]"
+        label = f"[{'CRITICAL':<9}]"
         content = (
-            self._COLOR_RESET + self._COLOR_WHITE + f" {where}" +
-            self._COLOR_RESET + " " +
-            self._COLOR_WHITE_ON_RED + message + self._COLOR_RESET
+            self._COLOR_RESET
+            + self._COLOR_WHITE
+            + f" {where}"
+            + self._COLOR_RESET
+            + " "
+            + self._COLOR_WHITE_ON_RED
+            + message
+            + self._COLOR_RESET
         )
         self._split_and_log(2, label + content, self._COLOR_WHITE_ON_RED)
 
@@ -310,11 +335,16 @@ class LogTool:
         """Niveau 4, ERROR : conditions d'erreur."""
         if not self.ACTIF or 4 > self._log_level:
             return
-        label   = f"[{'ERROR':<9}]"
+        label = f"[{'ERROR':<9}]"
         content = (
-            self._COLOR_RESET + self._COLOR_WHITE + f" {where}" +
-            self._COLOR_RESET + " " +
-            self._COLOR_WHITE_ON_RED + message + self._COLOR_RESET
+            self._COLOR_RESET
+            + self._COLOR_WHITE
+            + f" {where}"
+            + self._COLOR_RESET
+            + " "
+            + self._COLOR_WHITE_ON_RED
+            + message
+            + self._COLOR_RESET
         )
         self._split_and_log(3, label + content, self._COLOR_WHITE_ON_RED)
 
@@ -323,11 +353,16 @@ class LogTool:
         """Niveau 5, WARNING : conditions d'avertissement."""
         if not self.ACTIF or 5 > self._log_level:
             return
-        label   = f"           [{'WARNING':<9}]"
+        label = f"           [{'WARNING':<9}]"
         content = (
-            self._COLOR_RESET + self._COLOR_WHITE + f" {where}" +
-            self._COLOR_RESET + " " +
-            self._COLOR_4_YELLOW + message + self._COLOR_RESET
+            self._COLOR_RESET
+            + self._COLOR_WHITE
+            + f" {where}"
+            + self._COLOR_RESET
+            + " "
+            + self._COLOR_4_YELLOW
+            + message
+            + self._COLOR_RESET
         )
         self._split_and_log(4, label + content, self._COLOR_4_YELLOW)
 
@@ -336,11 +371,16 @@ class LogTool:
         """Niveau 6, NOTICE : condition normale mais significative."""
         if not self.ACTIF or 6 > self._log_level:
             return
-        label   = f"[{'NOTICE':<9}]"
+        label = f"[{'NOTICE':<9}]"
         content = (
-            self._COLOR_RESET + self._COLOR_WHITE + f" {where}" +
-            self._COLOR_RESET + " " +
-            self._COLOR_5_CYAN + message + self._COLOR_RESET
+            self._COLOR_RESET
+            + self._COLOR_WHITE
+            + f" {where}"
+            + self._COLOR_RESET
+            + " "
+            + self._COLOR_5_CYAN
+            + message
+            + self._COLOR_RESET
         )
         self._split_and_log(5, label + content, self._COLOR_5_CYAN)
 
@@ -349,28 +389,37 @@ class LogTool:
         """Niveau 7, INFO : messages informatifs."""
         if not self.ACTIF or 7 > self._log_level:
             return
-        label   = f"[{'INFO':<9}]"
+        label = f"[{'INFO':<9}]"
         content = (
-            self._COLOR_RESET + self._COLOR_WHITE + f" {where}" +
-            self._COLOR_RESET + " " +
-            self._COLOR_BLACK_ON_GREEN + message + self._COLOR_RESET
+            self._COLOR_RESET
+            + self._COLOR_WHITE
+            + f" {where}"
+            + self._COLOR_RESET
+            + " "
+            + self._COLOR_BLACK_ON_GREEN
+            + message
+            + self._COLOR_RESET
         )
-        #self._split_and_log(6, label + content, self._COLOR_BLACK_ON_GREEN)
-        self._log( "           " + label + content, self._COLOR_BLACK_ON_GREEN)
+        # self._split_and_log(6, label + content, self._COLOR_BLACK_ON_GREEN)
+        self._log("           " + label + content, self._COLOR_BLACK_ON_GREEN)
 
     # =========================================================================
     def LEVEL_8_DEBUG(self, where: str, message: str) -> None:
         """Niveau 8, DEBUG : messages de débogage."""
         if not self.ACTIF or 8 > self._log_level:
             return
-        label   = f"[{'DEBUG':<9}]"
+        label = f"[{'DEBUG':<9}]"
         content = (
-            self._COLOR_RESET + self._COLOR_WHITE + f" {where}" +
-            self._COLOR_RESET + " " +
-            self._COLOR_7_MAGENTA + message + self._COLOR_RESET
+            self._COLOR_RESET
+            + self._COLOR_WHITE
+            + f" {where}"
+            + self._COLOR_RESET
+            + " "
+            + self._COLOR_7_MAGENTA
+            + message
+            + self._COLOR_RESET
         )
         self._split_and_log(7, label + content, self._COLOR_7_MAGENTA)
-
 
     # ##########################################################################
     # NIVEAUX INDENTÉ (flux d'appels imbriqués)
@@ -379,43 +428,13 @@ class LogTool:
     # =========================================================================
     def START_INDETED_LEVEL(
         self,
-        tab_size     : int,
-        class_name   : str,
+        tab_size: int,
+        class_name: str,
         function_name: str,
-        information  : str,
+        information: str,
     ) -> None:
         """
         Affiche le début d'un bloc indenté (entrée dans une fonction).   ┌
-
-        Affichage conditionnel selon le niveau de log :
-          - tab_size == 2 : affiché seulement si log_level >= 7
-          - tab_size  > 2 : affiché seulement si log_level >= 8   
-        """
-        if not self.ACTIF:
-            return
-        if tab_size == 2 and self._log_level < 7:
-            return
-        if tab_size > 2 and self._log_level < 8:
-            return
-
-        prefix       = " " * tab_size + "┌["
-        class_padded = (class_name + "]").ljust(36 - tab_size, ".") + ": ["
-        func_padded  = (function_name + "] ").ljust(36, "-")
-
-        self._error_log(
-            f"{prefix}{class_padded}{func_padded} [{information}]"
-        )
-
-    # =========================================================================
-    def FINISH_INDETED_LEVEL(
-        self,
-        tab_size     : int,
-        class_name   : str,
-        function_name: str,
-        information  : str,
-    ) -> None:
-        """
-        Affiche la fin d'un bloc indenté (sortie d'une fonction).  ╚ 
 
         Affichage conditionnel selon le niveau de log :
           - tab_size == 2 : affiché seulement si log_level >= 7
@@ -428,14 +447,39 @@ class LogTool:
         if tab_size > 2 and self._log_level < 8:
             return
 
-        prefix       = " " * tab_size + "└["
+        prefix = " " * tab_size + "┌["
         class_padded = (class_name + "]").ljust(36 - tab_size, ".") + ": ["
-        func_padded  = (function_name + "] ").ljust(36, "-")
+        func_padded = (function_name + "] ").ljust(36, "-")
 
-        self._error_log(
-            f"{prefix}{class_padded}{func_padded} [{information}]"
-        )
+        self._error_log(f"{prefix}{class_padded}{func_padded} [{information}]")
 
+    # =========================================================================
+    def FINISH_INDETED_LEVEL(
+        self,
+        tab_size: int,
+        class_name: str,
+        function_name: str,
+        information: str,
+    ) -> None:
+        """
+        Affiche la fin d'un bloc indenté (sortie d'une fonction).  ╚
+
+        Affichage conditionnel selon le niveau de log :
+          - tab_size == 2 : affiché seulement si log_level >= 7
+          - tab_size  > 2 : affiché seulement si log_level >= 8
+        """
+        if not self.ACTIF:
+            return
+        if tab_size == 2 and self._log_level < 7:
+            return
+        if tab_size > 2 and self._log_level < 8:
+            return
+
+        prefix = " " * tab_size + "└["
+        class_padded = (class_name + "]").ljust(36 - tab_size, ".") + ": ["
+        func_padded = (function_name + "] ").ljust(36, "-")
+
+        self._error_log(f"{prefix}{class_padded}{func_padded} [{information}]")
 
     # ##########################################################################
     # ACTIONS (niveau 1, haut niveau)
@@ -444,9 +488,9 @@ class LogTool:
     # =========================================================================
     def START_ACTION(
         self,
-        class_name   : str,
+        class_name: str,
         function_name: str,
-        information  : str,
+        information: str,
     ) -> None:
         """
         Marque le début d'une action et démarre le chronomètre.
@@ -456,18 +500,17 @@ class LogTool:
             return
         self._timestart = time.perf_counter()
 
- 
-        line        = "#" * 38
-        self._error_log(self._COLOR_BROWNLIGHT  + line + self._COLOR_RESET )
-        
+        line = "#" * 38
+        self._error_log(self._COLOR_BROWNLIGHT + line + self._COLOR_RESET)
+
         self.START_INDETED_LEVEL(1, class_name, function_name, information)
 
     # =========================================================================
     def FINISH_ACTION(
         self,
-        class_name   : str,
+        class_name: str,
         function_name: str,
-        information  : str,
+        information: str,
     ) -> None:
         """
         Marque la fin d'une action et affiche le temps d'exécution.
@@ -475,24 +518,26 @@ class LogTool:
         if not self.ACTIF:
             return
 
-        elapsed      = time.perf_counter() - (self._timestart or 0)
-        hours, rem   = divmod(elapsed, 3600)
+        elapsed = time.perf_counter() - (self._timestart or 0)
+        hours, rem = divmod(elapsed, 3600)
         minutes, sec = divmod(rem, 60)
-        exec_time    = f"{int(hours):02d}:{int(minutes):02d}:{sec:09.6f}"
+        exec_time = f"{int(hours):02d}:{int(minutes):02d}:{sec:09.6f}"
 
         self.FINISH_INDETED_LEVEL(
-            1, class_name, function_name,
+            1,
+            class_name,
+            function_name,
             f"{information} Exec: {exec_time}",
         )
-        line        = "*" * 38
-        self._error_log(self._COLOR_BROWNLIGHT  + line + self._COLOR_RESET )
+        line = "*" * 38
+        self._error_log(self._COLOR_BROWNLIGHT + line + self._COLOR_RESET)
 
     # =========================================================================
     def START_CALL_CONTROLLER_FUNCTION(
         self,
-        class_name   : str,
+        class_name: str,
         function_name: str,
-        information  : str,
+        information: str,
     ) -> None:
         """Marque le début d'un appel de fonction contrôleur (niveau 2)."""
         if not self.ACTIF:
@@ -502,9 +547,9 @@ class LogTool:
     # =========================================================================
     def FINISH_CALL_CONTROLLER_FUNCTION(
         self,
-        class_name   : str,
+        class_name: str,
         function_name: str,
-        information  : str,
+        information: str,
     ) -> None:
         """Marque la fin d'un appel de fonction contrôleur (niveau 2)."""
         if not self.ACTIF:
@@ -514,9 +559,9 @@ class LogTool:
     # =========================================================================
     def START_CALL_MANAGER_FUNCTION(
         self,
-        class_name   : str,
+        class_name: str,
         function_name: str,
-        information  : str,
+        information: str,
     ) -> None:
         """Marque le début d'un appel de fonction manager (niveau 3)."""
         if not self.ACTIF:
@@ -526,9 +571,9 @@ class LogTool:
     # =========================================================================
     def FINISH_CALL_MANAGER_FUNCTION(
         self,
-        class_name   : str,
+        class_name: str,
         function_name: str,
-        information  : str,
+        information: str,
     ) -> None:
         """Marque la fin d'un appel de fonction manager (niveau 3)."""
         if not self.ACTIF:
@@ -538,9 +583,9 @@ class LogTool:
     # =========================================================================
     def START_CALL_ENTITY_FUNCTION(
         self,
-        class_name   : str,
+        class_name: str,
         function_name: str,
-        information  : str,
+        information: str,
     ) -> None:
         """Marque le début d'un appel de fonction entité (niveau 4)."""
         if not self.ACTIF:
@@ -550,15 +595,14 @@ class LogTool:
     # =========================================================================
     def FINISH_CALL_ENTITY_FUNCTION(
         self,
-        class_name   : str,
+        class_name: str,
         function_name: str,
-        information  : str,
+        information: str,
     ) -> None:
         """Marque la fin d'un appel de fonction entité (niveau 4)."""
         if not self.ACTIF:
             return
         self.FINISH_INDETED_LEVEL(4, class_name, function_name, information)
-
 
     # ##########################################################################
     # AFFICHAGE DE PARAMÈTRES ET DE STRUCTURES
@@ -577,14 +621,14 @@ class LogTool:
         if not self.ACTIF:
             return
 
-        prefix  = " " * 10
-        dotted  = (str(param_name)).ljust(28, ".") + ":"
+        prefix = " " * 10
+        dotted = (str(param_name)).ljust(28, ".") + ":"
         self._error_log(f"{prefix}{dotted} {param_value}")
 
     # =========================================================================
     def DEBUG_PARAMETER_VALUE(
         self,
-        param_name : str,
+        param_name: str,
         param_value: object,
     ) -> None:
         """
@@ -602,9 +646,9 @@ class LogTool:
     # =========================================================================
     def STEP(
         self,
-        tab_size : int,
+        tab_size: int,
         step_name: str,
-        info     : str = "",
+        info: str = "",
     ) -> None:
         """
         Affiche un séparateur visuel marquant une étape du traitement.
@@ -618,17 +662,20 @@ class LogTool:
         if not self.ACTIF:
             return
 
-        prefix      = " " * (tab_size - 1)
+        prefix = " " * (tab_size - 1)
         line_length = 38 - tab_size
-        line        = "-" * line_length
-        info_txt    = f" ({info})" if info else ""
+        line = "-" * line_length
+        info_txt = f" ({info})" if info else ""
 
         self._error_log(
             self._COLOR_BROWNLIGHT + prefix + line + self._COLOR_RESET
         )
         self._error_log(
-            self._COLOR_BROWNLIGHT + prefix + step_name + info_txt +
-            self._COLOR_RESET
+            self._COLOR_BROWNLIGHT
+            + prefix
+            + step_name
+            + info_txt
+            + self._COLOR_RESET
         )
 
     # =========================================================================
@@ -650,10 +697,12 @@ class LogTool:
         for key, value in data.items():
             if isinstance(value, dict):
                 for sub_key, sub_value in value.items():
-                    if isinstance(sub_value, (dict, list, object)) and \
-                       not isinstance(sub_value, (str, int, float, bool)):
+                    if isinstance(
+                        sub_value, (dict, list, object)
+                    ) and not isinstance(sub_value, (str, int, float, bool)):
                         self.PARAMETER_VALUE(
-                            f"  {key}.{sub_key}", json.dumps(sub_value, default=str)
+                            f"  {key}.{sub_key}",
+                            json.dumps(sub_value, default=str),
                         )
                     else:
                         self.PARAMETER_VALUE(f"  {key}.{sub_key}", sub_value)
@@ -739,15 +788,22 @@ class LogTool:
         self.FINISH_ACTION("WEB", "ACTION", "FINISH_ACTION FINISH")
 
         self.STEP(1, "SHOW STANDARD LOGS", "Début ...")
-        self.LEVEL_1_EMERGENCY("LogTool", "LEVEL_1_EMERGENCY  Système inutilisable")
-        self.LEVEL_2_ALERT    ("LogTool", "LEVEL_2_ALERT      Action immédiate requise")
-        self.LEVEL_3_CRITICAL ("LogTool", "LEVEL_3_CRITICAL   Conditions critiques")
-        self.LEVEL_4_ERROR    ("LogTool", "LEVEL_4_ERROR      Conditions d'erreur")
-        self.LEVEL_5_WARNING  ("LogTool", "LEVEL_5_WARNING    Avertissement")
-        self.LEVEL_6_NOTICE   ("LogTool", "LEVEL_6_NOTICE     Condition significative")
-        self.LEVEL_7_INFO     ("LogTool", "LEVEL_7_INFO       Message informatif")
-        self.LEVEL_8_DEBUG    ("LogTool", "LEVEL_8_DEBUG      Message de débogage")
-
+        self.LEVEL_1_EMERGENCY(
+            "LogTool", "LEVEL_1_EMERGENCY  Système inutilisable"
+        )
+        self.LEVEL_2_ALERT(
+            "LogTool", "LEVEL_2_ALERT      Action immédiate requise"
+        )
+        self.LEVEL_3_CRITICAL(
+            "LogTool", "LEVEL_3_CRITICAL   Conditions critiques"
+        )
+        self.LEVEL_4_ERROR("LogTool", "LEVEL_4_ERROR      Conditions d'erreur")
+        self.LEVEL_5_WARNING("LogTool", "LEVEL_5_WARNING    Avertissement")
+        self.LEVEL_6_NOTICE(
+            "LogTool", "LEVEL_6_NOTICE     Condition significative"
+        )
+        self.LEVEL_7_INFO("LogTool", "LEVEL_7_INFO       Message informatif")
+        self.LEVEL_8_DEBUG("LogTool", "LEVEL_8_DEBUG      Message de débogage")
 
     # ##########################################################################
     # MÉTHODES PRIVÉES
@@ -780,7 +836,9 @@ class LogTool:
         self._error_log(f"{color}{message.strip()}{self._COLOR_RESET}")
 
     # =========================================================================
-    def _split_and_log_V0(self, tab_size: int, message: str, color: str) -> None:
+    def _split_and_log_V0(
+        self, tab_size: int, message: str, color: str
+    ) -> None:
         """
         Découpe un message multi-lignes et journalise chaque ligne.
 
@@ -794,7 +852,11 @@ class LogTool:
         color    : str  Code couleur ANSI à appliquer.
         """
         # Normalisation des fins de ligne ---------------------------------
-        message = message.replace("\r\n", "\n").replace("\n\r", "\n").replace("\r", "\n")
+        message = (
+            message.replace("\r\n", "\n")
+            .replace("\n\r", "\n")
+            .replace("\r", "\n")
+        )
         lines = [line for line in message.split("\n") if line.strip()]
 
         if not lines:
@@ -805,10 +867,13 @@ class LogTool:
         for line in lines:
             self._log(line.strip().ljust(max_len), color)
 
-
     def _split_and_log(self, tab_size: int, message: str, color: str) -> None:
-        message = message.replace("\r\n", "\n").replace("\n\r", "\n").replace("\r", "\n")
-        
+        message = (
+            message.replace("\r\n", "\n")
+            .replace("\n\r", "\n")
+            .replace("\r", "\n")
+        )
+
         # CAMBIO: Quitamos el .strip() de la lista para mantener la sangría
         lines = [line for line in message.split("\n") if line]
 
@@ -820,7 +885,8 @@ class LogTool:
         for line in lines:
             # CAMBIO: Quitamos el .strip() aquí también
             self._log(line.ljust(max_len), color)
-            
+
+
 # =============================================================================
 # POINT D'ENTRÉE : démonstration en ligne de commande
 # =============================================================================

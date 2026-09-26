@@ -33,7 +33,7 @@ def verifier_cuda() -> bool:
 
     if disponible:
         nom_gpu = torch.cuda.get_device_name(0)
-        vram_go = torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)
+        vram_go = torch.cuda.get_device_properties(0).total_memory / (1024**3)
         print(f"  GPU detecte...........: {nom_gpu:<20} [OK]")
         print(f"  VRAM totale...........: {vram_go:.1f} Go{'':<15} [OK]")
     return disponible
@@ -52,7 +52,9 @@ def verifier_trl() -> bool:
     # `assistant_only_loss` doit exister sur SFTConfig
     a_le_flag = "assistant_only_loss" in SFTConfig.__dataclass_fields__
     statut = "OK" if a_le_flag else "ECHEC"
-    print(f"  assistant_only_loss...: {'disponible' if a_le_flag else 'absent':<20} [{statut}]")
+    print(
+        f"  assistant_only_loss...: {'disponible' if a_le_flag else 'absent':<20} [{statut}]"
+    )
     return a_le_flag
 
 
@@ -63,7 +65,9 @@ def verifier_chat_template(nom_modele: str) -> bool:
         print("  transformers..........: MANQUANT              [ECHEC]")
         return False
 
-    tokenizer = AutoTokenizer.from_pretrained(nom_modele, trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(
+        nom_modele, trust_remote_code=True
+    )
 
     if tokenizer.chat_template is None:
         print(f"  Chat template ({nom_modele})...: absent [ECHEC]")
@@ -77,7 +81,9 @@ def verifier_chat_template(nom_modele: str) -> bool:
         ids = tokenizer.encode(token, add_special_tokens=False)
         fragmente = len(ids) > 1
         statut = "ECHEC" if fragmente else "OK"
-        print(f"  Token {token:<15}: {'fragmente' if fragmente else 'atomique':<15} [{statut}]")
+        print(
+            f"  Token {token:<15}: {'fragmente' if fragmente else 'atomique':<15} [{statut}]"
+        )
         tous_ok = tous_ok and not fragmente
 
     if tokenizer.eos_token is None:
@@ -148,7 +154,9 @@ def main() -> None:
     if all(resultats):
         print("Environnement GPU pret pour lancer SFTTrainer / DPOTrainer.")
     else:
-        print("Des elements sont manquants ou incorrects : voir le detail ci-dessus.")
+        print(
+            "Des elements sont manquants ou incorrects : voir le detail ci-dessus."
+        )
         sys.exit(1)
 
 

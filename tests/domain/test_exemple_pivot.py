@@ -16,7 +16,9 @@ def test_exemple_sft_complet_est_valide():
         langue=Langue.FRANCAIS,
         symptomes="fievre",
         prompt=(Message(role="user", contenu="J'ai de la fievre"),),
-        completion=(Message(role="assistant", contenu="Depuis combien de temps ?"),),
+        completion=(
+            Message(role="assistant", contenu="Depuis combien de temps ?"),
+        ),
     )
     assert exemple.est_complet_pour_sft()
     assert not exemple.est_complet_pour_dpo()

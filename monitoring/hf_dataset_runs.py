@@ -36,7 +36,9 @@ def lister_runs(repo_id: str) -> list[str]:
 def telecharger_texte_metriques(repo_id: str, nom_run: str) -> str:
     """Contenu brut (JSONL format LONG) de `<nom_run>/metriques.jsonl`."""
     chemin_local = hf_hub_download(
-        repo_id=repo_id, repo_type="dataset", filename=f"{nom_run}/{NOM_FICHIER_METRIQUES}"
+        repo_id=repo_id,
+        repo_type="dataset",
+        filename=f"{nom_run}/{NOM_FICHIER_METRIQUES}",
     )
     return Path(chemin_local).read_text(encoding="utf-8")
 
@@ -49,7 +51,9 @@ def telecharger_parametres(repo_id: str, nom_run: str) -> dict:
     """
     try:
         chemin_local = hf_hub_download(
-            repo_id=repo_id, repo_type="dataset", filename=f"{nom_run}/{NOM_FICHIER_PARAMETRES}"
+            repo_id=repo_id,
+            repo_type="dataset",
+            filename=f"{nom_run}/{NOM_FICHIER_PARAMETRES}",
         )
     except EntryNotFoundError:
         return {}

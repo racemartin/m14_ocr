@@ -20,11 +20,15 @@ from chsa_triage.domain.ports.profileur import RapportProfilage
 class YdataProfileur:
     """Adaptateur ydata-profiling implementant le port Profileur."""
 
-    def __init__(self, dossier_rapports: str | Path = "data/processed/rapports_profilage") -> None:
+    def __init__(
+        self, dossier_rapports: str | Path = "data/processed/rapports_profilage"
+    ) -> None:
         self._dossier_rapports = Path(dossier_rapports)
         self._dossier_rapports.mkdir(parents=True, exist_ok=True)
 
-    def profiler(self, enregistrements: Iterable[dict], nom_corpus: str) -> RapportProfilage:
+    def profiler(
+        self, enregistrements: Iterable[dict], nom_corpus: str
+    ) -> RapportProfilage:
         dataframe = pd.DataFrame(list(enregistrements))
 
         rapport = ProfileReport(
@@ -46,17 +50,15 @@ class YdataProfileur:
 
     @staticmethod
     def _taux_doublons(dataframe: pd.DataFrame) -> float:
-        """
-        dataframe.duplicated() leve TypeError("unhashable type: 'list'")
-        des qu'une colonne contient des valeurs non hachables, ex.
-        `chosen`/`rejected` d'UltraMedical-Preference, qui sont des
-        listes de messages (format chat), et `metadata`, un dict
-        (decouvert le 03/09/2026 sur le corpus reel). On stringifie
+        """`dataframe.duplicated()` leve `TypeError("unhashable type:
+        'list'")` des qu'une colonne contient des listes/dicts (ex.
+        `chosen`/`rejected` d'UltraMedical-Preference). On stringifie
         une copie juste pour cette detection ; le DataFrame original
-        transmis a ProfileReport n'est jamais modifie.
-        """
+        transmis a ProfileReport n'est jamais modifie."""
         dataframe_hachable = dataframe.map(
-            lambda valeur: str(valeur) if isinstance(valeur, (list, dict)) else valeur
+            lambda valeur: (
+                str(valeur) if isinstance(valeur, (list, dict)) else valeur
+            )
         )
         return dataframe_hachable.duplicated().mean()
 

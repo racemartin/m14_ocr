@@ -63,11 +63,17 @@ INTERVALLE_SONDAGE_SANTE_SECONDES = 5
 
 
 def _construire_client(url_base: str, cle_api: str) -> httpx.Client:
-    return httpx.Client(base_url=url_base, headers={"X-API-Key": cle_api}, timeout=30.0)
+    return httpx.Client(
+        base_url=url_base, headers={"X-API-Key": cle_api}, timeout=30.0
+    )
 
 
 def main() -> None:
-    st.set_page_config(page_title="CHSA Triage - Test entretien", page_icon="🩺", layout="centered")
+    st.set_page_config(
+        page_title="CHSA Triage - Test entretien",
+        page_icon="🩺",
+        layout="centered",
+    )
     st.title("Entretien clinique de test (CHSA Triage)")
 
     url_base = os.environ.get("CHSA_API_URL_BASE", URL_API_PAR_DEFAUT)
@@ -83,7 +89,9 @@ def main() -> None:
 
     sante = interroger_sante(client)
     if not sante.get("disponible"):
-        st.info(f"⏳ En attente du modele... ({sante.get('detail', 'statut inconnu')})")
+        st.info(
+            f"⏳ En attente du modele... ({sante.get('detail', 'statut inconnu')})"
+        )
         st.caption(f"API interrogee : {url_base}/sante")
         time.sleep(INTERVALLE_SONDAGE_SANTE_SECONDES)
         st.rerun()
@@ -106,12 +114,18 @@ def main() -> None:
     message = st.chat_input("Decrivez les symptomes du patient...")
     if message:
         st.session_state.historique.append({"role": "user", "contenu": message})
-        message_assistant = poursuivre_conversation(client, st.session_state.conversation_id, message)
-        st.session_state.historique.append({"role": "assistant", "contenu": message_assistant})
+        message_assistant = poursuivre_conversation(
+            client, st.session_state.conversation_id, message
+        )
+        st.session_state.historique.append(
+            {"role": "assistant", "contenu": message_assistant}
+        )
         st.rerun()
 
     if st.session_state.historique and st.button("Obtenir le diagnostic"):
-        diagnostic = obtenir_diagnostic(client, st.session_state.conversation_id)
+        diagnostic = obtenir_diagnostic(
+            client, st.session_state.conversation_id
+        )
         if diagnostic.get("format_respecte"):
             st.success(
                 f"Niveau ESI {diagnostic['niveau']} : {diagnostic['categorie']} "
@@ -119,7 +133,9 @@ def main() -> None:
             )
             st.caption(diagnostic.get("raisonnement") or "")
         else:
-            st.warning("Format de diagnostic non respecte par le modele ; reponse brute :")
+            st.warning(
+                "Format de diagnostic non respecte par le modele ; reponse brute :"
+            )
             st.write(diagnostic.get("texte_brut", ""))
 
 

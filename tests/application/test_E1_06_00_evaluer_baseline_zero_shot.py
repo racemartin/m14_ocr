@@ -16,7 +16,13 @@ from chsa_triage.application.use_cases import (
 from chsa_triage.application.use_cases.E1_06_00_evaluer_baseline_zero_shot import (
     TAILLE_MAX_ECHANTILLON_GENERATIONS,
 )
-from chsa_triage.domain.model import ExemplePivot, Langue, Message, TypeExemple, TypeSplit
+from chsa_triage.domain.model import (
+    ExemplePivot,
+    Langue,
+    Message,
+    TypeExemple,
+    TypeSplit,
+)
 from chsa_triage.domain.ports.moteur_inference import ReponseModele
 
 
@@ -24,7 +30,9 @@ class FauxRepository:
     """Faux adaptateur RepositoryLectureEcriture, en memoire."""
 
     def __init__(self, items: list[ExemplePivot]) -> None:
-        self.items: dict[str, ExemplePivot] = {item.identifiant: item for item in items}
+        self.items: dict[str, ExemplePivot] = {
+            item.identifiant: item for item in items
+        }
 
     def sauvegarder(self, item: ExemplePivot) -> None:
         self.items[item.identifiant] = item
@@ -38,7 +46,10 @@ class FauxRepository:
 
     def lister(self, filtre: dict | None = None):
         for exemple in self.items.values():
-            if filtre is None or all(getattr(exemple, cle) == valeur for cle, valeur in filtre.items()):
+            if filtre is None or all(
+                getattr(exemple, cle) == valeur
+                for cle, valeur in filtre.items()
+            ):
                 yield exemple
 
     def compter(self, filtre: dict | None = None) -> int:
@@ -73,16 +84,27 @@ class FauxSuivi:
 class FauxMoteurInference:
     """Retourne une reponse pre-configuree par identifiant d'invite (ou une valeur par defaut)."""
 
-    def __init__(self, reponses_par_invite: dict[str, str] | None = None, reponse_defaut: str = "") -> None:
+    def __init__(
+        self,
+        reponses_par_invite: dict[str, str] | None = None,
+        reponse_defaut: str = "",
+    ) -> None:
         self._reponses_par_invite = reponses_par_invite or {}
         self._reponse_defaut = reponse_defaut
         self.appels: list[tuple[list[dict], dict]] = []
 
-    def generer(self, messages: list[dict], parametres: dict | None = None) -> ReponseModele:
+    def generer(
+        self, messages: list[dict], parametres: dict | None = None
+    ) -> ReponseModele:
         self.appels.append((messages, parametres or {}))
         invite = messages[0]["content"]
         texte = self._reponses_par_invite.get(invite, self._reponse_defaut)
-        return ReponseModele(texte=texte, nombre_tokens_entree=10, nombre_tokens_sortie=5, latence_ms=42.0)
+        return ReponseModele(
+            texte=texte,
+            nombre_tokens_entree=10,
+            nombre_tokens_sortie=5,
+            latence_ms=42.0,
+        )
 
 
 class FauxMoteurInferenceAvecEchecs:
@@ -92,24 +114,37 @@ class FauxMoteurInferenceAvecEchecs:
     generation rejetee par le serveur d'inference reel (500).
     """
 
-    def __init__(self, indices_en_echec: set[int], reponse_defaut: str = "R.") -> None:
+    def __init__(
+        self, indices_en_echec: set[int], reponse_defaut: str = "R."
+    ) -> None:
         self._indices_en_echec = indices_en_echec
         self._reponse_defaut = reponse_defaut
         self.appels: list[tuple[list[dict], dict]] = []
 
-    def generer(self, messages: list[dict], parametres: dict | None = None) -> ReponseModele:
+    def generer(
+        self, messages: list[dict], parametres: dict | None = None
+    ) -> ReponseModele:
         indice_appel = len(self.appels)
         self.appels.append((messages, parametres or {}))
         if indice_appel in self._indices_en_echec:
-            raise RuntimeError("500 Internal Server Error: generation corrompue")
+            raise RuntimeError(
+                "500 Internal Server Error: generation corrompue"
+            )
         return ReponseModele(
-            texte=self._reponse_defaut, nombre_tokens_entree=10, nombre_tokens_sortie=5, latence_ms=42.0
+            texte=self._reponse_defaut,
+            nombre_tokens_entree=10,
+            nombre_tokens_sortie=5,
+            latence_ms=42.0,
         )
 
 
-def _exemple_sft_test(identifiant_suffixe: str, question: str, reponse: str) -> ExemplePivot:
+def _exemple_sft_test(
+    identifiant_suffixe: str, question: str, reponse: str
+) -> ExemplePivot:
     exemple = ExemplePivot(
-        identifiant=ExemplePivot.nouvel_identifiant("test", identifiant_suffixe),
+        identifiant=ExemplePivot.nouvel_identifiant(
+            "test", identifiant_suffixe
+        ),
         source="Test",
         type_exemple=TypeExemple.SFT,
         langue=Langue.FRANCAIS,
@@ -125,18 +160,25 @@ def test_executer_leve_si_aucun_exemple_test_sft():
     repository = FauxRepository([])
     suivi = FauxSuivi()
     cas_usage = EvaluerBaselineZeroShotUseCase(
-        repository=repository, formateur=FauxFormateur(), moteur=FauxMoteurInference(), suivi=suivi
+        repository=repository,
+        formateur=FauxFormateur(),
+        moteur=FauxMoteurInference(),
+        suivi=suivi,
     )
     with pytest.raises(ValueError):
         cas_usage.executer()
 
-    assert suivi.runs_demarres == []  # jamais demarre : rien a evaluer, rien a logger
+    assert (
+        suivi.runs_demarres == []
+    )  # jamais demarre : rien a evaluer, rien a logger
 
 
 def test_executer_ignore_les_exemples_hors_split_test_ou_hors_sft():
     from dataclasses import replace
 
-    exemple_train = replace(_exemple_sft_test("a", "Q1 ?", "R1."), split=TypeSplit.TRAIN)
+    exemple_train = replace(
+        _exemple_sft_test("a", "Q1 ?", "R1."), split=TypeSplit.TRAIN
+    )
     exemple_dpo_test = ExemplePivot(
         identifiant=ExemplePivot.nouvel_identifiant("test", "b"),
         source="Test",
@@ -146,13 +188,20 @@ def test_executer_ignore_les_exemples_hors_split_test_ou_hors_sft():
         chosen=(Message(role="assistant", contenu="bonne"),),
         rejected=(Message(role="assistant", contenu="mauvaise"),),
     )
-    exemple_dpo_test = replace(exemple_dpo_test, anonymise=True, split=TypeSplit.TEST_CLINIQUE)
+    exemple_dpo_test = replace(
+        exemple_dpo_test, anonymise=True, split=TypeSplit.TEST_CLINIQUE
+    )
     exemple_valide = _exemple_sft_test("c", "Q3 ?", "R3.")
 
-    repository = FauxRepository([exemple_train, exemple_dpo_test, exemple_valide])
+    repository = FauxRepository(
+        [exemple_train, exemple_dpo_test, exemple_valide]
+    )
     moteur = FauxMoteurInference(reponse_defaut="R3.")
     cas_usage = EvaluerBaselineZeroShotUseCase(
-        repository=repository, formateur=FauxFormateur(), moteur=moteur, suivi=FauxSuivi()
+        repository=repository,
+        formateur=FauxFormateur(),
+        moteur=moteur,
+        suivi=FauxSuivi(),
     )
 
     resultat = cas_usage.executer()
@@ -162,12 +211,17 @@ def test_executer_ignore_les_exemples_hors_split_test_ou_hors_sft():
 
 
 def test_executer_calcule_exact_match_1_quand_generation_egale_reference():
-    exemple = _exemple_sft_test("a", "Quel est le niveau ESI ?", "Niveau 2, a surveiller.")
+    exemple = _exemple_sft_test(
+        "a", "Quel est le niveau ESI ?", "Niveau 2, a surveiller."
+    )
     repository = FauxRepository([exemple])
     moteur = FauxMoteurInference(reponse_defaut="Niveau 2, a surveiller.")
 
     cas_usage = EvaluerBaselineZeroShotUseCase(
-        repository=repository, formateur=FauxFormateur(), moteur=moteur, suivi=FauxSuivi()
+        repository=repository,
+        formateur=FauxFormateur(),
+        moteur=moteur,
+        suivi=FauxSuivi(),
     )
     resultat = cas_usage.executer()
 
@@ -182,17 +236,26 @@ def test_executer_exact_match_0_quand_generation_incorrecte_zero_shot():
     Cas realiste d'une baseline zero-shot (modele non entraine) :
     generation totalement hors-sujet par rapport a la reference.
     """
-    exemple = _exemple_sft_test("a", "Quel est le niveau ESI ?", "Niveau 2, a surveiller.")
+    exemple = _exemple_sft_test(
+        "a", "Quel est le niveau ESI ?", "Niveau 2, a surveiller."
+    )
     repository = FauxRepository([exemple])
-    moteur = FauxMoteurInference(reponse_defaut="Je ne sais pas repondre a cette question.")
+    moteur = FauxMoteurInference(
+        reponse_defaut="Je ne sais pas repondre a cette question."
+    )
 
     cas_usage = EvaluerBaselineZeroShotUseCase(
-        repository=repository, formateur=FauxFormateur(), moteur=moteur, suivi=FauxSuivi()
+        repository=repository,
+        formateur=FauxFormateur(),
+        moteur=moteur,
+        suivi=FauxSuivi(),
     )
     resultat = cas_usage.executer()
 
     assert resultat.exact_match == 0.0
-    assert resultat.exactitude_niveau.exactitude is None  # aucun JSON dans ni l'un ni l'autre texte
+    assert (
+        resultat.exactitude_niveau.exactitude is None
+    )  # aucun JSON dans ni l'un ni l'autre texte
 
 
 def test_executer_passe_invite_deja_rendue_true_au_moteur():
@@ -202,7 +265,10 @@ def test_executer_passe_invite_deja_rendue_true_au_moteur():
     moteur = FauxMoteurInference(reponse_defaut="R.")
 
     cas_usage = EvaluerBaselineZeroShotUseCase(
-        repository=repository, formateur=FauxFormateur(), moteur=moteur, suivi=FauxSuivi()
+        repository=repository,
+        formateur=FauxFormateur(),
+        moteur=moteur,
+        suivi=FauxSuivi(),
     )
     cas_usage.executer()
 
@@ -236,13 +302,18 @@ def test_executer_relaie_les_metriques_agregees_vers_suivi_experimentation():
     logger_metrique par metrique agregee puis terminer_run, jamais un
     nouveau systeme de tracking.
     """
-    exemple = _exemple_sft_test("a", "Quel est le niveau ESI ?", "Niveau 2, a surveiller.")
+    exemple = _exemple_sft_test(
+        "a", "Quel est le niveau ESI ?", "Niveau 2, a surveiller."
+    )
     repository = FauxRepository([exemple])
     moteur = FauxMoteurInference(reponse_defaut="Niveau 2, a surveiller.")
     suivi = FauxSuivi()
 
     cas_usage = EvaluerBaselineZeroShotUseCase(
-        repository=repository, formateur=FauxFormateur(), moteur=moteur, suivi=suivi
+        repository=repository,
+        formateur=FauxFormateur(),
+        moteur=moteur,
+        suivi=suivi,
     )
     cas_usage.executer()
 
@@ -273,19 +344,28 @@ def test_executer_un_echec_isole_du_moteur_n_abandonne_pas_le_run():
         _exemple_sft_test("c", "Q3 ?", "R."),
     ]
     repository = FauxRepository(exemples)
-    moteur = FauxMoteurInferenceAvecEchecs(indices_en_echec={1}, reponse_defaut="R.")
+    moteur = FauxMoteurInferenceAvecEchecs(
+        indices_en_echec={1}, reponse_defaut="R."
+    )
     suivi = FauxSuivi()
 
     cas_usage = EvaluerBaselineZeroShotUseCase(
-        repository=repository, formateur=FauxFormateur(), moteur=moteur, suivi=suivi
+        repository=repository,
+        formateur=FauxFormateur(),
+        moteur=moteur,
+        suivi=suivi,
     )
     resultat = cas_usage.executer()
 
     assert len(moteur.appels) == 3  # les 3 exemples ont ete tentes
     assert resultat.nombre_exemples == 3
     assert resultat.nombre_echecs_inference == 1
-    assert resultat.exact_match == 1.0  # calcule seulement sur les 2 paires reussies
-    assert suivi.nombre_fins == 1  # le run se termine normalement malgre l'echec isole
+    assert (
+        resultat.exact_match == 1.0
+    )  # calcule seulement sur les 2 paires reussies
+    assert (
+        suivi.nombre_fins == 1
+    )  # le run se termine normalement malgre l'echec isole
 
     metriques = dict((nom, valeur) for nom, valeur, _ in suivi.metriques)
     assert metriques["nombre_echecs_inference"] == 1
@@ -302,11 +382,16 @@ def test_executer_capture_un_echantillon_de_generations_pour_diagnostic():
     moteur = FauxMoteurInference(reponse_defaut="Texte genere.")
 
     cas_usage = EvaluerBaselineZeroShotUseCase(
-        repository=repository, formateur=FauxFormateur(), moteur=moteur, suivi=FauxSuivi()
+        repository=repository,
+        formateur=FauxFormateur(),
+        moteur=moteur,
+        suivi=FauxSuivi(),
     )
     cas_usage.executer()
 
-    assert cas_usage.echantillon_generations == [("Texte genere.", "Reference attendue.")]
+    assert cas_usage.echantillon_generations == [
+        ("Texte genere.", "Reference attendue.")
+    ]
 
 
 def test_executer_plafonne_l_echantillon_de_generations():
@@ -318,12 +403,18 @@ def test_executer_plafonne_l_echantillon_de_generations():
     moteur = FauxMoteurInference(reponse_defaut="Texte genere.")
 
     cas_usage = EvaluerBaselineZeroShotUseCase(
-        repository=repository, formateur=FauxFormateur(), moteur=moteur, suivi=FauxSuivi()
+        repository=repository,
+        formateur=FauxFormateur(),
+        moteur=moteur,
+        suivi=FauxSuivi(),
     )
     resultat = cas_usage.executer()
 
     assert resultat.nombre_exemples == TAILLE_MAX_ECHANTILLON_GENERATIONS + 5
-    assert len(cas_usage.echantillon_generations) == TAILLE_MAX_ECHANTILLON_GENERATIONS
+    assert (
+        len(cas_usage.echantillon_generations)
+        == TAILLE_MAX_ECHANTILLON_GENERATIONS
+    )
 
 
 def test_executer_leve_si_tous_les_exemples_echouent_a_l_inference():
@@ -336,7 +427,10 @@ def test_executer_leve_si_tous_les_exemples_echouent_a_l_inference():
     moteur = FauxMoteurInferenceAvecEchecs(indices_en_echec={0, 1})
 
     cas_usage = EvaluerBaselineZeroShotUseCase(
-        repository=repository, formateur=FauxFormateur(), moteur=moteur, suivi=FauxSuivi()
+        repository=repository,
+        formateur=FauxFormateur(),
+        moteur=moteur,
+        suivi=FauxSuivi(),
     )
 
     with pytest.raises(ValueError):

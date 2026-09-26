@@ -8,10 +8,18 @@ from __future__ import annotations
 
 import json
 
-from chsa_triage.application.validation_diagnostic import parser_diagnostic_strict
+from chsa_triage.application.validation_diagnostic import (
+    parser_diagnostic_strict,
+)
 from chsa_triage.domain.model.diagnostic_clinique import DiagnosticClinique
 
-JSON_VALIDE = json.dumps({"niveau": 2, "categorie": "cardio-vasculaire", "ressources_estimees": "ECG, troponine"})
+JSON_VALIDE = json.dumps(
+    {
+        "niveau": 2,
+        "categorie": "cardio-vasculaire",
+        "ressources_estimees": "ECG, troponine",
+    }
+)
 TEXTE_VALIDE = f"<think>Douleur thoracique aigue, risque cardiaque eleve.</think>{JSON_VALIDE}"
 
 
@@ -45,7 +53,12 @@ def test_cle_manquante_retourne_none():
 
 def test_cle_en_trop_retourne_none():
     json_en_trop = json.dumps(
-        {"niveau": 2, "categorie": "cardio-vasculaire", "ressources_estimees": "ECG", "extra": "non attendu"}
+        {
+            "niveau": 2,
+            "categorie": "cardio-vasculaire",
+            "ressources_estimees": "ECG",
+            "extra": "non attendu",
+        }
     )
     texte = f"<think>raisonnement</think>{json_en_trop}"
 
@@ -74,7 +87,11 @@ def test_texte_vide_retourne_none():
 
 def test_niveau_non_entier_retourne_none():
     json_niveau_texte = json.dumps(
-        {"niveau": "deux", "categorie": "cardio-vasculaire", "ressources_estimees": "ECG"}
+        {
+            "niveau": "deux",
+            "categorie": "cardio-vasculaire",
+            "ressources_estimees": "ECG",
+        }
     )
     texte = f"<think>raisonnement</think>{json_niveau_texte}"
 
@@ -84,7 +101,11 @@ def test_niveau_non_entier_retourne_none():
 def test_niveau_booleen_retourne_none():
     """bool est une sous-classe d'int en Python : rejete explicitement."""
     json_niveau_bool = json.dumps(
-        {"niveau": True, "categorie": "cardio-vasculaire", "ressources_estimees": "ECG"}
+        {
+            "niveau": True,
+            "categorie": "cardio-vasculaire",
+            "ressources_estimees": "ECG",
+        }
     )
     texte = f"<think>raisonnement</think>{json_niveau_bool}"
 
@@ -92,7 +113,9 @@ def test_niveau_booleen_retourne_none():
 
 
 def test_categorie_non_chaine_retourne_none():
-    json_categorie_int = json.dumps({"niveau": 2, "categorie": 42, "ressources_estimees": "ECG"})
+    json_categorie_int = json.dumps(
+        {"niveau": 2, "categorie": 42, "ressources_estimees": "ECG"}
+    )
     texte = f"<think>raisonnement</think>{json_categorie_int}"
 
     assert parser_diagnostic_strict(texte) is None

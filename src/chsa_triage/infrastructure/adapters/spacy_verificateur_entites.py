@@ -47,14 +47,22 @@ class SpacyVerificateurEntitesNommees:
 
     def __init__(self) -> None:
         self._modeles: dict[str, spacy.language.Language] = {}
-        self._cache_docs: OrderedDict[tuple[str, str], spacy.tokens.Doc] = OrderedDict()
+        self._cache_docs: OrderedDict[tuple[str, str], spacy.tokens.Doc] = (
+            OrderedDict()
+        )
 
-    def verifier(self, texte: str, langue: str, debut: int, fin: int) -> VerdictEntiteNommee:
+    def verifier(
+        self, texte: str, langue: str, debut: int, fin: int
+    ) -> VerdictEntiteNommee:
         code_langue = langue if langue in _MODELES_SPACY else "en"
         doc = self._doc_analyse(texte, code_langue)
         labels_pertinents = _LABELS_PERTINENTS[code_langue]
 
-        chevauchements = [ent for ent in doc.ents if ent.start_char < fin and ent.end_char > debut]
+        chevauchements = [
+            ent
+            for ent in doc.ents
+            if ent.start_char < fin and ent.end_char > debut
+        ]
         if not chevauchements:
             return VerdictEntiteNommee.AUCUNE_ENTITE
         if any(ent.label_ in labels_pertinents for ent in chevauchements):

@@ -24,7 +24,12 @@ from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.util import Inches, Pt
 
-CHEMIN_SORTIE = Path(__file__).resolve().parent.parent / "docs" / "03_etape2_sft" / "04_presentation_synthese_sft_lora.pptx"
+CHEMIN_SORTIE = (
+    Path(__file__).resolve().parent.parent
+    / "docs"
+    / "03_etape2_sft"
+    / "04_presentation_synthese_sft_lora.pptx"
+)
 
 COULEUR_TITRE = RGBColor(0x1F, 0x3A, 0x5F)
 COULEUR_ACCENT = RGBColor(0x2E, 0x7D, 0x32)
@@ -39,14 +44,20 @@ def ajouter_diapositive_vide(prs: Presentation):
     return prs.slides.add_slide(prs.slide_layouts[6])
 
 
-def ajouter_bandeau_titre(diapo, titre: str, sous_titre: str | None = None) -> None:
-    bandeau = diapo.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, LARGEUR, Inches(1.15))
+def ajouter_bandeau_titre(
+    diapo, titre: str, sous_titre: str | None = None
+) -> None:
+    bandeau = diapo.shapes.add_shape(
+        MSO_SHAPE.RECTANGLE, 0, 0, LARGEUR, Inches(1.15)
+    )
     bandeau.fill.solid()
     bandeau.fill.fore_color.rgb = COULEUR_FOND_ENTETE
     bandeau.line.fill.background()
     bandeau.shadow.inherit = False
 
-    zone = diapo.shapes.add_textbox(Inches(0.5), Inches(0.15), LARGEUR - Inches(1.0), Inches(0.9))
+    zone = diapo.shapes.add_textbox(
+        Inches(0.5), Inches(0.15), LARGEUR - Inches(1.0), Inches(0.9)
+    )
     cadre = zone.text_frame
     cadre.word_wrap = True
     p = cadre.paragraphs[0]
@@ -62,8 +73,19 @@ def ajouter_bandeau_titre(diapo, titre: str, sous_titre: str | None = None) -> N
         p2.font.color.rgb = COULEUR_TEXTE
 
 
-def ajouter_liste(diapo, puces: list[str], top: float = 1.5, taille_police: int = 18, gras_premier_mot: bool = False) -> None:
-    zone = diapo.shapes.add_textbox(Inches(0.7), Inches(top), LARGEUR - Inches(1.4), HAUTEUR - Inches(top) - Inches(0.4))
+def ajouter_liste(
+    diapo,
+    puces: list[str],
+    top: float = 1.5,
+    taille_police: int = 18,
+    gras_premier_mot: bool = False,
+) -> None:
+    zone = diapo.shapes.add_textbox(
+        Inches(0.7),
+        Inches(top),
+        LARGEUR - Inches(1.4),
+        HAUTEUR - Inches(top) - Inches(0.4),
+    )
     cadre = zone.text_frame
     cadre.word_wrap = True
     for i, puce in enumerate(puces):
@@ -74,8 +96,17 @@ def ajouter_liste(diapo, puces: list[str], top: float = 1.5, taille_police: int 
         p.space_after = Pt(12)
 
 
-def ajouter_chiffre_cle(diapo, chiffre: str, legende: str, left: float, top: float, largeur: float = 3.6) -> None:
-    zone = diapo.shapes.add_textbox(Inches(left), Inches(top), Inches(largeur), Inches(1.8))
+def ajouter_chiffre_cle(
+    diapo,
+    chiffre: str,
+    legende: str,
+    left: float,
+    top: float,
+    largeur: float = 3.6,
+) -> None:
+    zone = diapo.shapes.add_textbox(
+        Inches(left), Inches(top), Inches(largeur), Inches(1.8)
+    )
     cadre = zone.text_frame
     cadre.word_wrap = True
     p1 = cadre.paragraphs[0]
@@ -91,13 +122,24 @@ def ajouter_chiffre_cle(diapo, chiffre: str, legende: str, left: float, top: flo
     p2.alignment = PP_ALIGN.CENTER
 
 
-def ajouter_tableau(diapo, entetes: list[str], lignes: list[list[str]], top: float = 1.6, largeur_colonnes: list[float] | None = None) -> None:
+def ajouter_tableau(
+    diapo,
+    entetes: list[str],
+    lignes: list[list[str]],
+    top: float = 1.6,
+    largeur_colonnes: list[float] | None = None,
+) -> None:
     nb_lignes = len(lignes) + 1
     nb_colonnes = len(entetes)
     largeur_tableau = Inches(11.5)
     hauteur_tableau = Inches(0.5 * nb_lignes)
     graphique = diapo.shapes.add_table(
-        nb_lignes, nb_colonnes, Inches(0.9), Inches(top), largeur_tableau, hauteur_tableau
+        nb_lignes,
+        nb_colonnes,
+        Inches(0.9),
+        Inches(top),
+        largeur_tableau,
+        hauteur_tableau,
     )
     table = graphique.table
 
@@ -128,7 +170,9 @@ def ajouter_tableau(diapo, entetes: list[str], lignes: list[list[str]], top: flo
 
 
 def ajouter_pied_de_page(diapo, texte: str) -> None:
-    zone = diapo.shapes.add_textbox(Inches(0.5), HAUTEUR - Inches(0.4), LARGEUR - Inches(1.0), Inches(0.3))
+    zone = diapo.shapes.add_textbox(
+        Inches(0.5), HAUTEUR - Inches(0.4), LARGEUR - Inches(1.0), Inches(0.3)
+    )
     p = zone.text_frame.paragraphs[0]
     p.text = texte
     p.font.size = Pt(10)
@@ -142,7 +186,9 @@ def construire_presentation() -> Presentation:
 
     # 1. Page de titre
     diapo = ajouter_diapositive_vide(prs)
-    zone = diapo.shapes.add_textbox(Inches(0.8), Inches(2.5), LARGEUR - Inches(1.6), Inches(2.0))
+    zone = diapo.shapes.add_textbox(
+        Inches(0.8), Inches(2.5), LARGEUR - Inches(1.6), Inches(2.0)
+    )
     cadre = zone.text_frame
     cadre.word_wrap = True
     p1 = cadre.paragraphs[0]
@@ -178,10 +224,24 @@ def construire_presentation() -> Presentation:
 
     # 3. Baseline CPU
     diapo = ajouter_diapositive_vide(prs)
-    ajouter_bandeau_titre(diapo, "Baseline CPU", "llama.cpp / GGUF Q4_K_M - Qwen/Qwen3-1.7B-Base quantifie")
-    ajouter_chiffre_cle(diapo, "0.037", "F1 token (278 exemples, split test)", 0.8, 1.9)
-    ajouter_chiffre_cle(diapo, "~21.6 s", "Latence moyenne / generation", 4.9, 1.9)
-    ajouter_chiffre_cle(diapo, "36 / 278", "Echecs d'inference isoles\n(reessais automatiques, run non interrompu)", 9.0, 1.9)
+    ajouter_bandeau_titre(
+        diapo,
+        "Baseline CPU",
+        "llama.cpp / GGUF Q4_K_M - Qwen/Qwen3-1.7B-Base quantifie",
+    )
+    ajouter_chiffre_cle(
+        diapo, "0.037", "F1 token (278 exemples, split test)", 0.8, 1.9
+    )
+    ajouter_chiffre_cle(
+        diapo, "~21.6 s", "Latence moyenne / generation", 4.9, 1.9
+    )
+    ajouter_chiffre_cle(
+        diapo,
+        "36 / 278",
+        "Echecs d'inference isoles\n(reessais automatiques, run non interrompu)",
+        9.0,
+        1.9,
+    )
     ajouter_liste(
         diapo,
         ["Exact match : 0.000 (attendu, cf. diapositive Limitations)."],
@@ -191,9 +251,17 @@ def construire_presentation() -> Presentation:
 
     # 4. Baseline GPU
     diapo = ajouter_diapositive_vide(prs)
-    ajouter_bandeau_titre(diapo, "Baseline GPU", "transformers / bf16 - meme modele, SANS quantification")
-    ajouter_chiffre_cle(diapo, "0.043", "F1 token (memes 278 exemples)", 0.8, 1.9)
-    ajouter_chiffre_cle(diapo, "~7.3 s", "Latence moyenne / generation", 4.9, 1.9)
+    ajouter_bandeau_titre(
+        diapo,
+        "Baseline GPU",
+        "transformers / bf16 - meme modele, SANS quantification",
+    )
+    ajouter_chiffre_cle(
+        diapo, "0.043", "F1 token (memes 278 exemples)", 0.8, 1.9
+    )
+    ajouter_chiffre_cle(
+        diapo, "~7.3 s", "Latence moyenne / generation", 4.9, 1.9
+    )
     ajouter_chiffre_cle(diapo, "0 / 278", "Echecs d'inference", 9.0, 1.9)
     ajouter_liste(
         diapo,
@@ -208,7 +276,9 @@ def construire_presentation() -> Presentation:
 
     # 5. Entrainement SFT-LoRA
     diapo = ajouter_diapositive_vide(prs)
-    ajouter_bandeau_titre(diapo, "Entrainement SFT-LoRA reel", "GPU L4 (HF Jobs)")
+    ajouter_bandeau_titre(
+        diapo, "Entrainement SFT-LoRA reel", "GPU L4 (HF Jobs)"
+    )
     ajouter_liste(
         diapo,
         [
@@ -224,15 +294,30 @@ def construire_presentation() -> Presentation:
 
     # 6. Evaluation post-SFT
     diapo = ajouter_diapositive_vide(prs)
-    ajouter_bandeau_titre(diapo, "Evaluation post-SFT", "Meme modele entraine, memes 278 exemples, memes metriques")
+    ajouter_bandeau_titre(
+        diapo,
+        "Evaluation post-SFT",
+        "Meme modele entraine, memes 278 exemples, memes metriques",
+    )
     ajouter_chiffre_cle(diapo, "0.112", "F1 token", 0.8, 1.9)
-    ajouter_chiffre_cle(diapo, "~11.6 s", "Latence moyenne / generation", 4.9, 1.9)
+    ajouter_chiffre_cle(
+        diapo, "~11.6 s", "Latence moyenne / generation", 4.9, 1.9
+    )
     ajouter_chiffre_cle(diapo, "0 / 278", "Echecs d'inference", 9.0, 1.9)
-    ajouter_liste(diapo, ["Exact match : 0.000 (idem les deux baselines)."], top=4.3, taille_police=16)
+    ajouter_liste(
+        diapo,
+        ["Exact match : 0.000 (idem les deux baselines)."],
+        top=4.3,
+        taille_police=16,
+    )
 
     # 7. Tableau comparatif
     diapo = ajouter_diapositive_vide(prs)
-    ajouter_bandeau_titre(diapo, "Comparaison des trois runs", "Memes 278 exemples, memes metriques")
+    ajouter_bandeau_titre(
+        diapo,
+        "Comparaison des trois runs",
+        "Memes 278 exemples, memes metriques",
+    )
     ajouter_tableau(
         diapo,
         entetes=["", "Exact match", "F1 (token)", "Latence moyenne"],
@@ -252,7 +337,12 @@ def construire_presentation() -> Presentation:
     donnees.categories = ["Baseline CPU", "Baseline GPU", "Post-SFT"]
     donnees.add_series("F1 token", (0.037, 0.043, 0.112))
     diapo.shapes.add_chart(
-        XL_CHART_TYPE.COLUMN_CLUSTERED, Inches(2.0), Inches(1.7), Inches(9.3), Inches(5.0), donnees
+        XL_CHART_TYPE.COLUMN_CLUSTERED,
+        Inches(2.0),
+        Inches(1.7),
+        Inches(9.3),
+        Inches(5.0),
+        donnees,
     )
 
     # 8. Conclusion principale
@@ -309,7 +399,9 @@ def construire_presentation() -> Presentation:
 
     # 11. Merci
     diapo = ajouter_diapositive_vide(prs)
-    zone = diapo.shapes.add_textbox(Inches(0.8), Inches(3.0), LARGEUR - Inches(1.6), Inches(1.5))
+    zone = diapo.shapes.add_textbox(
+        Inches(0.8), Inches(3.0), LARGEUR - Inches(1.6), Inches(1.5)
+    )
     p = zone.text_frame.paragraphs[0]
     p.text = "Merci - Questions"
     p.font.size = Pt(36)
@@ -323,7 +415,9 @@ def main() -> None:
     prs = construire_presentation()
     CHEMIN_SORTIE.parent.mkdir(parents=True, exist_ok=True)
     prs.save(str(CHEMIN_SORTIE))
-    print(f"Presentation ecrite : {CHEMIN_SORTIE} ({len(prs.slides)} diapositives)")
+    print(
+        f"Presentation ecrite : {CHEMIN_SORTIE} ({len(prs.slides)} diapositives)"
+    )
 
 
 if __name__ == "__main__":

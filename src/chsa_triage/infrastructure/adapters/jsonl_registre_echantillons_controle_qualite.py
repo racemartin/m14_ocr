@@ -42,12 +42,18 @@ class JsonlRegistreEchantillonsControleQualite:
                     identifiants.add(enregistrement["identifiant"])
         return identifiants
 
-    def marquer_vus(self, stratum: str, identifiants: Iterable[str], horodatage: str) -> None:
+    def marquer_vus(
+        self, stratum: str, identifiants: Iterable[str], horodatage: str
+    ) -> None:
         with self._chemin.open("a", encoding="utf-8") as f:
             for identifiant in identifiants:
                 f.write(
                     json.dumps(
-                        {"identifiant": identifiant, "stratum": stratum, "horodatage": horodatage},
+                        {
+                            "identifiant": identifiant,
+                            "stratum": stratum,
+                            "horodatage": horodatage,
+                        },
                         ensure_ascii=False,
                     )
                     + "\n"

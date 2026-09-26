@@ -15,7 +15,10 @@ def _chosen_reformule(identifiant: str = "a") -> ChosenReformule:
     return ChosenReformule(
         identifiant=identifiant,
         chosen_reformule=(
-            Message(role="assistant", contenu='<think>raisonnement</think>{"niveau": 3}'),
+            Message(
+                role="assistant",
+                contenu='<think>raisonnement</think>{"niveau": 3}',
+            ),
         ),
         horodatage="2026-09-19T00:00:00+00:00",
     )

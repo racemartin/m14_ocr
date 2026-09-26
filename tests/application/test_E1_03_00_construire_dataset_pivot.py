@@ -52,25 +52,35 @@ def _mapper_test(enregistrement: dict) -> ExemplePivot | None:
     if "question" not in enregistrement:
         return None
     return ExemplePivot(
-        identifiant=ExemplePivot.nouvel_identifiant("test", enregistrement["question"]),
+        identifiant=ExemplePivot.nouvel_identifiant(
+            "test", enregistrement["question"]
+        ),
         identifiant_source_brute=enregistrement["question"],
         source="test",
         type_exemple=TypeExemple.SFT,
         langue=Langue.FRANCAIS,
         prompt=(Message(role="user", contenu=enregistrement["question"]),),
-        completion=(Message(role="assistant", contenu=enregistrement.get("reponse", "")),),
+        completion=(
+            Message(
+                role="assistant", contenu=enregistrement.get("reponse", "")
+            ),
+        ),
     )
 
 
 def test_construire_dataset_pivot_ignore_enregistrements_invalides():
-    lecteur = FauxLecteurCorpus([
-        {"question": "Q1", "reponse": "R1"},
-        {"champ_invalide": "sans question"},
-        {"question": "Q2", "reponse": "R2"},
-    ])
+    lecteur = FauxLecteurCorpus(
+        [
+            {"question": "Q1", "reponse": "R1"},
+            {"champ_invalide": "sans question"},
+            {"question": "Q2", "reponse": "R2"},
+        ]
+    )
     repository = FauxRepository()
 
-    cas_usage = ConstruireDatasetPivotUseCase(lecteur=lecteur, repository=repository)
+    cas_usage = ConstruireDatasetPivotUseCase(
+        lecteur=lecteur, repository=repository
+    )
     nombre = cas_usage.executer(_mapper_test)
 
     assert nombre == 2
@@ -85,14 +95,21 @@ def test_construire_dataset_pivot_dedoublonne_les_registres_identiques():
     doit atterrir dans le pivot, l'autre doit etre expose via
     `.doublons` (jamais silencieusement perdu).
     """
-    lecteur = FauxLecteurCorpus([
-        {"question": "Q1", "reponse": "R1"},
-        {"question": "Q1", "reponse": "R1"},  # doublon exact de la ligne precedente
-        {"question": "Q2", "reponse": "R2"},
-    ])
+    lecteur = FauxLecteurCorpus(
+        [
+            {"question": "Q1", "reponse": "R1"},
+            {
+                "question": "Q1",
+                "reponse": "R1",
+            },  # doublon exact de la ligne precedente
+            {"question": "Q2", "reponse": "R2"},
+        ]
+    )
     repository = FauxRepository()
 
-    cas_usage = ConstruireDatasetPivotUseCase(lecteur=lecteur, repository=repository)
+    cas_usage = ConstruireDatasetPivotUseCase(
+        lecteur=lecteur, repository=repository
+    )
     nombre = cas_usage.executer(_mapper_test)
 
     assert nombre == 2
@@ -102,14 +119,18 @@ def test_construire_dataset_pivot_dedoublonne_les_registres_identiques():
 
 
 def test_construire_dataset_pivot_conserve_le_premier_exemple_rencontre():
-    lecteur = FauxLecteurCorpus([
-        {"question": "Q1", "reponse": "R1"},
-        {"question": "Q1", "reponse": "R1"},
-        {"question": "Q1", "reponse": "R1"},
-    ])
+    lecteur = FauxLecteurCorpus(
+        [
+            {"question": "Q1", "reponse": "R1"},
+            {"question": "Q1", "reponse": "R1"},
+            {"question": "Q1", "reponse": "R1"},
+        ]
+    )
     repository = FauxRepository()
 
-    cas_usage = ConstruireDatasetPivotUseCase(lecteur=lecteur, repository=repository)
+    cas_usage = ConstruireDatasetPivotUseCase(
+        lecteur=lecteur, repository=repository
+    )
     nombre = cas_usage.executer(_mapper_test)
 
     assert nombre == 1

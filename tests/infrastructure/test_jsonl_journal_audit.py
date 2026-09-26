@@ -5,10 +5,14 @@ from __future__ import annotations
 import json
 
 from chsa_triage.domain.model.entree_audit import EntreeAudit
-from chsa_triage.infrastructure.adapters.jsonl_journal_audit import JsonlJournalAudit
+from chsa_triage.infrastructure.adapters.jsonl_journal_audit import (
+    JsonlJournalAudit,
+)
 
 
-def _entree(conversation_id: str = "conv-1", sortie: str = "reponse") -> EntreeAudit:
+def _entree(
+    conversation_id: str = "conv-1", sortie: str = "reponse"
+) -> EntreeAudit:
     return EntreeAudit(
         horodatage="2026-09-23T10:00:00+00:00",
         type_evenement="tour_entretien",

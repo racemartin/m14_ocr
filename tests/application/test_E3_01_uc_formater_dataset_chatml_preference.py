@@ -13,7 +13,9 @@ from chsa_triage.application.use_cases.E3_01_uc_formater_dataset_chatml_preferen
     FormaterDatasetChatMLPreferenceUseCase,
 )
 from chsa_triage.domain.model.enums import Langue, TypeExemple, TypeSplit
-from chsa_triage.domain.model.exemple_formate_preference import ExempleFormatePreference
+from chsa_triage.domain.model.exemple_formate_preference import (
+    ExempleFormatePreference,
+)
 from chsa_triage.domain.model.exemple_pivot import ExemplePivot, Message
 from chsa_triage.domain.model.preference_reformulee import ChosenReformule
 
@@ -22,7 +24,9 @@ class FauxRepository:
     """Faux adaptateur RepositoryLectureEcriture, en memoire, filtre inclus."""
 
     def __init__(self, items=None) -> None:
-        self.items: dict[str, object] = {item.identifiant: item for item in (items or [])}
+        self.items: dict[str, object] = {
+            item.identifiant: item for item in (items or [])
+        }
 
     def sauvegarder(self, item) -> None:
         self.items[item.identifiant] = item
@@ -36,7 +40,10 @@ class FauxRepository:
 
     def lister(self, filtre: dict | None = None):
         for exemple in self.items.values():
-            if filtre is None or all(getattr(exemple, cle) == valeur for cle, valeur in filtre.items()):
+            if filtre is None or all(
+                getattr(exemple, cle) == valeur
+                for cle, valeur in filtre.items()
+            ):
                 yield exemple
 
     def compter(self, filtre: dict | None = None) -> int:
@@ -52,7 +59,9 @@ class FauxFormateurPreference:
     def __init__(self) -> None:
         self.appels: list[ExemplePivot] = []
 
-    def formater_preference(self, exemple: ExemplePivot) -> ExempleFormatePreference:
+    def formater_preference(
+        self, exemple: ExemplePivot
+    ) -> ExempleFormatePreference:
         self.appels.append(exemple)
         return ExempleFormatePreference(
             identifiant=exemple.identifiant,
@@ -62,10 +71,14 @@ class FauxFormateurPreference:
         )
 
 
-def _exemple_dpo(split: TypeSplit | None, chosen_original: str = "chosen original") -> ExemplePivot:
+def _exemple_dpo(
+    split: TypeSplit | None, chosen_original: str = "chosen original"
+) -> ExemplePivot:
     cle = uuid4().hex
     return ExemplePivot(
-        identifiant=ExemplePivot.nouvel_identifiant("UltraMedical-Preference", cle),
+        identifiant=ExemplePivot.nouvel_identifiant(
+            "UltraMedical-Preference", cle
+        ),
         identifiant_source_brute=cle,
         source="UltraMedical-Preference",
         type_exemple=TypeExemple.DPO,
@@ -91,7 +104,9 @@ def _exemple_sft(split: TypeSplit | None) -> ExemplePivot:
     )
 
 
-def _chosen_reformule(identifiant: str, texte: str = "chosen reformule <think>...</think>{}") -> ChosenReformule:
+def _chosen_reformule(
+    identifiant: str, texte: str = "chosen reformule <think>...</think>{}"
+) -> ChosenReformule:
     return ChosenReformule(
         identifiant=identifiant,
         chosen_reformule=(Message(role="assistant", contenu=texte),),
@@ -104,10 +119,23 @@ def test_exemple_sans_chosen_reformule_utilise_chosen_original_en_fallback():
     (hors du sous-ensemble reformule) est PERSISTE avec le chosen original,
     ne sera plus exclus. Cela desacouple le formatage DPO de la reformulation.
     """
-    exemple_avec_reformulation = _exemple_dpo(TypeSplit.TRAIN, chosen_original="chosen original A")
-    exemple_sans_reformulation = _exemple_dpo(TypeSplit.TRAIN, chosen_original="chosen original B")
-    repository_pivot = FauxRepository([exemple_avec_reformulation, exemple_sans_reformulation])
-    repository_reformule = FauxRepository([_chosen_reformule(exemple_avec_reformulation.identifiant, texte="chosen reformule A")])
+    exemple_avec_reformulation = _exemple_dpo(
+        TypeSplit.TRAIN, chosen_original="chosen original A"
+    )
+    exemple_sans_reformulation = _exemple_dpo(
+        TypeSplit.TRAIN, chosen_original="chosen original B"
+    )
+    repository_pivot = FauxRepository(
+        [exemple_avec_reformulation, exemple_sans_reformulation]
+    )
+    repository_reformule = FauxRepository(
+        [
+            _chosen_reformule(
+                exemple_avec_reformulation.identifiant,
+                texte="chosen reformule A",
+            )
+        ]
+    )
     repository_formate = FauxRepository()
     formateur = FauxFormateurPreference()
 
@@ -120,7 +148,10 @@ def test_exemple_sans_chosen_reformule_utilise_chosen_original_en_fallback():
     nombre = cas_usage.executer(TypeSplit.TRAIN)
 
     assert nombre == 2
-    assert set(repository_formate.items) == {exemple_avec_reformulation.identifiant, exemple_sans_reformulation.identifiant}
+    assert set(repository_formate.items) == {
+        exemple_avec_reformulation.identifiant,
+        exemple_sans_reformulation.identifiant,
+    }
 
 
 def test_repository_reformule_none_utilise_tous_les_chosen_originaux():
@@ -128,8 +159,12 @@ def test_repository_reformule_none_utilise_tous_les_chosen_originaux():
     --skip-reformulation), tous les exemples DPO sont formates avec leur
     chosen original tel quel — aucune exclusion.
     """
-    exemple_1 = _exemple_dpo(TypeSplit.TRAIN, chosen_original="chosen original 1")
-    exemple_2 = _exemple_dpo(TypeSplit.TRAIN, chosen_original="chosen original 2")
+    exemple_1 = _exemple_dpo(
+        TypeSplit.TRAIN, chosen_original="chosen original 1"
+    )
+    exemple_2 = _exemple_dpo(
+        TypeSplit.TRAIN, chosen_original="chosen original 2"
+    )
     repository_pivot = FauxRepository([exemple_1, exemple_2])
     repository_formate = FauxRepository()
     formateur = FauxFormateurPreference()
@@ -143,7 +178,10 @@ def test_repository_reformule_none_utilise_tous_les_chosen_originaux():
     nombre = cas_usage.executer(TypeSplit.TRAIN)
 
     assert nombre == 2
-    assert set(repository_formate.items) == {exemple_1.identifiant, exemple_2.identifiant}
+    assert set(repository_formate.items) == {
+        exemple_1.identifiant,
+        exemple_2.identifiant,
+    }
     # Verifie que le chosen original a ete utilise (pas de reformulation)
     for item in repository_formate.items.values():
         assert "chosen original" in item.texte_chosen
@@ -154,7 +192,9 @@ def test_exclut_les_exemples_sft():
     exemple_dpo = _exemple_dpo(TypeSplit.TRAIN)
     exemple_sft = _exemple_sft(TypeSplit.TRAIN)
     repository_pivot = FauxRepository([exemple_dpo, exemple_sft])
-    repository_reformule = FauxRepository([_chosen_reformule(exemple_dpo.identifiant)])
+    repository_reformule = FauxRepository(
+        [_chosen_reformule(exemple_dpo.identifiant)]
+    )
     repository_formate = FauxRepository()
     formateur = FauxFormateurPreference()
 
@@ -175,7 +215,10 @@ def test_ne_traite_que_le_split_demande():
     exemple_val = _exemple_dpo(TypeSplit.VALIDATION)
     repository_pivot = FauxRepository([exemple_train, exemple_val])
     repository_reformule = FauxRepository(
-        [_chosen_reformule(exemple_train.identifiant), _chosen_reformule(exemple_val.identifiant)]
+        [
+            _chosen_reformule(exemple_train.identifiant),
+            _chosen_reformule(exemple_val.identifiant),
+        ]
     )
     repository_formate = FauxRepository()
     formateur = FauxFormateurPreference()
@@ -193,10 +236,14 @@ def test_ne_traite_que_le_split_demande():
 
 
 def test_le_chosen_reformule_remplace_le_chosen_original_avant_formatage():
-    exemple = _exemple_dpo(TypeSplit.TEST_CLINIQUE, chosen_original="chosen original jamais vu")
-    texte_reformule = "<think>raisonnement</think>{\"niveau\": 2}"
+    exemple = _exemple_dpo(
+        TypeSplit.TEST_CLINIQUE, chosen_original="chosen original jamais vu"
+    )
+    texte_reformule = '<think>raisonnement</think>{"niveau": 2}'
     repository_pivot = FauxRepository([exemple])
-    repository_reformule = FauxRepository([_chosen_reformule(exemple.identifiant, texte=texte_reformule)])
+    repository_reformule = FauxRepository(
+        [_chosen_reformule(exemple.identifiant, texte=texte_reformule)]
+    )
     repository_formate = FauxRepository()
     formateur = FauxFormateurPreference()
 
@@ -210,8 +257,12 @@ def test_le_chosen_reformule_remplace_le_chosen_original_avant_formatage():
 
     assert len(formateur.appels) == 1
     exemple_recu = formateur.appels[0]
-    assert exemple_recu.chosen == (Message(role="assistant", contenu=texte_reformule),)
-    assert "chosen original jamais vu" not in " ".join(m.contenu for m in exemple_recu.chosen)
+    assert exemple_recu.chosen == (
+        Message(role="assistant", contenu=texte_reformule),
+    )
+    assert "chosen original jamais vu" not in " ".join(
+        m.contenu for m in exemple_recu.chosen
+    )
 
     resultat = repository_formate.items[exemple.identifiant]
     assert texte_reformule in resultat.texte_chosen
@@ -234,7 +285,9 @@ def test_ne_mute_jamais_le_pivot_ni_le_registre_de_reformulation_source():
     )
     cas_usage.executer(TypeSplit.TRAIN)
 
-    assert repository_pivot.items[exemple.identifiant].chosen == (Message(role="assistant", contenu="chosen original"),)
+    assert repository_pivot.items[exemple.identifiant].chosen == (
+        Message(role="assistant", contenu="chosen original"),
+    )
     assert repository_reformule.items[exemple.identifiant] == chosen_reformule
 
 

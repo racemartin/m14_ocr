@@ -38,7 +38,14 @@ def _uri(tmp_path) -> str:
 
 def _jsonl(*lignes: tuple[int, str, float], horodatage: float = 1.0) -> str:
     return "\n".join(
-        json.dumps({"etape": etape, "nom": nom, "valeur": valeur, "horodatage": horodatage})
+        json.dumps(
+            {
+                "etape": etape,
+                "nom": nom,
+                "valeur": valeur,
+                "horodatage": horodatage,
+            }
+        )
         for etape, nom, valeur in lignes
     )
 
@@ -49,7 +56,9 @@ def _jsonl(*lignes: tuple[int, str, float], horodatage: float = 1.0) -> str:
 
 
 def test_runs_a_importer_exclut_les_runs_deja_presents():
-    resultat = runs_a_importer(["essai-1", "essai-2"], {"essai-1"}, forcer=False)
+    resultat = runs_a_importer(
+        ["essai-1", "essai-2"], {"essai-1"}, forcer=False
+    )
     assert resultat == ["essai-2"]
 
 
@@ -79,7 +88,11 @@ def test_reproduire_run_ecrit_parametres_et_metriques_relisibles(tmp_path):
     nombre = reproduire_run(
         suivi,
         "essai-1",
-        _jsonl((0, "perte_train", 1.2), (0, "norme_gradient", 0.9), (1, "perte_train", 0.8)),
+        _jsonl(
+            (0, "perte_train", 1.2),
+            (0, "norme_gradient", 0.9),
+            (1, "perte_train", 0.8),
+        ),
         {"rang_lora": 8},
     )
     assert nombre == 3
@@ -142,8 +155,13 @@ def test_importer_runs_importe_tout_au_premier_passage(tmp_path):
     )
 
     importes = importer_runs(
-        client, suivi, "depot-factice", forcer=False,
-        obtenir_runs_disponibles=obtenir_runs, obtenir_texte_metriques=obtenir_texte, obtenir_parametres=obtenir_params,
+        client,
+        suivi,
+        "depot-factice",
+        forcer=False,
+        obtenir_runs_disponibles=obtenir_runs,
+        obtenir_texte_metriques=obtenir_texte,
+        obtenir_parametres=obtenir_params,
     )
 
     assert importes == ["essai-1", "essai-2"]
@@ -159,12 +177,22 @@ def test_importer_runs_est_idempotent_sans_forcer(tmp_path):
     )
 
     premier = importer_runs(
-        client, suivi, "depot-factice", forcer=False,
-        obtenir_runs_disponibles=obtenir_runs, obtenir_texte_metriques=obtenir_texte, obtenir_parametres=obtenir_params,
+        client,
+        suivi,
+        "depot-factice",
+        forcer=False,
+        obtenir_runs_disponibles=obtenir_runs,
+        obtenir_texte_metriques=obtenir_texte,
+        obtenir_parametres=obtenir_params,
     )
     second = importer_runs(
-        client, suivi, "depot-factice", forcer=False,
-        obtenir_runs_disponibles=obtenir_runs, obtenir_texte_metriques=obtenir_texte, obtenir_parametres=obtenir_params,
+        client,
+        suivi,
+        "depot-factice",
+        forcer=False,
+        obtenir_runs_disponibles=obtenir_runs,
+        obtenir_texte_metriques=obtenir_texte,
+        obtenir_parametres=obtenir_params,
     )
 
     assert premier == ["essai-1"]
@@ -180,12 +208,22 @@ def test_importer_runs_forcer_reimporte(tmp_path):
     )
 
     importer_runs(
-        client, suivi, "depot-factice", forcer=False,
-        obtenir_runs_disponibles=obtenir_runs, obtenir_texte_metriques=obtenir_texte, obtenir_parametres=obtenir_params,
+        client,
+        suivi,
+        "depot-factice",
+        forcer=False,
+        obtenir_runs_disponibles=obtenir_runs,
+        obtenir_texte_metriques=obtenir_texte,
+        obtenir_parametres=obtenir_params,
     )
     second = importer_runs(
-        client, suivi, "depot-factice", forcer=True,
-        obtenir_runs_disponibles=obtenir_runs, obtenir_texte_metriques=obtenir_texte, obtenir_parametres=obtenir_params,
+        client,
+        suivi,
+        "depot-factice",
+        forcer=True,
+        obtenir_runs_disponibles=obtenir_runs,
+        obtenir_texte_metriques=obtenir_texte,
+        obtenir_parametres=obtenir_params,
     )
 
     assert second == ["essai-1"]

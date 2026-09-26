@@ -41,11 +41,19 @@ def main() -> None:
         default=None,
         help="Sous-configuration HF si le dataset en definit plusieurs",
     )
-    parser.add_argument("--split", default="train", help="Split a telecharger (defaut: train)")
-    parser.add_argument("--sortie", required=True, help="Chemin JSONL de sortie (ex. data/raw/mediqal.jsonl)")
+    parser.add_argument(
+        "--split", default="train", help="Split a telecharger (defaut: train)"
+    )
+    parser.add_argument(
+        "--sortie",
+        required=True,
+        help="Chemin JSONL de sortie (ex. data/raw/mediqal.jsonl)",
+    )
     arguments = parser.parse_args()
 
-    log.START_ACTION("telecharger_corpus", "main", "telechargement d'un corpus depuis le Hub")
+    log.START_ACTION(
+        "telecharger_corpus", "main", "telechargement d'un corpus depuis le Hub"
+    )
     log.PARAMETER_VALUE("identifiant-hub", arguments.identifiant_hub)
     log.PARAMETER_VALUE("configuration", arguments.configuration or "(aucune)")
     log.PARAMETER_VALUE("split", arguments.split)
@@ -56,7 +64,11 @@ def main() -> None:
     # -------------------------------------------------------------------------
     # Adaptateur concret instancie ici et non dans la logique metier : Injection de
     # Dependances, partie du patron Ports et Adaptateurs (cf. docs/01_environnement/01_architecture_hexagonale.md).
-    log.STEP(1, "Connexion au Hugging Face Hub", "chargement paresseux, premiere iteration a suivre")
+    log.STEP(
+        1,
+        "Connexion au Hugging Face Hub",
+        "chargement paresseux, premiere iteration a suivre",
+    )
     lecteur = LecteurCorpusHuggingFace(
         identifiant_hub=arguments.identifiant_hub,
         configuration=arguments.configuration,
@@ -75,7 +87,9 @@ def main() -> None:
         # Ecriture ligne a ligne au fil du streaming du Hub, sans charger tout le corpus en memoire.
         with chemin_sortie.open("w", encoding="utf-8") as fichier_sortie:
             for enregistrement in lecteur.lire_enregistrements():
-                fichier_sortie.write(json.dumps(enregistrement, ensure_ascii=False) + "\n")
+                fichier_sortie.write(
+                    json.dumps(enregistrement, ensure_ascii=False) + "\n"
+                )
                 nombre_enregistrements += 1
                 if nombre_enregistrements % 500 == 0:
                     log.LEVEL_7_INFO(
@@ -94,9 +108,15 @@ def main() -> None:
     # LOG FINAL INFO
     # -------------------------------------------------------------------------
     log.PARAMETER_VALUE("enregistrements ecrits", nombre_enregistrements)
-    log.FINISH_ACTION("telecharger_corpus", "main", f"{nombre_enregistrements} enregistrements ecrits dans {chemin_sortie}")
+    log.FINISH_ACTION(
+        "telecharger_corpus",
+        "main",
+        f"{nombre_enregistrements} enregistrements ecrits dans {chemin_sortie}",
+    )
 
-    print(f"{nombre_enregistrements} enregistrements ecrits dans {chemin_sortie}")
+    print(
+        f"{nombre_enregistrements} enregistrements ecrits dans {chemin_sortie}"
+    )
 
 
 if __name__ == "__main__":

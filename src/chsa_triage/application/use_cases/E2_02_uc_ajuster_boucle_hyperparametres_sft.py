@@ -35,40 +35,42 @@ from chsa_triage.domain.model.configuration_entrainement import (
     HyperparametresEntrainement,
 )
 from chsa_triage.domain.model.exemple_formate import ExempleFormate
-from chsa_triage.domain.ports.entraineur_supervise import ResultatEntrainementSFT
+from chsa_triage.domain.ports.entraineur_supervise import (
+    ResultatEntrainementSFT,
+)
 
 
 @dataclass(frozen=True, slots=True)
 class EssaiHyperparametres:
     """Un essai unique de la boucle : jeu d'hyperparametres, resultat et verdict associes."""
 
-    hyperparametres : HyperparametresEntrainement
-    resultat          : ResultatEntrainementSFT
-    verdict            : VerdictConvergence
+    hyperparametres: HyperparametresEntrainement
+    resultat: ResultatEntrainementSFT
+    verdict: VerdictConvergence
 
 
 @dataclass(frozen=True, slots=True)
 class ResultatBoucleAjustement:
     """Issue complete de la boucle : meilleur essai retenu, et trace de tous les essais effectues."""
 
-    meilleur_essai : EssaiHyperparametres
-    essais           : tuple[EssaiHyperparametres, ...]
+    meilleur_essai: EssaiHyperparametres
+    essais: tuple[EssaiHyperparametres, ...]
 
 
 @dataclass(slots=True)
 class AjusterBoucleHyperparametresSftUseCase:
     """Orchestre la boucle bornee d'ajustement d'hyperparametres SFT-LoRA."""
 
-    cas_usage_entrainement : EntrainerSftUseCase
-    grille                    : Sequence[HyperparametresEntrainement]
+    cas_usage_entrainement: EntrainerSftUseCase
+    grille: Sequence[HyperparametresEntrainement]
 
     def executer(
         self,
-        dataset_train         : Iterable[ExempleFormate],
-        dataset_validation     : Iterable[ExempleFormate],
-        config_lora              : ConfigurationLora,
-        hyperparametres_initiaux  : HyperparametresEntrainement,
-        nom_run                    : str = NOM_RUN_PAR_DEFAUT,
+        dataset_train: Iterable[ExempleFormate],
+        dataset_validation: Iterable[ExempleFormate],
+        config_lora: ConfigurationLora,
+        hyperparametres_initiaux: HyperparametresEntrainement,
+        nom_run: str = NOM_RUN_PAR_DEFAUT,
     ) -> ResultatBoucleAjustement:
         """
         Boucle : entraine avec le jeu d'hyperparametres courant
@@ -91,10 +93,18 @@ class AjusterBoucleHyperparametresSftUseCase:
             historique.append(candidat)
             nom_run_essai = f"{nom_run}-essai-{len(essais) + 1}"
             resultat = self.cas_usage_entrainement.entrainer(
-                dataset_train, dataset_validation, config_lora, candidat, nom_run_essai
+                dataset_train,
+                dataset_validation,
+                config_lora,
+                candidat,
+                nom_run_essai,
             )
             verdict = evaluer_convergence(resultat.courbe_metriques)
-            essais.append(EssaiHyperparametres(hyperparametres=candidat, resultat=resultat, verdict=verdict))
+            essais.append(
+                EssaiHyperparametres(
+                    hyperparametres=candidat, resultat=resultat, verdict=verdict
+                )
+            )
 
             if verdict == VerdictConvergence.SAINE:
                 break
@@ -102,7 +112,9 @@ class AjusterBoucleHyperparametresSftUseCase:
             candidat = candidat_suivant(self.grille, historique)
 
         meilleur = min(essais, key=_cle_classement)
-        return ResultatBoucleAjustement(meilleur_essai=meilleur, essais=tuple(essais))
+        return ResultatBoucleAjustement(
+            meilleur_essai=meilleur, essais=tuple(essais)
+        )
 
 
 def _cle_classement(essai: EssaiHyperparametres) -> tuple[int, float]:

@@ -2,21 +2,18 @@
 
 # Étape 3 : Étapes du pipeline et cas d'usage (DPO)
 
-> **Statut réel (18/09/2026) : rien n'est encore écrit pour l'Étape 3.**
-> Contrairement à `docs/03_etape2_sft/02_etapes_cas_usage.md` (où la
-> majorité des cas d'usage étaient déjà **[FAIT]** au moment de la
-> rédaction), toutes les lignes de ce document sont **[CONCEPTION]** :
-> ni `domain/ports/entraineur_preference.py`, ni
-> `domain/model/exemple_formate_preference.py`, ni aucun fichier
-> `E3_NN_uc_*` n'existent à ce jour (vérifié par grep réel sur
-> `src/chsa_triage/`). Ce document traduit les décisions déjà tranchées
-> dans `00_introduction_concepts.md` (lu entier avant d'écrire celui-ci,
-> à ne pas relire ici : uniquement référencé) en classes/cas d'usage
-> concrets, plus **une décision supplémentaire tranchée ici pour la
-> première fois** (§1 : qui/comment reformule le `chosen`, laissée
-> explicitement ouverte par `00_introduction_concepts.md`, "Point de
-> vigilance"). Comme pour l'Étape 2 avant l'écriture du code, c'est un
-> document de conception, pas un guide d'implémentation pas-à-pas.
+> **Statut réel (26/09/2026) : tous les fichiers listés ci-dessous
+> existent désormais et sont entraînés/déployés.** Ce document a été
+> écrit le 18/09/2026, avant le code, pour traduire les décisions de
+> `00_introduction_concepts.md` en cas d'usage concrets ; les étiquettes
+> **[CONCEPTION]** du tableau ci-dessous datent de cette rédaction et ne
+> reflètent plus l'état réel (`domain/ports/entraineur_preference.py`,
+> `domain/model/exemple_formate_preference.py` et les trois fichiers
+> `E3_0X_uc_*` existent tous dans `src/chsa_triage/`). Elles restent en
+> l'état comme trace de la conception ; voir
+> `03_guide_implementation_pas_a_pas.md` pour l'ordre d'écriture
+> réellement suivi, et le `README.md` racine pour le résultat entraîné
+> (poids publiés, métriques) une fois le code écrit.
 
 ## Vue d'ensemble
 
@@ -123,9 +120,14 @@ Concrètement, `ReformulerPreferenceDpoUseCase` appelle :
 ```python
 messages = [
     {"role": "system", "content": PROMPT_REFORMULATION_CHOSEN},
-    {"role": "user", "content": texte_chosen_original},  # rendu du tuple Message d'origine
+    {
+        "role": "user",
+        "content": texte_chosen_original,
+    },  # rendu du tuple Message d'origine
 ]
-reponse = self.moteur.generer(messages)  # invite_deja_rendue absent : mode par defaut
+reponse = self.moteur.generer(
+    messages
+)  # invite_deja_rendue absent : mode par defaut
 ```
 
 Même mode par défaut (`invite_deja_rendue` absent/`False`) que
@@ -217,6 +219,7 @@ aucun port, testable sans GPU) :
 ```python
 # application/validation_reformulation_dpo.py (a ecrire)
 
+
 def parser_reformulation_stricte(texte: str) -> tuple[Message, ...] | None:
     """
     Extrait le bloc <think>...</think> puis parse le reste comme JSON
@@ -253,13 +256,16 @@ une **quatrième** instance du port générique `RepositoryLectureEcriture`
 ```python
 # domain/model/preference_reformulee.py (a ecrire)
 
+
 @dataclass(frozen=True, slots=True)
 class ChosenReformule:
     """Chosen reformule vers <think>+JSON pour un ExemplePivot DPO donne."""
 
-    identifiant       : str               # repris de ExemplePivot.identifiant, jamais regenere
-    chosen_reformule   : tuple[Message, ...]  # nouveau tour assistant, remplace chosen a l'usage
-    horodatage           : str
+    identifiant: str  # repris de ExemplePivot.identifiant, jamais regenere
+    chosen_reformule: tuple[
+        Message, ...
+    ]  # nouveau tour assistant, remplace chosen a l'usage
+    horodatage: str
 ```
 
 `executer(self, source_dpo: Iterable[ExemplePivot]) -> int` filtre sur

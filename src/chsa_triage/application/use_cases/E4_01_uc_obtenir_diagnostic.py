@@ -1,26 +1,15 @@
 """
 Cas d'usage : "obtenir le diagnostic" (F2/F3/F4). Declenche par un
-bouton explicite cote infirmier (jamais par le modele de facon
-autonome, cf. `E4_00_uc_poursuivre_entretien.py`) : envoie tout
-l'historique de conversation accumule jusque-la, plus un prompt
-demandant le format cible (bloc `<think>` + JSON
-`niveau`/`categorie`/`ressources_estimees`), en UN SEUL appel de
-generation.
+bouton explicite cote infirmier, jamais par le modele de facon autonome
+(cf. `E4_00_uc_poursuivre_entretien.py`) : envoie tout l'historique plus
+un prompt demandant le format cible (`<think>` + JSON), en UN SEUL
+appel. Orchestre generation + validation + audit, aucune logique de
+parsing propre (reutilise `parser_diagnostic_strict`).
 
-Reutilise `MoteurInference` (sixieme reemploi du projet) et
-`application.validation_diagnostic.parser_diagnostic_strict` (memes
-cles/regle que la reformulation DPO, cf. AGENTS.md) : ce cas d'usage
-ne fait QUE orchestrer generation + validation + audit, aucune
-logique de parsing propre.
-
-**TODO NF4 (garde-fou de securite clinique, decision produit encore
-ouverte, cf. brief de tache)** : le cahier des charges (NF4) exige que
-toute reponse jugee `safety < 4/7` par un "juge LLM" voie son score
-global force a 0 (rejet). Le mecanisme concret de ce juge est une
-decision produit non tranchee a ce jour. Point d'extension delibere : le
-resultat brut (`ResultatDiagnostic.diagnostic`/`texte_brut`) doit
-passer par un futur controle de securite AVANT d'etre presente comme
-definitif a l'infirmier ; ce controle N'EST PAS implemente ici.
+TODO NF4 (garde-fou de securite clinique, decision produit encore
+ouverte) : le cahier des charges exige qu'une reponse jugee peu sure
+par un futur "juge LLM" voie son score force a 0 (rejet). Ce controle
+N'EST PAS implemente ici ; le resultat brut est retourne tel quel.
 """
 
 from __future__ import annotations
@@ -30,7 +19,9 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
 
-from chsa_triage.application.validation_diagnostic import parser_diagnostic_strict
+from chsa_triage.application.validation_diagnostic import (
+    parser_diagnostic_strict,
+)
 from chsa_triage.domain.model.diagnostic_clinique import DiagnosticClinique
 from chsa_triage.domain.model.entree_audit import EntreeAudit
 from chsa_triage.domain.model.exemple_pivot import Message
@@ -48,27 +39,12 @@ PROMPT_DIAGNOSTIC = (
     'vraisemblables>"}'
 )
 
-# `REPETITION_PENALTY_DEFAUT = 1.2` (23/09/2026) : fixee ici comme
-# constante de module, JAMAIS un parametre optionnel que l'appelant
-# (frontend Streamlit, ou tout futur client de l'API) pourrait oublier
-# de passer. Un test manuel reel sur un serveur `vllm serve`
-# (checkpoint `mombasstic/chsa-triage-dpo-lora`, beta=0.3) a montre une
-# degenerescence de generation SANS repetition_penalty : changements de
-# langue aleatoires (EN/FR -> JA/ZH/AR) et une reponse cliniquement
-# dangereuse sur un cas de douleur thoracique classique. La valeur 1.2
-# est celle deja validee empiriquement lors de l'evaluation post-DPO
-# (`E3_04_evaluer_post_dpo.py`), qui avait ramene le F1 au niveau du
-# post-SFT. C'est un garde-fou de securite clinique (NF4), pas une
-# option d'ajustement de style de generation, ce qui compte d'autant
-# plus ici que ce cas d'usage produit le diagnostic final presente a
-# l'infirmier.
+# Garde-fou de securite clinique (NF4), pas un reglage de style : voir
+# E4_00_uc_poursuivre_entretien.py pour l'incident reel (degenerescence
+# de langue, reponse dangereuse) qui justifie ces deux constantes,
+# critique d'autant plus ici que ce cas d'usage produit le diagnostic
+# final presente a l'infirmier.
 REPETITION_PENALTY_DEFAUT = 1.2
-
-# `TEMPERATURE_DEFAUT = 0.0` (25/09/2026) : meme raisonnement que
-# REPETITION_PENALTY_DEFAUT ci-dessus -- cf.
-# E4_00_uc_poursuivre_entretien.py pour le detail complet du bug reel
-# trouve en deploiement (temperature jamais fixee explicitement, vLLM
-# retombait sur son propre defaut d'echantillonnage).
 TEMPERATURE_DEFAUT = 0.0
 
 NOMBRE_TOKENS_GENERES_DIAGNOSTIC = 512
@@ -88,21 +64,23 @@ class ResultatDiagnostic:
     sortie mal formee).
     """
 
-    diagnostic          : DiagnosticClinique | None
-    texte_brut            : str
-    format_respecte      : bool
+    diagnostic: DiagnosticClinique | None
+    texte_brut: str
+    format_respecte: bool
 
 
 @dataclass(slots=True)
 class ObtenirDiagnosticUseCase:
     """Orchestre l'appel diagnostic : historique complet -> classification ESI structuree."""
 
-    moteur           : MoteurInference
-    journal            : JournalAudit
-    version_modele    : str = "mombasstic/chsa-triage-dpo-lora"
-    horloge             : Callable[[], str] = _horodatage_utc_iso
+    moteur: MoteurInference
+    journal: JournalAudit
+    version_modele: str = "mombasstic/chsa-triage-dpo-lora"
+    horloge: Callable[[], str] = _horodatage_utc_iso
 
-    def executer(self, conversation_id: str, historique: Sequence[Message]) -> ResultatDiagnostic:
+    def executer(
+        self, conversation_id: str, historique: Sequence[Message]
+    ) -> ResultatDiagnostic:
         """
         `historique` doit deja contenir au moins un tour (l'API rejette
         une conversation vide avant d'appeler ce cas d'usage : demander
@@ -131,7 +109,11 @@ class ObtenirDiagnosticUseCase:
                 type_evenement="diagnostic",
                 conversation_id=conversation_id,
                 entree=json.dumps(
-                    [{"role": m.role, "contenu": m.contenu} for m in historique], ensure_ascii=False
+                    [
+                        {"role": m.role, "contenu": m.contenu}
+                        for m in historique
+                    ],
+                    ensure_ascii=False,
                 ),
                 sortie=reponse.texte,
                 version_modele=self.version_modele,
@@ -140,5 +122,7 @@ class ObtenirDiagnosticUseCase:
         )
 
         return ResultatDiagnostic(
-            diagnostic=diagnostic, texte_brut=reponse.texte, format_respecte=diagnostic is not None
+            diagnostic=diagnostic,
+            texte_brut=reponse.texte,
+            format_respecte=diagnostic is not None,
         )

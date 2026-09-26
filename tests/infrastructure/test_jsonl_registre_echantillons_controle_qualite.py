@@ -18,7 +18,9 @@ def test_marquer_vus_persiste_et_se_relit(tmp_path: Path):
     chemin = tmp_path / "vus.jsonl"
     registre = JsonlRegistreEchantillonsControleQualite(chemin)
 
-    registre.marquer_vus("principal", ["id-1", "id-2"], "2026-09-09T10:00:00+00:00")
+    registre.marquer_vus(
+        "principal", ["id-1", "id-2"], "2026-09-09T10:00:00+00:00"
+    )
 
     assert registre.identifiants_vus("principal") == {"id-1", "id-2"}
 
@@ -46,7 +48,9 @@ def test_marquer_vus_accumule_entre_appels(tmp_path: Path):
 
 def test_nouvelle_instance_relit_le_meme_fichier(tmp_path: Path):
     chemin = tmp_path / "vus.jsonl"
-    JsonlRegistreEchantillonsControleQualite(chemin).marquer_vus("principal", ["id-1"], "2026-09-09T10:00:00+00:00")
+    JsonlRegistreEchantillonsControleQualite(chemin).marquer_vus(
+        "principal", ["id-1"], "2026-09-09T10:00:00+00:00"
+    )
 
     registre_relu = JsonlRegistreEchantillonsControleQualite(chemin)
     assert registre_relu.identifiants_vus("principal") == {"id-1"}

@@ -18,16 +18,18 @@ from typing import Protocol
 class RapportProfilage:
     """Synthese minimale d'un profilage, exploitable par l'application."""
 
-    nombre_enregistrements   : int
-    taux_valeurs_manquantes   : dict[str, float]
-    taux_doublons             : float
-    longueur_texte_moyenne    : dict[str, float]
-    chemin_rapport_detaille   : str | None = None   # ex. fichier HTML genere
+    nombre_enregistrements: int
+    taux_valeurs_manquantes: dict[str, float]
+    taux_doublons: float
+    longueur_texte_moyenne: dict[str, float]
+    chemin_rapport_detaille: str | None = None  # ex. fichier HTML genere
 
 
 class Profileur(Protocol):
     """Port generique de profilage d'enregistrements bruts."""
 
-    def profiler(self, enregistrements: Iterable[dict], nom_corpus: str) -> RapportProfilage:
+    def profiler(
+        self, enregistrements: Iterable[dict], nom_corpus: str
+    ) -> RapportProfilage:
         """Produit un rapport de profilage sur un ensemble d'enregistrements."""
         ...

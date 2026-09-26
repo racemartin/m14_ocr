@@ -56,7 +56,9 @@ import argparse  # Parsing des arguments CLI
 import tempfile  # Fichier temporaire pour le JSONL telecharge depuis le Hub
 
 # Bibliotheques du projet (cas d'usage, adaptateurs, logging)
-from chsa_triage.application.use_cases   import EvaluerBaselineZeroShotUseCase  # Cas d'usage d'evaluation (reutilise sans modification)
+from chsa_triage.application.use_cases import (
+    EvaluerBaselineZeroShotUseCase,
+)  # Cas d'usage d'evaluation (reutilise sans modification)
 from chsa_triage.infrastructure.adapters import (  # Adaptateurs concrets (dataset, LLM, suivi)
     ChatMLFormateurAdapter,
     HfDatasetSuiviExperimentation,
@@ -64,17 +66,17 @@ from chsa_triage.infrastructure.adapters import (  # Adaptateurs concrets (datas
     MlflowSuiviExperimentation,
     TransformersLoraInferenceAdapter,
 )
-from tools.rafael.log_tool               import LogTool  # Utilitaire de logging du projet
+from tools.rafael.log_tool import LogTool  # Utilitaire de logging du projet
 
 log = LogTool(origin="evaluer_post_dpo")
 
-DEPOT_DATASET_HF_DEFAUT      = "mombasstic/chsa-triage-baseline-test"
-NOM_FICHIER_DATASET_HF       = "dataset_pivot_test_sft.jsonl"
-MODELE_BASE_DEFAUT           = "Qwen/Qwen3-1.7B-Base"
-DEPOT_LORA_DEFAUT            = "mombasstic/chsa-triage-dpo-lora"
-URI_SUIVI_MLFLOW_DEFAUT      = "sqlite:///data/processed/mlflow.db"
+DEPOT_DATASET_HF_DEFAUT = "mombasstic/chsa-triage-baseline-test"
+NOM_FICHIER_DATASET_HF = "dataset_pivot_test_sft.jsonl"
+MODELE_BASE_DEFAUT = "Qwen/Qwen3-1.7B-Base"
+DEPOT_LORA_DEFAUT = "mombasstic/chsa-triage-dpo-lora"
+URI_SUIVI_MLFLOW_DEFAUT = "sqlite:///data/processed/mlflow.db"
 REPERTOIRE_SUIVI_HF_LOCAL_DEFAUT = "data/processed/suivi_hf_dataset_post_dpo"
-NOM_RUN_DEFAUT                = "evaluation-post-dpo"
+NOM_RUN_DEFAUT = "evaluation-post-dpo"
 
 
 # ##############################################################################
@@ -117,7 +119,7 @@ def main() -> None:
         "--dataset-hf-repo",
         default=DEPOT_DATASET_HF_DEFAUT,
         help=f"Depot dataset HF contenant {NOM_FICHIER_DATASET_HF} (split=test, type_exemple=sft), "
-             "MEME sous-ensemble que les baselines zero-shot (§2.2) et le post-SFT (§2.5)",
+        "MEME sous-ensemble que les baselines zero-shot (§2.2) et le post-SFT (§2.5)",
     )
     parser.add_argument(
         "--modele-base",
@@ -146,9 +148,9 @@ def main() -> None:
         type=float,
         default=None,
         help="Parametre repetition_penalty de transformers.generate() (ex. 1.2), transmis tel "
-             "quel (cf. _parametres_generation_transformers) ; absent par defaut (non transmis, "
-             "comportement inchange). A tester contre les boucles de repetition observees en "
-             "generation deterministe (temperature=0.0), cf. README §3 (23/09/2026).",
+        "quel (cf. _parametres_generation_transformers) ; absent par defaut (non transmis, "
+        "comportement inchange). A tester contre les boucles de repetition observees en "
+        "generation deterministe (temperature=0.0), cf. README §3 (23/09/2026).",
     )
     parser.add_argument(
         "--suivi-uri",
@@ -159,8 +161,8 @@ def main() -> None:
         "--suivi-hf-repo",
         default=None,
         help="Depot dataset HF pour publier le run via HfDatasetSuiviExperimentation au lieu de "
-             "MLflow local (pertinent sur un job distant dont le disque ne survit pas au job) ; "
-             "cf. README §3",
+        "MLflow local (pertinent sur un job distant dont le disque ne survit pas au job) ; "
+        "cf. README §3",
     )
     parser.add_argument(
         "--suivi-hf-repertoire-local",
@@ -171,37 +173,51 @@ def main() -> None:
     arguments = parser.parse_args()
 
     log.START_ACTION(
-        "evaluer_post_dpo", "main", "evaluation post-DPO (Etape 3, base+LoRA, transformers/bf16)"
+        "evaluer_post_dpo",
+        "main",
+        "evaluation post-DPO (Etape 3, base+LoRA, transformers/bf16)",
     )
     log.PARAMETER_VALUE("depot dataset HF", arguments.dataset_hf_repo)
-    log.PARAMETER_VALUE("modele de base (tokenizer + poids, bf16)", arguments.modele_base)
+    log.PARAMETER_VALUE(
+        "modele de base (tokenizer + poids, bf16)", arguments.modele_base
+    )
     log.PARAMETER_VALUE("depot LoRA", arguments.depot_lora)
     log.PARAMETER_VALUE("suivi", arguments.suivi_hf_repo or arguments.suivi_uri)
 
     # ----- TELECHARGEMENT DU DATASET DEPUIS LE HUB -----------------------------
-    log.STEP(1, "Telechargement du dataset depuis le Hub", arguments.dataset_hf_repo)
+    log.STEP(
+        1, "Telechargement du dataset depuis le Hub", arguments.dataset_hf_repo
+    )
     with tempfile.TemporaryDirectory() as repertoire_temporaire:
-        chemin_dataset = _telecharger_dataset(arguments.dataset_hf_repo, repertoire_temporaire)
+        chemin_dataset = _telecharger_dataset(
+            arguments.dataset_hf_repo, repertoire_temporaire
+        )
         log.PARAMETER_VALUE("dataset telecharge", chemin_dataset)
 
         # ----- PREPARE ADAPTERS (Dependency Injection) -------------------------
         repository = JsonlDatasetRepository(chemin_dataset)
-        formateur  = ChatMLFormateurAdapter(nom_modele=arguments.modele_base)
-        moteur     = TransformersLoraInferenceAdapter(
-            depot_lora=arguments.depot_lora, nom_modele_base=arguments.modele_base
+        formateur = ChatMLFormateurAdapter(nom_modele=arguments.modele_base)
+        moteur = TransformersLoraInferenceAdapter(
+            depot_lora=arguments.depot_lora,
+            nom_modele_base=arguments.modele_base,
         )
-        suivi      = _construire_suivi(arguments)
+        suivi = _construire_suivi(arguments)
 
         parametres_generation = {
             "temperature": arguments.temperature,
             "n_predict": arguments.n_predict,
         }
         if arguments.repetition_penalty is not None:
-            parametres_generation["repetition_penalty"] = arguments.repetition_penalty
+            parametres_generation["repetition_penalty"] = (
+                arguments.repetition_penalty
+            )
         log.PARAMETER_VALUE("parametres de generation", parametres_generation)
 
         # ----- USE CASE EXECUTE --------------------------------------------------
-        log.STEP(2, "Generation post-DPO + comparaison sur le split test (GPU, bf16, base+LoRA)")
+        log.STEP(
+            2,
+            "Generation post-DPO + comparaison sur le split test (GPU, bf16, base+LoRA)",
+        )
         try:
             cas_usage = EvaluerBaselineZeroShotUseCase(
                 repository=repository,
@@ -223,7 +239,9 @@ def main() -> None:
         # ou non, etc.) plutot que deviner a partir des seules metriques
         # agregees, meme principe que l'echantillon de diagnostic de
         # ReformulerPreferenceDpoUseCase (E3_00).
-        for index, (genere, reference) in enumerate(cas_usage.echantillon_generations):
+        for index, (genere, reference) in enumerate(
+            cas_usage.echantillon_generations
+        ):
             log.PARAMETER_VALUE(f"  genere [{index}]", genere)
             log.PARAMETER_VALUE(f"  reference [{index}]", reference)
 

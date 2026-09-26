@@ -1,15 +1,8 @@
 """
 Adaptateur secondaire : persistance JSONL des `ExempleFormatePreference`
-(triplet prompt/chosen/rejected rendu texte), produits par
-`FormaterDatasetChatMLPreferenceUseCase` (Etape 3/DPO).
-
-Implemente `RepositoryLectureEcriture[ExempleFormatePreference]`.
-Adaptateur DEDIE (meme discipline que
-`jsonl_exemple_formate_repository.py`, pas une generalisation de
-celui-ci : la forme de donnee differe, un triplet distinct plutot
-qu'un texte unique), cinquieme instance du port generique apres
-`ExemplePivot`, `ExempleFormate`, `CheckpointEntraine` et
-`ChosenReformule`, cf. docs/04_etape3_dpo/02_etapes_cas_usage.md §3.
+(triplet prompt/chosen/rejected rendu texte). Adaptateur DEDIE, pas une
+generalisation de `jsonl_exemple_formate_repository.py` : la forme de
+donnee differe (triplet distinct plutot qu'un texte unique).
 """
 
 from __future__ import annotations
@@ -18,7 +11,9 @@ import json
 from collections.abc import Iterable, Iterator
 from pathlib import Path
 
-from chsa_triage.domain.model.exemple_formate_preference import ExempleFormatePreference
+from chsa_triage.domain.model.exemple_formate_preference import (
+    ExempleFormatePreference,
+)
 
 
 class JsonlExempleFormatePreferenceRepository:
@@ -33,21 +28,30 @@ class JsonlExempleFormatePreferenceRepository:
     def sauvegarder(self, item: ExempleFormatePreference) -> None:
         self.sauvegarder_plusieurs([item])
 
-    def sauvegarder_plusieurs(self, items: Iterable[ExempleFormatePreference]) -> None:
+    def sauvegarder_plusieurs(
+        self, items: Iterable[ExempleFormatePreference]
+    ) -> None:
         existants = {e.identifiant: e for e in self._lire_tous()}
         for item in items:
             existants[item.identifiant] = item
         self._ecrire_tous(existants.values())
 
-    def trouver_par_id(self, identifiant: str) -> ExempleFormatePreference | None:
+    def trouver_par_id(
+        self, identifiant: str
+    ) -> ExempleFormatePreference | None:
         for exemple in self._lire_tous():
             if exemple.identifiant == identifiant:
                 return exemple
         return None
 
-    def lister(self, filtre: dict | None = None) -> Iterator[ExempleFormatePreference]:
+    def lister(
+        self, filtre: dict | None = None
+    ) -> Iterator[ExempleFormatePreference]:
         for exemple in self._lire_tous():
-            if filtre is None or all(getattr(exemple, cle, None) == valeur for cle, valeur in filtre.items()):
+            if filtre is None or all(
+                getattr(exemple, cle, None) == valeur
+                for cle, valeur in filtre.items()
+            ):
                 yield exemple
 
     def compter(self, filtre: dict | None = None) -> int:
@@ -83,7 +87,9 @@ class JsonlExempleFormatePreferenceRepository:
                     )
         return exemples
 
-    def _ecrire_tous(self, exemples: Iterable[ExempleFormatePreference]) -> None:
+    def _ecrire_tous(
+        self, exemples: Iterable[ExempleFormatePreference]
+    ) -> None:
         with self._chemin.open("w", encoding="utf-8") as f:
             for exemple in exemples:
                 ligne = {

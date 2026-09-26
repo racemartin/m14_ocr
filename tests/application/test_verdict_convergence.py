@@ -15,9 +15,17 @@ from chsa_triage.domain.model.checkpoint_entraine import VerdictConvergence
 from chsa_triage.domain.ports.entraineur_supervise import MetriquesEntrainement
 
 
-def _point(etape: int, perte_train: float, perte_validation: float | None, norme_gradient: float = 1.0) -> MetriquesEntrainement:
+def _point(
+    etape: int,
+    perte_train: float,
+    perte_validation: float | None,
+    norme_gradient: float = 1.0,
+) -> MetriquesEntrainement:
     return MetriquesEntrainement(
-        etape=etape, perte_train=perte_train, perte_validation=perte_validation, norme_gradient=norme_gradient
+        etape=etape,
+        perte_train=perte_train,
+        perte_validation=perte_validation,
+        norme_gradient=norme_gradient,
     )
 
 
@@ -71,7 +79,9 @@ def test_evaluer_convergence_instable_sur_perte_nan():
 def test_evaluer_convergence_instable_sur_gradient_infini():
     courbe = (
         _point(1, perte_train=2.0, perte_validation=2.0, norme_gradient=1.0),
-        _point(2, perte_train=2.1, perte_validation=2.1, norme_gradient=math.inf),
+        _point(
+            2, perte_train=2.1, perte_validation=2.1, norme_gradient=math.inf
+        ),
     )
 
     assert evaluer_convergence(courbe) == VerdictConvergence.INSTABLE

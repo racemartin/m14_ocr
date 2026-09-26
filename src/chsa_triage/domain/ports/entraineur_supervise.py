@@ -25,18 +25,18 @@ from chsa_triage.domain.model.exemple_formate import ExempleFormate
 class MetriquesEntrainement:
     """Point de mesure unique de la courbe d'entrainement, a une etape (pas) donnee."""
 
-    etape             : int
-    perte_train        : float
-    perte_validation    : float | None
-    norme_gradient       : float
+    etape: int
+    perte_train: float
+    perte_validation: float | None
+    norme_gradient: float
 
 
 @dataclass(frozen=True, slots=True)
 class ResultatEntrainementSFT:
     """Resultat complet d'un run d'entrainement : chemin du checkpoint et courbe de metriques."""
 
-    chemin_checkpoint : str
-    courbe_metriques   : tuple[MetriquesEntrainement, ...]
+    chemin_checkpoint: str
+    courbe_metriques: tuple[MetriquesEntrainement, ...]
 
 
 class EntraineurSupervise(Protocol):
@@ -44,10 +44,10 @@ class EntraineurSupervise(Protocol):
 
     def entrainer(
         self,
-        dataset_train      : Iterable[ExempleFormate],
-        dataset_validation  : Iterable[ExempleFormate],
-        config_lora          : ConfigurationLora,
-        hyperparametres       : HyperparametresEntrainement,
+        dataset_train: Iterable[ExempleFormate],
+        dataset_validation: Iterable[ExempleFormate],
+        config_lora: ConfigurationLora,
+        hyperparametres: HyperparametresEntrainement,
     ) -> ResultatEntrainementSFT:
         """Entraine le modele de base (charge dans le constructeur de l'adaptateur) avec LoRA."""
         ...

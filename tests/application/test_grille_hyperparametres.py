@@ -6,7 +6,9 @@ dependance a `recipes/sft_qwen3_lora.yaml`).
 from __future__ import annotations
 
 from chsa_triage.application.grille_hyperparametres import candidat_suivant
-from chsa_triage.domain.model.configuration_entrainement import HyperparametresEntrainement
+from chsa_triage.domain.model.configuration_entrainement import (
+    HyperparametresEntrainement,
+)
 
 
 def _hyperparametres(taux_apprentissage: float) -> HyperparametresEntrainement:
@@ -20,20 +22,32 @@ def _hyperparametres(taux_apprentissage: float) -> HyperparametresEntrainement:
 
 
 def test_candidat_suivant_retourne_le_premier_de_la_grille_quand_historique_vide():
-    grille = [_hyperparametres(1e-4), _hyperparametres(2e-4), _hyperparametres(5e-4)]
+    grille = [
+        _hyperparametres(1e-4),
+        _hyperparametres(2e-4),
+        _hyperparametres(5e-4),
+    ]
 
     assert candidat_suivant(grille, historique=[]) == grille[0]
 
 
 def test_candidat_suivant_saute_les_candidats_deja_essayes():
-    grille = [_hyperparametres(1e-4), _hyperparametres(2e-4), _hyperparametres(5e-4)]
+    grille = [
+        _hyperparametres(1e-4),
+        _hyperparametres(2e-4),
+        _hyperparametres(5e-4),
+    ]
     historique = [grille[0]]
 
     assert candidat_suivant(grille, historique) == grille[1]
 
 
 def test_candidat_suivant_ignore_lordre_de_lhistorique():
-    grille = [_hyperparametres(1e-4), _hyperparametres(2e-4), _hyperparametres(5e-4)]
+    grille = [
+        _hyperparametres(1e-4),
+        _hyperparametres(2e-4),
+        _hyperparametres(5e-4),
+    ]
     historique = [grille[1], grille[0]]
 
     assert candidat_suivant(grille, historique) == grille[2]

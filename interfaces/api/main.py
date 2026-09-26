@@ -58,30 +58,42 @@ from interfaces.api.app import creer_application
 URL_VLLM_PAR_DEFAUT = "http://127.0.0.1:8000"
 URL_LLAMACPP_PAR_DEFAUT = "http://127.0.0.1:8080"
 CHEMIN_JOURNAL_AUDIT_PAR_DEFAUT = "data/processed/journal_audit.jsonl"
-REPERTOIRE_JOURNAL_AUDIT_HF_LOCAL_PAR_DEFAUT = "data/processed/suivi_hf_dataset_audit"
+REPERTOIRE_JOURNAL_AUDIT_HF_LOCAL_PAR_DEFAUT = (
+    "data/processed/suivi_hf_dataset_audit"
+)
 
 
 def _construire_moteur_inference() -> MoteurInference:
     mode = os.environ.get("CHSA_MOTEUR_INFERENCE", "distant")
 
     if mode == "local":
-        url = os.environ.get("CHSA_URL_MOTEUR_INFERENCE", URL_LLAMACPP_PAR_DEFAUT)
+        url = os.environ.get(
+            "CHSA_URL_MOTEUR_INFERENCE", URL_LLAMACPP_PAR_DEFAUT
+        )
         return LlamaCppInferenceAdapter(url_serveur_local=url)
 
     if mode == "distant":
         url = os.environ.get("CHSA_URL_MOTEUR_INFERENCE", URL_VLLM_PAR_DEFAUT)
         cle_api_vllm = os.environ.get("CHSA_CLE_API_VLLM")
         nom_modele = os.environ.get("CHSA_NOM_MODELE_VLLM", "dpo")
-        return VllmEndpointInferenceAdapter(url_endpoint=url, cle_api=cle_api_vllm, nom_modele=nom_modele)
+        return VllmEndpointInferenceAdapter(
+            url_endpoint=url, cle_api=cle_api_vllm, nom_modele=nom_modele
+        )
 
-    raise ValueError(f"CHSA_MOTEUR_INFERENCE invalide : {mode!r} (attendu 'local' ou 'distant')")
+    raise ValueError(
+        f"CHSA_MOTEUR_INFERENCE invalide : {mode!r} (attendu 'local' ou 'distant')"
+    )
 
 
 def _construire_journal_audit() -> JournalAudit:
     mode = os.environ.get("CHSA_JOURNAL_AUDIT", "jsonl")
 
     if mode == "jsonl":
-        return JsonlJournalAudit(os.environ.get("CHSA_CHEMIN_JOURNAL_AUDIT", CHEMIN_JOURNAL_AUDIT_PAR_DEFAUT))
+        return JsonlJournalAudit(
+            os.environ.get(
+                "CHSA_CHEMIN_JOURNAL_AUDIT", CHEMIN_JOURNAL_AUDIT_PAR_DEFAUT
+            )
+        )
 
     if mode == "hf_dataset":
         repo_id = os.environ.get("CHSA_JOURNAL_AUDIT_REPO")
@@ -91,11 +103,16 @@ def _construire_journal_audit() -> JournalAudit:
                 "(ex. mombasstic/chsa-triage-audit-journal)."
             )
         repertoire_local = os.environ.get(
-            "CHSA_JOURNAL_AUDIT_REPERTOIRE_LOCAL", REPERTOIRE_JOURNAL_AUDIT_HF_LOCAL_PAR_DEFAUT
+            "CHSA_JOURNAL_AUDIT_REPERTOIRE_LOCAL",
+            REPERTOIRE_JOURNAL_AUDIT_HF_LOCAL_PAR_DEFAUT,
         )
-        return HfDatasetJournalAudit(repo_id=repo_id, repertoire_local=repertoire_local)
+        return HfDatasetJournalAudit(
+            repo_id=repo_id, repertoire_local=repertoire_local
+        )
 
-    raise ValueError(f"CHSA_JOURNAL_AUDIT invalide : {mode!r} (attendu 'jsonl' ou 'hf_dataset')")
+    raise ValueError(
+        f"CHSA_JOURNAL_AUDIT invalide : {mode!r} (attendu 'jsonl' ou 'hf_dataset')"
+    )
 
 
 def _cle_api_demo() -> str:
@@ -114,10 +131,14 @@ app = creer_application(
     moteur_inference=_moteur_inference,
     journal_audit=_construire_journal_audit(),
     cle_api=_cle_api_demo(),
-    version_modele=os.environ.get("CHSA_VERSION_MODELE", "mombasstic/chsa-triage-dpo-lora"),
+    version_modele=os.environ.get(
+        "CHSA_VERSION_MODELE", "mombasstic/chsa-triage-dpo-lora"
+    ),
     # Seul VllmEndpointInferenceAdapter (mode `distant`) expose une
     # verification de sante reelle (`/health` vLLM) ; LlamaCppInferenceAdapter
     # (mode `local`, dev sans GPU) n'a pas d'equivalent branche ici, `/sante`
     # retombe alors sur le defaut "toujours disponible" de `creer_application()`.
-    verificateur_sante_moteur=getattr(_moteur_inference, "verifier_sante", None),
+    verificateur_sante_moteur=getattr(
+        _moteur_inference, "verifier_sante", None
+    ),
 )

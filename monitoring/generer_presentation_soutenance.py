@@ -34,7 +34,12 @@ from generer_presentation_etape2 import (
     ajouter_tableau,
 )
 
-CHEMIN_SORTIE = Path(__file__).resolve().parent.parent / "docs" / "00_cadrage" / "05_presentation_soutenance.pptx"
+CHEMIN_SORTIE = (
+    Path(__file__).resolve().parent.parent
+    / "docs"
+    / "00_cadrage"
+    / "05_presentation_soutenance.pptx"
+)
 
 
 def ajouter_notes(diapo, texte: str) -> None:
@@ -49,7 +54,9 @@ def construire_presentation() -> Presentation:
 
     # 1. Page de titre
     diapo = ajouter_diapositive_vide(prs)
-    zone = diapo.shapes.add_textbox(Inches(0.8), Inches(2.3), LARGEUR - Inches(1.6), Inches(2.4))
+    zone = diapo.shapes.add_textbox(
+        Inches(0.8), Inches(2.3), LARGEUR - Inches(1.6), Inches(2.4)
+    )
     cadre = zone.text_frame
     cadre.word_wrap = True
     p1 = cadre.paragraphs[0]
@@ -70,7 +77,11 @@ def construire_presentation() -> Presentation:
 
     # 2. Introduction - objet et architecture
     diapo = ajouter_diapositive_vide(prs)
-    ajouter_bandeau_titre(diapo, "Objet du POC & architecture", "Centre Hospitalier Saint-Aurelien - agent IA de triage medical")
+    ajouter_bandeau_titre(
+        diapo,
+        "Objet du POC & architecture",
+        "Centre Hospitalier Saint-Aurelien - agent IA de triage medical",
+    )
     ajouter_liste(
         diapo,
         [
@@ -86,10 +97,28 @@ def construire_presentation() -> Presentation:
 
     # 3. Introduction - resultat phare
     diapo = ajouter_diapositive_vide(prs)
-    ajouter_bandeau_titre(diapo, "Resultat phare", "Vue d'ensemble, detail dans les sections suivantes")
-    ajouter_chiffre_cle(diapo, "0,112", "F1 token post-SFT\n(vs 0,043 baseline GPU)", 0.7, 2.0)
-    ajouter_chiffre_cle(diapo, "75 %", "rewards/accuracies DPO retenu\n(beta=0,3, 5000 exemples, verdict saine)", 4.9, 2.0)
-    ajouter_chiffre_cle(diapo, "3", "pieces de deploiement\n(vLLM+LoRA, API, Streamlit)", 9.0, 2.0)
+    ajouter_bandeau_titre(
+        diapo,
+        "Resultat phare",
+        "Vue d'ensemble, detail dans les sections suivantes",
+    )
+    ajouter_chiffre_cle(
+        diapo, "0,112", "F1 token post-SFT\n(vs 0,043 baseline GPU)", 0.7, 2.0
+    )
+    ajouter_chiffre_cle(
+        diapo,
+        "75 %",
+        "rewards/accuracies DPO retenu\n(beta=0,3, 5000 exemples, verdict saine)",
+        4.9,
+        2.0,
+    )
+    ajouter_chiffre_cle(
+        diapo,
+        "3",
+        "pieces de deploiement\n(vLLM+LoRA, API, Streamlit)",
+        9.0,
+        2.0,
+    )
     ajouter_liste(
         diapo,
         [
@@ -103,10 +132,34 @@ def construire_presentation() -> Presentation:
 
     # 4. Section 1 - Preparation de donnees
     diapo = ajouter_diapositive_vide(prs)
-    ajouter_bandeau_titre(diapo, "1. Preparation de donnees", "6 corpus sources fusionnes, anonymises, repartis en splits")
-    ajouter_chiffre_cle(diapo, "134 883", "exemples pivot\n(147 204 bruts, 12 321 doublons ecartes)", 0.7, 2.0)
-    ajouter_chiffre_cle(diapo, "RGPD", "Anonymisation Presidio + spaCy\npar vagues incrementales", 4.9, 2.0, largeur=4.0)
-    ajouter_chiffre_cle(diapo, "train/val/test", "Splits stratifies,\njamais reassignes d'une execution a l'autre", 9.3, 2.0, largeur=3.6)
+    ajouter_bandeau_titre(
+        diapo,
+        "1. Preparation de donnees",
+        "6 corpus sources fusionnes, anonymises, repartis en splits",
+    )
+    ajouter_chiffre_cle(
+        diapo,
+        "134 883",
+        "exemples pivot\n(147 204 bruts, 12 321 doublons ecartes)",
+        0.7,
+        2.0,
+    )
+    ajouter_chiffre_cle(
+        diapo,
+        "RGPD",
+        "Anonymisation Presidio + spaCy\npar vagues incrementales",
+        4.9,
+        2.0,
+        largeur=4.0,
+    )
+    ajouter_chiffre_cle(
+        diapo,
+        "train/val/test",
+        "Splits stratifies,\njamais reassignes d'une execution a l'autre",
+        9.3,
+        2.0,
+        largeur=3.6,
+    )
     ajouter_liste(
         diapo,
         [
@@ -120,7 +173,11 @@ def construire_presentation() -> Presentation:
 
     # 5. Section 2.1 - Architecture SFT
     diapo = ajouter_diapositive_vide(prs)
-    ajouter_bandeau_titre(diapo, "2. SFT + LoRA - Architecture", "Deux baselines zero-shot mesurees avant tout entrainement")
+    ajouter_bandeau_titre(
+        diapo,
+        "2. SFT + LoRA - Architecture",
+        "Deux baselines zero-shot mesurees avant tout entrainement",
+    )
     ajouter_liste(
         diapo,
         [
@@ -136,7 +193,11 @@ def construire_presentation() -> Presentation:
 
     # 6. Section 2.2 - Baselines
     diapo = ajouter_diapositive_vide(prs)
-    ajouter_bandeau_titre(diapo, "2.2 Baselines zero-shot", "Qwen/Qwen3-1.7B-Base SANS entrainement, memes 278 exemples")
+    ajouter_bandeau_titre(
+        diapo,
+        "2.2 Baselines zero-shot",
+        "Qwen/Qwen3-1.7B-Base SANS entrainement, memes 278 exemples",
+    )
     ajouter_tableau(
         diapo,
         entetes=["", "Exact match", "F1 (token)", "Latence moyenne", "Echecs"],
@@ -149,14 +210,18 @@ def construire_presentation() -> Presentation:
     )
     ajouter_liste(
         diapo,
-        ["La baseline GPU est plus rapide, plus fiable (zero echec) et legerement meilleure en F1 : reference retenue."],
+        [
+            "La baseline GPU est plus rapide, plus fiable (zero echec) et legerement meilleure en F1 : reference retenue."
+        ],
         top=3.4,
         taille_police=16,
     )
 
     # 7. Section 2.3-2.4 - Entrainement SFT-LoRA reel
     diapo = ajouter_diapositive_vide(prs)
-    ajouter_bandeau_titre(diapo, "2.3-2.4 Entrainement SFT-LoRA reel", "GPU L4 (HF Jobs)")
+    ajouter_bandeau_titre(
+        diapo, "2.3-2.4 Entrainement SFT-LoRA reel", "GPU L4 (HF Jobs)"
+    )
     ajouter_liste(
         diapo,
         [
@@ -168,11 +233,18 @@ def construire_presentation() -> Presentation:
         top=1.7,
         taille_police=19,
     )
-    ajouter_notes(diapo, "Job HF Jobs 6aaab9a95527934177eeaac8. Courbe de perte reconstruite a posteriori depuis le log brut (backend de suivi mal configure a l'origine, corrige depuis, cf. README 2.6).")
+    ajouter_notes(
+        diapo,
+        "Job HF Jobs 6aaab9a95527934177eeaac8. Courbe de perte reconstruite a posteriori depuis le log brut (backend de suivi mal configure a l'origine, corrige depuis, cf. README 2.6).",
+    )
 
     # 8. Section 2.5 - Evaluation post-SFT
     diapo = ajouter_diapositive_vide(prs)
-    ajouter_bandeau_titre(diapo, "2.5 Evaluation post-SFT", "Resultat le plus important du projet a ce jour")
+    ajouter_bandeau_titre(
+        diapo,
+        "2.5 Evaluation post-SFT",
+        "Resultat le plus important du projet a ce jour",
+    )
     ajouter_tableau(
         diapo,
         entetes=["", "Exact match", "F1 (token)", "Latence moyenne"],
@@ -197,7 +269,11 @@ def construire_presentation() -> Presentation:
 
     # 9. Section 3.1 - Architecture DPO
     diapo = ajouter_diapositive_vide(prs)
-    ajouter_bandeau_titre(diapo, "3. DPO - Architecture & verification", "Continue le checkpoint SFT-LoRA deja entraine")
+    ajouter_bandeau_titre(
+        diapo,
+        "3. DPO - Architecture & verification",
+        "Continue le checkpoint SFT-LoRA deja entraine",
+    )
     ajouter_liste(
         diapo,
         [
@@ -215,7 +291,11 @@ def construire_presentation() -> Presentation:
 
     # 10. Section 3.2a - Entrainement DPO : iterations a 100 exemples
     diapo = ajouter_diapositive_vide(prs)
-    ajouter_bandeau_titre(diapo, "3.2 Entrainement DPO - diagnostiquer, corriger, reverifier", "Trois lancements reels sur 100 exemples (22/09/2026)")
+    ajouter_bandeau_titre(
+        diapo,
+        "3.2 Entrainement DPO - diagnostiquer, corriger, reverifier",
+        "Trois lancements reels sur 100 exemples (22/09/2026)",
+    )
     ajouter_liste(
         diapo,
         [
@@ -240,10 +320,35 @@ def construire_presentation() -> Presentation:
 
     # 11. Section 3.2b - Run complet a 5000 exemples
     diapo = ajouter_diapositive_vide(prs)
-    ajouter_bandeau_titre(diapo, "3.2 Entrainement DPO - run complet, 5000 exemples", "Cahier des charges §7, Livrable 1 - premier run a l'echelle reelle")
-    ajouter_chiffre_cle(diapo, "SAINE", "Verdict de convergence\n(premier verdict sain DPO du projet)", 0.7, 2.0, largeur=3.8)
-    ajouter_chiffre_cle(diapo, "72,5 %", "rewards/accuracies\n(rewards/margins = +3,00)", 5.0, 2.0, largeur=3.6)
-    ajouter_chiffre_cle(diapo, "1h44", "Duree reelle\n(estimation initiale : 30-60 min)", 9.1, 2.0, largeur=3.6)
+    ajouter_bandeau_titre(
+        diapo,
+        "3.2 Entrainement DPO - run complet, 5000 exemples",
+        "Cahier des charges §7, Livrable 1 - premier run a l'echelle reelle",
+    )
+    ajouter_chiffre_cle(
+        diapo,
+        "SAINE",
+        "Verdict de convergence\n(premier verdict sain DPO du projet)",
+        0.7,
+        2.0,
+        largeur=3.8,
+    )
+    ajouter_chiffre_cle(
+        diapo,
+        "72,5 %",
+        "rewards/accuracies\n(rewards/margins = +3,00)",
+        5.0,
+        2.0,
+        largeur=3.6,
+    )
+    ajouter_chiffre_cle(
+        diapo,
+        "1h44",
+        "Duree reelle\n(estimation initiale : 30-60 min)",
+        9.1,
+        2.0,
+        largeur=3.6,
+    )
     ajouter_liste(
         diapo,
         [
@@ -257,11 +362,18 @@ def construire_presentation() -> Presentation:
         top=4.3,
         taille_police=15,
     )
-    ajouter_notes(diapo, "Job HF Jobs 6ab2ff0c52d0dbd7f1d80b0b, checkpoint 165d4040855abb6a (outputs/dpo-lora/run-20260922T222105Z). 3992 exemples train reels, ~998 pas.")
+    ajouter_notes(
+        diapo,
+        "Job HF Jobs 6ab2ff0c52d0dbd7f1d80b0b, checkpoint 165d4040855abb6a (outputs/dpo-lora/run-20260922T222105Z). 3992 exemples train reels, ~998 pas.",
+    )
 
     # 12. Section 3.3 - Evaluation post-DPO : un resultat inattendu
     diapo = ajouter_diapositive_vide(prs)
-    ajouter_bandeau_titre(diapo, "3.3 Evaluation post-DPO - un resultat inattendu", "Memes 278 exemples, meme metrique que les baselines et le post-SFT")
+    ajouter_bandeau_titre(
+        diapo,
+        "3.3 Evaluation post-DPO - un resultat inattendu",
+        "Memes 278 exemples, meme metrique que les baselines et le post-SFT",
+    )
     ajouter_tableau(
         diapo,
         entetes=["", "Exact match", "F1 (token)", "Latence moyenne"],
@@ -288,7 +400,11 @@ def construire_presentation() -> Presentation:
 
     # 13. Section 3.3 - Cause racine et correction
     diapo = ajouter_diapositive_vide(prs)
-    ajouter_bandeau_titre(diapo, "3.3 Cause racine, correction, confirmation a l'echelle", "Ancrage trop faible au modele de reference (pi_ref)")
+    ajouter_bandeau_titre(
+        diapo,
+        "3.3 Cause racine, correction, confirmation a l'echelle",
+        "Ancrage trop faible au modele de reference (pi_ref)",
+    )
     ajouter_liste(
         diapo,
         [
@@ -323,7 +439,11 @@ def construire_presentation() -> Presentation:
 
     # 14. Diapositive de synthese
     diapo = ajouter_diapositive_vide(prs)
-    ajouter_bandeau_titre(diapo, "Synthese SFT + DPO", "Parametres retenus, resultats, problemes rencontres et corriges")
+    ajouter_bandeau_titre(
+        diapo,
+        "Synthese SFT + DPO",
+        "Parametres retenus, resultats, problemes rencontres et corriges",
+    )
     ajouter_liste(
         diapo,
         [
@@ -353,7 +473,11 @@ def construire_presentation() -> Presentation:
 
     # 15. Section 4 - Deploiement, decisions actees
     diapo = ajouter_diapositive_vide(prs)
-    ajouter_bandeau_titre(diapo, "4. Deploiement - decisions actees", "Code ecrit et teste, jamais deploye reellement a ce jour")
+    ajouter_bandeau_titre(
+        diapo,
+        "4. Deploiement - decisions actees",
+        "Code ecrit et teste, jamais deploye reellement a ce jour",
+    )
     ajouter_liste(
         diapo,
         [
@@ -369,7 +493,11 @@ def construire_presentation() -> Presentation:
 
     # 16. Section 4 - Architecture en 3 pieces
     diapo = ajouter_diapositive_vide(prs)
-    ajouter_bandeau_titre(diapo, "4.1-4.2 Architecture en trois pieces", "Aucun Space HF cree ni pousse a ce jour")
+    ajouter_bandeau_titre(
+        diapo,
+        "4.1-4.2 Architecture en trois pieces",
+        "Aucun Space HF cree ni pousse a ce jour",
+    )
     ajouter_liste(
         diapo,
         [
@@ -388,7 +516,11 @@ def construire_presentation() -> Presentation:
 
     # 17. Section 4.4 - CI/CD
     diapo = ajouter_diapositive_vide(prs)
-    ajouter_bandeau_titre(diapo, "4.4 CI/CD", ".github/workflows/ci.yml - aucun deploiement automatique")
+    ajouter_bandeau_titre(
+        diapo,
+        "4.4 CI/CD",
+        ".github/workflows/ci.yml - aucun deploiement automatique",
+    )
     ajouter_liste(
         diapo,
         [
@@ -439,7 +571,9 @@ def construire_presentation() -> Presentation:
 
     # 20. Merci
     diapo = ajouter_diapositive_vide(prs)
-    zone = diapo.shapes.add_textbox(Inches(0.8), Inches(3.0), LARGEUR - Inches(1.6), Inches(1.5))
+    zone = diapo.shapes.add_textbox(
+        Inches(0.8), Inches(3.0), LARGEUR - Inches(1.6), Inches(1.5)
+    )
     p = zone.text_frame.paragraphs[0]
     p.text = "Merci - Questions"
     p.font.size = Pt(36)
@@ -453,7 +587,9 @@ def main() -> None:
     prs = construire_presentation()
     CHEMIN_SORTIE.parent.mkdir(parents=True, exist_ok=True)
     prs.save(str(CHEMIN_SORTIE))
-    print(f"Presentation ecrite : {CHEMIN_SORTIE} ({len(prs.slides)} diapositives)")
+    print(
+        f"Presentation ecrite : {CHEMIN_SORTIE} ({len(prs.slides)} diapositives)"
+    )
 
 
 if __name__ == "__main__":

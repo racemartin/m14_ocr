@@ -23,9 +23,9 @@ class CorpusSource:
     l'identite et les caracteristiques du corpus.
     """
 
-    nom                : str             # Identifiant court, ex. "MediQAl"
-    identifiant_hub     : str             # Chemin Hugging Face Hub, ex. "ANR-MALADES/MediQAl"
-    langue              : Langue          # Langue dominante du corpus
-    licence             : str             # Licence declaree (auditabilite)
-    url_documentation   : str = ""        # Lien vers la fiche/carte du dataset
-    notes               : dict = field(default_factory=dict)  # Metadonnees libres
+    nom: str  # Identifiant court, ex. "MediQAl"
+    identifiant_hub: str  # Chemin Hugging Face Hub, ex. "ANR-MALADES/MediQAl"
+    langue: Langue  # Langue dominante du corpus
+    licence: str  # Licence declaree (auditabilite)
+    url_documentation: str = ""  # Lien vers la fiche/carte du dataset
+    notes: dict = field(default_factory=dict)  # Metadonnees libres

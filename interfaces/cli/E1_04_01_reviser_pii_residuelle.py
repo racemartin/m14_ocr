@@ -1,37 +1,19 @@
 """
 STEP 03.2
 Point d'entree CLI, Etape 1, action "reviser humainement les
-candidats de PII residuelle en attente" (exigence NF2 du cahier des
-charges : anonymisation validee MANUELLEMENT, 0 PII residuelle sur
-echantillon de controle).
+candidats de PII residuelle en attente" (exigence NF2 : anonymisation
+validee MANUELLEMENT).
 
-Avant ce script, `CandidatPiiResiduelle.verdict == VERDICT_REVISION_HUMAINE`
-(cf. `E1_04_02_controler_qualite_anonymisation.py`) restait un cul-de-sac : ni
-le regex ni la seconde opinion spaCy ne tranchent, et aucune decision
-de personne n'etait jamais persistee. Ce script ferme cet ecart avec
-trois modes :
-
-- `verify` : recalcule (replay deterministe, cf.
-  `E1_04_01_reviser_pii_residuelle.ReviserPiiResiduelleUseCase`) TOUS
-  les candidats REVISION_HUMAINE sur TOUT ce qui a deja ete echantillonne
-  par `E1_04_02_controler_qualite_anonymisation.py` (les deux strates), exclut
-  ceux ayant deja une decision, et pour chaque candidat restant,
-  demande interactivement d'accepter/rejeter/sauter ; la decision est
-  persistee IMMEDIATEMENT apres chaque reponse (pas en fin de lot), donc
-  fermer le terminal a mi-parcours ne perd jamais le travail deja fait.
-- `modify` : localise une decision deja prise par `--identifiant`
-  (optionnellement `--champ`) et permet de la corriger sans repasser
-  par toute la liste en attente.
-- `exporter` (11/09/2026) : mode NON interactif,
-  pour une publication (ex. sous-ensemble SFT) plutot qu'une revue.
-  Reutilise le meme replay que `verify`
-  (`ReviserPiiResiduelleUseCase.identifiants_a_exclure_publication`) mais
-  inclut aussi les candidats VERDICT_CONFIRME (jamais soumis a decision
-  humaine, donc jamais retournes par `verify`) ; ecrit dans un fichier
-  JSONL la liste dedupliquee des identifiants a exclure d'une
-  publication, avec leur motif (`confirme` ou `pendant_revision_humaine`).
-  Lecture seule sur `decisions_revision_humaine.jsonl` : n'ecrit jamais
-  dedans.
+Trois modes :
+- `verify` : recalcule tous les candidats REVISION_HUMAINE en attente
+  (les deux strates), et demande interactivement accepter/rejeter/sauter
+  pour chacun ; chaque decision est persistee IMMEDIATEMENT (fermer le
+  terminal a mi-parcours ne perd jamais le travail deja fait).
+- `modify` : localise une decision deja prise par `--identifiant` et la
+  corrige sans repasser par toute la liste.
+- `exporter` : mode non interactif pour une publication ; inclut aussi
+  les candidats CONFIRME (jamais soumis a decision humaine). Lecture
+  seule sur `decisions_revision_humaine.jsonl`.
 
 Usage :
     uv run python interfaces/cli/E1_04_01_reviser_pii_residuelle.py verify \
@@ -53,7 +35,9 @@ from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 
-from chsa_triage.application.use_cases.E1_04_02_controler_qualite_anonymisation import JETON_MASQUE_DEFAUT
+from chsa_triage.application.use_cases.E1_04_02_controler_qualite_anonymisation import (
+    JETON_MASQUE_DEFAUT,
+)
 from chsa_triage.application.use_cases.E1_04_01_reviser_pii_residuelle import (
     RAISON_CONFIRME,
     CandidatARevoir,
@@ -70,17 +54,23 @@ from tools.rafael.log_tool import LogTool
 
 log = LogTool(origin="reviser_pii_residuelle")
 
-CHEMIN_ANONYMISE_DEFAUT             = "data/processed/dataset_pivot_anonymise.jsonl"
-CHEMIN_REGISTRE_ECHANTILLONS_DEFAUT = "data/processed/controle_qualite_identifiants_echantillonnes.jsonl"
-CHEMIN_DECISIONS_DEFAUT             = "data/processed/decisions_revision_humaine.jsonl"
-CHEMIN_EXCLUSIONS_DEFAUT            = "data/processed/identifiants_a_exclure_publication.jsonl"
+CHEMIN_ANONYMISE_DEFAUT = "data/processed/dataset_pivot_anonymise.jsonl"
+CHEMIN_REGISTRE_ECHANTILLONS_DEFAUT = (
+    "data/processed/controle_qualite_identifiants_echantillonnes.jsonl"
+)
+CHEMIN_DECISIONS_DEFAUT = "data/processed/decisions_revision_humaine.jsonl"
+CHEMIN_EXCLUSIONS_DEFAUT = (
+    "data/processed/identifiants_a_exclure_publication.jsonl"
+)
 
 
 def _horodatage() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
-def _afficher_candidat(candidat: CandidatARevoir, indice: int, total: int) -> None:
+def _afficher_candidat(
+    candidat: CandidatARevoir, indice: int, total: int
+) -> None:
     print()
     print(f"[{indice}/{total}] identifiant={candidat.cle.identifiant}")
     print(
@@ -92,18 +82,36 @@ def _afficher_candidat(candidat: CandidatARevoir, indice: int, total: int) -> No
 
 def _demander_action() -> str:
     while True:
-        reponse = input("  [a]ccepter / [r]ejeter / [s]auter / [v]oir texte complet / [q]uitter : ").strip().lower()
+        reponse = (
+            input(
+                "  [a]ccepter / [r]ejeter / [s]auter / [v]oir texte complet / [q]uitter : "
+            )
+            .strip()
+            .lower()
+        )
         if reponse in ("a", "r", "s", "v", "q"):
             return reponse
         print("  reponse non reconnue, reessayer.")
 
 
-def _afficher_texte_complet(cas_usage: ReviserPiiResiduelleUseCase, candidat: CandidatARevoir) -> None:
-    original = cas_usage.repository_original.trouver_par_id(candidat.cle.identifiant)
-    anonymise = cas_usage.repository_anonymise.trouver_par_id(candidat.cle.identifiant)
-    paire = texte_original_et_anonymise(original, anonymise, candidat.cle.champ) if original and anonymise else None
+def _afficher_texte_complet(
+    cas_usage: ReviserPiiResiduelleUseCase, candidat: CandidatARevoir
+) -> None:
+    original = cas_usage.repository_original.trouver_par_id(
+        candidat.cle.identifiant
+    )
+    anonymise = cas_usage.repository_anonymise.trouver_par_id(
+        candidat.cle.identifiant
+    )
+    paire = (
+        texte_original_et_anonymise(original, anonymise, candidat.cle.champ)
+        if original and anonymise
+        else None
+    )
     if paire is None:
-        print("  (texte complet introuvable ; identifiant absent d'un des deux fichiers ?)")
+        print(
+            "  (texte complet introuvable ; identifiant absent d'un des deux fichiers ?)"
+        )
         return
     texte_original, texte_anonymise = paire
     print(f"  --- {candidat.cle.champ} (original) ---\n  {texte_original}")
@@ -114,22 +122,36 @@ def _afficher_texte_complet(cas_usage: ReviserPiiResiduelleUseCase, candidat: Ca
 # _mode_verify
 # ##############################################################################
 def _mode_verify(arguments: argparse.Namespace) -> None:
-    from chsa_triage.infrastructure.adapters import SpacyVerificateurEntitesNommees
+    from chsa_triage.infrastructure.adapters import (
+        SpacyVerificateurEntitesNommees,
+    )
 
-    log.START_ACTION("reviser_pii_residuelle", "verify", "revision humaine interactive des candidats en attente")
+    log.START_ACTION(
+        "reviser_pii_residuelle",
+        "verify",
+        "revision humaine interactive des candidats en attente",
+    )
 
     cas_usage = ReviserPiiResiduelleUseCase(
         repository_original=JsonlDatasetRepository(arguments.dataset),
         repository_anonymise=JsonlDatasetRepository(arguments.anonymise),
         verificateur_entites=SpacyVerificateurEntitesNommees(),
-        registre_echantillons=JsonlRegistreEchantillonsControleQualite(arguments.registre_echantillons),
+        registre_echantillons=JsonlRegistreEchantillonsControleQualite(
+            arguments.registre_echantillons
+        ),
         decisions=JsonlDecisionsRevisionHumaine(arguments.decisions),
         jeton_masque=arguments.jeton_masque,
     )
 
-    log.STEP(1, "Recalcul des candidats en attente", "replay sur tous les identifiants deja echantillonnes")
+    log.STEP(
+        1,
+        "Recalcul des candidats en attente",
+        "replay sur tous les identifiants deja echantillonnes",
+    )
     candidats = cas_usage.candidats_en_attente()
-    log.PARAMETER_VALUE("candidats en attente de decision humaine", len(candidats))
+    log.PARAMETER_VALUE(
+        "candidats en attente de decision humaine", len(candidats)
+    )
 
     if not candidats:
         print("Aucun candidat en attente de revision humaine.")
@@ -138,7 +160,11 @@ def _mode_verify(arguments: argparse.Namespace) -> None:
 
     total = len(candidats)
     traites = 0
-    log.STEP(2, "Revision interactive", f"{total} candidat(s), persistance immediate apres chaque decision")
+    log.STEP(
+        2,
+        "Revision interactive",
+        f"{total} candidat(s), persistance immediate apres chaque decision",
+    )
     for indice, candidat in enumerate(candidats, start=1):
         _afficher_candidat(candidat, indice, total)
         while True:
@@ -149,38 +175,62 @@ def _mode_verify(arguments: argparse.Namespace) -> None:
             if action == "s":
                 break
             if action == "q":
-                print(f"Arret demande : {traites}/{total} decisions prises cette session.")
+                print(
+                    f"Arret demande : {traites}/{total} decisions prises cette session."
+                )
                 log.FINISH_ACTION(
-                    "reviser_pii_residuelle", "verify", f"{traites}/{total} decisions prises, arret demande"
+                    "reviser_pii_residuelle",
+                    "verify",
+                    f"{traites}/{total} decisions prises, arret demande",
                 )
                 return
             decision = DECISION_ACCEPTE if action == "a" else DECISION_REJETE
             note = input("  note (optionnel) : ").strip()
-            cas_usage.enregistrer_decision(candidat, decision, _horodatage(), note)
+            cas_usage.enregistrer_decision(
+                candidat, decision, _horodatage(), note
+            )
             traites += 1
-            print(f"  -> decision '{decision}' enregistree dans {arguments.decisions}.")
+            print(
+                f"  -> decision '{decision}' enregistree dans {arguments.decisions}."
+            )
             break
 
     print(f"{traites}/{total} decisions prises.")
     log.PARAMETER_VALUE("decisions prises", traites)
-    log.FINISH_ACTION("reviser_pii_residuelle", "verify", f"{traites}/{total} decisions prises")
+    log.FINISH_ACTION(
+        "reviser_pii_residuelle",
+        "verify",
+        f"{traites}/{total} decisions prises",
+    )
 
 
 # ##############################################################################
 # _mode_modify
 # ##############################################################################
 def _mode_modify(arguments: argparse.Namespace) -> None:
-    log.START_ACTION("reviser_pii_residuelle", "modify", f"correction d'une decision pour {arguments.identifiant}")
+    log.START_ACTION(
+        "reviser_pii_residuelle",
+        "modify",
+        f"correction d'une decision pour {arguments.identifiant}",
+    )
 
     decisions = JsonlDecisionsRevisionHumaine(arguments.decisions)
-    candidates = [d for d in decisions.toutes() if d.cle.identifiant == arguments.identifiant]
+    candidates = [
+        d
+        for d in decisions.toutes()
+        if d.cle.identifiant == arguments.identifiant
+    ]
     if arguments.champ:
         candidates = [d for d in candidates if d.cle.champ == arguments.champ]
 
     if not candidates:
-        portee = f"identifiant={arguments.identifiant!r}" + (f", champ={arguments.champ!r}" if arguments.champ else "")
+        portee = f"identifiant={arguments.identifiant!r}" + (
+            f", champ={arguments.champ!r}" if arguments.champ else ""
+        )
         print(f"Aucune decision trouvee pour {portee}.")
-        log.FINISH_ACTION("reviser_pii_residuelle", "modify", "aucune decision trouvee")
+        log.FINISH_ACTION(
+            "reviser_pii_residuelle", "modify", "aucune decision trouvee"
+        )
         return
 
     for indice, d in enumerate(candidates, start=1):
@@ -190,28 +240,45 @@ def _mode_modify(arguments: argparse.Namespace) -> None:
         )
 
     while True:
-        choix = input(f"Quelle decision corriger ? [1-{len(candidates)}] : ").strip()
+        choix = input(
+            f"Quelle decision corriger ? [1-{len(candidates)}] : "
+        ).strip()
         if choix.isdigit() and 1 <= int(choix) <= len(candidates):
             break
         print("  choix non reconnu, reessayer.")
     a_corriger = candidates[int(choix) - 1]
 
     while True:
-        nouvelle = input("Nouvelle decision [a=accepter / r=rejeter] : ").strip().lower()
+        nouvelle = (
+            input("Nouvelle decision [a=accepter / r=rejeter] : ")
+            .strip()
+            .lower()
+        )
         if nouvelle in ("a", "r"):
             break
         print("  reponse non reconnue, reessayer.")
     nouvelle_decision = DECISION_ACCEPTE if nouvelle == "a" else DECISION_REJETE
 
-    nouvelle_note = input(f"Nouvelle note (vide = garder {a_corriger.note!r}) : ").strip()
+    nouvelle_note = input(
+        f"Nouvelle note (vide = garder {a_corriger.note!r}) : "
+    ).strip()
     note_finale = nouvelle_note or a_corriger.note
 
-    corrigee = replace(a_corriger, decision=nouvelle_decision, horodatage=_horodatage(), note=note_finale)
+    corrigee = replace(
+        a_corriger,
+        decision=nouvelle_decision,
+        horodatage=_horodatage(),
+        note=note_finale,
+    )
     decisions.enregistrer(corrigee)
 
-    print(f"Decision mise a jour : {a_corriger.decision!r} -> {nouvelle_decision!r}.")
+    print(
+        f"Decision mise a jour : {a_corriger.decision!r} -> {nouvelle_decision!r}."
+    )
     log.FINISH_ACTION(
-        "reviser_pii_residuelle", "modify", f"{a_corriger.cle} : {a_corriger.decision} -> {nouvelle_decision}"
+        "reviser_pii_residuelle",
+        "modify",
+        f"{a_corriger.cle} : {a_corriger.decision} -> {nouvelle_decision}",
     )
 
 
@@ -219,71 +286,125 @@ def _mode_modify(arguments: argparse.Namespace) -> None:
 # _mode_exporter
 # ##############################################################################
 def _mode_exporter(arguments: argparse.Namespace) -> None:
-    from chsa_triage.infrastructure.adapters import SpacyVerificateurEntitesNommees
+    from chsa_triage.infrastructure.adapters import (
+        SpacyVerificateurEntitesNommees,
+    )
 
     log.START_ACTION(
-        "reviser_pii_residuelle", "exporter", "export non interactif des identifiants a exclure d'une publication"
+        "reviser_pii_residuelle",
+        "exporter",
+        "export non interactif des identifiants a exclure d'une publication",
     )
 
     cas_usage = ReviserPiiResiduelleUseCase(
         repository_original=JsonlDatasetRepository(arguments.dataset),
         repository_anonymise=JsonlDatasetRepository(arguments.anonymise),
         verificateur_entites=SpacyVerificateurEntitesNommees(),
-        registre_echantillons=JsonlRegistreEchantillonsControleQualite(arguments.registre_echantillons),
+        registre_echantillons=JsonlRegistreEchantillonsControleQualite(
+            arguments.registre_echantillons
+        ),
         decisions=JsonlDecisionsRevisionHumaine(arguments.decisions),
         jeton_masque=arguments.jeton_masque,
     )
 
-    log.STEP(1, "Recalcul des identifiants a exclure", "replay sur tous les identifiants deja echantillonnes")
-    razons = cas_usage.identifiants_a_exclure_publication()
+    log.STEP(
+        1,
+        "Recalcul des identifiants a exclure",
+        "replay sur tous les identifiants deja echantillonnes",
+    )
+    raisons = cas_usage.identifiants_a_exclure_publication()
 
-    nombre_confirme = sum(1 for r in razons.values() if r == RAISON_CONFIRME)
-    nombre_en_attente = len(razons) - nombre_confirme
-    log.PARAMETER_VALUE("identifiants a exclure (total)", len(razons))
+    nombre_confirme = sum(1 for r in raisons.values() if r == RAISON_CONFIRME)
+    nombre_en_attente = len(raisons) - nombre_confirme
+    log.PARAMETER_VALUE("identifiants a exclure (total)", len(raisons))
     log.PARAMETER_VALUE("dont motif 'confirme'", nombre_confirme)
-    log.PARAMETER_VALUE("dont motif 'pendant_revision_humaine'", nombre_en_attente)
+    log.PARAMETER_VALUE(
+        "dont motif 'pendant_revision_humaine'", nombre_en_attente
+    )
 
     log.STEP(2, "Ecriture du fichier d'exclusions", arguments.sortie)
     chemin_sortie = Path(arguments.sortie)
     chemin_sortie.parent.mkdir(parents=True, exist_ok=True)
     with chemin_sortie.open("w", encoding="utf-8") as f:
-        for identifiant in sorted(razons):
-            f.write(json.dumps({"identifiant": identifiant, "razon": razons[identifiant]}, ensure_ascii=False) + "\n")
+        for identifiant in sorted(raisons):
+            f.write(
+                json.dumps(
+                    {
+                        "identifiant": identifiant,
+                        "raison": raisons[identifiant],
+                    },
+                    ensure_ascii=False,
+                )
+                + "\n"
+            )
 
-    print(f"{len(razons)} identifiant(s) a exclure d'une publication ecrit(s) dans {arguments.sortie}.")
+    print(
+        f"{len(raisons)} identifiant(s) a exclure d'une publication ecrit(s) dans {arguments.sortie}."
+    )
     print(f"  dont 'confirme'                : {nombre_confirme}")
     print(f"  dont 'pendant_revision_humaine' : {nombre_en_attente}")
-    log.FINISH_ACTION("reviser_pii_residuelle", "exporter", f"{len(razons)} identifiant(s) ecrits")
+    log.FINISH_ACTION(
+        "reviser_pii_residuelle",
+        "exporter",
+        f"{len(raisons)} identifiant(s) ecrits",
+    )
 
 
 def main() -> None:
     # -------------------------------------------------------------------------
     # PARSE ARGUMENTS
     # -------------------------------------------------------------------------
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     sous_parseurs = parser.add_subparsers(dest="mode", required=True)
 
     parseur_verify = sous_parseurs.add_parser(
-        "verify", help="Revue interactive des candidats en attente de decision humaine"
+        "verify",
+        help="Revue interactive des candidats en attente de decision humaine",
     )
-    parseur_verify.add_argument("--dataset", required=True, help="Chemin du fichier pivot JSONL ORIGINAL")
+    parseur_verify.add_argument(
+        "--dataset",
+        required=True,
+        help="Chemin du fichier pivot JSONL ORIGINAL",
+    )
     parseur_verify.add_argument("--anonymise", default=CHEMIN_ANONYMISE_DEFAUT)
-    parseur_verify.add_argument("--registre-echantillons", default=CHEMIN_REGISTRE_ECHANTILLONS_DEFAUT)
+    parseur_verify.add_argument(
+        "--registre-echantillons", default=CHEMIN_REGISTRE_ECHANTILLONS_DEFAUT
+    )
     parseur_verify.add_argument("--decisions", default=CHEMIN_DECISIONS_DEFAUT)
     parseur_verify.add_argument("--jeton-masque", default=JETON_MASQUE_DEFAUT)
 
-    parseur_modify = sous_parseurs.add_parser("modify", help="Corriger une decision humaine deja prise")
+    parseur_modify = sous_parseurs.add_parser(
+        "modify", help="Corriger une decision humaine deja prise"
+    )
     parseur_modify.add_argument("--identifiant", required=True)
-    parseur_modify.add_argument("--champ", default=None, help="Restreint la recherche a un champ precis (optionnel)")
+    parseur_modify.add_argument(
+        "--champ",
+        default=None,
+        help="Restreint la recherche a un champ precis (optionnel)",
+    )
     parseur_modify.add_argument("--decisions", default=CHEMIN_DECISIONS_DEFAUT)
 
     parseur_exporter = sous_parseurs.add_parser(
-        "exporter", help="Export non interactif des identifiants a exclure d'une publication (confirme + en attente)"
+        "exporter",
+        help="Export non interactif des identifiants a exclure d'une publication (confirme + en attente)",
     )
-    parseur_exporter.add_argument("--dataset", required=True, help="Chemin du fichier pivot JSONL ORIGINAL")
-    parseur_exporter.add_argument("--anonymise", default=CHEMIN_ANONYMISE_DEFAUT)
-    parseur_exporter.add_argument("--registre-echantillons", default=CHEMIN_REGISTRE_ECHANTILLONS_DEFAUT)
-    parseur_exporter.add_argument("--decisions", default=CHEMIN_DECISIONS_DEFAUT)
+    parseur_exporter.add_argument(
+        "--dataset",
+        required=True,
+        help="Chemin du fichier pivot JSONL ORIGINAL",
+    )
+    parseur_exporter.add_argument(
+        "--anonymise", default=CHEMIN_ANONYMISE_DEFAUT
+    )
+    parseur_exporter.add_argument(
+        "--registre-echantillons", default=CHEMIN_REGISTRE_ECHANTILLONS_DEFAUT
+    )
+    parseur_exporter.add_argument(
+        "--decisions", default=CHEMIN_DECISIONS_DEFAUT
+    )
     parseur_exporter.add_argument("--jeton-masque", default=JETON_MASQUE_DEFAUT)
     parseur_exporter.add_argument("--sortie", default=CHEMIN_EXCLUSIONS_DEFAUT)
 

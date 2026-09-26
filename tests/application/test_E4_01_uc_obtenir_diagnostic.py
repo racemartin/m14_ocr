@@ -19,8 +19,16 @@ from chsa_triage.domain.model.entree_audit import EntreeAudit
 from chsa_triage.domain.model.exemple_pivot import Message
 from chsa_triage.domain.ports.moteur_inference import ReponseModele
 
-JSON_CIBLE = json.dumps({"niveau": 2, "categorie": "cardio-vasculaire", "ressources_estimees": "ECG, troponine"})
-TEXTE_DIAGNOSTIC_VALIDE = f"<think>Douleur thoracique aigue.</think>{JSON_CIBLE}"
+JSON_CIBLE = json.dumps(
+    {
+        "niveau": 2,
+        "categorie": "cardio-vasculaire",
+        "ressources_estimees": "ECG, troponine",
+    }
+)
+TEXTE_DIAGNOSTIC_VALIDE = (
+    f"<think>Douleur thoracique aigue.</think>{JSON_CIBLE}"
+)
 
 HISTORIQUE_EXEMPLE = (
     Message(role="user", contenu="Douleur thoracique depuis ce matin."),
@@ -35,10 +43,16 @@ class FauxMoteurInference:
         self.appels: list[list[dict]] = []
         self.parametres_appels: list[dict] = []
 
-    def generer(self, messages: list[dict], parametres: dict | None = None) -> ReponseModele:
+    def generer(
+        self, messages: list[dict], parametres: dict | None = None
+    ) -> ReponseModele:
         self.appels.append(messages)
         self.parametres_appels.append(dict(parametres or {}))
-        return ReponseModele(texte=self.texte_reponse, nombre_tokens_entree=30, nombre_tokens_sortie=40)
+        return ReponseModele(
+            texte=self.texte_reponse,
+            nombre_tokens_entree=30,
+            nombre_tokens_sortie=40,
+        )
 
 
 class FauxJournalAudit:
@@ -50,7 +64,9 @@ class FauxJournalAudit:
 
 
 def test_diagnostic_bien_forme_est_parse():
-    cas_usage = ObtenirDiagnosticUseCase(moteur=FauxMoteurInference(), journal=FauxJournalAudit())
+    cas_usage = ObtenirDiagnosticUseCase(
+        moteur=FauxMoteurInference(), journal=FauxJournalAudit()
+    )
 
     resultat = cas_usage.executer("conv-1", HISTORIQUE_EXEMPLE)
 
@@ -65,25 +81,36 @@ def test_diagnostic_bien_forme_est_parse():
 
 
 def test_diagnostic_mal_forme_retourne_none_sans_lever():
-    moteur = FauxMoteurInference(texte_reponse="Reponse en texte libre, pas de format attendu.")
-    cas_usage = ObtenirDiagnosticUseCase(moteur=moteur, journal=FauxJournalAudit())
+    moteur = FauxMoteurInference(
+        texte_reponse="Reponse en texte libre, pas de format attendu."
+    )
+    cas_usage = ObtenirDiagnosticUseCase(
+        moteur=moteur, journal=FauxJournalAudit()
+    )
 
     resultat = cas_usage.executer("conv-1", HISTORIQUE_EXEMPLE)
 
     assert resultat.diagnostic is None
     assert resultat.format_respecte is False
-    assert resultat.texte_brut == "Reponse en texte libre, pas de format attendu."
+    assert (
+        resultat.texte_brut == "Reponse en texte libre, pas de format attendu."
+    )
 
 
 def test_messages_envoyes_au_modele_incluent_l_historique_puis_le_prompt_diagnostic():
     moteur = FauxMoteurInference()
-    cas_usage = ObtenirDiagnosticUseCase(moteur=moteur, journal=FauxJournalAudit())
+    cas_usage = ObtenirDiagnosticUseCase(
+        moteur=moteur, journal=FauxJournalAudit()
+    )
 
     cas_usage.executer("conv-1", HISTORIQUE_EXEMPLE)
 
     messages_envoyes = moteur.appels[0]
     assert len(messages_envoyes) == len(HISTORIQUE_EXEMPLE) + 1
-    assert messages_envoyes[-1] == {"role": "user", "content": PROMPT_DIAGNOSTIC}
+    assert messages_envoyes[-1] == {
+        "role": "user",
+        "content": PROMPT_DIAGNOSTIC,
+    }
     assert {m["role"] for m in messages_envoyes} == {"user", "assistant"}
 
 
@@ -91,7 +118,10 @@ def test_consigne_une_entree_d_audit_meme_si_le_format_est_invalide():
     moteur = FauxMoteurInference(texte_reponse="pas de format")
     journal = FauxJournalAudit()
     cas_usage = ObtenirDiagnosticUseCase(
-        moteur=moteur, journal=journal, version_modele="mombasstic/chsa-triage-dpo-lora", horloge=lambda: "T0"
+        moteur=moteur,
+        journal=journal,
+        version_modele="mombasstic/chsa-triage-dpo-lora",
+        horloge=lambda: "T0",
     )
 
     cas_usage.executer("conv-42", HISTORIQUE_EXEMPLE)
@@ -110,8 +140,14 @@ def test_consigne_une_entree_d_audit_meme_si_le_format_est_invalide():
 
 def test_repetition_penalty_est_toujours_transmise_au_moteur():
     moteur = FauxMoteurInference()
-    cas_usage = ObtenirDiagnosticUseCase(moteur=moteur, journal=FauxJournalAudit())
+    cas_usage = ObtenirDiagnosticUseCase(
+        moteur=moteur, journal=FauxJournalAudit()
+    )
 
     cas_usage.executer("conv-1", HISTORIQUE_EXEMPLE)
 
-    assert moteur.parametres_appels[0]["repetition_penalty"] == REPETITION_PENALTY_DEFAUT == 1.2
+    assert (
+        moteur.parametres_appels[0]["repetition_penalty"]
+        == REPETITION_PENALTY_DEFAUT
+        == 1.2
+    )

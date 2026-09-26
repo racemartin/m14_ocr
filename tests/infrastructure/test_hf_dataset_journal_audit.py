@@ -36,7 +36,9 @@ def _fabrique_scheduler_factice_espionne(appels: list[tuple[str, str, float]]):
     return fabrique, scheduler
 
 
-def _entree(conversation_id: str = "conv-1", sortie: str = "reponse") -> EntreeAudit:
+def _entree(
+    conversation_id: str = "conv-1", sortie: str = "reponse"
+) -> EntreeAudit:
     return EntreeAudit(
         horodatage="2026-09-23T10:00:00+00:00",
         type_evenement="tour_entretien",
@@ -70,7 +72,9 @@ def test_consigner_ecrit_une_ligne_jsonl_dans_le_dossier_surveille(tmp_path):
     assert lignes[0]["version_modele"] == "mombasstic/chsa-triage-dpo-lora"
 
     # Un seul scheduler cree, paresseusement, au premier `consigner()`.
-    assert appels == [("mombasstic/chsa-triage-audit-journal", str(tmp_path), 1.0)]
+    assert appels == [
+        ("mombasstic/chsa-triage-audit-journal", str(tmp_path), 1.0)
+    ]
     # `consigner()` n'attend jamais de synchronisation Hub : le
     # CommitScheduler pousse en arriere-plan selon `intervalle_minutes`.
     assert scheduler.nombre_push_to_hub == 0

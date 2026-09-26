@@ -16,33 +16,35 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from chsa_triage.domain.model.enums import TypeExemple, TypeSplit
-from chsa_triage.domain.ports.dataset_repository import RepositoryLectureEcriture
-from chsa_triage.domain.ports.formateur_conversation import FormateurConversation
+from chsa_triage.domain.ports.dataset_repository import (
+    RepositoryLectureEcriture,
+)
+from chsa_triage.domain.ports.formateur_conversation import (
+    FormateurConversation,
+)
 
 
 @dataclass(slots=True)
 class FormaterDatasetChatMLUseCase:
     """Orchestre le rendu ChatML d'un split du dataset pivot."""
 
-    repository_pivot   : RepositoryLectureEcriture
-    repository_formate  : RepositoryLectureEcriture
-    formateur            : FormateurConversation
+    repository_pivot: RepositoryLectureEcriture
+    repository_formate: RepositoryLectureEcriture
+    formateur: FormateurConversation
 
     def executer(self, split: TypeSplit) -> int:
-        """
-        Lit tous les `ExemplePivot` de type `TypeExemple.SFT` du
-        `split` demande (ce cas d'usage prepare des donnees
-        d'entrainement SFT ; un `ExemplePivot` DPO n'a pas de
-        `completion`, cf. AGENTS.md), les rend en ChatML via
-        `self.formateur`, et persiste le resultat en une seule
-        operation (`sauvegarder_plusieurs`, jamais un `sauvegarder()`
-        par item, cf. AGENTS.md sur le cout O(n^2) de
-        `JsonlDatasetRepository.sauvegarder`). Retourne le nombre
-        d'exemples formates.
-        """
+        """Lit les `ExemplePivot` SFT du `split` demande (un exemple
+        DPO n'a pas de `completion`), les rend en ChatML, et persiste
+        en une seule ecriture (`sauvegarder_plusieurs`, jamais un
+        `sauvegarder()` par item : cout O(n^2) sinon). Retourne le
+        nombre d'exemples formates."""
         candidats = list(
-            self.repository_pivot.lister(filtre={"split": split, "type_exemple": TypeExemple.SFT})
+            self.repository_pivot.lister(
+                filtre={"split": split, "type_exemple": TypeExemple.SFT}
+            )
         )
-        exemples_formates = [self.formateur.formater(exemple) for exemple in candidats]
+        exemples_formates = [
+            self.formateur.formater(exemple) for exemple in candidats
+        ]
         self.repository_formate.sauvegarder_plusieurs(exemples_formates)
         return len(exemples_formates)

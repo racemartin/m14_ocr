@@ -18,13 +18,18 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-from chsa_triage.domain.model.checkpoint_entraine import CheckpointEntraine, VerdictConvergence
+from chsa_triage.domain.model.checkpoint_entraine import (
+    CheckpointEntraine,
+    VerdictConvergence,
+)
 from chsa_triage.domain.model.configuration_entrainement import (
     ConfigurationLora,
     HyperparametresEntrainement,
     HyperparametresEntrainementDpo,
 )
-from chsa_triage.domain.ports.dataset_repository import RepositoryLectureEcriture
+from chsa_triage.domain.ports.dataset_repository import (
+    RepositoryLectureEcriture,
+)
 from chsa_triage.domain.ports.entraineur_supervise import MetriquesEntrainement
 
 
@@ -36,18 +41,19 @@ def _horodatage_utc_iso() -> str:
 class SauvegarderCheckpointSftUseCase:
     """Orchestre la persistance des metadonnees d'un checkpoint SFT-LoRA."""
 
-    repository_checkpoints : RepositoryLectureEcriture
-    horloge                   : Callable[[], str] = _horodatage_utc_iso
+    repository_checkpoints: RepositoryLectureEcriture
+    horloge: Callable[[], str] = _horodatage_utc_iso
 
     def executer(
         self,
-        identifiant          : str,
-        chemin                 : str,
-        modele_base             : str,
-        configuration_lora       : ConfigurationLora,
-        hyperparametres            : HyperparametresEntrainement | HyperparametresEntrainementDpo,
-        metriques_finales           : MetriquesEntrainement,
-        verdict_convergence          : VerdictConvergence,
+        identifiant: str,
+        chemin: str,
+        modele_base: str,
+        configuration_lora: ConfigurationLora,
+        hyperparametres: HyperparametresEntrainement
+        | HyperparametresEntrainementDpo,
+        metriques_finales: MetriquesEntrainement,
+        verdict_convergence: VerdictConvergence,
     ) -> CheckpointEntraine:
         """Construit et persiste un `CheckpointEntraine` ; le retourne pour usage immediat par l'appelant."""
         checkpoint = CheckpointEntraine(

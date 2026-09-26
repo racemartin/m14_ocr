@@ -35,15 +35,27 @@ pytestmark = pytest.mark.skipif(
 def test_reconnait_un_nom_francais_comme_entite_pertinente():
     verificateur = SpacyVerificateurEntitesNommees()
     texte = "Jean Dupont est venu hier."
-    debut, fin = texte.index("Jean Dupont"), texte.index("Jean Dupont") + len("Jean Dupont")
-    assert verificateur.verifier(texte, "fr", debut, fin) is VerdictEntiteNommee.ENTITE_PERTINENTE
+    debut, fin = (
+        texte.index("Jean Dupont"),
+        texte.index("Jean Dupont") + len("Jean Dupont"),
+    )
+    assert (
+        verificateur.verifier(texte, "fr", debut, fin)
+        is VerdictEntiteNommee.ENTITE_PERTINENTE
+    )
 
 
 def test_reconnait_un_nom_anglais_comme_entite_pertinente():
     verificateur = SpacyVerificateurEntitesNommees()
     texte = "John Smith called yesterday."
-    debut, fin = texte.index("John Smith"), texte.index("John Smith") + len("John Smith")
-    assert verificateur.verifier(texte, "en", debut, fin) is VerdictEntiteNommee.ENTITE_PERTINENTE
+    debut, fin = (
+        texte.index("John Smith"),
+        texte.index("John Smith") + len("John Smith"),
+    )
+    assert (
+        verificateur.verifier(texte, "en", debut, fin)
+        is VerdictEntiteNommee.ENTITE_PERTINENTE
+    )
 
 
 def test_ecarte_un_terme_medical_capitalise_sans_entite():
@@ -51,21 +63,36 @@ def test_ecarte_un_terme_medical_capitalise_sans_entite():
     texte = "The patient reports Chronic Pain syndrome for two weeks."
     debut = texte.index("Chronic Pain")
     fin = debut + len("Chronic Pain")
-    assert verificateur.verifier(texte, "en", debut, fin) is VerdictEntiteNommee.AUCUNE_ENTITE
+    assert (
+        verificateur.verifier(texte, "en", debut, fin)
+        is VerdictEntiteNommee.AUCUNE_ENTITE
+    )
 
 
 def test_langue_inconnue_retombe_sur_anglais():
     verificateur = SpacyVerificateurEntitesNommees()
     texte = "John Smith called yesterday."
-    debut, fin = texte.index("John Smith"), texte.index("John Smith") + len("John Smith")
-    assert verificateur.verifier(texte, "de", debut, fin) is VerdictEntiteNommee.ENTITE_PERTINENTE
+    debut, fin = (
+        texte.index("John Smith"),
+        texte.index("John Smith") + len("John Smith"),
+    )
+    assert (
+        verificateur.verifier(texte, "de", debut, fin)
+        is VerdictEntiteNommee.ENTITE_PERTINENTE
+    )
 
 
 def test_reutilise_le_meme_doc_spacy_pour_le_meme_texte_et_langue():
     verificateur = SpacyVerificateurEntitesNommees()
     texte = "John Smith met Chronic Pain patient yesterday."
-    debut1, fin1 = texte.index("John Smith"), texte.index("John Smith") + len("John Smith")
-    debut2, fin2 = texte.index("Chronic Pain"), texte.index("Chronic Pain") + len("Chronic Pain")
+    debut1, fin1 = (
+        texte.index("John Smith"),
+        texte.index("John Smith") + len("John Smith"),
+    )
+    debut2, fin2 = (
+        texte.index("Chronic Pain"),
+        texte.index("Chronic Pain") + len("Chronic Pain"),
+    )
 
     verificateur.verifier(texte, "en", debut1, fin1)
     doc_premier_appel = verificateur._cache_docs[(texte, "en")]

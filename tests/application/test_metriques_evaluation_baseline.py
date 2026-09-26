@@ -24,16 +24,24 @@ from chsa_triage.application.metriques_evaluation_baseline import (
 
 
 def test_extraire_json_texte_json_pur():
-    assert extraire_json('{"niveau": 3, "categorie": "urgence"}') == {"niveau": 3, "categorie": "urgence"}
+    assert extraire_json('{"niveau": 3, "categorie": "urgence"}') == {
+        "niveau": 3,
+        "categorie": "urgence",
+    }
 
 
 def test_extraire_json_json_precede_de_texte_libre():
-    texte = 'Voici mon analyse : <think>le patient est stable</think> {"niveau": 2}'
+    texte = (
+        'Voici mon analyse : <think>le patient est stable</think> {"niveau": 2}'
+    )
     assert extraire_json(texte) == {"niveau": 2}
 
 
 def test_extraire_json_retourne_none_si_pas_de_json():
-    assert extraire_json("Le patient doit consulter un medecin rapidement.") is None
+    assert (
+        extraire_json("Le patient doit consulter un medecin rapidement.")
+        is None
+    )
 
 
 def test_extraire_json_retourne_none_si_json_invalide():
@@ -54,7 +62,10 @@ def test_extraire_niveau_triage_none_si_champ_absent():
 
 def test_extraire_niveau_triage_none_si_pas_de_json_du_tout():
     """Cas reel attendu sur le dataset actuel (voir docstring du module) : reponse en langage naturel."""
-    assert extraire_niveau_triage("Consultez un medecin generaliste sous 48h.") is None
+    assert (
+        extraire_niveau_triage("Consultez un medecin generaliste sous 48h.")
+        is None
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -100,7 +111,10 @@ def test_exactitude_classification_niveau_exclut_les_paires_non_comparables():
 
 def test_exactitude_classification_niveau_none_si_aucune_paire_comparable():
     """None (pas 0.0) : distingue explicitement "pas de donnee" de "0% de bonnes reponses"."""
-    paires = [("texte libre 1", "texte libre 2"), ("autre texte", "encore un autre")]
+    paires = [
+        ("texte libre 1", "texte libre 2"),
+        ("autre texte", "encore un autre"),
+    ]
     resultat = exactitude_classification_niveau(paires)
     assert resultat.nombre_comparables == 0
     assert resultat.exactitude is None
@@ -116,7 +130,9 @@ def test_normaliser_texte_minuscules_ponctuation_espaces():
 
 
 def test_correspondance_exacte_vrai_apres_normalisation():
-    assert correspondance_exacte("Bonjour, Docteur !", "bonjour   docteur") is True
+    assert (
+        correspondance_exacte("Bonjour, Docteur !", "bonjour   docteur") is True
+    )
 
 
 def test_correspondance_exacte_faux_si_contenu_different():
@@ -124,7 +140,9 @@ def test_correspondance_exacte_faux_si_contenu_different():
 
 
 def test_score_f1_tokens_identique_vaut_1():
-    assert score_f1_tokens("fievre et toux seche", "fievre et toux seche") == 1.0
+    assert (
+        score_f1_tokens("fievre et toux seche", "fievre et toux seche") == 1.0
+    )
 
 
 def test_score_f1_tokens_disjoint_vaut_0():

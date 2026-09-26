@@ -18,8 +18,8 @@ from chsa_triage.domain.ports import LecteurCorpus, Profileur, RapportProfilage
 class ProfilerCorpusUseCase:
     """Orchestre la lecture d'un corpus et son profilage."""
 
-    lecteur  : LecteurCorpus
-    profileur : Profileur
+    lecteur: LecteurCorpus
+    profileur: Profileur
 
     def executer(self, nom_corpus: str) -> RapportProfilage:
         """

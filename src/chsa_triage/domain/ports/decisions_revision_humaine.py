@@ -34,7 +34,9 @@ class RegistreDecisionsRevisionHumaine(Protocol):
         """Retourne l'ensemble des cles de candidats ayant deja une decision (sans reconstruire chaque decision)."""
         ...
 
-    def trouver(self, cle: CleCandidatRevision) -> DecisionRevisionHumaine | None:
+    def trouver(
+        self, cle: CleCandidatRevision
+    ) -> DecisionRevisionHumaine | None:
         """Retourne la decision associee a `cle`, ou None si aucune."""
         ...
 

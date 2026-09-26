@@ -17,6 +17,9 @@ def creer_dependance_verification_cle_api(cle_attendue: str):
 
     def verifier_cle_api(x_api_key: str | None = Header(default=None)) -> None:
         if x_api_key != cle_attendue:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Cle API invalide ou absente")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Cle API invalide ou absente",
+            )
 
     return verifier_cle_api

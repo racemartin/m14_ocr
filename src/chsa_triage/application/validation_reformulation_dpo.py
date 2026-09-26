@@ -1,24 +1,14 @@
 """
 Validation STRICTE du format de sortie attendu apres reformulation d'un
-`chosen` DPO (cahier des charges F3-F4 : bloc `<think>...</think>` suivi
-d'un JSON strict `{niveau, categorie, ressources_estimees}`), meme
-famille de fonction pure que `application/verdict_convergence.py`/
-`application/detection_pii_residuelle.py` : aucun port, aucun acces
-reseau/GPU, testable independamment de tout modele.
+`chosen` DPO (cahier des charges F3-F4 : `<think>...</think>` suivi
+d'un JSON strict `{niveau, categorie, ressources_estimees}`). Fonction
+pure, aucun port ; tout echec de format retourne `None`, jamais une
+exception, pour ecarter un exemple degenere sans faire echouer le lot.
 
-Separation deliberee "generer" (ReformulerPreferenceDpoUseCase, via
-MoteurInference) / "valider" (ici), decision actee en
-docs/04_etape3_dpo/02_etapes_cas_usage.md §1.4 : tout echec de format
-retourne `None` (jamais une exception), pour que l'appelant puisse
-ecarter un exemple degenere sans jamais faire echouer tout un lot
-(meme patron que `EvaluerBaselineZeroShotUseCase.executer()`, cf.
-AGENTS.md).
-
-Deliberement PLUS STRICT que `application/metriques_evaluation_baseline.py
-::extraire_json` (qui tolere un JSON noye dans du texte libre, pour
-evaluer une generation zero-shot non entrainee a produire ce format) :
-ici, la sortie doit deja respecter le format cible au mot pres, puisque
-c'est elle qui sera persistee comme donnee d'entrainement DPO.
+Plus stricte que `metriques_evaluation_baseline.py::extraire_json`
+(qui tolere un JSON noye dans du texte libre, pour evaluer une
+generation zero-shot) : ici la sortie sera persistee comme donnee
+d'entrainement DPO, elle doit deja respecter le format au mot pres.
 """
 
 from __future__ import annotations
@@ -30,7 +20,9 @@ from chsa_triage.domain.model.exemple_pivot import Message
 
 # Cles EXACTES attendues dans le JSON cible (F3-F4 du cahier des
 # charges) : ni cle manquante, ni cle en trop.
-CLES_REFORMULATION_ATTENDUES = frozenset({"niveau", "categorie", "ressources_estimees"})
+CLES_REFORMULATION_ATTENDUES = frozenset(
+    {"niveau", "categorie", "ressources_estimees"}
+)
 
 _MOTIF_BLOC_THINK = re.compile(r"<think>(.*?)</think>(.*)", re.DOTALL)
 

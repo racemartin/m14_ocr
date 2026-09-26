@@ -727,3 +727,5 @@ Couvert par un test dédié
 second découpage avec `--n 10000` sur le même repository; vérification
 que les 5 000 premiers identifiants conservent **exactement** le même
 split qu'à la première exécution.
+
+*(document suivant : `01_rapport_rgpd.md`, même dossier)*

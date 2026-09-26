@@ -51,7 +51,9 @@ def exemple_pivot_depuis_dict(d: dict) -> ExemplePivot:
         langue=Langue(d["langue"]),
         symptomes=d.get("symptomes", ""),
         antecedents=d.get("antecedents"),
-        constantes_vitales=ConstantesVitales(**constantes) if constantes else None,
+        constantes_vitales=ConstantesVitales(**constantes)
+        if constantes
+        else None,
         prompt=messages("prompt"),
         completion=messages("completion"),
         chosen=messages("chosen"),
@@ -62,7 +64,9 @@ def exemple_pivot_depuis_dict(d: dict) -> ExemplePivot:
     )
 
 
-def ajouter_exemples_jsonl(chemin_fichier: str | Path, exemples: Iterable[ExemplePivot]) -> None:
+def ajouter_exemples_jsonl(
+    chemin_fichier: str | Path, exemples: Iterable[ExemplePivot]
+) -> None:
     """
     Ajoute `exemples` en fin de fichier JSONL, SANS fusion par
     identifiant (contrairement a `JsonlDatasetRepository.sauvegarder_plusieurs`).
@@ -78,7 +82,10 @@ def ajouter_exemples_jsonl(chemin_fichier: str | Path, exemples: Iterable[Exempl
     chemin.parent.mkdir(parents=True, exist_ok=True)
     with chemin.open("a", encoding="utf-8") as f:
         for exemple in exemples:
-            f.write(json.dumps(exemple_pivot_vers_dict(exemple), ensure_ascii=False) + "\n")
+            f.write(
+                json.dumps(exemple_pivot_vers_dict(exemple), ensure_ascii=False)
+                + "\n"
+            )
 
 
 class JsonlDatasetRepository:
@@ -172,7 +179,10 @@ class JsonlDatasetRepository:
     def _ecrire_tous(self, exemples: Iterable[ExemplePivot]) -> None:
         with self._chemin.open("w", encoding="utf-8") as f:
             for exemple in exemples:
-                f.write(json.dumps(self._vers_dict(exemple), ensure_ascii=False) + "\n")
+                f.write(
+                    json.dumps(self._vers_dict(exemple), ensure_ascii=False)
+                    + "\n"
+                )
 
     @staticmethod
     def _vers_dict(exemple: ExemplePivot) -> dict:

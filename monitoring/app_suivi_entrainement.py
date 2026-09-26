@@ -1,30 +1,17 @@
 """
 Dashboard Streamlit : visualisation EN VIVO de la courbe d'apprentissage
-(perte train/validation) d'un run SFT-LoRA ou DPO-LoRA reel
-(Environnement B, GPU sur HF Jobs), en lisant le dataset HF alimente
-par `HfDatasetSuiviExperimentation` (`training/E2_04_sft_train.py`
-pour SFT, `E3_02_uc_entrainer_dpo.py` pour DPO, `suivi.backend:
-hf_dataset` dans les deux cas). Pour un run DPO, affiche en plus les
-metriques de recompense propres a `trl.DPOTrainer`
-(`rewards/chosen`/`rewards/rejected`/`rewards/accuracies`/`rewards/margins`)
-quand elles sont presentes dans le run selectionne ; un run SFT n'a
-jamais ces colonnes et n'affiche donc jamais ces cartes/graphique.
+d'un run SFT-LoRA ou DPO-LoRA reel, en lisant le dataset HF alimente
+par `HfDatasetSuiviExperimentation`. Pour un run DPO, affiche en plus
+les metriques de recompense propres a `trl.DPOTrainer` quand elles sont
+presentes ; un run SFT n'a jamais ces colonnes.
 
 Deploiement cible : Hugging Face Spaces (SDK Streamlit), cf. README
-"Suivi d'entrainement en vivo" pour les commandes exactes de creation
-du Space et de publication de ce code.
+"Suivi d'entrainement en vivo". Vit hors `training/`/`interfaces/cli/` :
+visualiseur passif, pas un pas execute par le job d'entrainement.
 
-Vit hors `training/` (visualiseur passif, pas un pas execute par le job
-d'entrainement) et hors `interfaces/cli/` (pas une CLI de la sequence
-de cas d'usage E1/E2) : meme critere que
-`domain/`/`ports/`/`infrastructure/adapters/`, d'ou l'absence de
-prefixe `E1_`/`E2_` sur ce fichier (cf. AGENTS.md).
-
-Toute la logique pure (parsing, pivot, verdict) est dans
-`logica_suivi_entrainement.py`, testee sans Streamlit ni reseau. La
-frontiere reseau HF Hub (lister/telecharger) est dans
-`hf_dataset_runs.py`, partagee avec l'importateur MLflow local
-(`importer_mlflow_local.py`).
+Toute la logique pure est dans `logica_suivi_entrainement.py`, testee
+sans Streamlit ni reseau ; la frontiere reseau HF Hub est dans
+`hf_dataset_runs.py`.
 
 Smoke test manuel (sans reseau, contre un JSONL de fixture local) :
     uv run streamlit run monitoring/app_suivi_entrainement.py
@@ -98,12 +85,19 @@ def _afficher_verdict_convergence(tableau_large: list[dict]) -> None:
 
 
 def _afficher_courbe_pertes(tableau_large: list[dict]) -> None:
-    colonnes_courbe = filtrer_colonnes_presentes(tableau_large, ("perte_train", "perte_validation"))
+    colonnes_courbe = filtrer_colonnes_presentes(
+        tableau_large, ("perte_train", "perte_validation")
+    )
     if not colonnes_courbe:
         st.info("Aucune courbe de perte disponible pour l'instant.")
         return
     donnees = {"etape": [ligne["etape"] for ligne in tableau_large]}
-    donnees.update({colonne: [ligne.get(colonne) for ligne in tableau_large] for colonne in colonnes_courbe})
+    donnees.update(
+        {
+            colonne: [ligne.get(colonne) for ligne in tableau_large]
+            for colonne in colonnes_courbe
+        }
+    )
     st.line_chart(donnees, x="etape", y=colonnes_courbe)
 
 
@@ -115,28 +109,48 @@ _LIBELLE_PAR_COLONNE_RECOMPENSE = {
 }
 
 
-def _afficher_cartes_recompenses_dpo(derniere_ligne: dict, colonnes_presentes: list[str]) -> None:
+def _afficher_cartes_recompenses_dpo(
+    derniere_ligne: dict, colonnes_presentes: list[str]
+) -> None:
     """Cartes des metriques de recompense DPO (`trl.DPOTrainer`) : rien n'est affiche si `colonnes_presentes` est vide (run SFT)."""
     if not colonnes_presentes:
         return
     colonnes = st.columns(len(colonnes_presentes))
     for colonne, cle in zip(colonnes, colonnes_presentes):
         valeur = derniere_ligne.get(cle)
-        colonne.metric(_LIBELLE_PAR_COLONNE_RECOMPENSE[cle], f"{valeur:.4f}" if valeur is not None else "-")
+        colonne.metric(
+            _LIBELLE_PAR_COLONNE_RECOMPENSE[cle],
+            f"{valeur:.4f}" if valeur is not None else "-",
+        )
 
 
-def _afficher_courbe_recompenses_dpo(tableau_large: list[dict], colonnes_presentes: list[str]) -> None:
+def _afficher_courbe_recompenses_dpo(
+    tableau_large: list[dict], colonnes_presentes: list[str]
+) -> None:
     """Courbe chosen/rejected uniquement (accuracies/margins restent en cartes, cf. _afficher_cartes_recompenses_dpo) ; rien si `colonnes_presentes` est vide."""
-    colonnes_courbe = [c for c in ("rewards/chosen", "rewards/rejected") if c in colonnes_presentes]
+    colonnes_courbe = [
+        c
+        for c in ("rewards/chosen", "rewards/rejected")
+        if c in colonnes_presentes
+    ]
     if not colonnes_courbe:
         return
     donnees = {"etape": [ligne["etape"] for ligne in tableau_large]}
-    donnees.update({colonne: [ligne.get(colonne) for ligne in tableau_large] for colonne in colonnes_courbe})
+    donnees.update(
+        {
+            colonne: [ligne.get(colonne) for ligne in tableau_large]
+            for colonne in colonnes_courbe
+        }
+    )
     st.line_chart(donnees, x="etape", y=colonnes_courbe)
 
 
 def main() -> None:
-    st.set_page_config(page_title="Suivi entrainement SFT/DPO-LoRA", page_icon="📈", layout="wide")
+    st.set_page_config(
+        page_title="Suivi entrainement SFT/DPO-LoRA",
+        page_icon="📈",
+        layout="wide",
+    )
     st.title("Suivi d'entrainement SFT/DPO-LoRA (en vivo)")
 
     with st.sidebar:
@@ -166,13 +180,19 @@ def main() -> None:
         st.info("Aucune metrique loguee pour l'instant.")
         return
 
-    colonnes_recompense_presentes = filtrer_colonnes_presentes(tableau_large, COLONNES_RECOMPENSE_DPO)
+    colonnes_recompense_presentes = filtrer_colonnes_presentes(
+        tableau_large, COLONNES_RECOMPENSE_DPO
+    )
 
     _afficher_cartes_derniere_etape(tableau_large[-1])
-    _afficher_cartes_recompenses_dpo(tableau_large[-1], colonnes_recompense_presentes)
+    _afficher_cartes_recompenses_dpo(
+        tableau_large[-1], colonnes_recompense_presentes
+    )
     _afficher_verdict_convergence(tableau_large)
     _afficher_courbe_pertes(tableau_large)
-    _afficher_courbe_recompenses_dpo(tableau_large, colonnes_recompense_presentes)
+    _afficher_courbe_recompenses_dpo(
+        tableau_large, colonnes_recompense_presentes
+    )
 
     if actualiser_maintenant:
         st.rerun()

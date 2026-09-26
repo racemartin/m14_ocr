@@ -34,16 +34,24 @@ from chsa_triage.domain.ports.verificateur_entites import VerdictEntiteNommee
 
 
 class FauxVerificateurEntites:
-    def __init__(self, verdicts_par_passage: dict[str, VerdictEntiteNommee]) -> None:
+    def __init__(
+        self, verdicts_par_passage: dict[str, VerdictEntiteNommee]
+    ) -> None:
         self._verdicts = verdicts_par_passage
 
-    def verifier(self, texte: str, langue: str, debut: int, fin: int) -> VerdictEntiteNommee:
-        return self._verdicts.get(texte[debut:fin], VerdictEntiteNommee.AUCUNE_ENTITE)
+    def verifier(
+        self, texte: str, langue: str, debut: int, fin: int
+    ) -> VerdictEntiteNommee:
+        return self._verdicts.get(
+            texte[debut:fin], VerdictEntiteNommee.AUCUNE_ENTITE
+        )
 
 
 class FauxRepository:
     def __init__(self, items: list[ExemplePivot] | None = None) -> None:
-        self.items: dict[str, ExemplePivot] = {item.identifiant: item for item in (items or [])}
+        self.items: dict[str, ExemplePivot] = {
+            item.identifiant: item for item in (items or [])
+        }
 
     def sauvegarder(self, item: ExemplePivot) -> None:
         self.items[item.identifiant] = item
@@ -57,7 +65,10 @@ class FauxRepository:
 
     def lister(self, filtre: dict | None = None):
         for exemple in self.items.values():
-            if filtre is None or all(getattr(exemple, cle) == valeur for cle, valeur in filtre.items()):
+            if filtre is None or all(
+                getattr(exemple, cle) == valeur
+                for cle, valeur in filtre.items()
+            ):
                 yield exemple
 
     def compter(self, filtre: dict | None = None) -> int:
@@ -69,7 +80,9 @@ class FauxRepository:
 
 class FauxRegistreEchantillons:
     def __init__(self, vus: dict[str, set[str]] | None = None) -> None:
-        self._vus: dict[str, set[str]] = {k: set(v) for k, v in (vus or {}).items()}
+        self._vus: dict[str, set[str]] = {
+            k: set(v) for k, v in (vus or {}).items()
+        }
 
     def identifiants_vus(self, stratum: str) -> set[str]:
         return set(self._vus.get(stratum, set()))
@@ -95,7 +108,9 @@ class FauxDecisions:
         self._decisions[decision.cle] = decision
 
 
-def _exemple(source: str = "MediQAl", symptomes: str = "Fievre") -> ExemplePivot:
+def _exemple(
+    source: str = "MediQAl", symptomes: str = "Fievre"
+) -> ExemplePivot:
     cle = uuid4().hex
     return ExemplePivot(
         identifiant=ExemplePivot.nouvel_identifiant(source, cle),
@@ -115,7 +130,9 @@ def _anonymiser(exemple: ExemplePivot, symptomes_anon: str) -> ExemplePivot:
 
 def test_candidats_en_attente_replay_sur_les_identifiants_deja_echantillonnes():
     """Le use case doit retrouver un candidat REVISION_HUMAINE meme si sa vague n'est plus le dernier lot."""
-    verificateur = FauxVerificateurEntites({"Some Product": VerdictEntiteNommee.ENTITE_NON_PERTINENTE})
+    verificateur = FauxVerificateurEntites(
+        {"Some Product": VerdictEntiteNommee.ENTITE_NON_PERTINENTE}
+    )
     original = _exemple(symptomes="orig")
     anonymise = _anonymiser(original, "Some Product was mentioned.")
 
@@ -123,7 +140,9 @@ def test_candidats_en_attente_replay_sur_les_identifiants_deja_echantillonnes():
         repository_original=FauxRepository([original]),
         repository_anonymise=FauxRepository([anonymise]),
         verificateur_entites=verificateur,
-        registre_echantillons=FauxRegistreEchantillons({STRATUM_PRINCIPAL: {original.identifiant}}),
+        registre_echantillons=FauxRegistreEchantillons(
+            {STRATUM_PRINCIPAL: {original.identifiant}}
+        ),
         decisions=FauxDecisions(),
     )
 
@@ -135,7 +154,9 @@ def test_candidats_en_attente_replay_sur_les_identifiants_deja_echantillonnes():
 
 
 def test_candidats_en_attente_exclut_ceux_deja_decides():
-    verificateur = FauxVerificateurEntites({"Some Product": VerdictEntiteNommee.ENTITE_NON_PERTINENTE})
+    verificateur = FauxVerificateurEntites(
+        {"Some Product": VerdictEntiteNommee.ENTITE_NON_PERTINENTE}
+    )
     original = _exemple(symptomes="orig")
     anonymise = _anonymiser(original, "Some Product was mentioned.")
 
@@ -144,18 +165,24 @@ def test_candidats_en_attente_exclut_ceux_deja_decides():
         repository_original=FauxRepository([original]),
         repository_anonymise=FauxRepository([anonymise]),
         verificateur_entites=verificateur,
-        registre_echantillons=FauxRegistreEchantillons({STRATUM_PRINCIPAL: {original.identifiant}}),
+        registre_echantillons=FauxRegistreEchantillons(
+            {STRATUM_PRINCIPAL: {original.identifiant}}
+        ),
         decisions=decisions,
     )
 
     (candidat,) = cas_usage.candidats_en_attente()
-    cas_usage.enregistrer_decision(candidat, DECISION_ACCEPTE, "2026-09-09T10:00:00+00:00")
+    cas_usage.enregistrer_decision(
+        candidat, DECISION_ACCEPTE, "2026-09-09T10:00:00+00:00"
+    )
 
     assert cas_usage.candidats_en_attente() == []
 
 
 def test_enregistrer_decision_persiste_immediatement():
-    verificateur = FauxVerificateurEntites({"Some Product": VerdictEntiteNommee.ENTITE_NON_PERTINENTE})
+    verificateur = FauxVerificateurEntites(
+        {"Some Product": VerdictEntiteNommee.ENTITE_NON_PERTINENTE}
+    )
     original = _exemple(symptomes="orig")
     anonymise = _anonymiser(original, "Some Product was mentioned.")
     decisions = FauxDecisions()
@@ -164,12 +191,16 @@ def test_enregistrer_decision_persiste_immediatement():
         repository_original=FauxRepository([original]),
         repository_anonymise=FauxRepository([anonymise]),
         verificateur_entites=verificateur,
-        registre_echantillons=FauxRegistreEchantillons({STRATUM_PRINCIPAL: {original.identifiant}}),
+        registre_echantillons=FauxRegistreEchantillons(
+            {STRATUM_PRINCIPAL: {original.identifiant}}
+        ),
         decisions=decisions,
     )
     (candidat,) = cas_usage.candidats_en_attente()
 
-    enregistree = cas_usage.enregistrer_decision(candidat, DECISION_ACCEPTE, "2026-09-09T10:00:00+00:00", note="ok")
+    enregistree = cas_usage.enregistrer_decision(
+        candidat, DECISION_ACCEPTE, "2026-09-09T10:00:00+00:00", note="ok"
+    )
 
     relue = decisions.trouver(candidat.cle)
     assert relue is not None
@@ -179,15 +210,25 @@ def test_enregistrer_decision_persiste_immediatement():
 
 
 def test_candidats_en_attente_couvre_les_deux_strates():
-    verificateur = FauxVerificateurEntites({"Some Product": VerdictEntiteNommee.ENTITE_NON_PERTINENTE})
+    verificateur = FauxVerificateurEntites(
+        {"Some Product": VerdictEntiteNommee.ENTITE_NON_PERTINENTE}
+    )
     original_principal = _exemple(symptomes="orig 1")
-    anonymise_principal = _anonymiser(original_principal, "Some Product was mentioned.")
+    anonymise_principal = _anonymiser(
+        original_principal, "Some Product was mentioned."
+    )
     original_sans_entite = _exemple(symptomes="Some Product was mentioned.")
-    anonymise_sans_entite = _anonymiser(original_sans_entite, "Some Product was mentioned.")  # texte inchange
+    anonymise_sans_entite = _anonymiser(
+        original_sans_entite, "Some Product was mentioned."
+    )  # texte inchange
 
     cas_usage = ReviserPiiResiduelleUseCase(
-        repository_original=FauxRepository([original_principal, original_sans_entite]),
-        repository_anonymise=FauxRepository([anonymise_principal, anonymise_sans_entite]),
+        repository_original=FauxRepository(
+            [original_principal, original_sans_entite]
+        ),
+        repository_anonymise=FauxRepository(
+            [anonymise_principal, anonymise_sans_entite]
+        ),
         verificateur_entites=verificateur,
         registre_echantillons=FauxRegistreEchantillons(
             {
@@ -201,7 +242,10 @@ def test_candidats_en_attente_couvre_les_deux_strates():
     en_attente = cas_usage.candidats_en_attente()
     identifiants = {c.cle.identifiant for c in en_attente}
 
-    assert identifiants == {original_principal.identifiant, original_sans_entite.identifiant}
+    assert identifiants == {
+        original_principal.identifiant,
+        original_sans_entite.identifiant,
+    }
 
 
 def test_texte_original_et_anonymise_retrouve_le_champ_nomme():
@@ -217,30 +261,48 @@ def test_texte_original_et_anonymise_retourne_none_pour_champ_inconnu():
     original = _exemple()
     anonymise = _anonymiser(original, original.symptomes)
 
-    assert texte_original_et_anonymise(original, anonymise, "champ_inexistant") is None
+    assert (
+        texte_original_et_anonymise(original, anonymise, "champ_inexistant")
+        is None
+    )
 
 
 def test_identifiants_a_exclure_publication_inclut_confirme_et_pendant_revision_humaine():
     """Un candidat CONFIRME (email non masque) et un candidat REVISION_HUMAINE portent chacun leur identifiant."""
-    verificateur = FauxVerificateurEntites({"Some Product": VerdictEntiteNommee.ENTITE_NON_PERTINENTE})
+    verificateur = FauxVerificateurEntites(
+        {"Some Product": VerdictEntiteNommee.ENTITE_NON_PERTINENTE}
+    )
     original_confirme = _exemple(symptomes="contact: jean@example.com")
-    anonymise_confirme = _anonymiser(original_confirme, "contact: jean@example.com")  # email jamais masque
+    anonymise_confirme = _anonymiser(
+        original_confirme, "contact: jean@example.com"
+    )  # email jamais masque
     original_en_attente = _exemple(symptomes="orig")
-    anonymise_en_attente = _anonymiser(original_en_attente, "Some Product was mentioned.")
+    anonymise_en_attente = _anonymiser(
+        original_en_attente, "Some Product was mentioned."
+    )
 
     cas_usage = ReviserPiiResiduelleUseCase(
-        repository_original=FauxRepository([original_confirme, original_en_attente]),
-        repository_anonymise=FauxRepository([anonymise_confirme, anonymise_en_attente]),
+        repository_original=FauxRepository(
+            [original_confirme, original_en_attente]
+        ),
+        repository_anonymise=FauxRepository(
+            [anonymise_confirme, anonymise_en_attente]
+        ),
         verificateur_entites=verificateur,
         registre_echantillons=FauxRegistreEchantillons(
-            {STRATUM_PRINCIPAL: {original_confirme.identifiant, original_en_attente.identifiant}}
+            {
+                STRATUM_PRINCIPAL: {
+                    original_confirme.identifiant,
+                    original_en_attente.identifiant,
+                }
+            }
         ),
         decisions=FauxDecisions(),
     )
 
-    razons = cas_usage.identifiants_a_exclure_publication()
+    raisons = cas_usage.identifiants_a_exclure_publication()
 
-    assert razons == {
+    assert raisons == {
         original_confirme.identifiant: "confirme",
         original_en_attente.identifiant: "pendant_revision_humaine",
     }
@@ -248,7 +310,9 @@ def test_identifiants_a_exclure_publication_inclut_confirme_et_pendant_revision_
 
 def test_identifiants_a_exclure_publication_exclut_ceux_deja_acceptes():
     """Un candidat REVISION_HUMAINE avec decision DECISION_ACCEPTE ne doit plus figurer dans l'export."""
-    verificateur = FauxVerificateurEntites({"Some Product": VerdictEntiteNommee.ENTITE_NON_PERTINENTE})
+    verificateur = FauxVerificateurEntites(
+        {"Some Product": VerdictEntiteNommee.ENTITE_NON_PERTINENTE}
+    )
     original = _exemple(symptomes="orig")
     anonymise = _anonymiser(original, "Some Product was mentioned.")
 
@@ -256,11 +320,15 @@ def test_identifiants_a_exclure_publication_exclut_ceux_deja_acceptes():
         repository_original=FauxRepository([original]),
         repository_anonymise=FauxRepository([anonymise]),
         verificateur_entites=verificateur,
-        registre_echantillons=FauxRegistreEchantillons({STRATUM_PRINCIPAL: {original.identifiant}}),
+        registre_echantillons=FauxRegistreEchantillons(
+            {STRATUM_PRINCIPAL: {original.identifiant}}
+        ),
         decisions=FauxDecisions(),
     )
     (candidat,) = cas_usage.candidats_en_attente()
-    cas_usage.enregistrer_decision(candidat, DECISION_ACCEPTE, "2026-09-11T10:00:00+00:00")
+    cas_usage.enregistrer_decision(
+        candidat, DECISION_ACCEPTE, "2026-09-11T10:00:00+00:00"
+    )
 
     assert cas_usage.identifiants_a_exclure_publication() == {}
 
@@ -268,7 +336,10 @@ def test_identifiants_a_exclure_publication_exclut_ceux_deja_acceptes():
 def test_identifiants_a_exclure_publication_deduplique_plusieurs_candidats_du_meme_identifiant():
     """Deux candidats REVISION_HUMAINE distincts sur le meme identifiant ne donnent qu'UNE entree exportee."""
     verificateur = FauxVerificateurEntites(
-        {"Some Product": VerdictEntiteNommee.ENTITE_NON_PERTINENTE, "Other Brand": VerdictEntiteNommee.ENTITE_NON_PERTINENTE}
+        {
+            "Some Product": VerdictEntiteNommee.ENTITE_NON_PERTINENTE,
+            "Other Brand": VerdictEntiteNommee.ENTITE_NON_PERTINENTE,
+        }
     )
     original = _exemple(symptomes="orig")
     anonymise = _anonymiser(original, "Some Product met Other Brand.")
@@ -277,51 +348,76 @@ def test_identifiants_a_exclure_publication_deduplique_plusieurs_candidats_du_me
         repository_original=FauxRepository([original]),
         repository_anonymise=FauxRepository([anonymise]),
         verificateur_entites=verificateur,
-        registre_echantillons=FauxRegistreEchantillons({STRATUM_PRINCIPAL: {original.identifiant}}),
+        registre_echantillons=FauxRegistreEchantillons(
+            {STRATUM_PRINCIPAL: {original.identifiant}}
+        ),
         decisions=FauxDecisions(),
     )
 
     en_attente = cas_usage.candidats_en_attente()
     assert len(en_attente) >= 2  # deux candidats distincts, meme identifiant
 
-    razons = cas_usage.identifiants_a_exclure_publication()
+    raisons = cas_usage.identifiants_a_exclure_publication()
 
-    assert razons == {original.identifiant: "pendant_revision_humaine"}
+    assert raisons == {original.identifiant: "pendant_revision_humaine"}
 
 
 def test_identifiants_a_exclure_publication_confirme_gagne_sur_pendant_revision_humaine():
     """Un identifiant avec a la fois un candidat CONFIRME et un candidat REVISION_HUMAINE garde le motif 'confirme'."""
-    verificateur = FauxVerificateurEntites({"Some Product": VerdictEntiteNommee.ENTITE_NON_PERTINENTE})
-    original = _exemple(symptomes="contact: jean@example.com, Some Product was mentioned.")
-    anonymise = _anonymiser(original, "contact: jean@example.com, Some Product was mentioned.")
+    verificateur = FauxVerificateurEntites(
+        {"Some Product": VerdictEntiteNommee.ENTITE_NON_PERTINENTE}
+    )
+    original = _exemple(
+        symptomes="contact: jean@example.com, Some Product was mentioned."
+    )
+    anonymise = _anonymiser(
+        original, "contact: jean@example.com, Some Product was mentioned."
+    )
 
     cas_usage = ReviserPiiResiduelleUseCase(
         repository_original=FauxRepository([original]),
         repository_anonymise=FauxRepository([anonymise]),
         verificateur_entites=verificateur,
-        registre_echantillons=FauxRegistreEchantillons({STRATUM_PRINCIPAL: {original.identifiant}}),
+        registre_echantillons=FauxRegistreEchantillons(
+            {STRATUM_PRINCIPAL: {original.identifiant}}
+        ),
         decisions=FauxDecisions(),
     )
 
-    razons = cas_usage.identifiants_a_exclure_publication()
+    raisons = cas_usage.identifiants_a_exclure_publication()
 
-    assert razons == {original.identifiant: "confirme"}
+    assert raisons == {original.identifiant: "confirme"}
 
 
 def test_identifiants_a_exclure_publication_set_reprend_les_cles_du_dict():
     """`identifiants_a_exclure_publication_set` doit renvoyer exactement les cles de `identifiants_a_exclure_publication`, peu importe le motif."""
-    verificateur = FauxVerificateurEntites({"Some Product": VerdictEntiteNommee.ENTITE_NON_PERTINENTE})
+    verificateur = FauxVerificateurEntites(
+        {"Some Product": VerdictEntiteNommee.ENTITE_NON_PERTINENTE}
+    )
     original_confirme = _exemple(symptomes="contact: jean@example.com")
-    anonymise_confirme = _anonymiser(original_confirme, "contact: jean@example.com")
+    anonymise_confirme = _anonymiser(
+        original_confirme, "contact: jean@example.com"
+    )
     original_en_attente = _exemple(symptomes="orig")
-    anonymise_en_attente = _anonymiser(original_en_attente, "Some Product was mentioned.")
+    anonymise_en_attente = _anonymiser(
+        original_en_attente, "Some Product was mentioned."
+    )
 
     cas_usage = ReviserPiiResiduelleUseCase(
-        repository_original=FauxRepository([original_confirme, original_en_attente]),
-        repository_anonymise=FauxRepository([anonymise_confirme, anonymise_en_attente]),
+        repository_original=FauxRepository(
+            [original_confirme, original_en_attente]
+        ),
+        repository_anonymise=FauxRepository(
+            [anonymise_confirme, anonymise_en_attente]
+        ),
         verificateur_entites=verificateur,
         registre_echantillons=FauxRegistreEchantillons(
-            {STRATUM_PRINCIPAL: {original_confirme.identifiant, original_en_attente.identifiant}}
+            {
+                STRATUM_PRINCIPAL: {
+                    original_confirme.identifiant,
+                    original_en_attente.identifiant,
+                }
+            }
         ),
         decisions=FauxDecisions(),
     )
@@ -334,15 +430,21 @@ def test_identifiants_a_exclure_publication_set_reprend_les_cles_du_dict():
 
 def test_candidats_en_attente_ignore_les_verdicts_deja_tranches():
     """Un candidat CONFIRME/FAUX_POSITIF_REGEX (regex+spaCy tranchent seuls) ne doit jamais apparaitre ici."""
-    verificateur = FauxVerificateurEntites({})  # AUCUNE_ENTITE partout -> jamais REVISION_HUMAINE
+    verificateur = FauxVerificateurEntites(
+        {}
+    )  # AUCUNE_ENTITE partout -> jamais REVISION_HUMAINE
     original = _exemple(symptomes="contact: jean@example.com")
-    anonymise = _anonymiser(original, "contact: jean@example.com")  # email jamais masque -> VERDICT_CONFIRME
+    anonymise = _anonymiser(
+        original, "contact: jean@example.com"
+    )  # email jamais masque -> VERDICT_CONFIRME
 
     cas_usage = ReviserPiiResiduelleUseCase(
         repository_original=FauxRepository([original]),
         repository_anonymise=FauxRepository([anonymise]),
         verificateur_entites=verificateur,
-        registre_echantillons=FauxRegistreEchantillons({STRATUM_PRINCIPAL: {original.identifiant}}),
+        registre_echantillons=FauxRegistreEchantillons(
+            {STRATUM_PRINCIPAL: {original.identifiant}}
+        ),
         decisions=FauxDecisions(),
     )
 

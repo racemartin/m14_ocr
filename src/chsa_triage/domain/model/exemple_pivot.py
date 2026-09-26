@@ -25,17 +25,17 @@ from chsa_triage.domain.model.enums import (
 class Message:
     """Un tour de dialogue (role/contenu), independant du format ChatML."""
 
-    role    : str   # "system" | "user" | "assistant"
-    contenu : str
+    role: str  # "system" | "user" | "assistant"
+    contenu: str
 
 
 @dataclass(frozen=True, slots=True)
 class ConstantesVitales:
     """Constantes vitales optionnelles associees a un exemple clinique."""
 
-    pression_arterielle : str | None = None   # ex. "150/95"
-    frequence_cardiaque  : int | None = None   # bpm
-    saturation_o2        : int | None = None   # SpO2 %
+    pression_arterielle: str | None = None  # ex. "150/95"
+    frequence_cardiaque: int | None = None  # bpm
+    saturation_o2: int | None = None  # SpO2 %
     frequence_respiratoire: int | None = None  # rpm
 
 
@@ -51,65 +51,51 @@ class ExemplePivot:
       renseignes, `completion` reste vide.
     """
 
-    identifiant          : str
-    source                : str                 # nom du CorpusSource d'origine
-    type_exemple          : TypeExemple
-    langue                : Langue
+    identifiant: str
+    source: str  # nom du CorpusSource d'origine
+    type_exemple: TypeExemple
+    langue: Langue
 
-    # Cle naturelle du registre brut d'origine (id/hash), telle
-    # qu'exposee par le mapper ; PAS l'entree exacte du hash de
-    # `identifiant` (qui peut inclure un espace de noms plus fin, cf.
-    # `nouvel_identifiant`), mais la valeur la plus utile pour
-    # retrouver le registre source dans data/raw/*.jsonl. Vide par
-    # defaut (ExemplePivot synthetiques de test) ; toujours renseignee
-    # par les mappers reels (interfaces/cli/E1_03_01_mappers_corpus.py).
+    # Cle naturelle du registre brut d'origine (id/hash du mapper), pour
+    # retrouver la ligne source dans data/raw/*.jsonl. Vide par defaut
+    # (exemples synthetiques de test) ; toujours renseignee par les
+    # mappers reels (interfaces/cli/E1_03_01_mappers_corpus.py).
     identifiant_source_brute: str = ""
 
-    symptomes             : str = ""
-    antecedents           : str | None = None
-    constantes_vitales    : ConstantesVitales | None = None
+    symptomes: str = ""
+    antecedents: str | None = None
+    constantes_vitales: ConstantesVitales | None = None
 
-    prompt                : tuple[Message, ...] = field(default_factory=tuple)
-    completion             : tuple[Message, ...] = field(default_factory=tuple)
-    chosen                 : tuple[Message, ...] = field(default_factory=tuple)
-    rejected                : tuple[Message, ...] = field(default_factory=tuple)
+    prompt: tuple[Message, ...] = field(default_factory=tuple)
+    completion: tuple[Message, ...] = field(default_factory=tuple)
+    chosen: tuple[Message, ...] = field(default_factory=tuple)
+    rejected: tuple[Message, ...] = field(default_factory=tuple)
 
-    niveau_confiance       : NiveauConfiance = NiveauConfiance.MOYENNE
-    anonymise               : bool = False
-    split                   : TypeSplit | None = None
+    niveau_confiance: NiveauConfiance = NiveauConfiance.MOYENNE
+    anonymise: bool = False
+    split: TypeSplit | None = None
 
     @staticmethod
     def nouvel_identifiant(espace_noms: str, cle_naturelle: str) -> str:
-        """
-        Genere un identifiant DETERMINISTE : meme (espace_noms,
-        cle_naturelle) en entree -> toujours le meme identifiant en
-        sortie (hash sha256 tronque de "espace_noms:cle_naturelle").
-
-        Deterministe (et non aleatoire, contrairement a l'ancien
-        `uuid4()`) pour que le dataset pivot puisse etre regenere sans
-        perdre la correspondance entre un ExemplePivot et son registre
-        brut d'origine ; necessaire pour croiser "cet exemple
-        anonymise" avec "son original" entre le pivot immuable et le
-        fichier de sortie anonymise (fichiers separes, cf.
-        AnonymiserDatasetUseCase).
-
-        `espace_noms` n'est PAS forcement egal au champ `source` de
-        l'ExemplePivot : il doit etre assez fin pour eviter toute
-        collision entre sous-configurations d'une meme source qui
-        partagent le meme espace de cles naturelles. Exemple reel
-        rencontre sur les donnees brutes : les fichiers MediQAl "oeq"
-        et "mcqu" partagent 1492 valeurs de champ `id` identiques bien
-        qu'ils decrivent des registres differents ; `espace_noms` doit
-        donc valoir "mediqal_oeq"/"mediqal_mcqu"/"mediqal_mcqm"
-        (distincts), meme si `source="MediQAl"` reste commun aux trois
-        pour le reste du pipeline (stratification, rapports).
-        """
-        empreinte = hashlib.sha256(f"{espace_noms}:{cle_naturelle}".encode("utf-8")).hexdigest()[:16]
+        """Identifiant deterministe (hash sha256 tronque), pas un
+        `uuid4()` aleatoire : permet de regenerer le pivot sans perdre
+        le lien vers le registre brut d'origine (utile pour retrouver
+        l'original d'un exemple anonymise). `espace_noms` doit etre
+        plus fin que `source` quand deux sous-sources partagent le meme
+        champ id (vu en pratique : MediQAl "oeq"/"mcqu" avaient 1492 id
+        en commun malgre un `source` identique)."""
+        empreinte = hashlib.sha256(
+            f"{espace_noms}:{cle_naturelle}".encode("utf-8")
+        ).hexdigest()[:16]
         return f"chsa-{espace_noms.lower()}-{empreinte}"
 
     def est_complet_pour_sft(self) -> bool:
         """Verifie qu'un exemple SFT a bien un prompt et une completion."""
-        return self.type_exemple == TypeExemple.SFT and bool(self.prompt) and bool(self.completion)
+        return (
+            self.type_exemple == TypeExemple.SFT
+            and bool(self.prompt)
+            and bool(self.completion)
+        )
 
     def est_complet_pour_dpo(self) -> bool:
         """Verifie qu'un exemple DPO a bien un prompt, un chosen et un rejected."""

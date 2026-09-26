@@ -25,11 +25,19 @@ class TensorboardSuiviExperimentation:
     def demarrer_run(self, nom: str, parametres: dict) -> None:
         from torch.utils.tensorboard import SummaryWriter
 
-        self._writer = SummaryWriter(log_dir=os.path.join(self.repertoire_logs, nom))
+        self._writer = SummaryWriter(
+            log_dir=os.path.join(self.repertoire_logs, nom)
+        )
         if parametres:
             self._writer.add_text("parametres", str(parametres))
 
-    def logger_metrique(self, nom: str, valeur: float, etape: int, horodatage: float | None = None) -> None:
+    def logger_metrique(
+        self,
+        nom: str,
+        valeur: float,
+        etape: int,
+        horodatage: float | None = None,
+    ) -> None:
         self._writer.add_scalar(nom, valeur, etape, walltime=horodatage)
 
     def terminer_run(self) -> None:

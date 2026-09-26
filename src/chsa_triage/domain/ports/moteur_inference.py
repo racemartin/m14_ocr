@@ -15,17 +15,19 @@ from typing import Protocol
 class ReponseModele:
     """Reponse generique retournee par n'importe quel moteur d'inference."""
 
-    texte              : str
-    nombre_tokens_entree : int = 0
-    nombre_tokens_sortie : int = 0
-    latence_ms           : float = 0.0
-    metadonnees           : dict = field(default_factory=dict)
+    texte: str
+    nombre_tokens_entree: int = 0
+    nombre_tokens_sortie: int = 0
+    latence_ms: float = 0.0
+    metadonnees: dict = field(default_factory=dict)
 
 
 class MoteurInference(Protocol):
     """Port generique : envoyer des messages, recevoir une reponse."""
 
-    def generer(self, messages: list[dict], parametres: dict | None = None) -> ReponseModele:
+    def generer(
+        self, messages: list[dict], parametres: dict | None = None
+    ) -> ReponseModele:
         """
         Envoie une liste de messages (format {"role": ..., "content": ...})
         au moteur d'inference et retourne une reponse generique.

@@ -21,13 +21,17 @@ from interfaces.web.logica_test_inference import (
 
 
 def _client(handler) -> httpx.Client:
-    return httpx.Client(base_url="http://api-test", transport=httpx.MockTransport(handler))
+    return httpx.Client(
+        base_url="http://api-test", transport=httpx.MockTransport(handler)
+    )
 
 
 def test_interroger_sante_relaie_le_corps_json():
     def handler(requete: httpx.Request) -> httpx.Response:
         assert requete.url.path == "/sante"
-        return httpx.Response(200, json={"disponible": True, "detail": "serveur vLLM disponible"})
+        return httpx.Response(
+            200, json={"disponible": True, "detail": "serveur vLLM disponible"}
+        )
 
     resultat = interroger_sante(_client(handler))
 
@@ -58,10 +62,16 @@ def test_poursuivre_conversation_envoie_le_message_et_retourne_la_reponse():
         assert requete.url.path == "/conversations/abc-123/messages"
         assert json.loads(requete.content) == {"message": "Douleur au ventre."}
         return httpx.Response(
-            200, json={"conversation_id": "abc-123", "message_assistant": "Depuis quand ?"}
+            200,
+            json={
+                "conversation_id": "abc-123",
+                "message_assistant": "Depuis quand ?",
+            },
         )
 
-    reponse = poursuivre_conversation(_client(handler), "abc-123", "Douleur au ventre.")
+    reponse = poursuivre_conversation(
+        _client(handler), "abc-123", "Douleur au ventre."
+    )
 
     assert reponse == "Depuis quand ?"
 

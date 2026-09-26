@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from chsa_triage.domain.model.exemple_formate_preference import ExempleFormatePreference
+from chsa_triage.domain.model.exemple_formate_preference import (
+    ExempleFormatePreference,
+)
 from chsa_triage.infrastructure.adapters.jsonl_exemple_formate_preference_repository import (
     JsonlExempleFormatePreferenceRepository,
 )
@@ -40,7 +42,10 @@ def test_sauvegarder_remplace_par_identifiant(tmp_path: Path):
     repo = JsonlExempleFormatePreferenceRepository(tmp_path / "formate.jsonl")
     repo.sauvegarder(_exemple("a"))
     remplacement = ExempleFormatePreference(
-        identifiant="a", texte_prompt="autre", texte_chosen="autre", texte_rejected="autre"
+        identifiant="a",
+        texte_prompt="autre",
+        texte_chosen="autre",
+        texte_rejected="autre",
     )
     repo.sauvegarder(remplacement)
 

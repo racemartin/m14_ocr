@@ -35,7 +35,9 @@ class FauxEntrees(dict):
 
 
 class FauxTokenizer:
-    def __init__(self, ids_entree: list[int], texte_decode: str = "reponse generee") -> None:
+    def __init__(
+        self, ids_entree: list[int], texte_decode: str = "reponse generee"
+    ) -> None:
         self._ids_entree = ids_entree
         self._texte_decode = texte_decode
         self.dernier_appel_chat_template: dict | None = None
@@ -77,10 +79,15 @@ def _construire_adaptateur(ids_entree=(1, 2, 3), tokens_generes=(4, 5)):
 
 
 def test_generer_mode_invite_deja_rendue_ne_reapplique_pas_le_chat_template():
-    adaptateur, modele, tokenizer = _construire_adaptateur(ids_entree=(1, 2, 3), tokens_generes=(4, 5, 6))
+    adaptateur, modele, tokenizer = _construire_adaptateur(
+        ids_entree=(1, 2, 3), tokens_generes=(4, 5, 6)
+    )
     invite = "<|im_start|>user\nBonjour<|im_end|>\n<|im_start|>assistant\n"
 
-    reponse = adaptateur.generer([{"role": "user", "content": invite}], {"invite_deja_rendue": True, "n_predict": 5})
+    reponse = adaptateur.generer(
+        [{"role": "user", "content": invite}],
+        {"invite_deja_rendue": True, "n_predict": 5},
+    )
 
     assert tokenizer.dernier_appel_chat_template is None
     assert reponse.texte == "reponse generee"
@@ -111,7 +118,10 @@ def test_generer_mode_invite_deja_rendue_leve_si_aucun_message():
 def test_parametre_invite_deja_rendue_jamais_transmis_a_generate():
     adaptateur, modele, _ = _construire_adaptateur()
 
-    adaptateur.generer([{"role": "user", "content": "x"}], {"invite_deja_rendue": True, "temperature": 0.5})
+    adaptateur.generer(
+        [{"role": "user", "content": "x"}],
+        {"invite_deja_rendue": True, "temperature": 0.5},
+    )
 
     assert "invite_deja_rendue" not in modele.dernier_appel_generate
 
@@ -119,7 +129,9 @@ def test_parametre_invite_deja_rendue_jamais_transmis_a_generate():
 def test_reponse_reference_le_modele_de_base_et_le_depot_lora():
     adaptateur, _, _ = _construire_adaptateur()
 
-    reponse = adaptateur.generer([{"role": "user", "content": "x"}], {"invite_deja_rendue": True})
+    reponse = adaptateur.generer(
+        [{"role": "user", "content": "x"}], {"invite_deja_rendue": True}
+    )
 
     assert reponse.metadonnees["modele_base"] == adaptateur.nom_modele_base
     assert reponse.metadonnees["depot_lora"] == DEPOT_LORA_TEST
@@ -129,7 +141,9 @@ def test_generer_utilise_le_modele_et_tokenizer_injectes_sans_charger_de_vrais()
     """Aucun import torch/transformers/peft reel declenche : _modele/_tokenizer deja fournis."""
     adaptateur, modele, tokenizer = _construire_adaptateur()
 
-    adaptateur.generer([{"role": "user", "content": "x"}], {"invite_deja_rendue": True})
+    adaptateur.generer(
+        [{"role": "user", "content": "x"}], {"invite_deja_rendue": True}
+    )
 
     assert adaptateur._modele is modele
     assert adaptateur._tokenizer is tokenizer
@@ -148,9 +162,13 @@ def test_generer_sans_gpu_leve_runtime_error_explicite():
     import torch
 
     if torch.cuda.is_available():
-        pytest.skip("GPU CUDA reellement disponible dans cet environnement : rien a verifier ici")
+        pytest.skip(
+            "GPU CUDA reellement disponible dans cet environnement : rien a verifier ici"
+        )
 
     adaptateur = TransformersLoraInferenceAdapter(depot_lora=DEPOT_LORA_TEST)
 
     with pytest.raises(RuntimeError, match="GPU CUDA"):
-        adaptateur.generer([{"role": "user", "content": "x"}], {"invite_deja_rendue": True})
+        adaptateur.generer(
+            [{"role": "user", "content": "x"}], {"invite_deja_rendue": True}
+        )

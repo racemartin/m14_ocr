@@ -19,7 +19,13 @@ class SuiviExperimentation(Protocol):
         """Ouvre un nouveau run de suivi (MLflow/TensorBoard) sous le nom donne."""
         ...
 
-    def logger_metrique(self, nom: str, valeur: float, etape: int, horodatage: float | None = None) -> None:
+    def logger_metrique(
+        self,
+        nom: str,
+        valeur: float,
+        etape: int,
+        horodatage: float | None = None,
+    ) -> None:
         """
         Enregistre une valeur de metrique pour l'etape (pas) courante du
         run ouvert. `horodatage` (secondes epoch, meme unite que

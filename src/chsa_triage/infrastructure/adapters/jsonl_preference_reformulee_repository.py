@@ -1,16 +1,8 @@
 """
-Adaptateur secondaire : persistance JSONL des `ChosenReformule`
-(chosen reformule vers `<think>`+JSON), produits par
-`ReformulerPreferenceDpoUseCase` (Etape 3/DPO).
-
-Implemente `RepositoryLectureEcriture[ChosenReformule]`. Adaptateur
-DEDIE (meme discipline que `jsonl_exemple_formate_repository.py` /
-`jsonl_checkpoint_repository.py`, pas une generalisation de
-`JsonlDatasetRepository`) : quatrieme instance du port generique
-apres `ExemplePivot`, `ExempleFormate` et `CheckpointEntraine`, cf.
-docs/04_etape3_dpo/02_etapes_cas_usage.md §1.5. Ne mute jamais
-`dataset_pivot_anonymise.jsonl` : fichier separe, meme principe deja
-en place pour le pivot/anonymise (cf. AGENTS.md).
+Adaptateur secondaire : persistance JSONL des `ChosenReformule` (chosen
+reformule vers `<think>`+JSON). Adaptateur DEDIE, pas une generalisation
+de `JsonlDatasetRepository`. Fichier separe : ne mute jamais
+`dataset_pivot_anonymise.jsonl`.
 """
 
 from __future__ import annotations
@@ -62,7 +54,10 @@ class JsonlPreferenceReformuleeRepository:
 
     def lister(self, filtre: dict | None = None) -> Iterator[ChosenReformule]:
         for item in self._lire_tous():
-            if filtre is None or all(getattr(item, cle, None) == valeur for cle, valeur in filtre.items()):
+            if filtre is None or all(
+                getattr(item, cle, None) == valeur
+                for cle, valeur in filtre.items()
+            ):
                 yield item
 
     def compter(self, filtre: dict | None = None) -> int:
@@ -87,10 +82,18 @@ class JsonlPreferenceReformuleeRepository:
             for ligne in f:
                 ligne = ligne.strip()
                 if ligne:
-                    items.append(preference_reformulee_depuis_dict(json.loads(ligne)))
+                    items.append(
+                        preference_reformulee_depuis_dict(json.loads(ligne))
+                    )
         return items
 
     def _ecrire_tous(self, items: Iterable[ChosenReformule]) -> None:
         with self._chemin.open("w", encoding="utf-8") as f:
             for item in items:
-                f.write(json.dumps(preference_reformulee_vers_dict(item), ensure_ascii=False) + "\n")
+                f.write(
+                    json.dumps(
+                        preference_reformulee_vers_dict(item),
+                        ensure_ascii=False,
+                    )
+                    + "\n"
+                )

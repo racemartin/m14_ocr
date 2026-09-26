@@ -26,28 +26,26 @@ script sert a rapatrier des runs distants publies sur un depot HF, ce
 qui n'est pas le cas ici).
 """
 
-from __future__ import annotations  # Annotations de type differees
+from __future__ import annotations
 
-# Bibliotheque standard
-import argparse  # Parsing des arguments CLI
+import argparse
 
-# Bibliotheques du projet (cas d'usage, adaptateurs, logging)
-from chsa_triage.application.use_cases   import EvaluerBaselineZeroShotUseCase  # Cas d'usage d'evaluation baseline
-from chsa_triage.infrastructure.adapters import (  # Adaptateurs concrets (dataset, LLM, MLflow)
+from chsa_triage.application.use_cases import EvaluerBaselineZeroShotUseCase
+from chsa_triage.infrastructure.adapters import (
     ChatMLFormateurAdapter,
     JsonlDatasetRepository,
     LlamaCppInferenceAdapter,
     MlflowSuiviExperimentation,
 )
-from tools.rafael.log_tool               import LogTool  # Utilitaire de logging du projet
+from tools.rafael.log_tool import LogTool
 
 log = LogTool(origin="evaluer_baseline")
 
-CHEMIN_DATASET_DEFAUT   = "data/processed/dataset_pivot_anonymise.jsonl"
-URL_SERVEUR_DEFAUT      = "http://127.0.0.1:8080"
-MODELE_DEFAUT           = "Qwen/Qwen3-1.7B-Base"
+CHEMIN_DATASET_DEFAUT = "data/processed/dataset_pivot_anonymise.jsonl"
+URL_SERVEUR_DEFAUT = "http://127.0.0.1:8080"
+MODELE_DEFAUT = "Qwen/Qwen3-1.7B-Base"
 URI_SUIVI_MLFLOW_DEFAUT = "sqlite:///data/processed/mlflow.db"
-NOM_RUN_DEFAUT          = "baseline-zero-shot"
+NOM_RUN_DEFAUT = "baseline-zero-shot"
 
 
 # ##############################################################################
@@ -108,7 +106,7 @@ def main() -> None:
 
     # ----- PREPARE ADAPTERS (Dependency Injection) ----------------------------
     repository = JsonlDatasetRepository(arguments.dataset)
-    formateur  = ChatMLFormateurAdapter(nom_modele=arguments.modele)
+    formateur = ChatMLFormateurAdapter(nom_modele=arguments.modele)
     moteur = LlamaCppInferenceAdapter(
         url_serveur_local=arguments.url_serveur,
         timeout_secondes=arguments.timeout_secondes,

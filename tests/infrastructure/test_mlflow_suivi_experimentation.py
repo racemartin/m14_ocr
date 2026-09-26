@@ -24,7 +24,9 @@ def test_run_demarre_metriques_logguees_relisibles_apres_coup(tmp_path):
     uri = f"sqlite:///{tmp_path}/mlflow.db"
     suivi = MlflowSuiviExperimentation(uri_tracking=uri)
 
-    suivi.demarrer_run("run-test", {"rang_lora": 8, "taux_apprentissage": 0.0002})
+    suivi.demarrer_run(
+        "run-test", {"rang_lora": 8, "taux_apprentissage": 0.0002}
+    )
     suivi.logger_metrique("perte", 1.2, 0)
     suivi.logger_metrique("perte", 0.8, 1)
     suivi.terminer_run()

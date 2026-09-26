@@ -9,7 +9,10 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 from chsa_triage.application.use_cases import SauvegarderCheckpointSftUseCase
-from chsa_triage.domain.model.checkpoint_entraine import CheckpointEntraine, VerdictConvergence
+from chsa_triage.domain.model.checkpoint_entraine import (
+    CheckpointEntraine,
+    VerdictConvergence,
+)
 from chsa_triage.domain.model.configuration_entrainement import (
     ConfigurationLora,
     HyperparametresEntrainement,
@@ -21,12 +24,16 @@ class FauxRepository:
     """Faux adaptateur RepositoryLectureEcriture, en memoire."""
 
     def __init__(self, items: list[CheckpointEntraine] | None = None) -> None:
-        self.items: dict[str, CheckpointEntraine] = {item.identifiant: item for item in (items or [])}
+        self.items: dict[str, CheckpointEntraine] = {
+            item.identifiant: item for item in (items or [])
+        }
 
     def sauvegarder(self, item: CheckpointEntraine) -> None:
         self.items[item.identifiant] = item
 
-    def sauvegarder_plusieurs(self, items: Iterable[CheckpointEntraine]) -> None:
+    def sauvegarder_plusieurs(
+        self, items: Iterable[CheckpointEntraine]
+    ) -> None:
         for item in items:
             self.items[item.identifiant] = item
 
@@ -35,7 +42,10 @@ class FauxRepository:
 
     def lister(self, filtre: dict | None = None):
         for exemple in self.items.values():
-            if filtre is None or all(getattr(exemple, cle) == valeur for cle, valeur in filtre.items()):
+            if filtre is None or all(
+                getattr(exemple, cle) == valeur
+                for cle, valeur in filtre.items()
+            ):
                 yield exemple
 
     def compter(self, filtre: dict | None = None) -> int:
@@ -46,22 +56,33 @@ class FauxRepository:
 
 
 def _config_lora() -> ConfigurationLora:
-    return ConfigurationLora(rang=16, alpha=32, dropout=0.05, modules_cibles=("q_proj", "k_proj"))
+    return ConfigurationLora(
+        rang=16, alpha=32, dropout=0.05, modules_cibles=("q_proj", "k_proj")
+    )
 
 
 def _hyperparametres() -> HyperparametresEntrainement:
     return HyperparametresEntrainement(
-        taux_apprentissage=2e-4, nombre_epoques=3, taille_lot=4, packing=True, type_perte="chunked_nll"
+        taux_apprentissage=2e-4,
+        nombre_epoques=3,
+        taille_lot=4,
+        packing=True,
+        type_perte="chunked_nll",
     )
 
 
 def _metriques_finales() -> MetriquesEntrainement:
-    return MetriquesEntrainement(etape=1200, perte_train=0.83, perte_validation=0.91, norme_gradient=1.4)
+    return MetriquesEntrainement(
+        etape=1200, perte_train=0.83, perte_validation=0.91, norme_gradient=1.4
+    )
 
 
 def test_sauvegarder_checkpoint_persiste_un_enregistrement_de_metadonnees():
     repository = FauxRepository()
-    cas_usage = SauvegarderCheckpointSftUseCase(repository_checkpoints=repository, horloge=lambda: "2026-09-11T00:00:00+00:00")
+    cas_usage = SauvegarderCheckpointSftUseCase(
+        repository_checkpoints=repository,
+        horloge=lambda: "2026-09-11T00:00:00+00:00",
+    )
 
     checkpoint = cas_usage.executer(
         identifiant="chsa-sft-lora-abc123",
@@ -85,7 +106,9 @@ def test_sauvegarder_checkpoint_persiste_un_enregistrement_de_metadonnees():
 
 def test_sauvegarder_checkpoint_utilise_une_horloge_reelle_par_defaut():
     repository = FauxRepository()
-    cas_usage = SauvegarderCheckpointSftUseCase(repository_checkpoints=repository)
+    cas_usage = SauvegarderCheckpointSftUseCase(
+        repository_checkpoints=repository
+    )
 
     checkpoint = cas_usage.executer(
         identifiant="chsa-sft-lora-def456",
@@ -97,13 +120,17 @@ def test_sauvegarder_checkpoint_utilise_une_horloge_reelle_par_defaut():
         verdict_convergence=VerdictConvergence.SURAPPRENTISSAGE,
     )
 
-    assert checkpoint.horodatage  # non vide, format ISO reel, pas fige a la main ici
+    assert (
+        checkpoint.horodatage
+    )  # non vide, format ISO reel, pas fige a la main ici
     assert "T" in checkpoint.horodatage
 
 
 def test_sauvegarder_checkpoint_ecrase_un_enregistrement_existant_avec_le_meme_identifiant():
     repository = FauxRepository()
-    cas_usage = SauvegarderCheckpointSftUseCase(repository_checkpoints=repository, horloge=lambda: "t1")
+    cas_usage = SauvegarderCheckpointSftUseCase(
+        repository_checkpoints=repository, horloge=lambda: "t1"
+    )
     cas_usage.executer(
         identifiant="chsa-sft-lora-abc123",
         chemin="checkpoints/premiere-version/",
@@ -127,4 +154,7 @@ def test_sauvegarder_checkpoint_ecrase_un_enregistrement_existant_avec_le_meme_i
 
     assert len(repository.items) == 1
     assert repository.items["chsa-sft-lora-abc123"] == checkpoint_final
-    assert repository.items["chsa-sft-lora-abc123"].chemin == "checkpoints/version-corrigee/"
+    assert (
+        repository.items["chsa-sft-lora-abc123"].chemin
+        == "checkpoints/version-corrigee/"
+    )

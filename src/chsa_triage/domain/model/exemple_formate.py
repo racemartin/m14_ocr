@@ -17,5 +17,5 @@ from dataclasses import dataclass
 class ExempleFormate:
     """Rendu ChatML d'un ExemplePivot, pret a etre tokenize pour l'entrainement SFT."""
 
-    identifiant : str   # repris de ExemplePivot.identifiant, jamais regenere
-    texte        : str   # rendu ChatML complet (system+user+assistant)
+    identifiant: str  # repris de ExemplePivot.identifiant, jamais regenere
+    texte: str  # rendu ChatML complet (system+user+assistant)

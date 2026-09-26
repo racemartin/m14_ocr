@@ -42,7 +42,7 @@ def verifier_version_python() -> bool:
 
 
 def verifier_ram_disponible() -> bool:
-    ram_totale_gb = psutil.virtual_memory().total / (1024 ** 3)
+    ram_totale_gb = psutil.virtual_memory().total / (1024**3)
     ok = ram_totale_gb >= MIN_RAM_GB
     statut = "OK" if ok else "ATTENTION"
     print(f"  RAM totale...........: {ram_totale_gb:.1f} Go        [{statut}]")
@@ -80,7 +80,9 @@ def verifier_modeles_spacy() -> bool:
                 print(f"    -> python -m spacy download {nom_modele}")
                 tous_ok = False
     except ImportError:
-        print("  spaCy non installé, impossible de vérifier les modèles [ECHEC]")
+        print(
+            "  spaCy non installé, impossible de vérifier les modèles [ECHEC]"
+        )
         tous_ok = False
     return tous_ok
 
@@ -88,7 +90,9 @@ def verifier_modeles_spacy() -> bool:
 def verifier_cli_huggingface() -> bool:
     present = shutil.which("huggingface-cli") is not None
     statut = "OK" if present else "ATTENTION"
-    print(f"  CLI huggingface-cli..: {'présent' if present else 'absent':<15} [{statut}]")
+    print(
+        f"  CLI huggingface-cli..: {'présent' if present else 'absent':<15} [{statut}]"
+    )
     return True
 
 

@@ -19,16 +19,27 @@ from chsa_triage.infrastructure.adapters.jsonl_checkpoint_repository import (
 )
 
 
-def _checkpoint(identifiant: str = "cp-1", verdict: VerdictConvergence = VerdictConvergence.SAINE) -> CheckpointEntraine:
+def _checkpoint(
+    identifiant: str = "cp-1",
+    verdict: VerdictConvergence = VerdictConvergence.SAINE,
+) -> CheckpointEntraine:
     return CheckpointEntraine(
         identifiant=identifiant,
         chemin="outputs/sft-lora/run-1",
         modele_base="Qwen/Qwen3-1.7B-Base",
-        configuration_lora=ConfigurationLora(rang=16, alpha=32, dropout=0.05, modules_cibles=("q_proj", "v_proj")),
-        hyperparametres=HyperparametresEntrainement(
-            taux_apprentissage=2e-4, nombre_epoques=3, taille_lot=4, packing=True, type_perte="chunked_nll"
+        configuration_lora=ConfigurationLora(
+            rang=16, alpha=32, dropout=0.05, modules_cibles=("q_proj", "v_proj")
         ),
-        metriques_finales=MetriquesEntrainement(etape=100, perte_train=0.5, perte_validation=0.6, norme_gradient=1.2),
+        hyperparametres=HyperparametresEntrainement(
+            taux_apprentissage=2e-4,
+            nombre_epoques=3,
+            taille_lot=4,
+            packing=True,
+            type_perte="chunked_nll",
+        ),
+        metriques_finales=MetriquesEntrainement(
+            etape=100, perte_train=0.5, perte_validation=0.6, norme_gradient=1.2
+        ),
         verdict_convergence=verdict,
         horodatage="2026-09-11T00:00:00+00:00",
     )
@@ -58,7 +69,10 @@ def test_sauvegarder_remplace_par_identifiant(tmp_path: Path):
     repo.sauvegarder(_checkpoint(verdict=VerdictConvergence.SAINE))
 
     assert repo.compter() == 1
-    assert repo.trouver_par_id("cp-1").verdict_convergence == VerdictConvergence.SAINE
+    assert (
+        repo.trouver_par_id("cp-1").verdict_convergence
+        == VerdictConvergence.SAINE
+    )
 
 
 def test_sauvegarder_plusieurs_puis_lister(tmp_path: Path):
@@ -89,12 +103,20 @@ def test_checkpoint_dpo_se_relit_correctement(tmp_path: Path):
         identifiant="cp-dpo-1",
         chemin="outputs/dpo-lora/run-1",
         modele_base="Qwen/Qwen3-1.7B-Base",
-        configuration_lora=ConfigurationLora(rang=16, alpha=32, dropout=0.05, modules_cibles=("q_proj", "v_proj")),
-        hyperparametres=HyperparametresEntrainementDpo(
-            beta=0.1, taux_apprentissage=5e-6, nombre_epoques=1, taille_lot=4,
-            type_perte="sigmoid", precompute_ref_log_probs=False,
+        configuration_lora=ConfigurationLora(
+            rang=16, alpha=32, dropout=0.05, modules_cibles=("q_proj", "v_proj")
         ),
-        metriques_finales=MetriquesEntrainement(etape=50, perte_train=0.4, perte_validation=0.45, norme_gradient=0.9),
+        hyperparametres=HyperparametresEntrainementDpo(
+            beta=0.1,
+            taux_apprentissage=5e-6,
+            nombre_epoques=1,
+            taille_lot=4,
+            type_perte="sigmoid",
+            precompute_ref_log_probs=False,
+        ),
+        metriques_finales=MetriquesEntrainement(
+            etape=50, perte_train=0.4, perte_validation=0.45, norme_gradient=0.9
+        ),
         verdict_convergence=VerdictConvergence.SAINE,
         horodatage="2026-09-19T00:00:00+00:00",
     )

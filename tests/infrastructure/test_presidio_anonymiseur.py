@@ -73,7 +73,10 @@ def test_texte_vide_ne_plante_pas():
 def test_strategie_mask_produit_des_etoiles():
     anonymiseur = PresidioAnonymiseur(strategie="mask")
     resultat = anonymiseur.anonymiser("Jean Dupont est venu.", langue="fr")
-    assert "*" in resultat.texte_anonymise or resultat.texte_anonymise == "Jean Dupont est venu."
+    assert (
+        "*" in resultat.texte_anonymise
+        or resultat.texte_anonymise == "Jean Dupont est venu."
+    )
 
 
 # ----------------------------------------------------------------------
@@ -118,7 +121,8 @@ def test_nir_rejette_15_chiffres_sans_rapport():
 def test_analyzer_detecte_un_nir_reel_dans_un_texte():
     anonymiseur = PresidioAnonymiseur(strategie="replace")
     resultat = anonymiseur.anonymiser(
-        "Son NIR est 1 85 03 75 116 001 27, a rappeler pour la carte vitale.", langue="fr"
+        "Son NIR est 1 85 03 75 116 001 27, a rappeler pour la carte vitale.",
+        langue="fr",
     )
     assert "185037511600127" not in resultat.texte_anonymise.replace(" ", "")
     assert any(e.type_entite == "FR_NIR" for e in resultat.entites_detectees)
@@ -127,9 +131,12 @@ def test_analyzer_detecte_un_nir_reel_dans_un_texte():
 def test_analyzer_ne_detecte_pas_un_nir_a_cle_invalide():
     anonymiseur = PresidioAnonymiseur(strategie="replace")
     resultat = anonymiseur.anonymiser(
-        "Reference dossier : 999999999999999, sans rapport avec un NIR.", langue="fr"
+        "Reference dossier : 999999999999999, sans rapport avec un NIR.",
+        langue="fr",
     )
-    assert not any(e.type_entite == "FR_NIR" for e in resultat.entites_detectees)
+    assert not any(
+        e.type_entite == "FR_NIR" for e in resultat.entites_detectees
+    )
 
 
 # ----------------------------------------------------------------------
@@ -137,10 +144,19 @@ def test_analyzer_ne_detecte_pas_un_nir_a_cle_invalide():
 # ----------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("age,tranche_attendue", [(0, "pediatrique"), (12, "pediatrique"),
-                                                    (13, "adolescent"), (17, "adolescent"),
-                                                    (18, "adulte"), (64, "adulte"),
-                                                    (65, "personne_agee"), (90, "personne_agee")])
+@pytest.mark.parametrize(
+    "age,tranche_attendue",
+    [
+        (0, "pediatrique"),
+        (12, "pediatrique"),
+        (13, "adolescent"),
+        (17, "adolescent"),
+        (18, "adulte"),
+        (64, "adulte"),
+        (65, "personne_agee"),
+        (90, "personne_agee"),
+    ],
+)
 def test_tranche_pour_age_respecte_les_bornes(age, tranche_attendue):
     assert _tranche_pour_age(age) == tranche_attendue
 
@@ -164,7 +180,9 @@ def test_normaliser_ages_fr_personne_agee():
 
 
 def test_normaliser_ages_en_year_old():
-    resultat = _normaliser_ages("A 7-year-old child presented with fever.", "en")
+    resultat = _normaliser_ages(
+        "A 7-year-old child presented with fever.", "en"
+    )
     assert "<AGE_PEDIATRIC>" in resultat
     assert "7-year-old" not in resultat
 
@@ -182,7 +200,9 @@ def test_normaliser_ages_en_aged():
 def test_pipeline_reel_age_normalise_avant_presidio():
     """L'age explicite ne doit jamais apparaitre tel quel comme DATE_TIME masque ; il est remplace en amont."""
     anonymiseur = PresidioAnonymiseur(strategie="replace")
-    resultat = anonymiseur.anonymiser("The 7-year-old boy was seen 3 months ago.", langue="en")
+    resultat = anonymiseur.anonymiser(
+        "The 7-year-old boy was seen 3 months ago.", langue="en"
+    )
     assert "<AGE_PEDIATRIC>" in resultat.texte_anonymise
     assert "7-year-old" not in resultat.texte_anonymise
 
@@ -193,7 +213,9 @@ def test_pipeline_reel_age_normalise_avant_presidio():
 # ----------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("texte", ["12/05/1980", "1980-05-12", "12 janvier 2020", "12 January 2020"])
+@pytest.mark.parametrize(
+    "texte", ["12/05/1980", "1980-05-12", "12 janvier 2020", "12 January 2020"]
+)
 def test_est_date_absolue_reconnait_les_formats_courants(texte):
     assert _est_date_absolue(texte) is True
 
@@ -243,14 +265,18 @@ def test_entites_qui_se_chevauchent_sont_resolues_sans_duplication():
     de doublon, pas de fragment residuel).
     """
     anonymiseur = PresidioAnonymiseur(strategie="replace")
-    resultat = anonymiseur.anonymiser("Jean.Dupont@example.com a signale le probleme.", langue="fr")
+    resultat = anonymiseur.anonymiser(
+        "Jean.Dupont@example.com a signale le probleme.", langue="fr"
+    )
     assert resultat.texte_anonymise == "<INFO_MASQUEE> a signale le probleme."
     assert resultat.texte_anonymise.count("<INFO_MASQUEE>") == 1
 
 
 def test_nom_coupe_par_un_saut_de_ligne_est_masque_comme_une_seule_entite():
     anonymiseur = PresidioAnonymiseur(strategie="replace")
-    resultat = anonymiseur.anonymiser("Contactez\nJean\nDupont pour un avis medical urgent.", langue="fr")
+    resultat = anonymiseur.anonymiser(
+        "Contactez\nJean\nDupont pour un avis medical urgent.", langue="fr"
+    )
     assert "Jean" not in resultat.texte_anonymise
     assert "Dupont" not in resultat.texte_anonymise
     assert resultat.texte_anonymise.count("<INFO_MASQUEE>") == 1

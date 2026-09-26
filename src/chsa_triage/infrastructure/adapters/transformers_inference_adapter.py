@@ -1,35 +1,19 @@
 """
-Adaptateur secondaire : inference locale via `transformers`
-(pleine precision bf16, SANS quantification), pour evaluer la baseline
-zero-shot d'`Qwen/Qwen3-1.7B-Base` sur GPU reel (HF Jobs, Environnement
-B), a comparer plus tard au modele SFT/DPO SANS melanger l'effet de la
-quantification (GGUF Q4_K_M, `LlamaCppInferenceAdapter`) avec l'effet
-reel de l'entrainement. Voir `interfaces/cli/E1_06_01_evaluer_baseline_gpu.py`.
+Adaptateur secondaire : inference locale via `transformers` (pleine
+precision bf16, SANS quantification), pour evaluer la baseline
+zero-shot sur GPU reel sans melanger l'effet de la quantification GGUF
+avec celui de l'entrainement. Meme contrat `invite_deja_rendue` que
+`LlamaCppInferenceAdapter`, ce qui permet a `EvaluerBaselineZeroShotUseCase`
+d'etre reutilise sans modification entre les deux.
 
-Implemente le meme port `MoteurInference` que `LlamaCppInferenceAdapter`
-et respecte EXACTEMENT le meme contrat `parametres["invite_deja_rendue"]`
-(popee avant generation, jamais transmise a `model.generate`) : c'est ce
-qui permet a `EvaluerBaselineZeroShotUseCase` d'etre reutilise SANS
-modification, seul l'adaptateur d'inference change entre le baseline
-local (CPU, GGUF) et ce baseline GPU (bf16, transformers).
+Sans `invite_deja_rendue`, le chat template est applique ici avec le
+MEME tokenizer que celui charge pour la generation (contrairement au
+mode HTTP de llama.cpp, qui delegue au chat template embarque dans le
+GGUF, potentiellement different).
 
-- `invite_deja_rendue=True` (mode utilise par
-  `EvaluerBaselineZeroShotUseCase`, via
-  `ChatMLFormateurAdapter.formater_invite_zero_shot()`) : le `content`
-  du DERNIER message est deja le texte ChatML final, tokenize tel quel
-  (pas de re-application du chat template).
-- `invite_deja_rendue=False`/absent : `tokenizer.apply_chat_template(
-  messages, add_generation_prompt=True)` est applique ici, avec le MEME
-  tokenizer que celui charge pour la generation (coherence garantie
-  entre rendu et generation, contrairement au mode `/v1/chat/completions`
-  de `LlamaCppInferenceAdapter` qui delegue le rendu au chat template
-  EMBARQUE dans le GGUF, potentiellement different).
-
-Echoue explicitement (`RuntimeError`) si aucun GPU CUDA n'est
-disponible : cet adaptateur existe PRECISEMENT pour eviter la
-quantification, tourner sans GPU en pleine precision serait encore plus
-lent que le baseline local deja existant (llama.cpp CPU, cf. AGENTS.md),
-jamais une strategie de repli silencieuse.
+Echoue explicitement (`RuntimeError`) sans GPU CUDA : cet adaptateur
+existe pour eviter la quantification, jamais un repli silencieux vers
+un mode plus lent que le baseline CPU deja existant.
 """
 
 from __future__ import annotations
@@ -57,7 +41,9 @@ def _parametres_generation_transformers(parametres: dict) -> dict:
     """
     parametres = dict(parametres)
     resultat: dict[str, Any] = {
-        "max_new_tokens": parametres.pop("n_predict", NOMBRE_TOKENS_GENERES_DEFAUT)
+        "max_new_tokens": parametres.pop(
+            "n_predict", NOMBRE_TOKENS_GENERES_DEFAUT
+        )
     }
     temperature = parametres.pop("temperature", None)
     if temperature is not None:
@@ -104,13 +90,20 @@ class TransformersInferenceAdapter:
                     "(interfaces/cli/E1_06_01_evaluer_baseline_gpu.py)."
                 )
 
-            self._tokenizer = AutoTokenizer.from_pretrained(self.nom_modele, trust_remote_code=True)
+            self._tokenizer = AutoTokenizer.from_pretrained(
+                self.nom_modele, trust_remote_code=True
+            )
             self._modele = AutoModelForCausalLM.from_pretrained(
-                self.nom_modele, torch_dtype=torch.bfloat16, device_map="cuda", trust_remote_code=True
+                self.nom_modele,
+                torch_dtype=torch.bfloat16,
+                device_map="cuda",
+                trust_remote_code=True,
             )
         return self._modele, self._tokenizer
 
-    def generer(self, messages: list[dict], parametres: dict | None = None) -> ReponseModele:
+    def generer(
+        self, messages: list[dict], parametres: dict | None = None
+    ) -> ReponseModele:
         """
         `latence_ms` mesure exactement le temps de `model.generate`
         (`time.perf_counter()` autour de l'appel), pas le chargement du
@@ -130,7 +123,9 @@ class TransformersInferenceAdapter:
                 )
             texte = messages[-1]["content"]
         else:
-            texte = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+            texte = tokenizer.apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=True
+            )
 
         entrees = tokenizer(texte, return_tensors="pt").to(modele.device)
         ids_entree = list(entrees["input_ids"][0])
@@ -143,7 +138,9 @@ class TransformersInferenceAdapter:
         latence_ms = (time.perf_counter() - debut) * 1000
 
         tokens_generes = list(sortie[0])[nombre_tokens_entree:]
-        texte_genere = tokenizer.decode(tokens_generes, skip_special_tokens=True)
+        texte_genere = tokenizer.decode(
+            tokens_generes, skip_special_tokens=True
+        )
 
         return ReponseModele(
             texte=texte_genere,

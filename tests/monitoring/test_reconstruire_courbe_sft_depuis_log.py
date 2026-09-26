@@ -47,14 +47,19 @@ HORODATAGE_ANCRAGE = float(timegm(datetime(2026, 1, 1, 0, 0, 0).timetuple()))
 
 
 def test_extraire_barres_entrainement_isole_le_bon_denominateur():
-    total_pas, elapsed_par_etape = reconstruire.extraire_barres_entrainement(TEXTE_LOG_FACTICE)
+    total_pas, elapsed_par_etape = reconstruire.extraire_barres_entrainement(
+        TEXTE_LOG_FACTICE
+    )
 
     assert total_pas == 20
     assert elapsed_par_etape == {2: 6, 10: 32, 12: 39, 20: 65}
 
 
 def test_extraire_horodatage_ancrage_lit_le_nom_du_checkpoint():
-    assert reconstruire.extraire_horodatage_ancrage(TEXTE_LOG_FACTICE) == HORODATAGE_ANCRAGE
+    assert (
+        reconstruire.extraire_horodatage_ancrage(TEXTE_LOG_FACTICE)
+        == HORODATAGE_ANCRAGE
+    )
 
 
 def test_extraire_points_metriques_associe_bonnes_etapes_et_horodatages():
@@ -85,7 +90,9 @@ def test_extraire_points_metriques_associe_bonnes_etapes_et_horodatages():
 
 
 def test_extraire_points_metriques_leve_si_pas_total_non_divisible_par_epoques():
-    texte = TEXTE_LOG_FACTICE.replace("'epoch': 2.0}\n{'train_runtime'", "'epoch': 3.0}\n{'train_runtime'")
+    texte = TEXTE_LOG_FACTICE.replace(
+        "'epoch': 2.0}\n{'train_runtime'", "'epoch': 3.0}\n{'train_runtime'"
+    )
     with pytest.raises(ValueError, match="non divisible"):
         reconstruire.extraire_points_metriques(texte)
 
@@ -111,19 +118,28 @@ def test_extraire_metadonnees_log_lit_les_faits_du_log():
     assert metadonnees["nombre_exemples_validation"] == 10
     assert metadonnees["verdict_convergence"] == "saine"
     assert metadonnees["nombre_essais"] == 1
-    assert metadonnees["checkpoint_local"] == "outputs/sft-lora/run-20260101T000000Z"
-    assert metadonnees["checkpoint_hf_repo"] == "mombasstic/chsa-triage-sft-lora"
+    assert (
+        metadonnees["checkpoint_local"]
+        == "outputs/sft-lora/run-20260101T000000Z"
+    )
+    assert (
+        metadonnees["checkpoint_hf_repo"] == "mombasstic/chsa-triage-sft-lora"
+    )
     assert metadonnees["train_runtime_s"] == 65.0
     assert metadonnees["train_loss_final"] == 1.75
     assert metadonnees["nombre_pas_total"] == 20
 
 
-def test_extraire_recette_au_commit_appelle_git_show_avec_le_bon_sha(monkeypatch):
+def test_extraire_recette_au_commit_appelle_git_show_avec_le_bon_sha(
+    monkeypatch,
+):
     appels = []
 
     def subprocess_run_factice(commande, capture_output, text, check):
         appels.append(commande)
-        return subprocess.CompletedProcess(commande, 0, stdout="lora:\n  rang: 16\n", stderr="")
+        return subprocess.CompletedProcess(
+            commande, 0, stdout="lora:\n  rang: 16\n", stderr=""
+        )
 
     monkeypatch.setattr(reconstruire.subprocess, "run", subprocess_run_factice)
 
@@ -141,18 +157,28 @@ def test_extraire_recette_au_commit_absent_retourne_dict_vide():
     assert sha is None
 
 
-def test_construire_parametres_marque_explicitement_la_reconstruction(monkeypatch):
+def test_construire_parametres_marque_explicitement_la_reconstruction(
+    monkeypatch,
+):
     monkeypatch.setattr(
         reconstruire.subprocess,
         "run",
-        lambda commande, capture_output, text, check: subprocess.CompletedProcess(commande, 0, stdout="lora:\n  rang: 16\n", stderr=""),
+        lambda commande, capture_output, text, check: (
+            subprocess.CompletedProcess(
+                commande, 0, stdout="lora:\n  rang: 16\n", stderr=""
+            )
+        ),
     )
 
-    parametres = reconstruire.construire_parametres(TEXTE_LOG_FACTICE, "un-job-id")
+    parametres = reconstruire.construire_parametres(
+        TEXTE_LOG_FACTICE, "un-job-id"
+    )
 
     assert parametres["reconstruit_depuis_log"] is True
     assert parametres["job_id"] == "un-job-id"
-    assert parametres["commit_git"] == "abcdef0123456789abcdef0123456789abcdef01"
+    assert (
+        parametres["commit_git"] == "abcdef0123456789abcdef0123456789abcdef01"
+    )
     assert parametres["recette"] == {"lora": {"rang": 16}}
     assert parametres["verdict_convergence"] == "saine"
     assert "horodatage_note" in parametres

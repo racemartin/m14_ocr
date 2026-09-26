@@ -28,7 +28,10 @@ from interfaces.cli.E1_03_01_mappers_corpus import (
 
 
 def test_mapper_mediqal_valide():
-    enregistrement = {"question": "Symptomes du rhume ?", "answer": "Nez qui coule, toux."}
+    enregistrement = {
+        "question": "Symptomes du rhume ?",
+        "answer": "Nez qui coule, toux.",
+    }
     exemple = mapper_mediqal(enregistrement)
 
     assert exemple is not None
@@ -47,11 +50,17 @@ def test_mapper_mediqal_ignore_enregistrement_incomplet():
 
 
 def test_mapper_mediqal_identifiant_est_deterministe_et_trace_le_champ_id():
-    enregistrement = {"id": "42", "question": "Symptomes du rhume ?", "answer": "Nez qui coule, toux."}
+    enregistrement = {
+        "id": "42",
+        "question": "Symptomes du rhume ?",
+        "answer": "Nez qui coule, toux.",
+    }
     exemple_1 = mapper_mediqal(enregistrement)
     exemple_2 = mapper_mediqal(dict(enregistrement))
 
-    assert exemple_1.identifiant == exemple_2.identifiant  # meme registre -> meme identifiant
+    assert (
+        exemple_1.identifiant == exemple_2.identifiant
+    )  # meme registre -> meme identifiant
     assert exemple_1.identifiant_source_brute == "42"
 
 
@@ -74,7 +83,10 @@ def test_mapper_mediqal_qcm_mcqu_valide():
     assert exemple.source == "MediQAl"
     assert "Monsieur R. part au Gabon" in exemple.prompt[0].contenu
     assert "Au sujet des vaccinations" in exemple.prompt[0].contenu
-    assert exemple.completion[0].contenu == "Le vaccin contre la fievre jaune est obligatoire"
+    assert (
+        exemple.completion[0].contenu
+        == "Le vaccin contre la fievre jaune est obligatoire"
+    )
     assert exemple.est_complet_pour_sft()
 
 
@@ -114,12 +126,23 @@ def test_mapper_mediqal_qcm_mcqm_concatene_les_reponses_multiples():
     exemple = mapper_mediqal_qcm(enregistrement)
 
     assert exemple is not None
-    assert exemple.completion[0].contenu == "Maladie strictement humaine Confere une immunite"
+    assert (
+        exemple.completion[0].contenu
+        == "Maladie strictement humaine Confere une immunite"
+    )
 
 
 def test_mapper_mediqal_qcm_ignore_enregistrement_incomplet():
-    assert mapper_mediqal_qcm({"question": "Sans reponse correcte", "answer_a": "X"}) is None
-    assert mapper_mediqal_qcm({"clinical_case": None, "correct_answers": "A"}) is None
+    assert (
+        mapper_mediqal_qcm(
+            {"question": "Sans reponse correcte", "answer_a": "X"}
+        )
+        is None
+    )
+    assert (
+        mapper_mediqal_qcm({"clinical_case": None, "correct_answers": "A"})
+        is None
+    )
     assert mapper_mediqal_qcm({}) is None
 
 
@@ -191,7 +214,10 @@ def test_mapper_frenchmedmcqa_valide():
 
     assert exemple is not None
     assert exemple.source == "FrenchMedMCQA"
-    assert exemple.prompt[0].contenu == "Quel est le traitement de premiere intention ?"
+    assert (
+        exemple.prompt[0].contenu
+        == "Quel est le traitement de premiere intention ?"
+    )
     assert exemple.completion[0].contenu == "Paracetamol"
 
 
@@ -214,12 +240,21 @@ def test_mapper_frenchmedmcqa_resout_index_non_nul():
 
 def test_mapper_frenchmedmcqa_ignore_sans_reponse_correcte():
     assert mapper_frenchmedmcqa({"question": "Q"}) is None
-    assert mapper_frenchmedmcqa({"question": "Q", "correct_answers": None}) is None
-    assert mapper_frenchmedmcqa({"question": "Q", "correct_answers": 0}) is None  # answer_a absent
+    assert (
+        mapper_frenchmedmcqa({"question": "Q", "correct_answers": None}) is None
+    )
+    assert (
+        mapper_frenchmedmcqa({"question": "Q", "correct_answers": 0}) is None
+    )  # answer_a absent
 
 
 def test_mapper_frenchmedmcqa_identifiant_trace_le_champ_id():
-    enregistrement = {"id": "abc123", "question": "Q", "answer_a": "R", "correct_answers": 0}
+    enregistrement = {
+        "id": "abc123",
+        "question": "Q",
+        "answer_a": "R",
+        "correct_answers": 0,
+    }
     exemple = mapper_frenchmedmcqa(enregistrement)
     assert exemple.identifiant_source_brute == "abc123"
 
@@ -231,14 +266,22 @@ def test_mapper_frenchmedmcqa_deux_registres_identiques_produisent_le_meme_ident
     permettre de le detecter (meme id -> meme identifiant), pour que
     `ConstruireDatasetPivotUseCase` puisse le dedoublonner.
     """
-    enregistrement = {"id": "dup-1", "question": "Q", "answer_a": "R", "correct_answers": 0}
+    enregistrement = {
+        "id": "dup-1",
+        "question": "Q",
+        "answer_a": "R",
+        "correct_answers": 0,
+    }
     exemple_1 = mapper_frenchmedmcqa(dict(enregistrement))
     exemple_2 = mapper_frenchmedmcqa(dict(enregistrement))
     assert exemple_1.identifiant == exemple_2.identifiant
 
 
 def test_mapper_medquad_valide():
-    enregistrement = {"Question": "What is diabetes?", "Answer": "A chronic condition."}
+    enregistrement = {
+        "Question": "What is diabetes?",
+        "Answer": "A chronic condition.",
+    }
     exemple = mapper_medquad(enregistrement)
 
     assert exemple is not None
@@ -249,25 +292,37 @@ def test_mapper_medquad_valide():
 
 def test_mapper_medquad_accepte_cles_minuscules():
     """Certaines exportations HF utilisent des cles en minuscules."""
-    enregistrement = {"question": "What is diabetes?", "answer": "A chronic condition."}
+    enregistrement = {
+        "question": "What is diabetes?",
+        "answer": "A chronic condition.",
+    }
     exemple = mapper_medquad(enregistrement)
     assert exemple is not None
 
 
 def test_mapper_medquad_identifiant_deterministe_via_hash_question_reponse():
     """Pas de champ `id` brut pour MedQuAD ; la cle naturelle est un hash de Question+Answer."""
-    enregistrement = {"Question": "What is diabetes?", "Answer": "A chronic condition."}
+    enregistrement = {
+        "Question": "What is diabetes?",
+        "Answer": "A chronic condition.",
+    }
     exemple_1 = mapper_medquad(dict(enregistrement))
     exemple_2 = mapper_medquad(dict(enregistrement))
 
     assert exemple_1.identifiant == exemple_2.identifiant
     assert exemple_1.identifiant_source_brute  # non vide
-    assert exemple_1.identifiant_source_brute == exemple_1.identifiant_source_brute  # stable
+    assert (
+        exemple_1.identifiant_source_brute == exemple_1.identifiant_source_brute
+    )  # stable
 
 
 def test_mapper_medquad_meme_question_reponse_differente_donne_un_identifiant_different():
-    exemple_1 = mapper_medquad({"Question": "What is diabetes?", "Answer": "Answer A"})
-    exemple_2 = mapper_medquad({"Question": "What is diabetes?", "Answer": "Answer B"})
+    exemple_1 = mapper_medquad(
+        {"Question": "What is diabetes?", "Answer": "Answer A"}
+    )
+    exemple_2 = mapper_medquad(
+        {"Question": "What is diabetes?", "Answer": "Answer B"}
+    )
     assert exemple_1.identifiant != exemple_2.identifiant
 
 
@@ -287,7 +342,9 @@ def test_mapper_ultramedical_preference_valide():
 
 
 def test_mapper_ultramedical_preference_ignore_paire_incomplete():
-    assert mapper_ultramedical_preference({"prompt": "Q", "chosen": "R"}) is None
+    assert (
+        mapper_ultramedical_preference({"prompt": "Q", "chosen": "R"}) is None
+    )
 
 
 def test_mapper_ultramedical_preference_identifiant_source_brute_est_le_prompt_id():
@@ -311,13 +368,27 @@ def test_mapper_ultramedical_preference_meme_prompt_id_mais_label_type_different
     """
     base = {"prompt_id": "MedMCQA,11404", "prompt": "Q"}
     exemple_easy = mapper_ultramedical_preference(
-        {**base, "label_type": "easy", "chosen": "Reponse facile", "rejected": "Mauvaise reponse"}
+        {
+            **base,
+            "label_type": "easy",
+            "chosen": "Reponse facile",
+            "rejected": "Mauvaise reponse",
+        }
     )
     exemple_length = mapper_ultramedical_preference(
-        {**base, "label_type": "length", "chosen": "Reponse longue detaillee", "rejected": "Reponse courte"}
+        {
+            **base,
+            "label_type": "length",
+            "chosen": "Reponse longue detaillee",
+            "rejected": "Reponse courte",
+        }
     )
     assert exemple_easy.identifiant != exemple_length.identifiant
-    assert exemple_easy.identifiant_source_brute == exemple_length.identifiant_source_brute == "MedMCQA,11404"
+    assert (
+        exemple_easy.identifiant_source_brute
+        == exemple_length.identifiant_source_brute
+        == "MedMCQA,11404"
+    )
 
 
 def test_mapper_ultramedical_preference_registre_strictement_identique_donne_le_meme_identifiant():
@@ -346,7 +417,10 @@ def test_mapper_ultramedical_preference_format_chat_reel():
         "prompt": "Explique la fievre a un enfant.",
         "chosen": [
             {"content": "Explique la fievre a un enfant.", "role": "user"},
-            {"content": "La fievre est une reaction normale du corps...", "role": "assistant"},
+            {
+                "content": "La fievre est une reaction normale du corps...",
+                "role": "assistant",
+            },
         ],
         "rejected": [
             {"content": "Explique la fievre a un enfant.", "role": "user"},
@@ -356,7 +430,10 @@ def test_mapper_ultramedical_preference_format_chat_reel():
     exemple = mapper_ultramedical_preference(enregistrement)
 
     assert exemple is not None
-    assert exemple.chosen[0].contenu == "La fievre est une reaction normale du corps..."
+    assert (
+        exemple.chosen[0].contenu
+        == "La fievre est une reaction normale du corps..."
+    )
     assert exemple.rejected[0].contenu == "Ce n'est pas grave, ignore-la."
     # Le prompt duplique en tete de la liste chosen/rejected ne doit pas
     # se retrouver dans le contenu du message pivot.

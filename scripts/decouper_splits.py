@@ -37,7 +37,9 @@ def main() -> None:
     dossier_sortie = Path(args.output_dir)
 
     if not fichier_input.exists():
-        raise FileNotFoundError(f"Le fichier d'entrée n'existe pas : {fichier_input}")
+        raise FileNotFoundError(
+            f"Le fichier d'entrée n'existe pas : {fichier_input}"
+        )
 
     # Créer le dossier de sortie s'il n'existe pas
     dossier_sortie.mkdir(parents=True, exist_ok=True)
@@ -80,7 +82,9 @@ def main() -> None:
     print(f"   • Val   : {compteurs['val']} exemples -> {f_val_path.name}")
     print(f"   • Test  : {compteurs['test']} exemples -> {f_test_path.name}")
     if compteurs["ignores"] > 0:
-        print(f"   ⚠️ Exemples ignorés (sans split valide) : {compteurs['ignores']}")
+        print(
+            f"   ⚠️ Exemples ignorés (sans split valide) : {compteurs['ignores']}"
+        )
 
 
 if __name__ == "__main__":

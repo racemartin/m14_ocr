@@ -1,17 +1,15 @@
 """
-Diagnostic pur d'une courbe d'entrainement SFT : aucun port, aucune
-dependance externe, meme principe que `application/echantillonnage.py`
-et `application/detection_pii_residuelle.py`. Consomme directement la
-`courbe_metriques` deja produite par `EntraineurSupervise.entrainer()`
-(cf. `domain.ports.entraineur_supervise.ResultatEntrainementSFT`), sans
-appel de port supplementaire.
+Diagnostic pur d'une courbe d'entrainement SFT ou DPO (reutilise telle
+quelle pour les deux, cf. domain.ports.entraineur_preference) : aucun
+port, aucune dependance externe.
 
-Les seuils numeriques ci-dessous sont des PARAMETRES A CALIBRER, pas
-des valeurs mesurees : aucune vraie courbe d'entrainement n'a encore
-ete observee au moment de l'ecriture (l'adaptateur GPU,
-`TrlSftEntraineurAdapter`, n'existe pas encore, cf.
-`docs/03_etape2_sft/03_guide_implementation_pas_a_pas.md` etape 9).
-Ils devront etre ajustes une fois un premier run reel disponible.
+Les seuils numeriques ci-dessous restent des valeurs de depart, jamais
+recalibrees empiriquement. Le SFT et le DPO final ont atteint SAINE
+avec ces seuils (cf. README.md, journal des runs), mais un premier run
+DPO a recu SOUS_APPRENTISSAGE que le journal juge probablement un faux
+negatif (trop peu de donnees, pas un vrai defaut de seuil) : a garder
+en tete avant de faire confiance aveuglement a ce diagnostic sur un
+petit run.
 """
 
 from __future__ import annotations
@@ -41,7 +39,9 @@ FENETRE_PAS_VALIDATION = 3
 SEUIL_RATIO_DIVERGENCE_GRADIENT = 10.0
 
 
-def evaluer_convergence(courbe: tuple[MetriquesEntrainement, ...]) -> VerdictConvergence:
+def evaluer_convergence(
+    courbe: tuple[MetriquesEntrainement, ...],
+) -> VerdictConvergence:
     """
     Pose un diagnostic sur une courbe d'entrainement complete
     (`ResultatEntrainementSFT.courbe_metriques`), dans cet ordre de
@@ -93,7 +93,10 @@ def _est_instable(courbe: tuple[MetriquesEntrainement, ...]) -> bool:
     if premier_gradient > 0:
         ratio_gradient = dernier_gradient / premier_gradient
         perte_train_remonte = courbe[-1].perte_train > courbe[0].perte_train
-        if ratio_gradient >= SEUIL_RATIO_DIVERGENCE_GRADIENT and perte_train_remonte:
+        if (
+            ratio_gradient >= SEUIL_RATIO_DIVERGENCE_GRADIENT
+            and perte_train_remonte
+        ):
             return True
 
     return False
@@ -106,7 +109,11 @@ def _baisse_relative(perte_initiale: float, perte_finale: float) -> float:
 
 
 def _surapprentissage(courbe: tuple[MetriquesEntrainement, ...]) -> bool:
-    pertes_validation = [point.perte_validation for point in courbe if point.perte_validation is not None]
+    pertes_validation = [
+        point.perte_validation
+        for point in courbe
+        if point.perte_validation is not None
+    ]
     if len(pertes_validation) < 2:
         return False
 

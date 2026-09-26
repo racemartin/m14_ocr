@@ -27,8 +27,18 @@ import pytest
 # tests/interfaces/test_E1_03_01_mappers_corpus.py.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from chsa_triage.domain.model import ExempleFormate, ExemplePivot, Langue, Message, TypeExemple, TypeSplit
-from chsa_triage.infrastructure.adapters import JsonlDatasetRepository, JsonlExempleFormateRepository
+from chsa_triage.domain.model import (
+    ExempleFormate,
+    ExemplePivot,
+    Langue,
+    Message,
+    TypeExemple,
+    TypeSplit,
+)
+from chsa_triage.infrastructure.adapters import (
+    JsonlDatasetRepository,
+    JsonlExempleFormateRepository,
+)
 from interfaces.cli import E2_00_formater_dataset_chatml as cli
 from tools.rafael.log_tool import LogTool
 
@@ -55,7 +65,9 @@ class FauxChatMLFormateurAdapter:
         )
 
 
-def _exemple(source: str, split: TypeSplit | None = TypeSplit.TRAIN) -> ExemplePivot:
+def _exemple(
+    source: str, split: TypeSplit | None = TypeSplit.TRAIN
+) -> ExemplePivot:
     cle = uuid4().hex
     return ExemplePivot(
         identifiant=ExemplePivot.nouvel_identifiant(source, cle),
@@ -72,12 +84,16 @@ def _exemple(source: str, split: TypeSplit | None = TypeSplit.TRAIN) -> ExempleP
 @pytest.fixture(autouse=True)
 def _faux_tokenizer(monkeypatch):
     """Empeche tout appel reel a `ChatMLFormateurAdapter`/transformers dans tout ce module."""
-    monkeypatch.setattr(cli, "ChatMLFormateurAdapter", FauxChatMLFormateurAdapter)
+    monkeypatch.setattr(
+        cli, "ChatMLFormateurAdapter", FauxChatMLFormateurAdapter
+    )
 
 
 def _executer_cli(monkeypatch, argv: list[str]) -> str:
     """Lance `cli.main()` avec `argv`, retourne la sortie stderr (LogTool) capturee."""
-    monkeypatch.setattr(sys, "argv", ["E2_00_formater_dataset_chatml.py", *argv])
+    monkeypatch.setattr(
+        sys, "argv", ["E2_00_formater_dataset_chatml.py", *argv]
+    )
     cli.main()
 
 
@@ -117,8 +133,16 @@ class TestAfficherExempleDidactique:
         """
         import inspect
 
-        parametres = inspect.signature(cli.afficher_exemple_didactique).parameters
-        assert set(parametres) == {"log_tool", "index", "total", "exemple", "exemple_formate"}
+        parametres = inspect.signature(
+            cli.afficher_exemple_didactique
+        ).parameters
+        assert set(parametres) == {
+            "log_tool",
+            "index",
+            "total",
+            "exemple",
+            "exemple_formate",
+        }
 
 
 class TestMainSansModeDidactique:
@@ -130,20 +154,40 @@ class TestMainSansModeDidactique:
 
         _executer_cli(
             monkeypatch,
-            ["--dataset", str(dataset), "--dataset-formate", str(sortie), "--split", "train"],
+            [
+                "--dataset",
+                str(dataset),
+                "--dataset-formate",
+                str(sortie),
+                "--split",
+                "train",
+            ],
         )
 
         formates = list(JsonlExempleFormateRepository(sortie).lister())
-        assert {e.identifiant for e in formates} == {e.identifiant for e in exemples}
+        assert {e.identifiant for e in formates} == {
+            e.identifiant for e in exemples
+        }
 
-    def test_sans_flag_exemples_naffiche_aucun_log_didactique(self, tmp_path, monkeypatch, capsys):
+    def test_sans_flag_exemples_naffiche_aucun_log_didactique(
+        self, tmp_path, monkeypatch, capsys
+    ):
         dataset = tmp_path / "pivot.jsonl"
         sortie = tmp_path / "formate.jsonl"
-        JsonlDatasetRepository(dataset).sauvegarder_plusieurs([_exemple("MediQAl")])
+        JsonlDatasetRepository(dataset).sauvegarder_plusieurs(
+            [_exemple("MediQAl")]
+        )
 
         _executer_cli(
             monkeypatch,
-            ["--dataset", str(dataset), "--dataset-formate", str(sortie), "--split", "train"],
+            [
+                "--dataset",
+                str(dataset),
+                "--dataset-formate",
+                str(sortie),
+                "--split",
+                "train",
+            ],
         )
 
         sortie_log = capsys.readouterr().err
@@ -152,7 +196,9 @@ class TestMainSansModeDidactique:
 
 
 class TestMainAvecModeDidactique:
-    def test_logue_au_plus_2_exemples_meme_si_plus_demandes(self, tmp_path, monkeypatch, capsys):
+    def test_logue_au_plus_2_exemples_meme_si_plus_demandes(
+        self, tmp_path, monkeypatch, capsys
+    ):
         dataset = tmp_path / "pivot.jsonl"
         sortie = tmp_path / "formate.jsonl"
         exemples = [_exemple("MediQAl") for _ in range(5)]
@@ -160,21 +206,46 @@ class TestMainAvecModeDidactique:
 
         _executer_cli(
             monkeypatch,
-            ["--dataset", str(dataset), "--dataset-formate", str(sortie), "--split", "train", "--exemples", "5"],
+            [
+                "--dataset",
+                str(dataset),
+                "--dataset-formate",
+                str(sortie),
+                "--split",
+                "train",
+                "--exemples",
+                "5",
+            ],
         )
 
         sortie_log = capsys.readouterr().err
         assert sortie_log.count("Exemple didactique") == 2
-        assert "exemples didactiques (capes)" in sortie_log or "exemples didactiques (capes)".lower() in sortie_log.lower()
+        assert (
+            "exemples didactiques (capes)" in sortie_log
+            or "exemples didactiques (capes)".lower() in sortie_log.lower()
+        )
 
-    def test_affiche_le_texte_chatml_final_avec_les_tours_de_role(self, tmp_path, monkeypatch, capsys):
+    def test_affiche_le_texte_chatml_final_avec_les_tours_de_role(
+        self, tmp_path, monkeypatch, capsys
+    ):
         dataset = tmp_path / "pivot.jsonl"
         sortie = tmp_path / "formate.jsonl"
-        JsonlDatasetRepository(dataset).sauvegarder_plusieurs([_exemple("MediQAl")])
+        JsonlDatasetRepository(dataset).sauvegarder_plusieurs(
+            [_exemple("MediQAl")]
+        )
 
         _executer_cli(
             monkeypatch,
-            ["--dataset", str(dataset), "--dataset-formate", str(sortie), "--split", "train", "--exemples", "1"],
+            [
+                "--dataset",
+                str(dataset),
+                "--dataset-formate",
+                str(sortie),
+                "--split",
+                "train",
+                "--exemples",
+                "1",
+            ],
         )
 
         sortie_log = capsys.readouterr().err
@@ -183,7 +254,9 @@ class TestMainAvecModeDidactique:
 
 
 class TestPasDeRegressionSurLeFichierEcrit:
-    def test_ecriture_identique_avec_ou_sans_mode_didactique(self, tmp_path, monkeypatch):
+    def test_ecriture_identique_avec_ou_sans_mode_didactique(
+        self, tmp_path, monkeypatch
+    ):
         """
         Le mode didactique est purement additif : le fichier
         `--dataset-formate` produit doit etre BYTE A BYTE identique,
@@ -191,7 +264,9 @@ class TestPasDeRegressionSurLeFichierEcrit:
         (mode didactique active), a partir du meme pivot source.
         """
         dataset = tmp_path / "pivot.jsonl"
-        exemples = [_exemple("MediQAl") for _ in range(3)] + [_exemple("FrenchMedMCQA") for _ in range(2)]
+        exemples = [_exemple("MediQAl") for _ in range(3)] + [
+            _exemple("FrenchMedMCQA") for _ in range(2)
+        ]
         JsonlDatasetRepository(dataset).sauvegarder_plusieurs(exemples)
 
         sortie_sans_didactique = tmp_path / "formate_sans.jsonl"
@@ -199,16 +274,29 @@ class TestPasDeRegressionSurLeFichierEcrit:
 
         _executer_cli(
             monkeypatch,
-            ["--dataset", str(dataset), "--dataset-formate", str(sortie_sans_didactique), "--split", "train"],
+            [
+                "--dataset",
+                str(dataset),
+                "--dataset-formate",
+                str(sortie_sans_didactique),
+                "--split",
+                "train",
+            ],
         )
         _executer_cli(
             monkeypatch,
             [
-                "--dataset", str(dataset),
-                "--dataset-formate", str(sortie_avec_didactique),
-                "--split", "train",
-                "--exemples", "2",
+                "--dataset",
+                str(dataset),
+                "--dataset-formate",
+                str(sortie_avec_didactique),
+                "--split",
+                "train",
+                "--exemples",
+                "2",
             ],
         )
 
-        assert sortie_sans_didactique.read_text(encoding="utf-8") == sortie_avec_didactique.read_text(encoding="utf-8")
+        assert sortie_sans_didactique.read_text(
+            encoding="utf-8"
+        ) == sortie_avec_didactique.read_text(encoding="utf-8")

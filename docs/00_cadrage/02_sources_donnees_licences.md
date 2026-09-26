@@ -97,3 +97,5 @@ déclare pas de licence, c'est dit explicitement plutôt que de deviner.
 Toute publication future du dataset pivot dérivé (Livrable 1, HF Hub)
 devra reprendre ce tableau et, a minima, citer les 4 travaux
 ci-dessus dans la fiche du dataset publié.
+
+*(document suivant : `../01_environnement/00_guide_installation_environnement.md`)*

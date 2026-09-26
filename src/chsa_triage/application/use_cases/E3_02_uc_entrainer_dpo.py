@@ -28,8 +28,13 @@ from chsa_triage.domain.model.configuration_entrainement import (
     ConfigurationLora,
     HyperparametresEntrainementDpo,
 )
-from chsa_triage.domain.model.exemple_formate_preference import ExempleFormatePreference
-from chsa_triage.domain.ports.entraineur_preference import EntraineurPreference, ResultatEntrainementDPO
+from chsa_triage.domain.model.exemple_formate_preference import (
+    ExempleFormatePreference,
+)
+from chsa_triage.domain.ports.entraineur_preference import (
+    EntraineurPreference,
+    ResultatEntrainementDPO,
+)
 from chsa_triage.domain.ports.suivi_experimentation import SuiviExperimentation
 
 NOM_RUN_PAR_DEFAUT = "dpo-lora"
@@ -50,17 +55,17 @@ CLES_METRIQUES_RECOMPENSE_DPO = (
 class EntrainerDpoUseCase:
     """Orchestre un run d'entrainement DPO complet, du demarrage a la cloture du suivi."""
 
-    entraineur : EntraineurPreference
-    suivi        : SuiviExperimentation
+    entraineur: EntraineurPreference
+    suivi: SuiviExperimentation
 
     def entrainer(
         self,
-        dataset_train                        : Iterable[ExempleFormatePreference],
-        dataset_validation                    : Iterable[ExempleFormatePreference],
-        config_lora                             : ConfigurationLora,
-        hyperparametres                           : HyperparametresEntrainementDpo,
-        chemin_checkpoint_politique_depart          : str,
-        nom_run                                       : str = NOM_RUN_PAR_DEFAUT,
+        dataset_train: Iterable[ExempleFormatePreference],
+        dataset_validation: Iterable[ExempleFormatePreference],
+        config_lora: ConfigurationLora,
+        hyperparametres: HyperparametresEntrainementDpo,
+        chemin_checkpoint_politique_depart: str,
+        nom_run: str = NOM_RUN_PAR_DEFAUT,
     ) -> ResultatEntrainementDPO:
         """
         Ouvre un run de suivi, delegue l'entrainement a
@@ -89,15 +94,27 @@ class EntrainerDpoUseCase:
         )
 
         for point in resultat.courbe_metriques:
-            self.suivi.logger_metrique("perte_train", point.perte_train, point.etape)
+            self.suivi.logger_metrique(
+                "perte_train", point.perte_train, point.etape
+            )
             if point.perte_validation is not None:
-                self.suivi.logger_metrique("perte_validation", point.perte_validation, point.etape)
-            self.suivi.logger_metrique("norme_gradient", point.norme_gradient, point.etape)
+                self.suivi.logger_metrique(
+                    "perte_validation", point.perte_validation, point.etape
+                )
+            self.suivi.logger_metrique(
+                "norme_gradient", point.norme_gradient, point.etape
+            )
 
-        etape_finale = resultat.courbe_metriques[-1].etape if resultat.courbe_metriques else 0
+        etape_finale = (
+            resultat.courbe_metriques[-1].etape
+            if resultat.courbe_metriques
+            else 0
+        )
         for cle in CLES_METRIQUES_RECOMPENSE_DPO:
             if cle in resultat.metriques_recompense:
-                self.suivi.logger_metrique(cle, resultat.metriques_recompense[cle], etape_finale)
+                self.suivi.logger_metrique(
+                    cle, resultat.metriques_recompense[cle], etape_finale
+                )
 
         self.suivi.terminer_run()
         return resultat

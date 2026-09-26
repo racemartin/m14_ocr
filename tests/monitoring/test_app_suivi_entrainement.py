@@ -23,10 +23,14 @@ from monitoring.logica_suivi_entrainement import (
 )
 
 
-def _ligne_jsonl(etape: int, nom: str, valeur: float, horodatage: float = 1.0) -> str:
+def _ligne_jsonl(
+    etape: int, nom: str, valeur: float, horodatage: float = 1.0
+) -> str:
     import json
 
-    return json.dumps({"etape": etape, "nom": nom, "valeur": valeur, "horodatage": horodatage})
+    return json.dumps(
+        {"etape": etape, "nom": nom, "valeur": valeur, "horodatage": horodatage}
+    )
 
 
 def test_analyser_jsonl_metriques_ignore_les_lignes_vides():
@@ -43,7 +47,9 @@ def test_analyser_jsonl_metriques_ignore_les_lignes_vides():
 
     assert lignes == [
         LigneMetrique(etape=0, nom="perte_train", valeur=1.2, horodatage=1.0),
-        LigneMetrique(etape=0, nom="norme_gradient", valeur=0.9, horodatage=1.0),
+        LigneMetrique(
+            etape=0, nom="norme_gradient", valeur=0.9, horodatage=1.0
+        ),
     ]
 
 
@@ -55,7 +61,9 @@ def test_pivoter_par_etape_regroupe_et_trie():
     lignes = [
         LigneMetrique(etape=1, nom="perte_train", valeur=0.8, horodatage=2.0),
         LigneMetrique(etape=0, nom="perte_train", valeur=1.2, horodatage=1.0),
-        LigneMetrique(etape=0, nom="perte_validation", valeur=1.5, horodatage=1.1),
+        LigneMetrique(
+            etape=0, nom="perte_validation", valeur=1.5, horodatage=1.1
+        ),
     ]
 
     tableau = pivoter_par_etape(lignes)
@@ -74,7 +82,12 @@ def test_construire_courbe_convergence_ignore_etapes_incompletes():
     tableau = [
         {"etape": 0, "perte_train": 1.2, "norme_gradient": 0.5},
         {"etape": 1, "perte_train": 0.8},  # norme_gradient manquante : ignoree
-        {"etape": 2, "perte_train": 0.6, "perte_validation": 0.7, "norme_gradient": 0.4},
+        {
+            "etape": 2,
+            "perte_train": 0.6,
+            "perte_validation": 0.7,
+            "norme_gradient": 0.4,
+        },
     ]
 
     courbe = construire_courbe_convergence(tableau)
@@ -117,7 +130,12 @@ def test_evaluer_convergence_en_vivo_sans_perte_validation_signale_limite():
 
 def test_evaluer_convergence_en_vivo_courbe_saine_avec_validation():
     tableau = [
-        {"etape": e, "perte_train": 2.0 - e * 0.3, "perte_validation": 1.8 - e * 0.2, "norme_gradient": 1.0}
+        {
+            "etape": e,
+            "perte_train": 2.0 - e * 0.3,
+            "perte_validation": 1.8 - e * 0.2,
+            "norme_gradient": 1.0,
+        }
         for e in range(6)
     ]
 
@@ -142,10 +160,17 @@ def test_filtrer_colonnes_presentes_run_sft_sans_recompenses():
     """Un run SFT ne journalise jamais les colonnes de recompense DPO : la liste retournee doit rester vide."""
     tableau_sft = [
         {"etape": 0, "perte_train": 1.2, "norme_gradient": 0.5},
-        {"etape": 1, "perte_train": 0.9, "perte_validation": 1.1, "norme_gradient": 0.4},
+        {
+            "etape": 1,
+            "perte_train": 0.9,
+            "perte_validation": 1.1,
+            "norme_gradient": 0.4,
+        },
     ]
 
-    assert filtrer_colonnes_presentes(tableau_sft, COLONNES_RECOMPENSE_DPO) == []
+    assert (
+        filtrer_colonnes_presentes(tableau_sft, COLONNES_RECOMPENSE_DPO) == []
+    )
 
 
 def test_filtrer_colonnes_presentes_run_dpo_avec_recompenses():
@@ -162,17 +187,26 @@ def test_filtrer_colonnes_presentes_run_dpo_avec_recompenses():
         },
     ]
 
-    assert filtrer_colonnes_presentes(tableau_dpo, COLONNES_RECOMPENSE_DPO) == list(COLONNES_RECOMPENSE_DPO)
+    assert filtrer_colonnes_presentes(
+        tableau_dpo, COLONNES_RECOMPENSE_DPO
+    ) == list(COLONNES_RECOMPENSE_DPO)
 
 
 def test_filtrer_colonnes_presentes_detecte_meme_si_une_seule_etape_les_porte():
     """Une colonne presente sur une seule etape (ex. la derniere, en cours de journalisation) doit tout de meme etre detectee."""
     tableau = [
         {"etape": 0, "perte_train": 0.6, "norme_gradient": 0.3},
-        {"etape": 1, "perte_train": 0.5, "norme_gradient": 0.25, "rewards/chosen": 0.2},
+        {
+            "etape": 1,
+            "perte_train": 0.5,
+            "norme_gradient": 0.25,
+            "rewards/chosen": 0.2,
+        },
     ]
 
-    assert filtrer_colonnes_presentes(tableau, COLONNES_RECOMPENSE_DPO) == ["rewards/chosen"]
+    assert filtrer_colonnes_presentes(tableau, COLONNES_RECOMPENSE_DPO) == [
+        "rewards/chosen"
+    ]
 
 
 def test_filtrer_colonnes_presentes_table_vide():
@@ -185,7 +219,11 @@ def test_filtrer_colonnes_presentes_table_vide():
         ([], []),
         (["essai-1/metriques.jsonl"], ["essai-1"]),
         (
-            ["essai-2/metriques.jsonl", "essai-1/metriques.jsonl", "essai-1/parametres.json"],
+            [
+                "essai-2/metriques.jsonl",
+                "essai-1/metriques.jsonl",
+                "essai-1/parametres.json",
+            ],
             ["essai-1", "essai-2"],
         ),
         (["README.md", "essai-1/autre_fichier.txt"], []),

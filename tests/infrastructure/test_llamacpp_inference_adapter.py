@@ -56,18 +56,31 @@ def test_generer_mode_chat_completions_par_defaut():
     """Sans `invite_deja_rendue`, POST `/v1/chat/completions`, `messages` transmis tel quel."""
     faux_client = FauxClientHttp(
         {
-            "choices": [{"message": {"content": "Bonjour, comment puis-je vous aider ?"}}],
+            "choices": [
+                {
+                    "message": {
+                        "content": "Bonjour, comment puis-je vous aider ?"
+                    }
+                }
+            ],
             "usage": {"prompt_tokens": 12, "completion_tokens": 8},
             "model": "qwen3-1.7b-base",
         }
     )
-    adaptateur = LlamaCppInferenceAdapter(url_serveur_local="http://127.0.0.1:9999", _client=faux_client)
+    adaptateur = LlamaCppInferenceAdapter(
+        url_serveur_local="http://127.0.0.1:9999", _client=faux_client
+    )
     messages = [{"role": "user", "content": "Bonjour"}]
 
     reponse = adaptateur.generer(messages, {"temperature": 0.0})
 
-    assert faux_client.dernier_url == "http://127.0.0.1:9999/v1/chat/completions"
-    assert faux_client.dernier_corps == {"messages": messages, "temperature": 0.0}
+    assert (
+        faux_client.dernier_url == "http://127.0.0.1:9999/v1/chat/completions"
+    )
+    assert faux_client.dernier_corps == {
+        "messages": messages,
+        "temperature": 0.0,
+    }
     assert reponse.texte == "Bonjour, comment puis-je vous aider ?"
     assert reponse.nombre_tokens_entree == 12
     assert reponse.nombre_tokens_sortie == 8
@@ -77,11 +90,22 @@ def test_generer_mode_chat_completions_par_defaut():
 
 def test_generer_mode_completion_brute_avec_invite_deja_rendue():
     """`invite_deja_rendue=True` : POST `/completion` (natif), `prompt` = content du dernier message."""
-    faux_client = FauxClientHttp({"content": "Reponse brute.", "tokens_evaluated": 17, "tokens_predicted": 5})
-    adaptateur = LlamaCppInferenceAdapter(url_serveur_local="http://127.0.0.1:9999", _client=faux_client)
+    faux_client = FauxClientHttp(
+        {
+            "content": "Reponse brute.",
+            "tokens_evaluated": 17,
+            "tokens_predicted": 5,
+        }
+    )
+    adaptateur = LlamaCppInferenceAdapter(
+        url_serveur_local="http://127.0.0.1:9999", _client=faux_client
+    )
     invite = "<|im_start|>user\nBonjour<|im_end|>\n<|im_start|>assistant\n"
 
-    reponse = adaptateur.generer([{"role": "user", "content": invite}], {"invite_deja_rendue": True, "n_predict": 5})
+    reponse = adaptateur.generer(
+        [{"role": "user", "content": invite}],
+        {"invite_deja_rendue": True, "n_predict": 5},
+    )
 
     assert faux_client.dernier_url == "http://127.0.0.1:9999/completion"
     assert faux_client.dernier_corps == {"prompt": invite, "n_predict": 5}
@@ -98,10 +122,15 @@ def test_generer_mode_completion_brute_leve_si_aucun_message():
 
 def test_parametre_invite_deja_rendue_jamais_transmis_au_serveur():
     """`invite_deja_rendue` est un signal interne a l'adaptateur, jamais un parametre llama.cpp reel."""
-    faux_client = FauxClientHttp({"content": "ok", "tokens_evaluated": 1, "tokens_predicted": 1})
+    faux_client = FauxClientHttp(
+        {"content": "ok", "tokens_evaluated": 1, "tokens_predicted": 1}
+    )
     adaptateur = LlamaCppInferenceAdapter(_client=faux_client)
 
-    adaptateur.generer([{"role": "user", "content": "x"}], {"invite_deja_rendue": True, "temperature": 0.5})
+    adaptateur.generer(
+        [{"role": "user", "content": "x"}],
+        {"invite_deja_rendue": True, "temperature": 0.5},
+    )
 
     assert "invite_deja_rendue" not in faux_client.dernier_corps
     assert faux_client.dernier_corps["temperature"] == 0.5
@@ -122,10 +151,13 @@ pytestmark_integration = pytest.mark.skipif(
 
 @pytestmark_integration
 def test_integration_reelle_chat_completions():
-    adaptateur = LlamaCppInferenceAdapter(url_serveur_local=URL_SERVEUR_TEST, timeout_secondes=180.0)
+    adaptateur = LlamaCppInferenceAdapter(
+        url_serveur_local=URL_SERVEUR_TEST, timeout_secondes=180.0
+    )
 
     reponse = adaptateur.generer(
-        [{"role": "user", "content": "Dis bonjour."}], {"temperature": 0.0, "max_tokens": 6}
+        [{"role": "user", "content": "Dis bonjour."}],
+        {"temperature": 0.0, "max_tokens": 6},
     )
 
     assert isinstance(reponse.texte, str) and len(reponse.texte) > 0
@@ -135,11 +167,14 @@ def test_integration_reelle_chat_completions():
 
 @pytestmark_integration
 def test_integration_reelle_completion_brute_avec_invite_pre_rendue():
-    adaptateur = LlamaCppInferenceAdapter(url_serveur_local=URL_SERVEUR_TEST, timeout_secondes=180.0)
+    adaptateur = LlamaCppInferenceAdapter(
+        url_serveur_local=URL_SERVEUR_TEST, timeout_secondes=180.0
+    )
     invite = "<|im_start|>user\nDis bonjour.<|im_end|>\n<|im_start|>assistant\n"
 
     reponse = adaptateur.generer(
-        [{"role": "user", "content": invite}], {"invite_deja_rendue": True, "n_predict": 6, "temperature": 0.0}
+        [{"role": "user", "content": invite}],
+        {"invite_deja_rendue": True, "n_predict": 6, "temperature": 0.0},
     )
 
     assert isinstance(reponse.texte, str) and len(reponse.texte) > 0

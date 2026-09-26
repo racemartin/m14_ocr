@@ -1,6 +1,8 @@
 """Tests du domaine : aucune dependance externe, s'executent partout."""
 
-from chsa_triage.domain.model.exemple_formate_preference import ExempleFormatePreference
+from chsa_triage.domain.model.exemple_formate_preference import (
+    ExempleFormatePreference,
+)
 
 
 def test_construction_et_egalite():

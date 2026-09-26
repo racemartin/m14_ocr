@@ -15,7 +15,7 @@ from dataclasses import replace
 from uuid import uuid4
 
 from chsa_triage.application.use_cases.E3_00_uc_reformuler_preference_dpo import (
-    LONGITUD_MAX_ENTREE_REFORMULATION,
+    LONGUEUR_MAX_ENTREE_REFORMULATION,
     MIN_TOKENS_GENERES_REFORMULATION,
     NOMBRE_TOKENS_GENERES_REFORMULATION,
     PROMPT_REFORMULATION_CHOSEN,
@@ -29,7 +29,13 @@ from chsa_triage.domain.model.exemple_pivot import ExemplePivot, Message
 from chsa_triage.domain.model.preference_reformulee import ChosenReformule
 from chsa_triage.domain.ports.moteur_inference import ReponseModele
 
-JSON_CIBLE = json.dumps({"niveau": 3, "categorie": "respiratoire", "ressources_estimees": "oxygenotherapie"})
+JSON_CIBLE = json.dumps(
+    {
+        "niveau": 3,
+        "categorie": "respiratoire",
+        "ressources_estimees": "oxygenotherapie",
+    }
+)
 TEXTE_REFORMULATION_VALIDE = f"<think>raisonnement clinique</think>{JSON_CIBLE}"
 
 
@@ -43,13 +49,17 @@ class FauxMoteurInference:
     PROMPT_REFORMULATION_CHOSEN en plus du texte source.
     """
 
-    def __init__(self, reponses_par_defaut: str = TEXTE_REFORMULATION_VALIDE) -> None:
+    def __init__(
+        self, reponses_par_defaut: str = TEXTE_REFORMULATION_VALIDE
+    ) -> None:
         self.reponses_par_defaut = reponses_par_defaut
         self.reponses_speciales: dict[str, str | Exception | ReponseModele] = {}
         self.appels: list[list[dict]] = []
         self.appels_parametres: list[dict | None] = []
 
-    def generer(self, messages: list[dict], parametres: dict | None = None) -> ReponseModele:
+    def generer(
+        self, messages: list[dict], parametres: dict | None = None
+    ) -> ReponseModele:
         self.appels.append(messages)
         self.appels_parametres.append(parametres)
         contenu_utilisateur = messages[-1]["content"]
@@ -69,7 +79,9 @@ class FauxRepositoryReformule:
     """Faux adaptateur RepositoryLectureEcriture, en memoire, parametre sur ChosenReformule."""
 
     def __init__(self, items: list[ChosenReformule] | None = None) -> None:
-        self.items: dict[str, ChosenReformule] = {item.identifiant: item for item in (items or [])}
+        self.items: dict[str, ChosenReformule] = {
+            item.identifiant: item for item in (items or [])
+        }
 
     def sauvegarder(self, item: ChosenReformule) -> None:
         self.items[item.identifiant] = item
@@ -91,10 +103,14 @@ class FauxRepositoryReformule:
         return set(self.items.keys())
 
 
-def _exemple_dpo(texte_chosen: str = "reponse choisie originale") -> ExemplePivot:
+def _exemple_dpo(
+    texte_chosen: str = "reponse choisie originale",
+) -> ExemplePivot:
     cle = uuid4().hex
     return ExemplePivot(
-        identifiant=ExemplePivot.nouvel_identifiant("UltraMedical-Preference", cle),
+        identifiant=ExemplePivot.nouvel_identifiant(
+            "UltraMedical-Preference", cle
+        ),
         identifiant_source_brute=cle,
         source="UltraMedical-Preference",
         type_exemple=TypeExemple.DPO,
@@ -122,7 +138,9 @@ def test_reformule_uniquement_les_exemples_dpo():
     exemples = [_exemple_dpo(), _exemple_dpo(), _exemple_sft()]
     moteur = FauxMoteurInference()
     repository = FauxRepositoryReformule()
-    cas_usage = ReformulerPreferenceDpoUseCase(moteur=moteur, repository_reformule=repository)
+    cas_usage = ReformulerPreferenceDpoUseCase(
+        moteur=moteur, repository_reformule=repository
+    )
 
     nombre = cas_usage.executer(exemples)
 
@@ -134,20 +152,29 @@ def test_reformule_uniquement_les_exemples_dpo():
 def test_exclut_les_identifiants_deja_reformules():
     deja_reformule = ChosenReformule(
         identifiant="chsa-deja-reformule",
-        chosen_reformule=(Message(role="assistant", contenu=TEXTE_REFORMULATION_VALIDE),),
+        chosen_reformule=(
+            Message(role="assistant", contenu=TEXTE_REFORMULATION_VALIDE),
+        ),
         horodatage="2026-09-19T00:00:00Z",
     )
-    exemple_existant = replace(_exemple_dpo(), identifiant="chsa-deja-reformule")
+    exemple_existant = replace(
+        _exemple_dpo(), identifiant="chsa-deja-reformule"
+    )
     nouvel_exemple = _exemple_dpo()
 
     moteur = FauxMoteurInference()
     repository = FauxRepositoryReformule([deja_reformule])
-    cas_usage = ReformulerPreferenceDpoUseCase(moteur=moteur, repository_reformule=repository, taille_cible=5000)
+    cas_usage = ReformulerPreferenceDpoUseCase(
+        moteur=moteur, repository_reformule=repository, taille_cible=5000
+    )
 
     nombre = cas_usage.executer([exemple_existant, nouvel_exemple])
 
     assert nombre == 1
-    assert set(repository.items) == {"chsa-deja-reformule", nouvel_exemple.identifiant}
+    assert set(repository.items) == {
+        "chsa-deja-reformule",
+        nouvel_exemple.identifiant,
+    }
     assert len(moteur.appels) == 1
 
 
@@ -161,7 +188,9 @@ def test_taille_cible_est_cumulative_pas_un_plafond_par_execution():
     deja_reformules = [
         ChosenReformule(
             identifiant=f"chsa-deja-{i}",
-            chosen_reformule=(Message(role="assistant", contenu=TEXTE_REFORMULATION_VALIDE),),
+            chosen_reformule=(
+                Message(role="assistant", contenu=TEXTE_REFORMULATION_VALIDE),
+            ),
             horodatage="2026-09-19T00:00:00Z",
         )
         for i in range(2)
@@ -170,7 +199,9 @@ def test_taille_cible_est_cumulative_pas_un_plafond_par_execution():
 
     moteur = FauxMoteurInference()
     repository = FauxRepositoryReformule(deja_reformules)
-    cas_usage = ReformulerPreferenceDpoUseCase(moteur=moteur, repository_reformule=repository, taille_cible=3)
+    cas_usage = ReformulerPreferenceDpoUseCase(
+        moteur=moteur, repository_reformule=repository, taille_cible=3
+    )
 
     nombre = cas_usage.executer(candidats)
 
@@ -183,9 +214,13 @@ def test_echec_de_parsing_est_compte_et_exclut_du_resultat_sans_ecrire_un_exempl
     exemple_degenere = _exemple_dpo(texte_chosen="reponse degeneree")
 
     moteur = FauxMoteurInference()
-    moteur.reponses_speciales["reponse degeneree"] = "texte libre, pas de <think> ni de JSON"
+    moteur.reponses_speciales["reponse degeneree"] = (
+        "texte libre, pas de <think> ni de JSON"
+    )
     repository = FauxRepositoryReformule()
-    cas_usage = ReformulerPreferenceDpoUseCase(moteur=moteur, repository_reformule=repository)
+    cas_usage = ReformulerPreferenceDpoUseCase(
+        moteur=moteur, repository_reformule=repository
+    )
 
     nombre = cas_usage.executer([exemple_ok, exemple_degenere])
 
@@ -208,7 +243,9 @@ def test_echec_de_parsing_capture_entree_et_sortie_emparieees_dans_l_echantillon
     moteur = FauxMoteurInference()
     moteur.reponses_speciales["reponse degeneree"] = texte_brut
     repository = FauxRepositoryReformule()
-    cas_usage = ReformulerPreferenceDpoUseCase(moteur=moteur, repository_reformule=repository)
+    cas_usage = ReformulerPreferenceDpoUseCase(
+        moteur=moteur, repository_reformule=repository
+    )
 
     cas_usage.executer([exemple_degenere])
 
@@ -222,9 +259,13 @@ def test_echec_d_inference_ne_capture_rien_dans_l_echantillon():
     exemple_en_echec = _exemple_dpo(texte_chosen="reponse en echec")
 
     moteur = FauxMoteurInference()
-    moteur.reponses_speciales["reponse en echec"] = RuntimeError("500 Internal Server Error")
+    moteur.reponses_speciales["reponse en echec"] = RuntimeError(
+        "500 Internal Server Error"
+    )
     repository = FauxRepositoryReformule()
-    cas_usage = ReformulerPreferenceDpoUseCase(moteur=moteur, repository_reformule=repository)
+    cas_usage = ReformulerPreferenceDpoUseCase(
+        moteur=moteur, repository_reformule=repository
+    )
 
     cas_usage.executer([exemple_en_echec])
 
@@ -239,18 +280,28 @@ def test_echantillon_echecs_reformulation_est_acote_meme_avec_plus_d_echecs():
     supplementaires sont toujours comptes mais plus captures.
     """
     nombre_candidats = TAILLE_MAX_ECHANTILLON_ECHECS_REFORMULATION + 3
-    exemples = [_exemple_dpo(texte_chosen=f"reponse degeneree {i}") for i in range(nombre_candidats)]
+    exemples = [
+        _exemple_dpo(texte_chosen=f"reponse degeneree {i}")
+        for i in range(nombre_candidats)
+    ]
 
     moteur = FauxMoteurInference()
     for i in range(nombre_candidats):
-        moteur.reponses_speciales[f"reponse degeneree {i}"] = f"texte libre {i}, pas de format cible"
+        moteur.reponses_speciales[f"reponse degeneree {i}"] = (
+            f"texte libre {i}, pas de format cible"
+        )
     repository = FauxRepositoryReformule()
-    cas_usage = ReformulerPreferenceDpoUseCase(moteur=moteur, repository_reformule=repository)
+    cas_usage = ReformulerPreferenceDpoUseCase(
+        moteur=moteur, repository_reformule=repository
+    )
 
     cas_usage.executer(exemples)
 
     assert cas_usage.nombre_echecs_reformulation == nombre_candidats
-    assert len(cas_usage.echantillon_echecs_reformulation) == TAILLE_MAX_ECHANTILLON_ECHECS_REFORMULATION
+    assert (
+        len(cas_usage.echantillon_echecs_reformulation)
+        == TAILLE_MAX_ECHANTILLON_ECHECS_REFORMULATION
+    )
 
 
 def test_echec_d_inference_est_compte_sans_abandonner_le_lot():
@@ -258,9 +309,13 @@ def test_echec_d_inference_est_compte_sans_abandonner_le_lot():
     exemple_en_echec = _exemple_dpo(texte_chosen="reponse en echec")
 
     moteur = FauxMoteurInference()
-    moteur.reponses_speciales["reponse en echec"] = RuntimeError("500 Internal Server Error")
+    moteur.reponses_speciales["reponse en echec"] = RuntimeError(
+        "500 Internal Server Error"
+    )
     repository = FauxRepositoryReformule()
-    cas_usage = ReformulerPreferenceDpoUseCase(moteur=moteur, repository_reformule=repository)
+    cas_usage = ReformulerPreferenceDpoUseCase(
+        moteur=moteur, repository_reformule=repository
+    )
 
     nombre = cas_usage.executer([exemple_ok, exemple_en_echec])
 
@@ -280,7 +335,9 @@ def test_le_prompt_est_un_unique_tour_user_jamais_system():
     exemple = _exemple_dpo(texte_chosen="reponse choisie originale")
     moteur = FauxMoteurInference()
     repository = FauxRepositoryReformule()
-    cas_usage = ReformulerPreferenceDpoUseCase(moteur=moteur, repository_reformule=repository)
+    cas_usage = ReformulerPreferenceDpoUseCase(
+        moteur=moteur, repository_reformule=repository
+    )
 
     cas_usage.executer([exemple])
 
@@ -310,7 +367,11 @@ def test_le_prompt_inclut_un_exemple_few_shot_deja_resolu():
     debut_json = bloc_exemple.index("</think>") + len("</think>")
     fin_json = bloc_exemple.index("\n\n", debut_json)
     objet_exemple = json.loads(bloc_exemple[debut_json:fin_json])
-    assert set(objet_exemple.keys()) == {"niveau", "categorie", "ressources_estimees"}
+    assert set(objet_exemple.keys()) == {
+        "niveau",
+        "categorie",
+        "ressources_estimees",
+    }
 
 
 def test_generer_recoit_des_parametres_de_generation_explicites():
@@ -323,7 +384,9 @@ def test_generer_recoit_des_parametres_de_generation_explicites():
     exemple = _exemple_dpo()
     moteur = FauxMoteurInference()
     repository = FauxRepositoryReformule()
-    cas_usage = ReformulerPreferenceDpoUseCase(moteur=moteur, repository_reformule=repository)
+    cas_usage = ReformulerPreferenceDpoUseCase(
+        moteur=moteur, repository_reformule=repository
+    )
 
     cas_usage.executer([exemple])
 
@@ -334,14 +397,20 @@ def test_generer_recoit_des_parametres_de_generation_explicites():
         "min_new_tokens": MIN_TOKENS_GENERES_REFORMULATION,
     }
     assert 0.0 < TEMPERATURE_REFORMULATION < 1.0
-    assert 0 < MIN_TOKENS_GENERES_REFORMULATION < NOMBRE_TOKENS_GENERES_REFORMULATION
+    assert (
+        0
+        < MIN_TOKENS_GENERES_REFORMULATION
+        < NOMBRE_TOKENS_GENERES_REFORMULATION
+    )
 
 
 def test_ne_lit_ni_n_ecrit_jamais_rejected():
     exemple = _exemple_dpo()
     moteur = FauxMoteurInference()
     repository = FauxRepositoryReformule()
-    cas_usage = ReformulerPreferenceDpoUseCase(moteur=moteur, repository_reformule=repository)
+    cas_usage = ReformulerPreferenceDpoUseCase(
+        moteur=moteur, repository_reformule=repository
+    )
 
     cas_usage.executer([exemple])
 
@@ -358,14 +427,18 @@ def test_tronque_les_entrees_tres_longues_avant_de_les_envoyer_au_modele():
     l'entree AVANT de l'inserer dans le message envoye au modele, sur une
     limite de phrase, jamais en plein mot/plein phrase.
     """
-    phrase = "Ceci est une phrase clinique de test qui se repete plusieurs fois. "
+    phrase = (
+        "Ceci est une phrase clinique de test qui se repete plusieurs fois. "
+    )
     texte_tres_long = phrase * 50
-    assert len(texte_tres_long) > LONGITUD_MAX_ENTREE_REFORMULATION
+    assert len(texte_tres_long) > LONGUEUR_MAX_ENTREE_REFORMULATION
 
     exemple = _exemple_dpo(texte_chosen=texte_tres_long)
     moteur = FauxMoteurInference()
     repository = FauxRepositoryReformule()
-    cas_usage = ReformulerPreferenceDpoUseCase(moteur=moteur, repository_reformule=repository)
+    cas_usage = ReformulerPreferenceDpoUseCase(
+        moteur=moteur, repository_reformule=repository
+    )
 
     cas_usage.executer([exemple])
 
@@ -374,8 +447,10 @@ def test_tronque_les_entrees_tres_longues_avant_de_les_envoyer_au_modele():
     assert texte_tres_long not in contenu_envoye
 
     marqueur = "Reponse a reformuler :\n"
-    entree_envoyee = contenu_envoye[contenu_envoye.rindex(marqueur) + len(marqueur) :]
-    assert len(entree_envoyee) <= LONGITUD_MAX_ENTREE_REFORMULATION
+    entree_envoyee = contenu_envoye[
+        contenu_envoye.rindex(marqueur) + len(marqueur) :
+    ]
+    assert len(entree_envoyee) <= LONGUEUR_MAX_ENTREE_REFORMULATION
     assert entree_envoyee.endswith(".")
 
 
@@ -383,7 +458,9 @@ def test_ne_tronque_pas_les_entrees_courtes():
     exemple = _exemple_dpo(texte_chosen="reponse choisie originale")
     moteur = FauxMoteurInference()
     repository = FauxRepositoryReformule()
-    cas_usage = ReformulerPreferenceDpoUseCase(moteur=moteur, repository_reformule=repository)
+    cas_usage = ReformulerPreferenceDpoUseCase(
+        moteur=moteur, repository_reformule=repository
+    )
 
     cas_usage.executer([exemple])
 
@@ -410,7 +487,9 @@ def test_echec_de_parsing_capture_les_tokens_entree_sortie_pour_diagnostic():
     moteur = FauxMoteurInference()
     moteur.reponses_speciales["reponse degeneree"] = reponse_scriptee
     repository = FauxRepositoryReformule()
-    cas_usage = ReformulerPreferenceDpoUseCase(moteur=moteur, repository_reformule=repository)
+    cas_usage = ReformulerPreferenceDpoUseCase(
+        moteur=moteur, repository_reformule=repository
+    )
 
     cas_usage.executer([exemple_degenere])
 
@@ -439,7 +518,9 @@ def test_persiste_en_un_seul_sauvegarder_plusieurs():
             super().sauvegarder_plusieurs(items)
 
     repository = RepositoryCompteAppels()
-    cas_usage = ReformulerPreferenceDpoUseCase(moteur=moteur, repository_reformule=repository)
+    cas_usage = ReformulerPreferenceDpoUseCase(
+        moteur=moteur, repository_reformule=repository
+    )
 
     cas_usage.executer(exemples)
 

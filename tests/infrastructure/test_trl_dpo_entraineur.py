@@ -39,7 +39,9 @@ from chsa_triage.domain.model.configuration_entrainement import (
     ConfigurationQuantification,
     HyperparametresEntrainementDpo,
 )
-from chsa_triage.domain.model.exemple_formate_preference import ExempleFormatePreference
+from chsa_triage.domain.model.exemple_formate_preference import (
+    ExempleFormatePreference,
+)
 from chsa_triage.infrastructure.adapters.trl_dpo_entraineur import (
     TrlDpoEntraineurAdapter,
 )
@@ -65,7 +67,9 @@ def _petit_dataset(nombre: int) -> list[ExempleFormatePreference]:
             f"<|im_start|>assistant\n<think>raisonnement {i}</think>"
             f'{{"niveau": 3, "categorie": "cardio", "ressources_estimees": "ECG"}}<|im_end|>\n'
         )
-        texte_rejected = f"<|im_start|>assistant\nCe n'est rien {i}.<|im_end|>\n"
+        texte_rejected = (
+            f"<|im_start|>assistant\nCe n'est rien {i}.<|im_end|>\n"
+        )
         exemples.append(
             ExempleFormatePreference(
                 identifiant=f"exemple-{i}",
@@ -81,13 +85,22 @@ def test_entrainement_reel_quelques_pas_perte_baisse(tmp_path):
     dataset_train = _petit_dataset(80)
     dataset_validation = _petit_dataset(20)
 
-    config_lora = ConfigurationLora(rang=16, alpha=32, dropout=0.05, modules_cibles=("q_proj", "v_proj"))
+    config_lora = ConfigurationLora(
+        rang=16, alpha=32, dropout=0.05, modules_cibles=("q_proj", "v_proj")
+    )
     hyperparametres = HyperparametresEntrainementDpo(
-        beta=0.1, taux_apprentissage=5e-6, nombre_epoques=1, taille_lot=2,
-        type_perte="sigmoid", precompute_ref_log_probs=False,
+        beta=0.1,
+        taux_apprentissage=5e-6,
+        nombre_epoques=1,
+        taille_lot=2,
+        type_perte="sigmoid",
+        precompute_ref_log_probs=False,
     )
     configuration_quantification = ConfigurationQuantification(
-        bits=4, type_quantification="nf4", double_quantification=True, dtype_calcul="bfloat16"
+        bits=4,
+        type_quantification="nf4",
+        double_quantification=True,
+        dtype_calcul="bfloat16",
     )
 
     adaptateur = TrlDpoEntraineurAdapter(
@@ -98,12 +111,21 @@ def test_entrainement_reel_quelques_pas_perte_baisse(tmp_path):
     )
 
     resultat = adaptateur.entrainer(
-        dataset_train, dataset_validation, config_lora, hyperparametres, CHECKPOINT_SFT_LORA
+        dataset_train,
+        dataset_validation,
+        config_lora,
+        hyperparametres,
+        CHECKPOINT_SFT_LORA,
     )
 
     assert resultat.chemin_checkpoint
     assert len(resultat.courbe_metriques) > 0
-    for cle in ("rewards/chosen", "rewards/rejected", "rewards/accuracies", "rewards/margins"):
+    for cle in (
+        "rewards/chosen",
+        "rewards/rejected",
+        "rewards/accuracies",
+        "rewards/margins",
+    ):
         assert cle in resultat.metriques_recompense
 
     for point in resultat.courbe_metriques:
@@ -119,7 +141,9 @@ def test_entrainement_reel_quelques_pas_perte_baisse(tmp_path):
     )
 
 
-def test_entrainer_refuse_un_chemin_checkpoint_politique_depart_different(tmp_path):
+def test_entrainer_refuse_un_chemin_checkpoint_politique_depart_different(
+    tmp_path,
+):
     """
     `entrainer()` verifie la coherence avec le checkpoint deja charge
     dans le constructeur (cf. docstring de `TrlDpoEntraineurAdapter.entrainer`).
@@ -130,7 +154,10 @@ def test_entrainer_refuse_un_chemin_checkpoint_politique_depart_different(tmp_pa
     GPU/checkpoint reel accessible.
     """
     configuration_quantification = ConfigurationQuantification(
-        bits=4, type_quantification="nf4", double_quantification=True, dtype_calcul="bfloat16"
+        bits=4,
+        type_quantification="nf4",
+        double_quantification=True,
+        dtype_calcul="bfloat16",
     )
     adaptateur = TrlDpoEntraineurAdapter(
         identifiant_modele_base=NOM_MODELE,
@@ -141,11 +168,18 @@ def test_entrainer_refuse_un_chemin_checkpoint_politique_depart_different(tmp_pa
 
     with pytest.raises(ValueError, match="ne concorde pas"):
         adaptateur.entrainer(
-            [], [],
-            ConfigurationLora(rang=16, alpha=32, dropout=0.05, modules_cibles=("q_proj",)),
+            [],
+            [],
+            ConfigurationLora(
+                rang=16, alpha=32, dropout=0.05, modules_cibles=("q_proj",)
+            ),
             HyperparametresEntrainementDpo(
-                beta=0.1, taux_apprentissage=5e-6, nombre_epoques=1, taille_lot=2,
-                type_perte="sigmoid", precompute_ref_log_probs=False,
+                beta=0.1,
+                taux_apprentissage=5e-6,
+                nombre_epoques=1,
+                taille_lot=2,
+                type_perte="sigmoid",
+                precompute_ref_log_probs=False,
             ),
             "un/depot-different",
         )

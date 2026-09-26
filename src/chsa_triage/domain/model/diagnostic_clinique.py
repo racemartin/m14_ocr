@@ -15,7 +15,7 @@ from dataclasses import dataclass
 class DiagnosticClinique:
     """Sortie structuree du modele au format cible F3/F4 (`<think>` + JSON)."""
 
-    raisonnement          : str
-    niveau                  : int
-    categorie                : str
-    ressources_estimees   : str
+    raisonnement: str
+    niveau: int
+    categorie: str
+    ressources_estimees: str

@@ -17,19 +17,19 @@ from typing import Protocol
 class EntiteDetectee:
     """Une entite sensible detectee dans un texte (nom, lieu, etc.)."""
 
-    type_entite : str    # ex. "PERSON", "LOCATION"
-    debut        : int
-    fin          : int
-    score        : float
+    type_entite: str  # ex. "PERSON", "LOCATION"
+    debut: int
+    fin: int
+    score: float
 
 
 @dataclass(frozen=True, slots=True)
 class ResultatAnonymisation:
     """Resultat d'une passe d'anonymisation sur un texte."""
 
-    texte_original     : str
-    texte_anonymise     : str
-    entites_detectees    : tuple[EntiteDetectee, ...]
+    texte_original: str
+    texte_anonymise: str
+    entites_detectees: tuple[EntiteDetectee, ...]
 
 
 class Anonymiseur(Protocol):

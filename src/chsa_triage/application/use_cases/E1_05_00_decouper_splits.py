@@ -21,120 +21,66 @@ def _aucun_identifiant_en_attente() -> set[str]:
     return set()
 
 
-# Le nom `obtenir_identifiants_pii_en_attente` est historique (10/09/2026,
-# alors limite aux candidats sans decision humaine) ; depuis le 11/09/2026
-# il est cable a `ReviserPiiResiduelleUseCase.identifiants_a_exclure_publication_set`,
-# qui couvre aussi les candidats CONFIRMES. Conserve tel quel pour limiter
-# le perimetre du changement (voir la docstring de `executer` ci-dessous).
+# Nom historique : couvre en realite deux motifs, cf.
+# ReviserPiiResiduelleUseCase.identifiants_a_exclure_publication_set.
 
 
 @dataclass(slots=True)
 class DecouperSplitsUseCase:
     """Orchestre le decoupage train/val/test clinique du dataset pivot."""
 
-    repository                       : RepositoryLectureEcriture
-    graine_aleatoire                   : int = 42
-    proportion_val                      : float = 0.10
-    proportion_test                      : float = 0.10
-    n                                   : int | None = None
-    obtenir_identifiants_pii_en_attente : Callable[[], set[str]] = _aucun_identifiant_en_attente
-    nombre_deja_assignes                 : int = field(default=0, init=False)
-    nombre_nouveaux                       : int = field(default=0, init=False)
-    nombre_exclus_pii_en_attente            : int = field(default=0, init=False)
+    repository: RepositoryLectureEcriture
+    graine_aleatoire: int = 42
+    proportion_val: float = 0.10
+    proportion_test: float = 0.10
+    n: int | None = None
+    obtenir_identifiants_pii_en_attente: Callable[[], set[str]] = (
+        _aucun_identifiant_en_attente
+    )
+    nombre_deja_assignes: int = field(default=0, init=False)
+    nombre_nouveaux: int = field(default=0, init=False)
+    nombre_exclus_pii_en_attente: int = field(default=0, init=False)
 
     def executer(self) -> dict[str, int]:
         """
         Assigne un split aux exemples anonymises qui n'en ont pas
-        encore, et persiste UNIQUEMENT ces nouveaux exemples en une
-        seule operation. Retourne le decompte TOTAL par split (exemples
-        deja assignes lors d'executions anterieures + nouveaux de
-        cette execution) ; c'est-a-dire la repartition complete
-        actuelle du dataset, pas seulement ce qui vient d'etre ajoute
-        (cf. `nombre_deja_assignes`/`nombre_nouveaux` pour distinguer
-        les deux apres l'appel).
+        encore, et persiste uniquement ces nouveaux exemples. Retourne
+        le decompte TOTAL par split (deja assignes + nouveaux) ; cf.
+        `nombre_deja_assignes`/`nombre_nouveaux` pour distinguer les
+        deux apres l'appel.
 
-        Decoupage stratifie par (type_exemple, source) (08/09/2026) :
-        chaque strate est melangee et coupee selon les memes
-        proportions test/val/train independamment des autres, plutot
-        qu'un shuffle global ; ce qui garantit que train/val/test
-        contiennent chacun une part de toutes les sources et des deux
-        types d'exemple (SFT/DPO), meme quand certaines sources sont
-        beaucoup plus petites que d'autres (ex. FrenchMedMCQA, 595
-        exemples, face a UltraMedical-Preference, 109353).
+        Garantie de croissance stable : un exemple deja `split` lors
+        d'une execution anterieure n'est JAMAIS reassigne, quel que
+        soit `n` ensuite. Sans cette garantie, agrandir le jeu
+        (`--n` plus grand) pouvait faire passer un exemple de `train` a
+        `test` d'une execution a l'autre — une fuite d'entrainement
+        dans l'evaluation, interdite par le cahier des charges. Le
+        decoupage est stratifie par (type_exemple, source), pour que
+        train/val/test contiennent chacun une part de toutes les
+        sources meme tres inegales en taille (ex. FrenchMedMCQA 595
+        exemples vs UltraMedical-Preference 109353).
 
-        Croissance stable, jamais de reordonnancement (10/09/2026,
-        remplace un comportement precedent
-        qui recalculait TOUT le decoupage depuis zero a chaque
-        execution). Un exemple qui a deja recu un `split` lors d'une
-        execution anterieure n'est JAMAIS reassigne, quel que soit le
-        `n` demande ensuite. Sans cette garantie, agrandir le jeu
-        d'entrainement (relancer avec un `--n` plus grand, ou sans
-        `--n` pour tout repartir) pouvait faire passer un exemple deja
-        vu comme `train` vers `test` (ou l'inverse) a chaque nouvelle
-        execution ; une fuite silencieuse de donnees d'entrainement
-        dans l'evaluation, ce que le cahier des charges interdit
-        explicitement ("le jeu de test ne doit jamais etre reutilise
-        en entrainement").
-
-        Algorithme : les exemples anonymises sont d'abord separes en
-        deux groupes : ceux qui ont deja un `split` (executions
-        anterieures, jamais touches ici) et les candidats sans split.
-        Seuls les candidats sans split peuvent devenir des "nouveaux"
-        a repartir dans CETTE execution :
-          - avec `n=N` : si `N` exemples sont deja assignes ou plus,
-            il n'y a rien de nouveau a faire ; REDUIRE un decoupage
-            deja fait n'est PAS supporte (le jeu ne peut que grandir,
-            jamais retrecir : voir `nombre_nouveaux == 0` en sortie).
-            Sinon, `N - nombre_deja_assignes` nouveaux exemples sont
-            preleves parmi les candidats sans split par
-            `echantillon_stratifie` (meme algorithme, methode du
-            plus grand reste, que
-            `AnonymiserDatasetUseCase._echantillon_stratifie`).
-          - sans `n` (mode "tout") : TOUS les candidats sans split
-            deviennent les "nouveaux" a repartir. Changement de
-            comportement reel par rapport a l'ancien mode "tout" :
-            avant, cela RECALCULAIT le decoupage de TOUT le dataset
-            anonymise depuis zero (pouvait deplacer des exemples deja
-            assignes) ; desormais cela COMPLETE ce qui manque, sans
-            toucher aux exemples deja assignes.
-        Les "nouveaux" de cette execution sont regroupes par
-        (type_exemple, source), chaque groupe est melange et coupe
-        selon `proportion_test`/`proportion_val`, exactement comme
-        avant ; seule la POPULATION consideree a change (candidats
-        sans split de cette execution), pas l'algorithme de
-        repartition au sein d'un groupe.
-
-        Exclusion PII en attente de decision humaine (10/09/2026,
-        etendue le 11/09/2026 aux candidats deja confirmes) : le nom
-        historique `obtenir_identifiants_pii_en_attente` (defaut :
-        aucune exclusion) couvre en realite deux motifs distincts,
-        cf. `ReviserPiiResiduelleUseCase.identifiants_a_exclure_publication_set`) :
-        au moins un candidat de PII residuelle CONFIRME (fuite non
-        ambigue), ou au moins un candidat encore SANS decision humaine
-        persistee. Ces exemples sont retires des `candidats` AVANT le
-        sous-echantillonnage `n`/le decoupage, par precaution, plutot
-        que de bloquer le pipeline en attendant une revue candidat par
-        candidat. Ils ne recoivent PAS de split cette execution mais
-        pourront en recevoir un lors d'une execution FUTURE des que la
-        decision est prise (ou que le candidat disparait apres
-        reproces). `deja_assignes` n'est jamais concerne par cette
-        exclusion.
+        Exclusion PII : `obtenir_identifiants_pii_en_attente` (defaut :
+        aucune exclusion) retire des candidats, avant le decoupage, les
+        exemples avec une PII residuelle CONFIRMEE ou encore SANS
+        decision humaine — jamais les `deja_assignes`. Ils recevront un
+        split lors d'une execution future, une fois la decision prise.
         """
-        exemples      = list(self.repository.lister(filtre={"anonymise": True}))
+        exemples = list(self.repository.lister(filtre={"anonymise": True}))
         deja_assignes = [e for e in exemples if e.split is not None]
-        candidats     = [e for e in exemples if e.split is None]
+        candidats = [e for e in exemples if e.split is None]
 
-        # Exclusion par precaution (10/09/2026, etendue le 11/09/2026)
-        # des candidats ayant au moins un candidat de PII residuelle
-        # confirme ou encore SANS decision humaine persistee : seuls
-        # les `candidats` (sans split) sont concernes, jamais
-        # `deja_assignes` ; un exemple deja reparti garde son split
-        # meme si un candidat en attente lui apparait plus tard
-        # (cf. garantie de croissance stable ci-dessus).
+        # Exclusion PII par precaution : seuls les `candidats` (sans
+        # split) sont concernes, jamais `deja_assignes` (croissance
+        # stable, cf. docstring de executer()).
         identifiants_en_attente = self.obtenir_identifiants_pii_en_attente()
         if identifiants_en_attente:
             avant = len(candidats)
-            candidats = [e for e in candidats if e.identifiant not in identifiants_en_attente]
+            candidats = [
+                e
+                for e in candidats
+                if e.identifiant not in identifiants_en_attente
+            ]
             self.nombre_exclus_pii_en_attente = avant - len(candidats)
 
         self.nombre_deja_assignes = len(deja_assignes)
@@ -146,7 +92,9 @@ class DecouperSplitsUseCase:
         else:
             n_a_prelever = self.n - self.nombre_deja_assignes
             if n_a_prelever < len(candidats):
-                nouveaux_candidats = echantillon_stratifie(candidats, n_a_prelever, self.graine_aleatoire)
+                nouveaux_candidats = echantillon_stratifie(
+                    candidats, n_a_prelever, self.graine_aleatoire
+                )
             else:
                 nouveaux_candidats = candidats
 
@@ -159,7 +107,11 @@ class DecouperSplitsUseCase:
             cle = (exemple.type_exemple.value, exemple.source)
             groupes.setdefault(cle, []).append(exemple)
 
-        decompte = {TypeSplit.TRAIN.value: 0, TypeSplit.VALIDATION.value: 0, TypeSplit.TEST_CLINIQUE.value: 0}
+        decompte = {
+            TypeSplit.TRAIN.value: 0,
+            TypeSplit.VALIDATION.value: 0,
+            TypeSplit.TEST_CLINIQUE.value: 0,
+        }
         for exemple in deja_assignes:
             decompte[exemple.split.value] += 1
 
@@ -170,8 +122,8 @@ class DecouperSplitsUseCase:
             rng.shuffle(groupe)
 
             n_total = len(groupe)
-            n_test  = int(n_total * self.proportion_test)
-            n_val   = int(n_total * self.proportion_val)
+            n_test = int(n_total * self.proportion_test)
+            n_val = int(n_total * self.proportion_val)
 
             for index, exemple in enumerate(groupe):
                 if index < n_test:
@@ -184,15 +136,8 @@ class DecouperSplitsUseCase:
                 exemples_avec_split.append(replace(exemple, split=split))
                 decompte[split.value] += 1
 
-        # NOTE (08/09/2026, meme bug que celui corrige dans
-        # AnonymiserDatasetUseCase) : `sauvegarder()` par iteration
-        # relit/reecrit tout le fichier JSONL a chaque exemple ; O(n^2)
-        # infaisable a l'echelle reelle. `sauvegarder_plusieurs` fait
-        # la meme fusion par identifiant en une seule lecture/ecriture.
-        # N'est appele que s'il y a effectivement du nouveau : rien a
-        # persister quand `nombre_nouveaux == 0` (cf. cas "reduire non
-        # supporte" ci-dessus) evite une lecture/ecriture complete du
-        # fichier pour rien.
+        # Meme piege O(n^2) que AnonymiserDatasetUseCase : sauvegarder_plusieurs
+        # en une seule ecriture, et seulement s'il y a du nouveau.
         if exemples_avec_split:
             self.repository.sauvegarder_plusieurs(exemples_avec_split)
 

@@ -16,7 +16,12 @@ from datasets import load_dataset
 class LecteurCorpusHuggingFace:
     """Adaptateur Hugging Face Hub implementant LecteurCorpus."""
 
-    def __init__(self, identifiant_hub: str, configuration: str | None = None, split: str = "train") -> None:
+    def __init__(
+        self,
+        identifiant_hub: str,
+        configuration: str | None = None,
+        split: str = "train",
+    ) -> None:
         self._identifiant_hub = identifiant_hub
         self._configuration = configuration
         self._split = split

@@ -1,21 +1,13 @@
 """
-Logique pure (parsing JSONL, pivot format long -> large, construction
-de la courbe de convergence, detection des colonnes de recompense DPO
-presentes) du dashboard Streamlit de suivi d'entrainement EN VIVO
-(`monitoring/app_suivi_entrainement.py`), reutilisee telle quelle pour
-un run SFT comme pour un run DPO.
+Logique pure (parsing JSONL, pivot format long -> large, courbe de
+convergence, colonnes de recompense DPO presentes) du dashboard
+Streamlit de suivi d'entrainement EN VIVO, reutilisee telle quelle pour
+un run SFT comme pour un run DPO. Aucune dependance a Streamlit/reseau.
 
-Aucune dependance a Streamlit ni au reseau ici : testable directement
-(`tests/monitoring/test_app_suivi_entrainement.py`), meme separation
-que `application/verdict_convergence.py` (logique pure) vis-a-vis des
-CLI qui l'appellent.
-
-Lit le format LONG ecrit par
-`infrastructure.adapters.hf_dataset_suivi_experimentation.HfDatasetSuiviExperimentation`
-(une ligne JSON par appel a `logger_metrique` : `{"etape", "nom",
-"valeur", "horodatage"}`), jamais le type domaine `MetriquesEntrainement`
-directement : cette couche recompose ce type uniquement pour reutiliser
-`evaluer_convergence`, elle ne le recoit jamais tout fait.
+Lit le format LONG ecrit par `HfDatasetSuiviExperimentation` (une ligne
+JSON par appel a `logger_metrique`), jamais le type domaine
+`MetriquesEntrainement` directement : cette couche le recompose
+uniquement pour reutiliser `evaluer_convergence`.
 """
 
 from __future__ import annotations
@@ -38,17 +30,22 @@ NOMBRE_MINIMAL_ETAPES_POUR_VERDICT = 2
 # `TrlDpoEntraineurAdapter` via `SuiviExperimentation.logger_metrique()`
 # (API `trl.DPOTrainer`, cf. docs/04_etape3_dpo/02_etapes_cas_usage.md
 # §4). Absentes d'un run SFT, presentes uniquement sur un run DPO.
-COLONNES_RECOMPENSE_DPO = ("rewards/chosen", "rewards/rejected", "rewards/accuracies", "rewards/margins")
+COLONNES_RECOMPENSE_DPO = (
+    "rewards/chosen",
+    "rewards/rejected",
+    "rewards/accuracies",
+    "rewards/margins",
+)
 
 
 @dataclass(frozen=True, slots=True)
 class LigneMetrique:
     """Une ligne du JSONL format LONG, telle qu'ecrite par logger_metrique()."""
 
-    etape       : int
-    nom           : str
-    valeur          : float
-    horodatage        : float
+    etape: int
+    nom: str
+    valeur: float
+    horodatage: float
 
 
 def analyser_jsonl_metriques(texte: str) -> list[LigneMetrique]:
@@ -79,11 +76,15 @@ def pivoter_par_etape(lignes: list[LigneMetrique]) -> list[dict]:
     """
     par_etape: dict[int, dict] = {}
     for ligne in lignes:
-        par_etape.setdefault(ligne.etape, {"etape": ligne.etape})[ligne.nom] = ligne.valeur
+        par_etape.setdefault(ligne.etape, {"etape": ligne.etape})[ligne.nom] = (
+            ligne.valeur
+        )
     return [par_etape[etape] for etape in sorted(par_etape)]
 
 
-def construire_courbe_convergence(tableau_large: list[dict]) -> tuple[MetriquesEntrainement, ...]:
+def construire_courbe_convergence(
+    tableau_large: list[dict],
+) -> tuple[MetriquesEntrainement, ...]:
     """
     Reconstruit la `courbe_metriques` attendue par `evaluer_convergence`,
     en ignorant silencieusement les etapes incompletes (sans
@@ -103,7 +104,9 @@ def construire_courbe_convergence(tableau_large: list[dict]) -> tuple[MetriquesE
     return tuple(points)
 
 
-def evaluer_convergence_en_vivo(tableau_large: list[dict]) -> tuple[VerdictConvergence | None, str]:
+def evaluer_convergence_en_vivo(
+    tableau_large: list[dict],
+) -> tuple[VerdictConvergence | None, str]:
     """
     Calcule le verdict de convergence sur les points disponibles
     jusqu'ici. Ne leve jamais d'exception : retourne (None, message)
@@ -119,25 +122,39 @@ def evaluer_convergence_en_vivo(tableau_large: list[dict]) -> tuple[VerdictConve
     verdict = evaluer_convergence(courbe)
     message = f"{len(courbe)} etapes analysees"
     if not any(point.perte_validation is not None for point in courbe):
-        message += ", perte_validation absente : surapprentissage non detectable"
+        message += (
+            ", perte_validation absente : surapprentissage non detectable"
+        )
     return verdict, message
 
 
-def filtrer_colonnes_presentes(tableau_large: list[dict], colonnes: tuple[str, ...]) -> list[str]:
+def filtrer_colonnes_presentes(
+    tableau_large: list[dict], colonnes: tuple[str, ...]
+) -> list[str]:
     """
     Retourne, parmi `colonnes`, celles qui apparaissent effectivement
     dans au moins une ligne de `tableau_large` (ex. les 4 metriques de
     recompense DPO sur un run SFT : aucune n'a jamais ete journalisee,
     la liste retournee est vide).
     """
-    return [colonne for colonne in colonnes if any(colonne in ligne for ligne in tableau_large)]
+    return [
+        colonne
+        for colonne in colonnes
+        if any(colonne in ligne for ligne in tableau_large)
+    ]
 
 
-def extraire_noms_runs(chemins_fichiers: list[str], nom_fichier: str = NOM_FICHIER_METRIQUES) -> list[str]:
+def extraire_noms_runs(
+    chemins_fichiers: list[str], nom_fichier: str = NOM_FICHIER_METRIQUES
+) -> list[str]:
     """
     Extrait les noms de run a partir des chemins d'un depot dataset
     (`HfApi.list_repo_files`) : un run est le sous-repertoire contenant
     `nom_fichier` (`<nom_run>/metriques.jsonl`), tries alphabetiquement.
     """
     suffixe = f"/{nom_fichier}"
-    return sorted(chemin[: -len(suffixe)] for chemin in chemins_fichiers if chemin.endswith(suffixe))
+    return sorted(
+        chemin[: -len(suffixe)]
+        for chemin in chemins_fichiers
+        if chemin.endswith(suffixe)
+    )

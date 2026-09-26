@@ -31,7 +31,9 @@ from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
 
 RACINE = Path(__file__).resolve().parent.parent.parent
-SORTIE = Path(__file__).resolve().parent / "M14_Rapport_technique_CHSA_Triage.docx"
+SORTIE = (
+    Path(__file__).resolve().parent / "M14_Rapport_technique_CHSA_Triage.docx"
+)
 DIAGRAMMES = RACINE / "docs" / "diagrams"
 
 COULEUR_TITRE = RGBColor(0x2D, 0x4F, 0x8E)
@@ -43,8 +45,14 @@ POLICE_CORPS = "Optima"
 POLICE_TITRES = "Arial"
 
 
-def _definir_police_style(document: Document, nom: str, police: str, taille_pt: float,
-                            couleur: RGBColor | None = None, gras: bool | None = None) -> None:
+def _definir_police_style(
+    document: Document,
+    nom: str,
+    police: str,
+    taille_pt: float,
+    couleur: RGBColor | None = None,
+    gras: bool | None = None,
+) -> None:
     style = document.styles[nom]
     style.font.name = police
     style.font.size = Pt(taille_pt)
@@ -77,8 +85,13 @@ def _nouvelle_section_deux_colonnes(document: Document) -> None:
     _deux_colonnes(document.sections[-1])
 
 
-def _paragraphe(document: Document, texte: str, style: str | None = None,
-                 alignement=None, espace_apres: float | None = None) -> "Paragraph":
+def _paragraphe(
+    document: Document,
+    texte: str,
+    style: str | None = None,
+    alignement=None,
+    espace_apres: float | None = None,
+) -> "Paragraph":
     p = document.add_paragraph(texte, style=style)
     if alignement is not None:
         p.alignment = alignement
@@ -87,21 +100,31 @@ def _paragraphe(document: Document, texte: str, style: str | None = None,
     return p
 
 
-def _figure(document: Document, chemin: Path, legende: str, largeur_cm: float = 8.5) -> None:
+def _figure(
+    document: Document, chemin: Path, legende: str, largeur_cm: float = 8.5
+) -> None:
     if not chemin.exists():
         return
     document.add_picture(str(chemin), width=Cm(largeur_cm))
     document.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
     cap = document.add_paragraph(legende)
-    cap.style = document.styles["Caption"] if "Caption" in [s.name for s in document.styles] else None
+    cap.style = (
+        document.styles["Caption"]
+        if "Caption" in [s.name for s in document.styles]
+        else None
+    )
     cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
     for run in cap.runs:
         run.italic = True
         run.font.size = Pt(7)
 
 
-def _tableau(document: Document, entetes: list[str], lignes: list[list[str]],
-             legende: str | None = None) -> None:
+def _tableau(
+    document: Document,
+    entetes: list[str],
+    lignes: list[list[str]],
+    legende: str | None = None,
+) -> None:
     if legende:
         cap = document.add_paragraph(legende)
         cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -160,18 +183,26 @@ def construire() -> None:
         style="Subtitle",
     )
     d.add_paragraph()
-    _paragraphe(d, "Spécialisation d'un modèle de base par Fine-Tuning "
-                   "Supervisé (SFT) et alignement par préférences (DPO) "
-                   "pour le déploiement d'un LLM médical d'aide au "
-                   "triage aux urgences.")
+    _paragraphe(
+        d,
+        "Spécialisation d'un modèle de base par Fine-Tuning "
+        "Supervisé (SFT) et alignement par préférences (DPO) "
+        "pour le déploiement d'un LLM médical d'aide au "
+        "triage aux urgences.",
+    )
     d.add_paragraph()
     _paragraphe(d, "par\tRafael Cerezo Martín")
     _paragraphe(d, "AI Engineer — OpenClassrooms")
     _paragraphe(d, "Septembre 2026")
     d.add_paragraph()
-    _figure(d, DIAGRAMMES / "00_vue_ensemble" / "vision_generale_etapes_v3_detaille.png",
-            "Figure 1 — Vue d'ensemble du pipeline, des données brutes à l'endpoint déployé.",
-            largeur_cm=16)
+    _figure(
+        d,
+        DIAGRAMMES
+        / "00_vue_ensemble"
+        / "vision_generale_etapes_v3_detaille.png",
+        "Figure 1 — Vue d'ensemble du pipeline, des données brutes à l'endpoint déployé.",
+        largeur_cm=16,
+    )
 
     # ------------------------------------------------------------------
     # Table des matieres (une colonne, champ TOC natif Word)
@@ -180,15 +211,24 @@ def construire() -> None:
     d.add_heading("Table des matières", level=1)
     paragraph = d.add_paragraph()
     run = paragraph.add_run()
-    fld_char1 = run._r.makeelement(qn("w:fldChar"), {qn("w:fldCharType"): "begin"})
+    fld_char1 = run._r.makeelement(
+        qn("w:fldChar"), {qn("w:fldCharType"): "begin"}
+    )
     instr = run._r.makeelement(qn("w:instrText"), {qn("xml:space"): "preserve"})
     instr.text = r'TOC \o "1-3" \h \z \u'
-    fld_char2 = run._r.makeelement(qn("w:fldChar"), {qn("w:fldCharType"): "separate"})
-    fld_char3 = run._r.makeelement(qn("w:fldChar"), {qn("w:fldCharType"): "end"})
+    fld_char2 = run._r.makeelement(
+        qn("w:fldChar"), {qn("w:fldCharType"): "separate"}
+    )
+    fld_char3 = run._r.makeelement(
+        qn("w:fldChar"), {qn("w:fldCharType"): "end"}
+    )
     for el in (fld_char1, instr, fld_char2, fld_char3):
         run._r.append(el)
-    _paragraphe(d, "(Mettre à jour les champs dans Word : Ctrl+A puis F9, "
-                   "ou clic droit → « Mettre à jour les champs ».)")
+    _paragraphe(
+        d,
+        "(Mettre à jour les champs dans Word : Ctrl+A puis F9, "
+        "ou clic droit → « Mettre à jour les champs ».)",
+    )
 
     # ------------------------------------------------------------------
     # Corps du rapport (deux colonnes a partir d'ici)
@@ -210,7 +250,7 @@ def construire() -> None:
         "soignant humain. Ce rapport documente le travail réalisé dans "
         "le cadre de cette mission de type proof of concept (POC) : "
         "préparation des données, spécialisation du modèle par SFT puis "
-        "DPO, et déploiement d'un endpoint d'inférence réel."
+        "DPO, et déploiement d'un endpoint d'inférence réel.",
     )
     _paragraphe(
         d,
@@ -221,7 +261,7 @@ def construire() -> None:
         "de périmètre, posée dès le départ, structure une grande partie "
         "des choix techniques décrits dans ce rapport (traçabilité "
         "systématique, garde-fous de sécurité, format structuré "
-        "vérifiable)."
+        "vérifiable).",
     )
     _paragraphe(d, "Contraintes techniques imposées")
     _paragraphe(
@@ -232,7 +272,7 @@ def construire() -> None:
         "conteneurisée Docker, une anonymisation par Microsoft Presidio "
         "et un pipeline CI/CD GitHub Actions. Ces choix ne sont pas "
         "discutés ici : ce rapport porte sur leur mise en œuvre et sur "
-        "les résultats obtenus."
+        "les résultats obtenus.",
     )
     _paragraphe(d, "Architecture retenue")
     _paragraphe(
@@ -251,17 +291,23 @@ def construire() -> None:
         "différent d'y répondre — c'est ce découplage qui a permis, "
         "pendant l'incident de déploiement (§4.2), de continuer à "
         "développer et tester le reste du système sans dépendre en "
-        "permanence d'un GPU réel disponible."
+        "permanence d'un GPU réel disponible.",
     )
-    _figure(d, DIAGRAMMES / "01_environnement" / "paquets" / "architecture_hexagonale.png",
-            "Figure 2 — Architecture hexagonale du projet : domaine, cas d'usage et adaptateurs.")
+    _figure(
+        d,
+        DIAGRAMMES
+        / "01_environnement"
+        / "paquets"
+        / "architecture_hexagonale.png",
+        "Figure 2 — Architecture hexagonale du projet : domaine, cas d'usage et adaptateurs.",
+    )
 
     d.add_heading("Concepts clés", level=2)
     _paragraphe(
         d,
         "Quatre notions techniques structurent ce rapport ; elles sont "
         "introduites brièvement ici pour un lecteur non spécialiste, "
-        "puis reprises en contexte dans les sections correspondantes."
+        "puis reprises en contexte dans les sections correspondantes.",
     )
     _paragraphe(
         d,
@@ -271,14 +317,14 @@ def construire() -> None:
         "couches (typiquement l'attention) et n'entraîne que celles-ci. "
         "Le modèle de base reste inchangé et gelé ; l'adaptateur LoRA, "
         "lui, ne pèse que quelques dizaines de mégaoctets et peut être "
-        "chargé ou déchargé à la volée."
+        "chargé ou déchargé à la volée.",
     )
     _paragraphe(
         d,
         "SFT (Supervised Fine-Tuning) — spécialisation supervisée "
         "classique : le modèle apprend, exemple par exemple, à "
         "reproduire une réponse attendue à partir d'un prompt donné. "
-        "C'est la première phase d'entraînement de ce projet (§2)."
+        "C'est la première phase d'entraînement de ce projet (§2).",
     )
     _paragraphe(
         d,
@@ -288,7 +334,7 @@ def construire() -> None:
         "rejetée) : le modèle apprend à préférer la première à la "
         "seconde, ce qui permet d'orienter des qualités plus difficiles "
         "à spécifier par un simple exemple (concision, pertinence "
-        "clinique, absence de dérive)."
+        "clinique, absence de dérive).",
     )
     _paragraphe(
         d,
@@ -299,7 +345,7 @@ def construire() -> None:
         "contigu réservé à l'avance, ce qui permet de servir plusieurs "
         "requêtes simultanées sans gaspillage de VRAM. vLLM expose une "
         "API compatible OpenAI et sait servir un adaptateur LoRA "
-        "nativement, sans jamais le fusionner avec le modèle de base."
+        "nativement, sans jamais le fusionner avec le modèle de base.",
     )
 
     d.add_heading("Environnement de développement", level=1)
@@ -315,7 +361,7 @@ def construire() -> None:
         "vérification dédié à chacun (`check_env_local.py`, "
         "`check_env_gpu.py`, `check_env_remote_hf.py`) contrôle les "
         "prérequis avant de lancer une étape, plutôt que de découvrir un "
-        "problème de configuration en cours de run facturé."
+        "problème de configuration en cours de run facturé.",
     )
     _paragraphe(
         d,
@@ -325,7 +371,7 @@ def construire() -> None:
         "complète pour l'Environnement B — un défaut d'origine (`torch` "
         "toujours résolu en version CUDA, même en local) a été corrigé "
         "pendant ce projet et documenté en section Dépannage du "
-        "README."
+        "README.",
     )
     _paragraphe(
         d,
@@ -336,7 +382,7 @@ def construire() -> None:
         "API. Elle s'exécute entièrement dans l'Environnement A, sans "
         "GPU, ce qui la rend gratuite à relancer aussi souvent que "
         "nécessaire — c'est cette même suite qui s'exécute dans le "
-        "pipeline CI/CD (§4.3)."
+        "pipeline CI/CD (§4.3).",
     )
 
     # === 1. Préparation des données ======================================
@@ -357,7 +403,7 @@ def construire() -> None:
         "(sft ou dpo) et, lorsqu'ils sont disponibles, des champs "
         "cliniques structurés (symptômes, antécédents, constantes "
         "vitales : pression artérielle, fréquence cardiaque, SpO2, "
-        "fréquence respiratoire)."
+        "fréquence respiratoire).",
     )
     _paragraphe(
         d,
@@ -365,10 +411,16 @@ def construire() -> None:
         "identifiant déterministe : sur l'ensemble des exemples "
         "collectés, 12 321 doublons exacts ont été détectés et écartés "
         "(archivés séparément plutôt que simplement supprimés, pour "
-        "traçabilité)."
+        "traçabilité).",
     )
-    _figure(d, DIAGRAMMES / "02_etape1_donnees" / "sequence" / "construction_dataset_pivot.png",
-            "Figure 3 — Construction du dataset pivot : fusion et déduplication des quatre sources.")
+    _figure(
+        d,
+        DIAGRAMMES
+        / "02_etape1_donnees"
+        / "sequence"
+        / "construction_dataset_pivot.png",
+        "Figure 3 — Construction du dataset pivot : fusion et déduplication des quatre sources.",
+    )
 
     d.add_heading("1.2 Anonymisation et contrôle qualité", level=2)
     _paragraphe(
@@ -383,27 +435,39 @@ def construire() -> None:
         "de la PII résiduelle et un contrôle qualité systématique sur un "
         "échantillon stratifié complètent la détection automatique, "
         "qui n'est jamais supposée parfaite à elle seule sur un texte "
-        "clinique libre."
+        "clinique libre.",
     )
-    _figure(d, DIAGRAMMES / "02_etape1_donnees" / "sequence" / "anonymiser_dataset.png",
-            "Figure 4 — Séquence d'anonymisation : détection Presidio, remplacement, contrôle qualité.")
+    _figure(
+        d,
+        DIAGRAMMES
+        / "02_etape1_donnees"
+        / "sequence"
+        / "anonymiser_dataset.png",
+        "Figure 4 — Séquence d'anonymisation : détection Presidio, remplacement, contrôle qualité.",
+    )
     _paragraphe(
         d,
         "L'anonymisation complète a porté sur 134 883 exemples (pivot "
         "dédupliqué). Le découpage final, stratifié par source et "
         "vérifié automatiquement (écart maximal toléré entre strates), "
         "répartit ces exemples en 37 802 exemples éligibles SFT et "
-        "97 081 exemples éligibles DPO."
+        "97 081 exemples éligibles DPO.",
     )
-    _figure(d, DIAGRAMMES / "02_etape1_donnees" / "activite" / "pipeline_donnees.png",
-            "Figure 5 — Pipeline complet de préparation des données : collecte, pivot, anonymisation, splits.")
+    _figure(
+        d,
+        DIAGRAMMES / "02_etape1_donnees" / "activite" / "pipeline_donnees.png",
+        "Figure 5 — Pipeline complet de préparation des données : collecte, pivot, anonymisation, splits.",
+    )
 
     d.add_heading("1.3 Résultat", level=2)
     _tableau(
         d,
         ["Étape", "Volume"],
         [
-            ["Exemples collectés (4 corpus bruts)", "134 883 + 12 321 doublons écartés"],
+            [
+                "Exemples collectés (4 corpus bruts)",
+                "134 883 + 12 321 doublons écartés",
+            ],
             ["Pivot anonymisé (après déduplication)", "134 883 exemples"],
             ["Split éligible SFT", "37 802 exemples"],
             ["Split éligible DPO", "97 081 exemples"],
@@ -423,7 +487,7 @@ def construire() -> None:
         "d'éventuels travaux futurs à plus grande échelle. L'ensemble "
         "est publié et versionné sur le Hub Hugging Face (dépôts privés "
         "dédiés à chaque étape), bilingue, anonymisé et prêt pour "
-        "l'entraînement."
+        "l'entraînement.",
     )
 
     # === 2. SFT + LoRA ====================================================
@@ -440,24 +504,40 @@ def construire() -> None:
         "de base — un compromis adapté à un POC avec budget de calcul "
         "contraint. Le chargement s'effectue en quantification 4-bit "
         "(`BitsAndBytesConfig`) pour l'entraînement sur une seule GPU "
-        "distante (HF Jobs)."
+        "distante (HF Jobs).",
     )
     _tableau(
         d,
         ["Paramètre", "Valeur", "Rôle"],
         [
-            ["Quantification", "nf4, double, bf16", "Divise par 4 la VRAM du modèle base"],
+            [
+                "Quantification",
+                "nf4, double, bf16",
+                "Divise par 4 la VRAM du modèle base",
+            ],
             ["Rang LoRA (r)", "16", "Capacité de l'adaptateur"],
-            ["Alpha LoRA", "32 (2r)", "Échelle de la mise à jour, règle standard"],
+            [
+                "Alpha LoRA",
+                "32 (2r)",
+                "Échelle de la mise à jour, règle standard",
+            ],
             ["Dropout LoRA", "0,05", "Régularisation anti-surapprentissage"],
-            ["Modules cibles", "q, k, v, o_proj", "Attention seulement, adaptateur léger"],
+            [
+                "Modules cibles",
+                "q, k, v, o_proj",
+                "Attention seulement, adaptateur léger",
+            ],
             ["Taux d'apprentissage", "2·10⁻⁴", "Valeur typique LoRA"],
             ["Époques", "3", "Compromis apprentissage/mémorisation"],
             ["Taille de lot", "4", "Limité par la VRAM disponible"],
-            ["Packing", "activé", "GPU utilisé à ~100% (vs 40-60% en padding classique)"],
+            [
+                "Packing",
+                "activé",
+                "GPU utilisé à ~100% (vs 40-60% en padding classique)",
+            ],
         ],
         legende="Tableau 2 — Configuration réelle de l'entraînement SFT-LoRA "
-                "(recipes/sft_qwen3_lora.yaml, README « Explication du contenu de la recette »).",
+        "(recipes/sft_qwen3_lora.yaml, README « Explication du contenu de la recette »).",
     )
     _paragraphe(
         d,
@@ -466,17 +546,20 @@ def construire() -> None:
         "approximativement gaussienne, plus précis à taille égale que "
         "le format `fp4` générique — à ne pas confondre avec le "
         "garde-fou de sécurité clinique NF4 discuté en §5, homonyme "
-        "sans lien technique."
+        "sans lien technique.",
     )
     _paragraphe(
         d,
         "L'évaluation baseline zero-shot (modèle non spécialisé) sert "
         "de point de comparaison avant tout entraînement, sur le même "
         "jeu de test clinique (278 exemples) que les évaluations "
-        "post-SFT et post-DPO."
+        "post-SFT et post-DPO.",
     )
-    _figure(d, DIAGRAMMES / "03_etape2_sft" / "activite" / "pipeline_sft_lora.png",
-            "Figure 6 — Pipeline SFT+LoRA : baseline, entraînement, évaluation post-SFT.")
+    _figure(
+        d,
+        DIAGRAMMES / "03_etape2_sft" / "activite" / "pipeline_sft_lora.png",
+        "Figure 6 — Pipeline SFT+LoRA : baseline, entraînement, évaluation post-SFT.",
+    )
 
     d.add_heading("2.2 Résultat", level=2)
     _paragraphe(
@@ -488,7 +571,7 @@ def construire() -> None:
         "valeur de référence à laquelle le DPO est ensuite comparé "
         "(§3). C'est ce checkpoint qui sert de politique de référence "
         "(π_ref) pour l'alignement par préférences, et ses poids sont "
-        "publiés durablement sur le Hub (dépôt privé dédié)."
+        "publiés durablement sur le Hub (dépôt privé dédié).",
     )
 
     # === 3. DPO ============================================================
@@ -505,12 +588,21 @@ def construire() -> None:
         "L'hyperparamètre β contrôle la force de cet ancrage à la "
         "référence : plus β est faible, plus le modèle est autorisé à "
         "s'écarter de π_ref, au risque d'une dérive de génération non "
-        "capturée par la seule perte d'entraînement (§3.2)."
+        "capturée par la seule perte d'entraînement (§3.2).",
     )
-    _figure(d, DIAGRAMMES / "04_etape3_dpo" / "activite" / "dpo_double_fonction_entrainement.png",
-            "Figure 7 — Boucle d'entraînement DPO : double passage (politique + référence figée).")
-    _figure(d, DIAGRAMMES / "04_etape3_dpo" / "sequence" / "entrainer_dpo.png",
-            "Figure 8 — Séquence d'entraînement DPO, du dataset de préférence au checkpoint publié.")
+    _figure(
+        d,
+        DIAGRAMMES
+        / "04_etape3_dpo"
+        / "activite"
+        / "dpo_double_fonction_entrainement.png",
+        "Figure 7 — Boucle d'entraînement DPO : double passage (politique + référence figée).",
+    )
+    _figure(
+        d,
+        DIAGRAMMES / "04_etape3_dpo" / "sequence" / "entrainer_dpo.png",
+        "Figure 8 — Séquence d'entraînement DPO, du dataset de préférence au checkpoint publié.",
+    )
 
     d.add_heading("3.2 Métriques et itérations réelles", level=2)
     _paragraphe(
@@ -518,22 +610,43 @@ def construire() -> None:
         "La mise au point de β a nécessité plusieurs itérations "
         "réelles, chacune diagnostiquée sur des métriques concrètes "
         "(rewards/accuracies, rewards/margins) plutôt que sur la seule "
-        "perte d'entraînement brute :"
+        "perte d'entraînement brute :",
     )
     _tableau(
         d,
-        ["Run", "β", "Taille", "Verdict", "rewards/accuracies", "rewards/margins"],
         [
-            ["1 (batch=1)", "0,1", "100", "sous-apprentissage", "0,30", "-1,25"],
-            ["2 (lr relevé)", "0,1", "100", "sous-apprentissage*", "0,625 / 0,75", "+0,72 / +0,60"],
+            "Run",
+            "β",
+            "Taille",
+            "Verdict",
+            "rewards/accuracies",
+            "rewards/margins",
+        ],
+        [
+            [
+                "1 (batch=1)",
+                "0,1",
+                "100",
+                "sous-apprentissage",
+                "0,30",
+                "-1,25",
+            ],
+            [
+                "2 (lr relevé)",
+                "0,1",
+                "100",
+                "sous-apprentissage*",
+                "0,625 / 0,75",
+                "+0,72 / +0,60",
+            ],
             ["3", "0,1", "5000", "saine", "0,725", "+3,00"],
             ["4", "0,3", "100", "sous-apprentissage*", "0,60", "1,93"],
             ["5 (final)", "0,3", "5000", "saine", "0,75", "4,84"],
         ],
         legende="Tableau 3 — Journal des runs DPO (extrait, README §3.2). "
-                "*Verdict basé sur un seuil de perte hérité du SFT, non "
-                "recalibré pour DPO ; rewards/accuracies et margins "
-                "indiquent un apprentissage réel malgré ce verdict.",
+        "*Verdict basé sur un seuil de perte hérité du SFT, non "
+        "recalibré pour DPO ; rewards/accuracies et margins "
+        "indiquent un apprentissage réel malgré ce verdict.",
     )
     _paragraphe(
         d,
@@ -544,7 +657,7 @@ def construire() -> None:
         "aléatoires FR/EN vers JA/ZH/AR, effondrements en répétitions) "
         "non visible dans la perte d'entraînement seule. Relever β à "
         "0,3 corrige ce défaut, confirmé sur les deux échelles (100 "
-        "puis 5000 exemples, aucune régression)."
+        "puis 5000 exemples, aucune régression).",
     )
 
     d.add_heading("3.3 Évaluation post-DPO", level=2)
@@ -558,10 +671,10 @@ def construire() -> None:
             ["0,3 (5000, final)", "1,2", "0,110", "~11,2 s"],
         ],
         legende="Tableau 4 — Évaluation post-DPO (checkpoint "
-                "mombasstic/chsa-triage-dpo-lora, README §3.3). β=0,3 + "
-                "repetition_penalty=1,2 ramène le F1 au niveau du "
-                "post-SFT (0,112), sans régression au passage à "
-                "l'échelle (100 → 5000 exemples).",
+        "mombasstic/chsa-triage-dpo-lora, README §3.3). β=0,3 + "
+        "repetition_penalty=1,2 ramène le F1 au niveau du "
+        "post-SFT (0,112), sans régression au passage à "
+        "l'échelle (100 → 5000 exemples).",
     )
     _paragraphe(
         d,
@@ -572,7 +685,7 @@ def construire() -> None:
         "adaptateur LoRA (§4), ce qui permet de revenir au modèle de "
         "base à tout moment sans réentraînement, et de comparer "
         "facilement plusieurs versions du garde-fou d'alignement sans "
-        "dupliquer les 3,2 Go de poids du modèle de base."
+        "dupliquer les 3,2 Go de poids du modèle de base.",
     )
 
     d.add_heading("3.4 Portée de la reformulation des préférences", level=2)
@@ -590,7 +703,7 @@ def construire() -> None:
         "l'évaluation : la mission ne demande que l'alignement SFT+DPO "
         "sur les préférences, le format JSON strict étant un ajout du "
         "cahier des charges local visé plutôt au niveau du prompting de "
-        "l'endpoint déployé (§5, §6.1)."
+        "l'endpoint déployé (§5, §6.1).",
     )
 
     # === 4. Déploiement ====================================================
@@ -614,14 +727,26 @@ def construire() -> None:
         "structuré distinguant explicitement « serveur d'inférence "
         "indisponible » d'une véritable erreur — un simple health-check "
         "Docker qui redémarrerait le conteneur sur ce délai normal "
-        "aurait été contre-productif."
+        "aurait été contre-productif.",
     )
-    _figure(d, DIAGRAMMES / "05_etape4_deploiement" / "deploiement" / "deploiement_etape4.png",
-            "Figure 9 — Architecture de déploiement réelle : Space Docker/GPU (API+vLLM), "
-            "frontend local, journal d'audit persistant.")
-    _figure(d, DIAGRAMMES / "05_etape4_deploiement" / "sequence" / "poursuivre_entretien.png",
-            "Figure 10 — Séquence d'un tour d'entretien : de la requête infirmier à la "
-            "réponse du modèle, en passant par le journal d'audit.")
+    _figure(
+        d,
+        DIAGRAMMES
+        / "05_etape4_deploiement"
+        / "deploiement"
+        / "deploiement_etape4.png",
+        "Figure 9 — Architecture de déploiement réelle : Space Docker/GPU (API+vLLM), "
+        "frontend local, journal d'audit persistant.",
+    )
+    _figure(
+        d,
+        DIAGRAMMES
+        / "05_etape4_deploiement"
+        / "sequence"
+        / "poursuivre_entretien.png",
+        "Figure 10 — Séquence d'un tour d'entretien : de la requête infirmier à la "
+        "réponse du modèle, en passant par le journal d'audit.",
+    )
 
     d.add_heading("4.2 Incident technique majeur et résolution", level=2)
     _paragraphe(
@@ -635,34 +760,62 @@ def construire() -> None:
         "l'instance GPU réelle (NVIDIA L4). Huit pistes ciblées ont été "
         "testées methodiquement en conditions réelles, chacune "
         "produisant le même échec identique malgré le changement — la "
-        "liste complète, dans l'ordre où elles ont été écartées :"
+        "liste complète, dans l'ordre où elles ont été écartées :",
     )
     _tableau(
         d,
         ["#", "Piste testée", "Résultat"],
         [
-            ["1", "Désactivation du multiprocessing interne de vLLM "
-                   "(variable d'environnement dédiée)", "Sans effet — "
-             "cette variable ne s'applique qu'à l'usage programmatique "
-             "de vLLM, jamais au serveur lancé en ligne de commande"],
-            ["2", "Exécution du conteneur sous un utilisateur non "
-                   "root explicite (au lieu de root par défaut)",
-             "Correction légitime conservée, mais sans effet sur le crash"],
-            ["3", "Adaptateur LoRA désactivé entièrement", "Même crash "
-             "identique, sans le module de chargement LoRA en cause"],
-            ["4", "Moteur d'attention alternatif (FlashInfer au lieu "
-                   "du moteur par défaut)", "Même crash identique"],
-            ["5", "Ordonnancement asynchrone désactivé", "Même crash identique"],
-            ["6", "Délai fixe de démarrage avant le lancement de vLLM",
-             "Même crash identique — écarte un GPU/pilote pas encore stabilisé"],
-            ["7", "Version de vLLM différente (deux versions testées)",
-             "Même crash identique sur les deux versions"],
-            ["8", "Désaccord pilote NVIDIA / version CUDA (vérifié "
-                   "directement via l'outil de diagnostic du pilote)",
-             "Pilote et CUDA confirmés sains, écarté"],
+            [
+                "1",
+                "Désactivation du multiprocessing interne de vLLM "
+                "(variable d'environnement dédiée)",
+                "Sans effet — "
+                "cette variable ne s'applique qu'à l'usage programmatique "
+                "de vLLM, jamais au serveur lancé en ligne de commande",
+            ],
+            [
+                "2",
+                "Exécution du conteneur sous un utilisateur non "
+                "root explicite (au lieu de root par défaut)",
+                "Correction légitime conservée, mais sans effet sur le crash",
+            ],
+            [
+                "3",
+                "Adaptateur LoRA désactivé entièrement",
+                "Même crash "
+                "identique, sans le module de chargement LoRA en cause",
+            ],
+            [
+                "4",
+                "Moteur d'attention alternatif (FlashInfer au lieu "
+                "du moteur par défaut)",
+                "Même crash identique",
+            ],
+            [
+                "5",
+                "Ordonnancement asynchrone désactivé",
+                "Même crash identique",
+            ],
+            [
+                "6",
+                "Délai fixe de démarrage avant le lancement de vLLM",
+                "Même crash identique — écarte un GPU/pilote pas encore stabilisé",
+            ],
+            [
+                "7",
+                "Version de vLLM différente (deux versions testées)",
+                "Même crash identique sur les deux versions",
+            ],
+            [
+                "8",
+                "Désaccord pilote NVIDIA / version CUDA (vérifié "
+                "directement via l'outil de diagnostic du pilote)",
+                "Pilote et CUDA confirmés sains, écarté",
+            ],
         ],
         legende="Tableau 5 — Les huit pistes de diagnostic testées et écartées pour le "
-                "segfault de démarrage vLLM (issue publique vllm-project/vllm#58616).",
+        "segfault de démarrage vLLM (issue publique vllm-project/vllm#58616).",
     )
     _paragraphe(
         d,
@@ -675,7 +828,7 @@ def construire() -> None:
         "signature caractéristique d'une condition de course "
         "dépendante du temps réel d'exécution — un défaut jamais isolé "
         "à une seule cause identifiable dans le code du projet ou de "
-        "vLLM lui-même."
+        "vLLM lui-même.",
     )
     _paragraphe(
         d,
@@ -690,7 +843,7 @@ def construire() -> None:
         "Cet incident, sa reproduction complète et sa résolution ont "
         "été signalés en amont au projet vLLM (issue publique "
         "vllm-project/vllm#58616) pour bénéficier à d'autres équipes "
-        "confrontées au même symptôme."
+        "confrontées au même symptôme.",
     )
     _paragraphe(
         d,
@@ -698,7 +851,7 @@ def construire() -> None:
         "et corrigés lors de la toute première conversation réelle "
         "contre ce vLLM enfin fonctionnel — un rappel concret que la "
         "disponibilité du serveur d'inférence n'implique pas à elle "
-        "seule la correction du comportement applicatif :"
+        "seule la correction du comportement applicatif :",
     )
     _paragraphe(
         d,
@@ -712,7 +865,7 @@ def construire() -> None:
         "jusqu'à la résolution du segfault. Le champ inconnu était "
         "ignoré silencieusement par vLLM, laissant la génération partir "
         "jusqu'à la limite par défaut du modèle (2048 tokens) sans "
-        "aucune limite de tour de conversation."
+        "aucune limite de tour de conversation.",
     )
     _paragraphe(
         d,
@@ -729,7 +882,7 @@ def construire() -> None:
         "automatique), ce qui a permis d'écarter une cause matérielle "
         "avant de trouver la cause réelle. Les deux corrections ont "
         "rétabli des réponses cohérentes en conditions réelles, "
-        "vérifiées par une conversation complète de bout en bout."
+        "vérifiées par une conversation complète de bout en bout.",
     )
 
     d.add_heading("4.3 CI/CD et endpoint réel", level=2)
@@ -748,10 +901,16 @@ def construire() -> None:
         "ou T4, en fonction de la disponibilité côté fournisseur) — "
         "cette latence n'a pas encore fait l'objet d'une mesure "
         "statistique systématique sur un échantillon représentatif "
-        "(recommandation §6.1)."
+        "(recommandation §6.1).",
     )
-    _figure(d, DIAGRAMMES / "05_etape4_deploiement" / "activite" / "pipeline_ci_cd.png",
-            "Figure 11 — Pipeline CI/CD : tests automatisés + vérification du build Docker.")
+    _figure(
+        d,
+        DIAGRAMMES
+        / "05_etape4_deploiement"
+        / "activite"
+        / "pipeline_ci_cd.png",
+        "Figure 11 — Pipeline CI/CD : tests automatisés + vérification du build Docker.",
+    )
 
     d.add_heading("4.4 Traçabilité et sécurité applicative", level=2)
     _paragraphe(
@@ -768,11 +927,17 @@ def construire() -> None:
         "contrairement à une simple écriture sur le disque éphémère du "
         "Space, qui aurait perdu tout l'historique à chaque "
         "reconstruction de l'image (redémarrages nombreux pendant "
-        "l'incident décrit en §4.2)."
+        "l'incident décrit en §4.2).",
     )
-    _figure(d, DIAGRAMMES / "05_etape4_deploiement" / "sequence" / "obtenir_diagnostic.png",
-            "Figure 12 — Séquence de demande de diagnostic : de l'historique d'entretien "
-            "à la classification ESI proposée.")
+    _figure(
+        d,
+        DIAGRAMMES
+        / "05_etape4_deploiement"
+        / "sequence"
+        / "obtenir_diagnostic.png",
+        "Figure 12 — Séquence de demande de diagnostic : de l'historique d'entretien "
+        "à la classification ESI proposée.",
+    )
     _paragraphe(
         d,
         "L'accès à l'API est protégé par une clé (en-tête `X-API-Key`), "
@@ -784,7 +949,7 @@ def construire() -> None:
         "(formulaire web du Space rejetant un caractère du jeton, "
         "contournable en le déposant directement via l'API "
         "programmatique plutôt que le formulaire), documenté en détail "
-        "dans le README du projet."
+        "dans le README du projet.",
     )
 
     # === 5. Sécurité, conformité et vie privée ============================
@@ -799,7 +964,7 @@ def construire() -> None:
         "clinique NF4 du cahier des charges (un juge automatique "
         "censé rejeter toute réponse dont le score de sécurité serait "
         "inférieur à 4 sur 7, non encore conçu ni implémenté — voir "
-        "statut réel en §6)."
+        "statut réel en §6).",
     )
     _paragraphe(
         d,
@@ -812,7 +977,7 @@ def construire() -> None:
         "qui ne consigne que les échanges cliniques de l'entretien "
         "(jamais d'identité de patient, celle-ci restant hors du "
         "périmètre technique de l'agent, dont le rôle se limite à "
-        "l'entretien symptomatique)."
+        "l'entretien symptomatique).",
     )
     _paragraphe(
         d,
@@ -824,7 +989,7 @@ def construire() -> None:
         "d'entretien et les diagnostics le sont. Cette conception a une "
         "conséquence directe pour le passage à l'échelle, discutée "
         "en §6.3 : elle est incompatible avec plusieurs instances de "
-        "l'API sans état partagé externe."
+        "l'API sans état partagé externe.",
     )
 
     # === 6. Analyse des resultats vs criteres d'acceptation ==============
@@ -832,20 +997,33 @@ def construire() -> None:
     _paragraphe(
         d,
         "Statut réel de chaque critère d'acceptation du POC "
-        "(cahier des charges §9), à date :"
+        "(cahier des charges §9), à date :",
     )
     _tableau(
         d,
         ["Critère", "Statut"],
         [
-            ["Endpoint vLLM opérationnel, latence documentée", "Atteint (§4.3)"],
-            ["Pipeline CI/CD exécute les tests à chaque push", "Atteint (448 tests, 0 échec)"],
-            ["JSON de diagnostic valide sur ≥95% des requêtes", "Non atteint — format non "
-             "toujours respecté en sortie réelle de vLLM (voir §7)"],
-            ["Accuracy ESI > baseline zéro-shot, mesurable", "Non mesurable tant que le "
-             "format JSON n'est pas fiable"],
-            ["Aucune réponse < 4/7 en sécurité (garde-fou NF4)", "Non implémenté — juge de "
-             "sécurité clinique non encore conçu"],
+            [
+                "Endpoint vLLM opérationnel, latence documentée",
+                "Atteint (§4.3)",
+            ],
+            [
+                "Pipeline CI/CD exécute les tests à chaque push",
+                "Atteint (448 tests, 0 échec)",
+            ],
+            [
+                "JSON de diagnostic valide sur ≥95% des requêtes",
+                "Non atteint — format non "
+                "toujours respecté en sortie réelle de vLLM (voir §7)",
+            ],
+            [
+                "Accuracy ESI > baseline zéro-shot, mesurable",
+                "Non mesurable tant que le format JSON n'est pas fiable",
+            ],
+            [
+                "Aucune réponse < 4/7 en sécurité (garde-fou NF4)",
+                "Non implémenté — juge de sécurité clinique non encore conçu",
+            ],
         ],
         legende="Tableau 6 — Statut réel des critères d'acceptation du POC (cahier des charges §9).",
     )
@@ -863,7 +1041,7 @@ def construire() -> None:
         "suite du projet : évaluer un modèle uniquement hors ligne, "
         "sans jamais l'exercer contre le serveur d'inférence réellement "
         "visé pour la production, laisse une classe entière de défauts "
-        "invisible jusqu'au déploiement."
+        "invisible jusqu'au déploiement.",
     )
     _paragraphe(
         d,
@@ -876,20 +1054,24 @@ def construire() -> None:
         "explicitement plutôt qu'une certitude — la moitié des huit "
         "pistes du Tableau 5, par exemple, semblaient plausibles a "
         "priori et ont dû être écartées une à une par des tests réels, "
-        "pas par intuition."
+        "pas par intuition.",
     )
 
     # === 7. Roadmap ========================================================
-    d.add_heading("7. Roadmap et recommandations pour le passage à l'échelle", level=1)
+    d.add_heading(
+        "7. Roadmap et recommandations pour le passage à l'échelle", level=1
+    )
     _paragraphe(
         d,
         "Les recommandations suivantes sont organisées par horizon, "
         "et découlent directement des écarts réels constatés pendant "
         "cette mission (§6) plutôt que de bonnes pratiques génériques "
-        "de mise en production de LLM."
+        "de mise en production de LLM.",
     )
 
-    d.add_heading("7.1 Court terme (avant toute extension de périmètre)", level=2)
+    d.add_heading(
+        "7.1 Court terme (avant toute extension de périmètre)", level=2
+    )
     _paragraphe(
         d,
         "Contraindre la sortie du diagnostic à un schéma JSON strict "
@@ -899,7 +1081,7 @@ def construire() -> None:
         "seul prompt — c'est l'écart le plus bloquant identifié (§6) et "
         "le plus directement actionnable : il conditionne à la fois le "
         "critère d'acceptation JSON et la mesure d'accuracy ESI, "
-        "aujourd'hui non mesurable pour cette seule raison."
+        "aujourd'hui non mesurable pour cette seule raison.",
     )
     _paragraphe(
         d,
@@ -908,7 +1090,7 @@ def construire() -> None:
         "décision produit : quel modèle ou quelle règle sert de juge, "
         "sur quel échantillon il est validé lui-même, et comment son "
         "propre taux d'erreur est mesuré avant d'en faire un filtre de "
-        "sécurité sur lequel s'appuyer."
+        "sécurité sur lequel s'appuyer.",
     )
     _paragraphe(
         d,
@@ -917,10 +1099,12 @@ def construire() -> None:
         "par type de matériel GPU alloué), pas seulement de façon "
         "ponctuelle comme actuellement — le journal d'audit déjà "
         "persisté (§4.4) porte l'horodatage nécessaire pour cette "
-        "mesure sans instrumentation supplémentaire."
+        "mesure sans instrumentation supplémentaire.",
     )
 
-    d.add_heading("7.2 Moyen terme (fiabilisation avant extension d'usage)", level=2)
+    d.add_heading(
+        "7.2 Moyen terme (fiabilisation avant extension d'usage)", level=2
+    )
     _paragraphe(
         d,
         "Ajouter une supervision applicative minimale : alertes sur "
@@ -930,7 +1114,7 @@ def construire() -> None:
         "place, seulement à exploiter ce qui existe déjà). Étendre le "
         "jeu de test clinique (278 exemples aujourd'hui) au-delà du "
         "périmètre actuel pour fiabiliser statistiquement la mesure "
-        "d'accuracy ESI une fois le format JSON corrigé."
+        "d'accuracy ESI une fois le format JSON corrigé.",
     )
     _paragraphe(
         d,
@@ -942,7 +1126,7 @@ def construire() -> None:
         "d'hébergement elle-même, résolus par un changement de "
         "configuration matérielle plutôt que par une action côté "
         "projet), donc indépendant du code du projet mais bien réel "
-        "en exploitation."
+        "en exploitation.",
     )
     _paragraphe(
         d,
@@ -953,7 +1137,7 @@ def construire() -> None:
         "silencieusement le patient suivant avec l'historique du "
         "précédent, un risque d'erreur clinique par confusion "
         "d'identité d'entretien qui mérite une vigilance équivalente "
-        "dans toute interface future."
+        "dans toute interface future.",
     )
 
     d.add_heading("7.3 Long terme (déploiement à l'échelle du CHSA)", level=2)
@@ -966,7 +1150,7 @@ def construire() -> None:
         "cadre des dispositifs médicaux logiciels selon l'usage final "
         "retenu), et mécanisme de retour d'expérience structuré depuis "
         "le terrain vers une boucle de réentraînement périodique du "
-        "modèle plutôt qu'un modèle figé une fois pour toutes."
+        "modèle plutôt qu'un modèle figé une fois pour toutes.",
     )
     _paragraphe(
         d,
@@ -979,7 +1163,7 @@ def construire() -> None:
         "plutôt que sur l'usage ponctuel de ce POC — le choix du "
         "matériel (L4 ou équivalent) devra être revalidé une fois un "
         "volume de requêtes concurrentes réaliste connu, et non plus "
-        "supposé."
+        "supposé.",
     )
     _paragraphe(
         d,
@@ -988,7 +1172,7 @@ def construire() -> None:
         "que comme une case à cocher : c'est ce même journal d'audit "
         "qui permettra, à l'échelle, de mesurer objectivement l'impact "
         "clinique réel de l'agent plutôt que ses seules métriques "
-        "d'entraînement hors ligne."
+        "d'entraînement hors ligne.",
     )
 
     # === Conclusion ========================================================
@@ -1004,7 +1188,7 @@ def construire() -> None:
         "(données, SFT, DPO, déploiement) a produit des artefacts "
         "réels et vérifiables : jeux de données publiés et versionnés, "
         "checkpoints LoRA hébergés sur le Hub, endpoint opérationnel "
-        "avec pipeline CI/CD vert, journal d'audit persistant."
+        "avec pipeline CI/CD vert, journal d'audit persistant.",
     )
     _paragraphe(
         d,
@@ -1021,7 +1205,7 @@ def construire() -> None:
         "déploiement — un rappel que l'intégration d'un composant "
         "d'inférence tiers récent, même imposé par le cahier des "
         "charges pour de bonnes raisons de performance, reste un risque "
-        "projet à budgéter explicitement, pas un détail d'exécution."
+        "projet à budgéter explicitement, pas un détail d'exécution.",
     )
     _paragraphe(
         d,
@@ -1034,7 +1218,7 @@ def construire() -> None:
         "pose une base technique solide ; le chemin vers un déploiement "
         "clinique réel au CHSA reste conditionné à une validation "
         "médicale et réglementaire qui dépasse le périmètre de ce "
-        "rapport."
+        "rapport.",
     )
 
     # === Glossaire ==========================================================
@@ -1043,38 +1227,82 @@ def construire() -> None:
         d,
         ["Terme", "Définition"],
         [
-            ["DPO", "Direct Preference Optimization — alignement à "
-                    "partir de paires (réponse préférée, réponse rejetée)."],
-            ["ESI", "Emergency Severity Index — échelle de triage aux "
-                    "urgences, niveaux 1 (critique) à 5 (non urgent)."],
-            ["LoRA", "Low-Rank Adaptation — fine-tuning par matrices "
-                     "de rang réduit, modèle de base gelé."],
-            ["NF4 (quantification)", "NormalFloat 4-bit — format de "
-                                      "quantification des poids, distinct du garde-fou "
-                                      "de sécurité clinique homonyme."],
-            ["PagedAttention", "Gestion par pages du cache d'attention "
-                               "GPU dans vLLM, comme une mémoire virtuelle."],
-            ["POC", "Proof of Concept — démonstrateur de faisabilité, "
-                    "pas un produit de production."],
-            ["QLoRA", "LoRA appliqué sur un modèle chargé en "
-                      "quantification 4-bit."],
-            ["SFT", "Supervised Fine-Tuning — spécialisation "
-                    "supervisée classique, exemple par exemple."],
-            ["vLLM", "Moteur de service d'inférence LLM haute "
-                     "performance, imposé par le cahier des charges."],
+            [
+                "DPO",
+                "Direct Preference Optimization — alignement à "
+                "partir de paires (réponse préférée, réponse rejetée).",
+            ],
+            [
+                "ESI",
+                "Emergency Severity Index — échelle de triage aux "
+                "urgences, niveaux 1 (critique) à 5 (non urgent).",
+            ],
+            [
+                "LoRA",
+                "Low-Rank Adaptation — fine-tuning par matrices "
+                "de rang réduit, modèle de base gelé.",
+            ],
+            [
+                "NF4 (quantification)",
+                "NormalFloat 4-bit — format de "
+                "quantification des poids, distinct du garde-fou "
+                "de sécurité clinique homonyme.",
+            ],
+            [
+                "PagedAttention",
+                "Gestion par pages du cache d'attention "
+                "GPU dans vLLM, comme une mémoire virtuelle.",
+            ],
+            [
+                "POC",
+                "Proof of Concept — démonstrateur de faisabilité, "
+                "pas un produit de production.",
+            ],
+            [
+                "QLoRA",
+                "LoRA appliqué sur un modèle chargé en quantification 4-bit.",
+            ],
+            [
+                "SFT",
+                "Supervised Fine-Tuning — spécialisation "
+                "supervisée classique, exemple par exemple.",
+            ],
+            [
+                "vLLM",
+                "Moteur de service d'inférence LLM haute "
+                "performance, imposé par le cahier des charges.",
+            ],
         ],
         legende="Tableau 7 — Glossaire des sigles et termes techniques utilisés dans ce rapport.",
     )
 
     d.add_heading("Références", level=1)
-    _paragraphe(d, "README.md (racine du dépôt) — journal complet des runs, métriques, "
-                   "dépannage et guide de déploiement.")
-    _paragraphe(d, "docs/00_cadrage/01_cahier_des_charges.md — cahier des charges de la mission.")
-    _paragraphe(d, "docs/00_cadrage/05_presentation_soutenance.pptx — support de soutenance détaillé.")
-    _paragraphe(d, "vllm-project/vllm, issue #58616 — signalement du segfault et de sa résolution.")
-    _paragraphe(d, "docs/01_environnement/00_guide_installation_environnement.md — guide d'installation.")
-    _paragraphe(d, "docs/references/M14 Support de presentation_V3.pptx.pdf — support de "
-                   "présentation détaillé, référence complémentaire.")
+    _paragraphe(
+        d,
+        "README.md (racine du dépôt) — journal complet des runs, métriques, "
+        "dépannage et guide de déploiement.",
+    )
+    _paragraphe(
+        d,
+        "docs/00_cadrage/01_cahier_des_charges.md — cahier des charges de la mission.",
+    )
+    _paragraphe(
+        d,
+        "docs/00_cadrage/05_presentation_soutenance.pptx — support de soutenance détaillé.",
+    )
+    _paragraphe(
+        d,
+        "vllm-project/vllm, issue #58616 — signalement du segfault et de sa résolution.",
+    )
+    _paragraphe(
+        d,
+        "docs/01_environnement/00_guide_installation_environnement.md — guide d'installation.",
+    )
+    _paragraphe(
+        d,
+        "docs/references/M14 Support de presentation_V3.pptx.pdf — support de "
+        "présentation détaillé, référence complémentaire.",
+    )
 
     d.save(str(SORTIE))
     print(f"Rapport genere : {SORTIE}")

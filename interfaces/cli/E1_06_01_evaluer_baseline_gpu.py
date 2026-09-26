@@ -38,31 +38,31 @@ run est publie a la place vers un depot dataset HF via
 distant dont le disque local/SQLite ne survit pas au job.
 """
 
-from __future__ import annotations  # Annotations de type differees
+from __future__ import annotations
 
-# Bibliotheque standard
-import argparse  # Parsing des arguments CLI
-import tempfile  # Fichier temporaire pour le JSONL telecharge depuis le Hub
+import argparse
+import tempfile
 
-# Bibliotheques du projet (cas d'usage, adaptateurs, logging)
-from chsa_triage.application.use_cases   import EvaluerBaselineZeroShotUseCase  # Cas d'usage d'evaluation baseline (reutilise sans modification)
-from chsa_triage.infrastructure.adapters import (  # Adaptateurs concrets (dataset, LLM, suivi)
+from chsa_triage.application.use_cases import EvaluerBaselineZeroShotUseCase
+from chsa_triage.infrastructure.adapters import (
     ChatMLFormateurAdapter,
     HfDatasetSuiviExperimentation,
     JsonlDatasetRepository,
     MlflowSuiviExperimentation,
     TransformersInferenceAdapter,
 )
-from tools.rafael.log_tool               import LogTool  # Utilitaire de logging du projet
+from tools.rafael.log_tool import LogTool
 
 log = LogTool(origin="evaluer_baseline_gpu")
 
-DEPOT_DATASET_HF_DEFAUT      = "mombasstic/chsa-triage-baseline-test"
-NOM_FICHIER_DATASET_HF       = "dataset_pivot_test_sft.jsonl"
-MODELE_DEFAUT                = "Qwen/Qwen3-1.7B-Base"
-URI_SUIVI_MLFLOW_DEFAUT      = "sqlite:///data/processed/mlflow.db"
-REPERTOIRE_SUIVI_HF_LOCAL_DEFAUT = "data/processed/suivi_hf_dataset_baseline_gpu"
-NOM_RUN_DEFAUT                = "baseline-zero-shot-gpu"
+DEPOT_DATASET_HF_DEFAUT = "mombasstic/chsa-triage-baseline-test"
+NOM_FICHIER_DATASET_HF = "dataset_pivot_test_sft.jsonl"
+MODELE_DEFAUT = "Qwen/Qwen3-1.7B-Base"
+URI_SUIVI_MLFLOW_DEFAUT = "sqlite:///data/processed/mlflow.db"
+REPERTOIRE_SUIVI_HF_LOCAL_DEFAUT = (
+    "data/processed/suivi_hf_dataset_baseline_gpu"
+)
+NOM_RUN_DEFAUT = "baseline-zero-shot-gpu"
 
 
 # ##############################################################################
@@ -131,8 +131,8 @@ def main() -> None:
         "--suivi-hf-repo",
         default=None,
         help="Depot dataset HF (ex. mombasstic/chsa-triage-baseline-metrics) pour publier le run "
-             "via HfDatasetSuiviExperimentation au lieu de MLflow local (pertinent sur un job "
-             "distant dont le disque ne survit pas au job) ; cf. README §12",
+        "via HfDatasetSuiviExperimentation au lieu de MLflow local (pertinent sur un job "
+        "distant dont le disque ne survit pas au job) ; cf. README §12",
     )
     parser.add_argument(
         "--suivi-hf-repertoire-local",
@@ -143,26 +143,35 @@ def main() -> None:
     arguments = parser.parse_args()
 
     log.START_ACTION(
-        "evaluer_baseline_gpu", "main", "evaluation baseline zero-shot GPU (Etape 1bis, transformers/bf16)"
+        "evaluer_baseline_gpu",
+        "main",
+        "evaluation baseline zero-shot GPU (Etape 1bis, transformers/bf16)",
     )
     log.PARAMETER_VALUE("depot dataset HF", arguments.dataset_hf_repo)
     log.PARAMETER_VALUE("modele (tokenizer + poids, bf16)", arguments.modele)
     log.PARAMETER_VALUE("suivi", arguments.suivi_hf_repo or arguments.suivi_uri)
 
     # ----- TELECHARGEMENT DU DATASET DEPUIS LE HUB -----------------------------
-    log.STEP(1, "Telechargement du dataset depuis le Hub", arguments.dataset_hf_repo)
+    log.STEP(
+        1, "Telechargement du dataset depuis le Hub", arguments.dataset_hf_repo
+    )
     with tempfile.TemporaryDirectory() as repertoire_temporaire:
-        chemin_dataset = _telecharger_dataset(arguments.dataset_hf_repo, repertoire_temporaire)
+        chemin_dataset = _telecharger_dataset(
+            arguments.dataset_hf_repo, repertoire_temporaire
+        )
         log.PARAMETER_VALUE("dataset telecharge", chemin_dataset)
 
         # ----- PREPARE ADAPTERS (Dependency Injection) -------------------------
         repository = JsonlDatasetRepository(chemin_dataset)
-        formateur  = ChatMLFormateurAdapter(nom_modele=arguments.modele)
-        moteur     = TransformersInferenceAdapter(nom_modele=arguments.modele)
-        suivi      = _construire_suivi(arguments)
+        formateur = ChatMLFormateurAdapter(nom_modele=arguments.modele)
+        moteur = TransformersInferenceAdapter(nom_modele=arguments.modele)
+        suivi = _construire_suivi(arguments)
 
         # ----- USE CASE EXECUTE --------------------------------------------------
-        log.STEP(2, "Generation zero-shot + comparaison sur le split test (GPU, bf16)")
+        log.STEP(
+            2,
+            "Generation zero-shot + comparaison sur le split test (GPU, bf16)",
+        )
         try:
             cas_usage = EvaluerBaselineZeroShotUseCase(
                 repository=repository,
@@ -178,7 +187,8 @@ def main() -> None:
             resultat = cas_usage.executer()
         except Exception as erreur:
             log.LEVEL_4_ERROR(
-                "evaluer_baseline_gpu", f"echec de l'evaluation baseline GPU : {erreur}"
+                "evaluer_baseline_gpu",
+                f"echec de l'evaluation baseline GPU : {erreur}",
             )
             raise
 

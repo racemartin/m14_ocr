@@ -20,7 +20,7 @@ CHOSEN_REFORMULE_EXEMPLE = ChosenReformule(
     chosen_reformule=(
         Message(
             role="assistant",
-            contenu='<think>Douleur thoracique aigue, risque cardiaque.</think>'
+            contenu="<think>Douleur thoracique aigue, risque cardiaque.</think>"
             '{"niveau": 2, "categorie": "cardio-vasculaire", "ressources_estimees": "ECG, troponine"}',
         ),
     ),
@@ -38,7 +38,9 @@ def _depuis_json(texte: str) -> ChosenReformule:
     donnees = json.loads(texte)
     return ChosenReformule(
         identifiant=donnees["identifiant"],
-        chosen_reformule=tuple(Message(**message) for message in donnees["chosen_reformule"]),
+        chosen_reformule=tuple(
+            Message(**message) for message in donnees["chosen_reformule"]
+        ),
         horodatage=donnees["horodatage"],
     )
 
@@ -46,11 +48,14 @@ def _depuis_json(texte: str) -> ChosenReformule:
 def test_serialisation_json_produit_le_schema_attendu():
     donnees = json.loads(_vers_json(CHOSEN_REFORMULE_EXEMPLE))
 
-    assert donnees["identifiant"] == "chsa-ultramedical-preference-8f2c1a9b4e6d3f01"
+    assert (
+        donnees["identifiant"]
+        == "chsa-ultramedical-preference-8f2c1a9b4e6d3f01"
+    )
     assert donnees["chosen_reformule"] == [
         {
             "role": "assistant",
-            "contenu": '<think>Douleur thoracique aigue, risque cardiaque.</think>'
+            "contenu": "<think>Douleur thoracique aigue, risque cardiaque.</think>"
             '{"niveau": 2, "categorie": "cardio-vasculaire", "ressources_estimees": "ECG, troponine"}',
         }
     ]

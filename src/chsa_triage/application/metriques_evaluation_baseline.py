@@ -1,28 +1,16 @@
 """
 Metriques pures d'evaluation d'une reponse generee contre une reponse
-de reference, sans port ni dependance externe : meme principe que
-`application/verdict_convergence.py`/`application/echantillonnage.py`,
-testeables sans reseau ni GPU avec des donnees synthetiques.
+de reference (baseline zero-shot, Etape 1bis), sans port ni dependance
+externe.
 
-Utilisees par `E1_06_00_evaluer_baseline_zero_shot.py` (Etape 1bis,
-baseline zero-shot de `Qwen/Qwen3-1.7B-Base`, sans entrainement) pour
-comparer chaque generation du moteur d'inference (`MoteurInference`)
-au `completion` reel d'un `ExemplePivot` de type SFT.
-
-Point de vigilance honnete (voir
-`docs/03_etape2_sft/00_introduction_concepts.md`, "le format de sortie
-cible n'existe pas encore dans les donnees") : le cahier des charges
-(F3, §9) attend une sortie JSON strict `{niveau, categorie,
-ressources_estimees}` pour mesurer l'accuracy de classification ESI,
-mais les `completion` REELS du pivot actuel (MediQAl, FrenchMedMCQA,
-MedQuAD) sont des reponses en langage naturel, pas ce format JSON.
-`extraire_niveau_triage`/`exactitude_classification_niveau` sont donc
-ecrites et testees pour ce format cible (donnees synthetiques), mais
-n'auront quasiment aucune paire comparable sur le dataset REEL
-d'aujourd'hui : `nombre_comparables` le rend visible plutot que de
-masquer un taux d'accuracy calcule sur une poignee de coincidences.
-L'exact match / F1 textuel, eux, s'appliquent tels quels au dataset
-reel (comparaison texte contre texte, pas de schema suppose).
+Point de vigilance : les `completion` REELS du pivot actuel (MediQAl,
+FrenchMedMCQA, MedQuAD) sont en langage naturel, pas le JSON strict
+`{niveau, categorie, ressources_estimees}` attendu par le cahier des
+charges (F3) : `extraire_niveau_triage`/`exactitude_classification_niveau`
+n'auront donc quasi aucune paire comparable sur les donnees reelles.
+`nombre_comparables` rend cette limite visible plutot que de la
+masquer derriere un taux calcule sur une poignee de coincidences.
+Exact match / F1 textuel, eux, s'appliquent tels quels.
 """
 
 from __future__ import annotations
@@ -85,9 +73,9 @@ def extraire_niveau_triage(texte: str) -> str | None:
 class ResultatExactitudeNiveau:
     """Resultat de `exactitude_classification_niveau` : distingue explicitement la couverture du score."""
 
-    nombre_paires        : int
-    nombre_comparables   : int
-    nombre_corrects       : int
+    nombre_paires: int
+    nombre_comparables: int
+    nombre_corrects: int
 
     @property
     def exactitude(self) -> float | None:
@@ -97,7 +85,9 @@ class ResultatExactitudeNiveau:
         return self.nombre_corrects / self.nombre_comparables
 
 
-def exactitude_classification_niveau(paires: list[tuple[str, str]]) -> ResultatExactitudeNiveau:
+def exactitude_classification_niveau(
+    paires: list[tuple[str, str]],
+) -> ResultatExactitudeNiveau:
     """
     Calcule l'exactitude de classification du niveau de triage ESI sur
     `paires` de `(texte_genere, texte_reference)`. Une paire n'est
@@ -117,7 +107,9 @@ def exactitude_classification_niveau(paires: list[tuple[str, str]]) -> ResultatE
         if niveau_genere == niveau_reference:
             nombre_corrects += 1
     return ResultatExactitudeNiveau(
-        nombre_paires=len(paires), nombre_comparables=nombre_comparables, nombre_corrects=nombre_corrects
+        nombre_paires=len(paires),
+        nombre_comparables=nombre_comparables,
+        nombre_corrects=nombre_corrects,
     )
 
 
@@ -164,11 +156,15 @@ def taux_exact_match(paires: list[tuple[str, str]]) -> float:
     """Proportion de paires `(genere, reference)` en exact match. `0.0` (pas d'exception) si `paires` est vide."""
     if not paires:
         return 0.0
-    return sum(correspondance_exacte(genere, reference) for genere, reference in paires) / len(paires)
+    return sum(
+        correspondance_exacte(genere, reference) for genere, reference in paires
+    ) / len(paires)
 
 
 def f1_moyen(paires: list[tuple[str, str]]) -> float:
     """F1 token moyen sur `paires`. `0.0` (pas d'exception) si `paires` est vide."""
     if not paires:
         return 0.0
-    return sum(score_f1_tokens(genere, reference) for genere, reference in paires) / len(paires)
+    return sum(
+        score_f1_tokens(genere, reference) for genere, reference in paires
+    ) / len(paires)

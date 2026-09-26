@@ -20,7 +20,7 @@ from dataclasses import dataclass
 class ExempleFormatePreference:
     """Rendu texte d'un ExemplePivot DPO, triplet prompt/chosen/rejected distinct."""
 
-    identifiant    : str   # repris de ExemplePivot.identifiant, jamais regenere
-    texte_prompt    : str
-    texte_chosen     : str
-    texte_rejected    : str
+    identifiant: str  # repris de ExemplePivot.identifiant, jamais regenere
+    texte_prompt: str
+    texte_chosen: str
+    texte_rejected: str

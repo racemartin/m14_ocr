@@ -47,11 +47,11 @@ class VllmEndpointInferenceAdapter:
     `--api-key`) ; jamais loguee ni incluse dans `metadonnees`.
     """
 
-    url_endpoint    : str
-    cle_api           : str | None = None
-    nom_modele        : str = MODELE_PAR_DEFAUT
-    timeout_secondes  : float = TIMEOUT_SECONDES_DEFAUT
-    _client             : Any = field(default=None, repr=False)
+    url_endpoint: str
+    cle_api: str | None = None
+    nom_modele: str = MODELE_PAR_DEFAUT
+    timeout_secondes: float = TIMEOUT_SECONDES_DEFAUT
+    _client: Any = field(default=None, repr=False)
 
     def _obtenir_client(self) -> Any:
         if self._client is None:
@@ -60,31 +60,21 @@ class VllmEndpointInferenceAdapter:
             entetes = {}
             if self.cle_api:
                 entetes["Authorization"] = f"Bearer {self.cle_api}"
-            self._client = httpx.Client(timeout=self.timeout_secondes, headers=entetes)
+            self._client = httpx.Client(
+                timeout=self.timeout_secondes, headers=entetes
+            )
         return self._client
 
-    def generer(self, messages: list[dict], parametres: dict | None = None) -> ReponseModele:
-        """
-        `latence_ms` mesure exactement le temps de l'appel HTTP reel
-        (`time.perf_counter()` autour de `client.post`), pas de temps
-        de construction/parsing autour. `parametres["model"]` (defaut
-        `self.nom_modele`) selectionne l'adaptateur LoRA vLLM cible ;
-        retire de `parametres` avant transmission (place explicitement
-        au niveau superieur du corps de requete, comme l'exige l'API
-        compatible OpenAI de vLLM).
-
-        `n_predict` (vocabulaire llama.cpp, cf.
-        `transformers_inference_adapter.py::_parametres_generation_transformers`
-        pour le meme renommage cote transformers) est traduit ici en
-        `max_tokens`, le nom reel attendu par l'API compatible OpenAI de
-        vLLM. Bug reel trouve en deploiement (25/09/2026) : sans cette
-        traduction, `n_predict` est un champ inconnu que vLLM ignore
-        silencieusement -- la generation part alors sur le
-        `max_tokens` par defaut du modele (2048, cf.
-        `generation_config.json`) sans aucune limite de tour de
-        conversation, produisant des reponses demesurement longues et
-        incoherentes (changements de langue, texte hors sujet).
-        """
+    def generer(
+        self, messages: list[dict], parametres: dict | None = None
+    ) -> ReponseModele:
+        """`latence_ms` mesure uniquement l'appel HTTP reel.
+        `parametres["model"]` selectionne l'adaptateur LoRA vLLM cible,
+        retire avant transmission. `n_predict` (vocabulaire llama.cpp)
+        est traduit en `max_tokens` : bug reel trouve en deploiement,
+        sans cette traduction vLLM ignorait silencieusement le champ et
+        generait sans limite (reponses demesurees, changements de
+        langue)."""
         parametres = dict(parametres or {})
         modele = parametres.pop("model", self.nom_modele)
         if "n_predict" in parametres:
@@ -94,7 +84,9 @@ class VllmEndpointInferenceAdapter:
         corps = {"model": modele, "messages": messages, **parametres}
 
         debut = time.perf_counter()
-        reponse = client.post(f"{self.url_endpoint}/v1/chat/completions", json=corps)
+        reponse = client.post(
+            f"{self.url_endpoint}/v1/chat/completions", json=corps
+        )
         latence_ms = (time.perf_counter() - debut) * 1000
 
         reponse.raise_for_status()
@@ -108,19 +100,17 @@ class VllmEndpointInferenceAdapter:
             nombre_tokens_entree=usage.get("prompt_tokens", 0),
             nombre_tokens_sortie=usage.get("completion_tokens", 0),
             latence_ms=latence_ms,
-            metadonnees={"modele": donnees.get("model", modele), "reponse_brute": donnees},
+            metadonnees={
+                "modele": donnees.get("model", modele),
+                "reponse_brute": donnees,
+            },
         )
 
     def verifier_sante(self) -> dict:
-        """
-        Interroge `/health`, le endpoint natif de `vllm serve` (200 si le
-        serveur est vivant et le modele charge). Ne laisse jamais une
-        erreur de connexion brute (serveur pas encore demarre, DNS,
-        timeout) remonter a l'appelant : `interfaces/api/app.py` compte
-        sur ce contrat pour que `GET /sante` reste toujours HTTP 200
-        (le conteneur Docker HEALTHCHECK verifie la vivacite de l'API
-        elle-meme, pas celle de vLLM), seul le corps JSON change.
-        """
+        """Interroge `/health` (natif `vllm serve`). Ne laisse jamais une
+        erreur de connexion brute remonter : `interfaces/api/app.py`
+        compte sur `GET /sante` restant toujours HTTP 200, seul le
+        corps JSON change."""
         import httpx
 
         client = self._obtenir_client()
@@ -128,5 +118,8 @@ class VllmEndpointInferenceAdapter:
             reponse = client.get(f"{self.url_endpoint}/health")
             reponse.raise_for_status()
         except httpx.HTTPError as erreur:
-            return {"disponible": False, "detail": f"serveur vLLM indisponible : {erreur}"}
+            return {
+                "disponible": False,
+                "detail": f"serveur vLLM indisponible : {erreur}",
+            }
         return {"disponible": True, "detail": "serveur vLLM disponible"}

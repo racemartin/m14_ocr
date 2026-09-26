@@ -31,7 +31,9 @@ CONTEXTE_CARACTERES = 40
 _MOTIFS: dict[str, re.Pattern[str]] = {
     "email": re.compile(r"[\w.+-]+@[\w-]+\.[a-zA-Z]{2,}"),
     "url": re.compile(r"https?://\S+|www\.\S+"),
-    "telephone": re.compile(r"(?:\+\d{1,3}[ .-]?)?(?:\(?\d{2,4}\)?[ .-]){2,5}\d{2,4}"),
+    "telephone": re.compile(
+        r"(?:\+\d{1,3}[ .-]?)?(?:\(?\d{2,4}\)?[ .-]){2,5}\d{2,4}"
+    ),
     "date": re.compile(
         r"\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b"
         r"|\b\d{4}[/-]\d{1,2}[/-]\d{1,2}\b"
@@ -44,7 +46,9 @@ _MOTIFS: dict[str, re.Pattern[str]] = {
     # Deux mots (ou plus) commencant par une majuscule, consecutifs --
     # motif le plus bruite (confond frequemment vocabulaire medical
     # capitalise et noms propres), d'ou la seconde opinion spaCy en aval.
-    "bigramme_capitalise": re.compile(r"\b[A-ZÀ-Ý][a-zà-ÿ]+(?:\s+[A-ZÀ-Ý][a-zà-ÿ]+)+\b"),
+    "bigramme_capitalise": re.compile(
+        r"\b[A-ZÀ-Ý][a-zà-ÿ]+(?:\s+[A-ZÀ-Ý][a-zà-ÿ]+)+\b"
+    ),
 }
 
 
@@ -52,10 +56,10 @@ _MOTIFS: dict[str, re.Pattern[str]] = {
 class CandidatRegex:
     """Un passage signale par une regex de detection de PII residuelle."""
 
-    type_motif   : str
-    debut        : int
-    fin          : int
-    passage      : str  # texte trouve + contexte autour, pour inspection
+    type_motif: str
+    debut: int
+    fin: int
+    passage: str  # texte trouve + contexte autour, pour inspection
 
 
 def detecter_candidats(texte: str) -> list[CandidatRegex]:

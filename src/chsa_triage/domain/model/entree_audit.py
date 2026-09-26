@@ -14,10 +14,10 @@ from dataclasses import dataclass, field
 class EntreeAudit:
     """Une ligne du journal d'audit, independante du support de persistance."""
 
-    horodatage        : str
-    type_evenement     : str   # "tour_entretien" | "diagnostic"
-    conversation_id    : str
-    entree                : str
-    sortie                : str
-    version_modele      : str
-    metadonnees          : dict = field(default_factory=dict)
+    horodatage: str
+    type_evenement: str  # "tour_entretien" | "diagnostic"
+    conversation_id: str
+    entree: str
+    sortie: str
+    version_modele: str
+    metadonnees: dict = field(default_factory=dict)

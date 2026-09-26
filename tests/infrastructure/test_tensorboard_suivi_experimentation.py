@@ -38,7 +38,10 @@ def test_run_demarre_metriques_logguees_relisibles_apres_coup(tmp_path):
     accumulateur.Reload()
 
     assert "perte" in accumulateur.Tags()["scalars"]
-    valeurs = [(evenement.step, evenement.value) for evenement in accumulateur.Scalars("perte")]
+    valeurs = [
+        (evenement.step, evenement.value)
+        for evenement in accumulateur.Scalars("perte")
+    ]
     etapes = [step for step, _ in valeurs]
     metriques = [valeur for _, valeur in valeurs]
     assert etapes == [0, 1]

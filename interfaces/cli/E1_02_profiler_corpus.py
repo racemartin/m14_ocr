@@ -53,10 +53,14 @@ def _afficher_rapport(nom: str, rapport) -> None:
 
 def _profiler_par_blocs(source: str, nom: str, taille_bloc: int) -> None:
     """Profile le corpus par blocs de taille_bloc enregistrements, memoire bornee."""
-    lecteur   = LecteurCorpusFichierLocal(source, taille_bloc=taille_bloc)
+    lecteur = LecteurCorpusFichierLocal(source, taille_bloc=taille_bloc)
     profileur = YdataProfileur()
 
-    log.STEP(1, "Lecture + profilage par blocs", f"taille_bloc={taille_bloc}, peut prendre du temps")
+    log.STEP(
+        1,
+        "Lecture + profilage par blocs",
+        f"taille_bloc={taille_bloc}, peut prendre du temps",
+    )
     iterateur = iter(lecteur.lire_enregistrements())
     numero_bloc = 0
     total_enregistrements = 0
@@ -77,13 +81,17 @@ def _profiler_par_blocs(source: str, nom: str, taille_bloc: int) -> None:
             total_enregistrements += rapport.nombre_enregistrements
             numero_bloc += 1
     except Exception as erreur:
-        log.LEVEL_4_ERROR("profiler_corpus", f"echec du profilage par blocs de {source} (bloc {numero_bloc}) : {erreur}")
+        log.LEVEL_4_ERROR(
+            "profiler_corpus",
+            f"echec du profilage par blocs de {source} (bloc {numero_bloc}) : {erreur}",
+        )
         raise
 
     log.PARAMETER_VALUE("total enregistrements", total_enregistrements)
     log.PARAMETER_VALUE("nombre de blocs", numero_bloc)
     log.FINISH_ACTION(
-        "profiler_corpus", "main",
+        "profiler_corpus",
+        "main",
         f"{total_enregistrements} enregistrements profiles en {numero_bloc} blocs pour {nom}",
     )
 
@@ -93,21 +101,29 @@ def main() -> None:
     # PARSE ARGUMENTS
     # -------------------------------------------------------------------------
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--source", required=True, help="Chemin du fichier corpus brut (.csv/.jsonl)")
-    parser.add_argument("--nom", required=True, help="Nom du corpus (pour le rapport)")
+    parser.add_argument(
+        "--source",
+        required=True,
+        help="Chemin du fichier corpus brut (.csv/.jsonl)",
+    )
+    parser.add_argument(
+        "--nom", required=True, help="Nom du corpus (pour le rapport)"
+    )
     parser.add_argument(
         "--bloque",
         type=int,
         default=None,
         help="Profiler par blocs de N enregistrements (evite l'OOM sur un gros corpus ; "
-             "un rapport par bloc, correlations/doublons calcules par bloc, pas globalement)",
+        "un rapport par bloc, correlations/doublons calcules par bloc, pas globalement)",
     )
     arguments = parser.parse_args()
 
     log.START_ACTION("profiler_corpus", "main", "profilage d'un corpus")
     log.PARAMETER_VALUE("source", arguments.source)
     log.PARAMETER_VALUE("nom", arguments.nom)
-    log.PARAMETER_VALUE("bloque", arguments.bloque or "(desactive, lecture complete)")
+    log.PARAMETER_VALUE(
+        "bloque", arguments.bloque or "(desactive, lecture complete)"
+    )
 
     if arguments.bloque:
         _profiler_par_blocs(arguments.source, arguments.nom, arguments.bloque)
@@ -119,18 +135,25 @@ def main() -> None:
     # Chemin par defaut (sans --bloque) : le corpus entier est charge en memoire d'un coup.
     # Adaptateurs concrets injectes dans le cas d'usage plutot qu'instancies a l'interieur de
     # celui-ci : Injection de Dependances / Ports et Adaptateurs (Architecture Hexagonale).
-    lecteur   = LecteurCorpusFichierLocal(arguments.source)
+    lecteur = LecteurCorpusFichierLocal(arguments.source)
     profileur = YdataProfileur()
 
     # -------------------------------------------------------------------------
     # USE CASE EXECUTE
     # -------------------------------------------------------------------------
-    log.STEP(1, "Lecture + profilage ydata-profiling", "peut prendre plusieurs minutes sur un gros corpus")
+    log.STEP(
+        1,
+        "Lecture + profilage ydata-profiling",
+        "peut prendre plusieurs minutes sur un gros corpus",
+    )
     try:
         cas_usage = ProfilerCorpusUseCase(lecteur=lecteur, profileur=profileur)
         rapport = cas_usage.executer(arguments.nom)
     except Exception as erreur:
-        log.LEVEL_4_ERROR("profiler_corpus", f"echec du profilage de {arguments.source} : {erreur}")
+        log.LEVEL_4_ERROR(
+            "profiler_corpus",
+            f"echec du profilage de {arguments.source} : {erreur}",
+        )
         raise
 
     # -------------------------------------------------------------------------
@@ -139,7 +162,9 @@ def main() -> None:
     log.PARAMETER_VALUE("enregistrements", rapport.nombre_enregistrements)
     log.PARAMETER_VALUE("taux de doublons", f"{rapport.taux_doublons:.2%}")
     log.PARAMETER_VALUE("rapport detaille", rapport.chemin_rapport_detaille)
-    log.FINISH_ACTION("profiler_corpus", "main", f"rapport ecrit pour {arguments.nom}")
+    log.FINISH_ACTION(
+        "profiler_corpus", "main", f"rapport ecrit pour {arguments.nom}"
+    )
 
     _afficher_rapport(arguments.nom, rapport)
 

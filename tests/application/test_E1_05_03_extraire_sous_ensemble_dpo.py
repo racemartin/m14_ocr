@@ -15,14 +15,22 @@ from chsa_triage.application.use_cases import (
     calculer_repartition_par_strate,
     formater_tableau_repartition,
 )
-from chsa_triage.domain.model import ExemplePivot, Langue, Message, TypeExemple, TypeSplit
+from chsa_triage.domain.model import (
+    ExemplePivot,
+    Langue,
+    Message,
+    TypeExemple,
+    TypeSplit,
+)
 
 
 class FauxRepository:
     """Faux adaptateur RepositoryLectureEcriture, en memoire."""
 
     def __init__(self, items: list[ExemplePivot]) -> None:
-        self.items: dict[str, ExemplePivot] = {item.identifiant: item for item in items}
+        self.items: dict[str, ExemplePivot] = {
+            item.identifiant: item for item in items
+        }
 
     def sauvegarder(self, item: ExemplePivot) -> None:
         self.items[item.identifiant] = item
@@ -36,14 +44,19 @@ class FauxRepository:
 
     def lister(self, filtre: dict | None = None):
         for exemple in self.items.values():
-            if filtre is None or all(getattr(exemple, cle) == valeur for cle, valeur in filtre.items()):
+            if filtre is None or all(
+                getattr(exemple, cle) == valeur
+                for cle, valeur in filtre.items()
+            ):
                 yield exemple
 
     def compter(self, filtre: dict | None = None) -> int:
         return sum(1 for _ in self.lister(filtre))
 
 
-def _exemple_dpo(source: str = "UltraMedical-Preference", avec_split: bool = True) -> ExemplePivot:
+def _exemple_dpo(
+    source: str = "UltraMedical-Preference", avec_split: bool = True
+) -> ExemplePivot:
     exemple = ExemplePivot(
         identifiant=ExemplePivot.nouvel_identifiant(source, uuid4().hex),
         source=source,
@@ -59,7 +72,9 @@ def _exemple_dpo(source: str = "UltraMedical-Preference", avec_split: bool = Tru
     return exemple
 
 
-def _exemple_sft(source: str = "MediQAl", avec_split: bool = True) -> ExemplePivot:
+def _exemple_sft(
+    source: str = "MediQAl", avec_split: bool = True
+) -> ExemplePivot:
     exemple = ExemplePivot(
         identifiant=ExemplePivot.nouvel_identifiant(source, uuid4().hex),
         source=source,
@@ -74,7 +89,9 @@ def _exemple_sft(source: str = "MediQAl", avec_split: bool = True) -> ExemplePiv
     return exemple
 
 
-def _pool_stratifie_80_10_10(compositions: dict[str, int]) -> list[ExemplePivot]:
+def _pool_stratifie_80_10_10(
+    compositions: dict[str, int],
+) -> list[ExemplePivot]:
     """
     Construit un pool d'exemples DPO avec split deja assigne, ~80/10/10
     par source, pour tester le recoupage proportionnel par strate.
@@ -93,23 +110,33 @@ def _pool_stratifie_80_10_10(compositions: dict[str, int]) -> list[ExemplePivot]
         for split, nombre in repartition_split:
             for _ in range(nombre):
                 exemple = ExemplePivot(
-                    identifiant=ExemplePivot.nouvel_identifiant(source, uuid4().hex),
+                    identifiant=ExemplePivot.nouvel_identifiant(
+                        source, uuid4().hex
+                    ),
                     source=source,
                     type_exemple=TypeExemple.DPO,
                     langue=Langue.ANGLAIS,
                     prompt=(Message(role="user", contenu="Question ?"),),
-                    chosen=(Message(role="assistant", contenu="Bonne reponse."),),
-                    rejected=(Message(role="assistant", contenu="Mauvaise reponse."),),
+                    chosen=(
+                        Message(role="assistant", contenu="Bonne reponse."),
+                    ),
+                    rejected=(
+                        Message(role="assistant", contenu="Mauvaise reponse."),
+                    ),
                 )
                 exemples.append(replace(exemple, anonymise=True, split=split))
     return exemples
 
 
 def test_extraction_ignore_les_exemples_sans_split():
-    exemples = [_exemple_dpo(avec_split=True) for _ in range(5)] + [_exemple_dpo(avec_split=False) for _ in range(3)]
+    exemples = [_exemple_dpo(avec_split=True) for _ in range(5)] + [
+        _exemple_dpo(avec_split=False) for _ in range(3)
+    ]
     repository = FauxRepository(exemples)
 
-    cas_usage = ExtraireSousEnsembleDpoUseCase(repository=repository, taille_cible=5)
+    cas_usage = ExtraireSousEnsembleDpoUseCase(
+        repository=repository, taille_cible=5
+    )
     resultat = cas_usage.executer()
 
     assert len(resultat) == 5
@@ -125,7 +152,9 @@ def test_extraction_exclut_les_exemples_sft():
     exemples_sft = [_exemple_sft(avec_split=True) for _ in range(3)]
     repository = FauxRepository(exemples_dpo + exemples_sft)
 
-    cas_usage = ExtraireSousEnsembleDpoUseCase(repository=repository, taille_cible=10)
+    cas_usage = ExtraireSousEnsembleDpoUseCase(
+        repository=repository, taille_cible=10
+    )
     resultat = cas_usage.executer()
 
     assert len(resultat) == 4
@@ -140,7 +169,9 @@ def test_extraction_exclut_les_identifiants_listes():
     repository = FauxRepository(exemples)
 
     cas_usage = ExtraireSousEnsembleDpoUseCase(
-        repository=repository, identifiants_a_exclure=frozenset({identifiant_exclu}), taille_cible=5
+        repository=repository,
+        identifiants_a_exclure=frozenset({identifiant_exclu}),
+        taille_cible=5,
     )
     resultat = cas_usage.executer()
 
@@ -158,7 +189,9 @@ def test_extraction_rapporte_le_manque_quand_le_resultat_est_sous_la_taille_cibl
     repository = FauxRepository(exemples)
 
     cas_usage = ExtraireSousEnsembleDpoUseCase(
-        repository=repository, identifiants_a_exclure=identifiants_exclus, taille_cible=8
+        repository=repository,
+        identifiants_a_exclure=identifiants_exclus,
+        taille_cible=8,
     )
     resultat = cas_usage.executer()
 
@@ -171,20 +204,26 @@ def test_extraction_manque_nul_quand_taille_cible_atteinte():
     exemples = [_exemple_dpo(avec_split=True) for _ in range(10)]
     repository = FauxRepository(exemples)
 
-    cas_usage = ExtraireSousEnsembleDpoUseCase(repository=repository, taille_cible=5)
+    cas_usage = ExtraireSousEnsembleDpoUseCase(
+        repository=repository, taille_cible=5
+    )
     cas_usage.executer()
 
     assert cas_usage.manque == 0
 
 
 def test_extraction_recoupe_a_exactement_taille_cible_quand_il_y_a_un_surplus():
-    exemples = _pool_stratifie_80_10_10({"UltraMedical-Preference": 6000, "MediQAl": 2000, "MedQuAD": 2000})
+    exemples = _pool_stratifie_80_10_10(
+        {"UltraMedical-Preference": 6000, "MediQAl": 2000, "MedQuAD": 2000}
+    )
     assert len(exemples) == 10000
     identifiants_exclus = frozenset(e.identifiant for e in exemples[:74])
     repository = FauxRepository(exemples)
 
     cas_usage = ExtraireSousEnsembleDpoUseCase(
-        repository=repository, identifiants_a_exclure=identifiants_exclus, taille_cible=5000
+        repository=repository,
+        identifiants_a_exclure=identifiants_exclus,
+        taille_cible=5000,
     )
     resultat = cas_usage.executer()
 
@@ -196,20 +235,28 @@ def test_extraction_recoupe_a_exactement_taille_cible_quand_il_y_a_un_surplus():
 
 
 def test_extraction_recoupe_preserve_la_proportion_par_strate():
-    compositions = {"UltraMedical-Preference": 6000, "MediQAl": 800, "MedQuAD": 3200}
+    compositions = {
+        "UltraMedical-Preference": 6000,
+        "MediQAl": 800,
+        "MedQuAD": 3200,
+    }
     exemples = _pool_stratifie_80_10_10(compositions)
     repository = FauxRepository(exemples)
     total = sum(compositions.values())
     taille_cible = 2000
 
-    cas_usage = ExtraireSousEnsembleDpoUseCase(repository=repository, taille_cible=taille_cible)
+    cas_usage = ExtraireSousEnsembleDpoUseCase(
+        repository=repository, taille_cible=taille_cible
+    )
     resultat = cas_usage.executer()
 
     assert len(resultat) == taille_cible
 
     compteur_par_source: dict[str, int] = {}
     for exemple in resultat:
-        compteur_par_source[exemple.source] = compteur_par_source.get(exemple.source, 0) + 1
+        compteur_par_source[exemple.source] = (
+            compteur_par_source.get(exemple.source, 0) + 1
+        )
 
     for source, total_source in compositions.items():
         part_attendue = taille_cible * (total_source / total)
@@ -217,17 +264,27 @@ def test_extraction_recoupe_preserve_la_proportion_par_strate():
 
 
 def test_extraction_recoupe_reste_proche_de_80_10_10_dans_chaque_strate():
-    compositions = {"UltraMedical-Preference": 6000, "MediQAl": 800, "MedQuAD": 3200}
+    compositions = {
+        "UltraMedical-Preference": 6000,
+        "MediQAl": 800,
+        "MedQuAD": 3200,
+    }
     exemples = _pool_stratifie_80_10_10(compositions)
     repository = FauxRepository(exemples)
 
-    cas_usage = ExtraireSousEnsembleDpoUseCase(repository=repository, taille_cible=2000)
+    cas_usage = ExtraireSousEnsembleDpoUseCase(
+        repository=repository, taille_cible=2000
+    )
     resultat = cas_usage.executer()
 
     repartition = calculer_repartition_par_strate(resultat)
     for cle, compteur_strate in repartition.items():
         total_strate = sum(compteur_strate.values())
-        for split, part_attendue in (("train", 0.80), ("val", 0.10), ("test", 0.10)):
+        for split, part_attendue in (
+            ("train", 0.80),
+            ("val", 0.10),
+            ("test", 0.10),
+        ):
             part_observee = compteur_strate.get(split, 0) / total_strate
             assert abs(part_observee - part_attendue) <= 0.05, (
                 f"strate {cle} split {split} : {part_observee:.3f} attendu ~{part_attendue}"
@@ -235,11 +292,17 @@ def test_extraction_recoupe_reste_proche_de_80_10_10_dans_chaque_strate():
 
 
 def test_calculer_repartition_par_strate_et_formater_tableau_somme_le_total_attendu():
-    compositions = {"UltraMedical-Preference": 600, "MediQAl": 80, "MedQuAD": 320}
+    compositions = {
+        "UltraMedical-Preference": 600,
+        "MediQAl": 80,
+        "MedQuAD": 320,
+    }
     exemples = _pool_stratifie_80_10_10(compositions)
 
     repartition = calculer_repartition_par_strate(exemples)
-    total_reparti = sum(sum(compteur.values()) for compteur in repartition.values())
+    total_reparti = sum(
+        sum(compteur.values()) for compteur in repartition.values()
+    )
     assert total_reparti == sum(compositions.values())
 
     tableau = formater_tableau_repartition(repartition)
@@ -251,7 +314,15 @@ def test_calculer_repartition_par_strate_et_formater_tableau_somme_le_total_atte
 
 def test_chemin_sortie_defaut_du_cli_depend_de_la_taille_reelle():
     """`--sortie` par defaut doit refleter la `--taille` reellement utilisee, pas une valeur figee."""
-    from interfaces.cli.E1_05_03_extraire_sous_ensemble_dpo import chemin_sortie_defaut
+    from interfaces.cli.E1_05_03_extraire_sous_ensemble_dpo import (
+        chemin_sortie_defaut,
+    )
 
-    assert chemin_sortie_defaut(5000) == "data/processed/dataset_chsa_triage_dpo_anonymise_5000.jsonl"
-    assert chemin_sortie_defaut(8000) == "data/processed/dataset_chsa_triage_dpo_anonymise_8000.jsonl"
+    assert (
+        chemin_sortie_defaut(5000)
+        == "data/processed/dataset_chsa_triage_dpo_anonymise_5000.jsonl"
+    )
+    assert (
+        chemin_sortie_defaut(8000)
+        == "data/processed/dataset_chsa_triage_dpo_anonymise_8000.jsonl"
+    )
