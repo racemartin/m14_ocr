@@ -36,6 +36,13 @@ def _fabrique_scheduler_factice_espionne(appels: list[tuple[str, str, float]]):
     return fabrique, scheduler
 
 
+def _fabrique_telechargement_factice_vide(repo_id: str, chemin_local) -> None:
+    """Double de test : aucun journal preexistant sur le Hub (cas normal),
+    jamais de reseau reel. Sans cette injection, `consigner()` retombe sur
+    `_telecharger_journal_existant_reel` par defaut et appelle le vrai Hub."""
+    return None
+
+
 def _entree(
     conversation_id: str = "conv-1", sortie: str = "reponse"
 ) -> EntreeAudit:
@@ -61,6 +68,7 @@ def test_consigner_ecrit_une_ligne_jsonl_dans_le_dossier_surveille(tmp_path):
         repo_id="mombasstic/chsa-triage-audit-journal",
         repertoire_local=str(tmp_path),
         fabrique_scheduler=fabrique,
+        fabrique_telechargement=_fabrique_telechargement_factice_vide,
     )
 
     journal.consigner(_entree())
@@ -87,6 +95,7 @@ def test_consigner_ajoute_sans_ecraser_les_entrees_precedentes(tmp_path):
         repo_id="mombasstic/chsa-triage-audit-journal",
         repertoire_local=str(tmp_path),
         fabrique_scheduler=fabrique,
+        fabrique_telechargement=_fabrique_telechargement_factice_vide,
     )
 
     journal.consigner(_entree(sortie="premiere reponse"))
@@ -109,8 +118,116 @@ def test_consigner_cree_le_dossier_local_si_absent(tmp_path):
         repo_id="mombasstic/chsa-triage-audit-journal",
         repertoire_local=str(dossier),
         fabrique_scheduler=fabrique,
+        fabrique_telechargement=_fabrique_telechargement_factice_vide,
     )
 
     journal.consigner(_entree())
 
     assert (dossier / "journal_audit.jsonl").exists()
+
+
+def test_consigner_rehydrate_depuis_le_hub_avant_le_premier_ajout(tmp_path):
+    """Bug reel (29/09/2026) : sans rehydratation, un redemarrage de
+    conteneur (dossier local ephemere, vide) faisait ecraser sur le Hub
+    l'historique des sessions precedentes des le premier push suivant."""
+    appels: list[tuple[str, str, float]] = []
+    fabrique, _ = _fabrique_scheduler_factice_espionne(appels)
+    appels_telechargement: list[tuple[str, str]] = []
+
+    def fabrique_telechargement_factice(repo_id: str, chemin_local) -> None:
+        appels_telechargement.append((repo_id, str(chemin_local)))
+        chemin_local.write_text(
+            json.dumps(
+                {
+                    "horodatage": "2026-09-23T09:00:00+00:00",
+                    "type_evenement": "tour_entretien",
+                    "conversation_id": "session-precedente",
+                    "entree": "avant redemarrage",
+                    "sortie": "reponse avant redemarrage",
+                    "version_modele": "mombasstic/chsa-triage-dpo-lora",
+                    "metadonnees": {},
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+    journal = HfDatasetJournalAudit(
+        repo_id="mombasstic/chsa-triage-audit-journal",
+        repertoire_local=str(tmp_path),
+        fabrique_scheduler=fabrique,
+        fabrique_telechargement=fabrique_telechargement_factice,
+    )
+
+    journal.consigner(_entree(conversation_id="session-nouvelle"))
+
+    assert appels_telechargement == [
+        (
+            "mombasstic/chsa-triage-audit-journal",
+            str(tmp_path / "journal_audit.jsonl"),
+        )
+    ]
+    lignes = _lire_jsonl(tmp_path / "journal_audit.jsonl")
+    assert len(lignes) == 2
+    assert lignes[0]["conversation_id"] == "session-precedente"
+    assert lignes[1]["conversation_id"] == "session-nouvelle"
+
+
+def test_consigner_n_essaie_de_telecharger_qu_une_seule_fois(tmp_path):
+    appels: list[tuple[str, str, float]] = []
+    fabrique, _ = _fabrique_scheduler_factice_espionne(appels)
+    appels_telechargement: list[str] = []
+
+    def fabrique_telechargement_factice(repo_id: str, chemin_local) -> None:
+        appels_telechargement.append(repo_id)
+
+    journal = HfDatasetJournalAudit(
+        repo_id="mombasstic/chsa-triage-audit-journal",
+        repertoire_local=str(tmp_path),
+        fabrique_scheduler=fabrique,
+        fabrique_telechargement=fabrique_telechargement_factice,
+    )
+
+    journal.consigner(_entree())
+    journal.consigner(_entree())
+
+    assert len(appels_telechargement) == 1
+
+
+def test_consigner_ne_telecharge_pas_si_le_fichier_local_existe_deja(tmp_path):
+    appels: list[tuple[str, str, float]] = []
+    fabrique, _ = _fabrique_scheduler_factice_espionne(appels)
+    appels_telechargement: list[str] = []
+
+    def fabrique_telechargement_factice(repo_id: str, chemin_local) -> None:
+        appels_telechargement.append(repo_id)
+
+    (tmp_path / "journal_audit.jsonl").write_text(
+        json.dumps(
+            {
+                "horodatage": "2026-09-23T09:00:00+00:00",
+                "type_evenement": "tour_entretien",
+                "conversation_id": "deja-local",
+                "entree": "x",
+                "sortie": "y",
+                "version_modele": "mombasstic/chsa-triage-dpo-lora",
+                "metadonnees": {},
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    journal = HfDatasetJournalAudit(
+        repo_id="mombasstic/chsa-triage-audit-journal",
+        repertoire_local=str(tmp_path),
+        fabrique_scheduler=fabrique,
+        fabrique_telechargement=fabrique_telechargement_factice,
+    )
+
+    journal.consigner(_entree())
+
+    assert appels_telechargement == []
+    lignes = _lire_jsonl(tmp_path / "journal_audit.jsonl")
+    assert len(lignes) == 2
+    assert lignes[0]["conversation_id"] == "deja-local"
