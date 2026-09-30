@@ -17,6 +17,7 @@ from interfaces.web.logica_test_inference import (
     interroger_sante,
     obtenir_diagnostic,
     poursuivre_conversation,
+    reformuler_diagnostic_json,
 )
 
 
@@ -98,3 +99,32 @@ def test_obtenir_diagnostic_retourne_le_corps_complet():
     assert resultat["format_respecte"] is True
     assert resultat["niveau"] == 3
     assert resultat["categorie"] == "respiratoire"
+
+
+def test_reformuler_diagnostic_json_envoie_le_texte_brut_et_retourne_le_corps():
+    def handler(requete: httpx.Request) -> httpx.Response:
+        assert requete.method == "POST"
+        assert (
+            requete.url.path == "/conversations/abc-123/diagnostic/reformuler"
+        )
+        assert json.loads(requete.content) == {"texte_brut": "texte libre"}
+        return httpx.Response(
+            200,
+            json={
+                "conversation_id": "abc-123",
+                "format_respecte": True,
+                "niveau": 2,
+                "categorie": "cardio-vasculaire",
+                "ressources_estimees": "ECG, troponine",
+                "raisonnement": "raisonnement clinique",
+                "texte_brut": "<think>...</think>{...}",
+            },
+        )
+
+    resultat = reformuler_diagnostic_json(
+        _client(handler), "abc-123", "texte libre"
+    )
+
+    assert resultat["format_respecte"] is True
+    assert resultat["niveau"] == 2
+    assert resultat["categorie"] == "cardio-vasculaire"

@@ -33,6 +33,10 @@ class ConversationReponse(BaseModel):
     historique: list[TourHistorique]
 
 
+class ReformulerDiagnosticRequete(BaseModel):
+    texte_brut: str
+
+
 class DiagnosticReponse(BaseModel):
     conversation_id: str
     format_respecte: bool

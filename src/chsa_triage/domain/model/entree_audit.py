@@ -15,7 +15,9 @@ class EntreeAudit:
     """Une ligne du journal d'audit, independante du support de persistance."""
 
     horodatage: str
-    type_evenement: str  # "tour_entretien" | "diagnostic"
+    type_evenement: (
+        str  # "tour_entretien" | "diagnostic" | "diagnostic_reformule"
+    )
     conversation_id: str
     entree: str
     sortie: str

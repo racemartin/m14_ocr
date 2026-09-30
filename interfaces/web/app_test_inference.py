@@ -1,9 +1,10 @@
 """
 Frontend Streamlit de TEST (Etape 4) : entretien clinique multi-tours
 contre l'API FastAPI REELLE (`interfaces/api/`, `POST /conversations`,
-`POST /conversations/{id}/messages`, `POST /conversations/{id}/diagnostic`),
-pas un faux moteur. Distinct de `monitoring/app_suivi_entrainement.py`
-(courbes d'apprentissage SFT/DPO, aucun chat, but different).
+`POST /conversations/{id}/messages`, `POST /conversations/{id}/diagnostic`,
+`POST /conversations/{id}/diagnostic/reformuler`), pas un faux moteur.
+Distinct de `monitoring/app_suivi_entrainement.py` (courbes
+d'apprentissage SFT/DPO, aucun chat, but different).
 
 Architecture a 2 pieces (decision produit du 24/09/2026, cf. AGENTS.md) :
 un unique Space HF Docker/GPU (API+vLLM, cf. `interfaces/api/` +
@@ -25,6 +26,11 @@ Variables d'environnement (jamais de valeur en dur dans le code) :
   vers l'URL reelle du Space GPU une fois celui-ci publie).
 - `CHSA_API_CLE` (obligatoire, aucun defaut permissif) : meme valeur
   que `CHSA_CLE_API_DEMO` cote API (`interfaces/api/main.py`).
+- `CHSA_API_TIMEOUT_SECONDES` (defaut 60.0) : en mode `local`/llama.cpp
+  sur CPU (§4.7 du README), un seul tour peut depasser 60s (mesure
+  reelle : 69,8s pour 267 tokens a ~3,5 tokens/s avec `-t 2`), a
+  augmenter en consequence ; en mode `distant`/vLLM GPU, le defaut
+  suffit largement.
 
 Smoke test manuel (necessite l'API reellement lancee en local, cf.
 README §4.2 "API FastAPI") :
@@ -56,15 +62,21 @@ from interfaces.web.logica_test_inference import (
     interroger_sante,
     obtenir_diagnostic,
     poursuivre_conversation,
+    reformuler_diagnostic_json,
 )
 
 URL_API_PAR_DEFAUT = "http://127.0.0.1:7860"
+TIMEOUT_SECONDES_PAR_DEFAUT = 60.0
 INTERVALLE_SONDAGE_SANTE_SECONDES = 5
 
 
-def _construire_client(url_base: str, cle_api: str) -> httpx.Client:
+def _construire_client(
+    url_base: str, cle_api: str, timeout_secondes: float
+) -> httpx.Client:
     return httpx.Client(
-        base_url=url_base, headers={"X-API-Key": cle_api}, timeout=30.0
+        base_url=url_base,
+        headers={"X-API-Key": cle_api},
+        timeout=timeout_secondes,
     )
 
 
@@ -85,7 +97,10 @@ def main() -> None:
         )
         return
 
-    client = _construire_client(url_base, cle_api)
+    timeout_secondes = float(
+        os.environ.get("CHSA_API_TIMEOUT_SECONDES", TIMEOUT_SECONDES_PAR_DEFAUT)
+    )
+    client = _construire_client(url_base, cle_api, timeout_secondes)
 
     sante = interroger_sante(client)
     if not sante.get("disponible"):
@@ -101,10 +116,12 @@ def main() -> None:
         st.session_state.historique = []
 
     with st.sidebar:
+        st.caption(f"API : `{url_base}`")
         st.caption(f"Conversation : `{st.session_state.conversation_id}`")
         if st.button("🆕 Nouveau patient"):
             del st.session_state.conversation_id
             del st.session_state.historique
+            st.session_state.pop("dernier_diagnostic", None)
             st.rerun()
 
     for tour in st.session_state.historique:
@@ -123,9 +140,12 @@ def main() -> None:
         st.rerun()
 
     if st.session_state.historique and st.button("Obtenir le diagnostic"):
-        diagnostic = obtenir_diagnostic(
+        st.session_state.dernier_diagnostic = obtenir_diagnostic(
             client, st.session_state.conversation_id
         )
+
+    diagnostic = st.session_state.get("dernier_diagnostic")
+    if diagnostic is not None:
         if diagnostic.get("format_respecte"):
             st.success(
                 f"Niveau ESI {diagnostic['niveau']} : {diagnostic['categorie']} "
@@ -137,6 +157,19 @@ def main() -> None:
                 "Format de diagnostic non respecte par le modele ; reponse brute :"
             )
             st.write(diagnostic.get("texte_brut", ""))
+            # Deuxieme tentative a la demande, jamais automatique : le
+            # prompt de reformulation n'a jamais ete confirme fiable sur
+            # un run GPU reel (cf. E4_02_uc_reformuler_diagnostic_json.py),
+            # un nouvel echec est possible et gere ci-dessous.
+            if st.button("🔁 Reessayer en JSON structure (pour le SIH)"):
+                st.session_state.dernier_diagnostic = (
+                    reformuler_diagnostic_json(
+                        client,
+                        st.session_state.conversation_id,
+                        diagnostic.get("texte_brut", ""),
+                    )
+                )
+                st.rerun()
 
 
 if __name__ == "__main__":

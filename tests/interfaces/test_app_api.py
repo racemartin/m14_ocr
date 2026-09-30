@@ -287,3 +287,74 @@ def test_prompt_diagnostic_envoye_en_dernier_message_utilisateur():
     )
     contenu_historique = json.dumps(reponse_historique.json())
     assert PROMPT_DIAGNOSTIC not in contenu_historique
+
+
+def test_reformuler_diagnostic_sur_conversation_inconnue_retourne_404():
+    client, _ = _client()
+    entetes = {"X-API-Key": CLE_API_TEST}
+
+    reponse = client.post(
+        "/conversations/inconnue/diagnostic/reformuler",
+        headers=entetes,
+        json={"texte_brut": "texte libre"},
+    )
+
+    assert reponse.status_code == 404
+
+
+def test_reformuler_diagnostic_reussi_retourne_les_champs_structures():
+    client, journal = _client(texte_reponse=TEXTE_DIAGNOSTIC_VALIDE)
+    entetes = {"X-API-Key": CLE_API_TEST}
+    conversation_id = client.post("/conversations", headers=entetes).json()[
+        "conversation_id"
+    ]
+
+    reponse = client.post(
+        f"/conversations/{conversation_id}/diagnostic/reformuler",
+        headers=entetes,
+        json={"texte_brut": "Reponse en texte libre, pas de format attendu."},
+    )
+
+    assert reponse.status_code == 200
+    corps = reponse.json()
+    assert corps["format_respecte"] is True
+    assert corps["niveau"] == 3
+    assert corps["categorie"] == "respiratoire"
+    assert corps["ressources_estimees"] == "oxygenotherapie"
+    assert any(
+        e.type_evenement == "diagnostic_reformule" for e in journal.entrees
+    )
+
+
+def test_reformuler_diagnostic_deuxieme_echec_retourne_format_respecte_false():
+    client, _ = _client(texte_reponse="toujours pas de format")
+    entetes = {"X-API-Key": CLE_API_TEST}
+    conversation_id = client.post("/conversations", headers=entetes).json()[
+        "conversation_id"
+    ]
+
+    reponse = client.post(
+        f"/conversations/{conversation_id}/diagnostic/reformuler",
+        headers=entetes,
+        json={"texte_brut": "Reponse en texte libre, pas de format attendu."},
+    )
+
+    assert reponse.status_code == 200
+    corps = reponse.json()
+    assert corps["format_respecte"] is False
+    assert corps["niveau"] is None
+    assert corps["texte_brut"] == "toujours pas de format"
+
+
+def test_reformuler_diagnostic_sans_cle_api_est_rejete():
+    client, _ = _client()
+    conversation_id = client.post(
+        "/conversations", headers={"X-API-Key": CLE_API_TEST}
+    ).json()["conversation_id"]
+
+    reponse = client.post(
+        f"/conversations/{conversation_id}/diagnostic/reformuler",
+        json={"texte_brut": "texte libre"},
+    )
+
+    assert reponse.status_code == 401

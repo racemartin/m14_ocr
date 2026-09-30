@@ -6,13 +6,18 @@ dependances par injection explicite, testable avec des faux
 adaptateurs en memoire sans reseau/GPU (`tests/interfaces/test_app_api.py`),
 meme discipline que les cas d'usage `application/use_cases/`.
 
-Trois endpoints metier (F1, "questionnaire intelligent adaptatif" +
+Quatre endpoints metier (F1, "questionnaire intelligent adaptatif" +
 bouton explicite "obtenir le diagnostic", cf. cahier des charges §3
 note du 23/09/2026) :
 - `POST /conversations` : demarre un entretien (historique vide).
 - `POST /conversations/{id}/messages` : poursuit l'entretien (un tour).
 - `POST /conversations/{id}/diagnostic` : declenche l'appel diagnostic
   (F2/F3/F4), jamais automatique, toujours sur decision de l'infirmier.
+- `POST /conversations/{id}/diagnostic/reformuler` : deuxieme tentative,
+  a la demande, de convertir en JSON un diagnostic dont le format n'a
+  pas ete respecte (bouton dedie cote infirmier, cf.
+  E4_02_uc_reformuler_diagnostic_json.py) ; pas de garantie de succes,
+  ce prompt n'a jamais ete confirme fiable sur un run GPU reel.
 - `GET /conversations/{id}` : relit l'historique courant (utilitaire
   cote client, ex. reaffichage apres reconnexion).
 
@@ -39,6 +44,10 @@ from chsa_triage.application.use_cases.E4_00_uc_poursuivre_entretien import (
 )
 from chsa_triage.application.use_cases.E4_01_uc_obtenir_diagnostic import (
     ObtenirDiagnosticUseCase,
+    ResultatDiagnostic,
+)
+from chsa_triage.application.use_cases.E4_02_uc_reformuler_diagnostic_json import (
+    ReformulerDiagnosticJsonUseCase,
 )
 from chsa_triage.domain.ports.journal_audit import JournalAudit
 from chsa_triage.domain.ports.moteur_inference import MoteurInference
@@ -49,6 +58,7 @@ from interfaces.api.schemas import (
     DiagnosticReponse,
     MessageEntretienReponse,
     MessageEntretienRequete,
+    ReformulerDiagnosticRequete,
     SanteReponse,
     TourHistorique,
 )
@@ -85,6 +95,11 @@ def creer_application(
         version_modele=version_modele,
     )
     obtenir_diagnostic = ObtenirDiagnosticUseCase(
+        moteur=moteur_inference,
+        journal=journal_audit,
+        version_modele=version_modele,
+    )
+    reformuler_diagnostic = ReformulerDiagnosticJsonUseCase(
         moteur=moteur_inference,
         journal=journal_audit,
         version_modele=version_modele,
@@ -177,22 +192,47 @@ def creer_application(
             )
 
         resultat = obtenir_diagnostic.executer(conversation_id, historique)
+        return _diagnostic_reponse(conversation_id, resultat)
 
-        if resultat.diagnostic is None:
-            return DiagnosticReponse(
-                conversation_id=conversation_id,
-                format_respecte=False,
-                texte_brut=resultat.texte_brut,
+    @app.post(
+        "/conversations/{conversation_id}/diagnostic/reformuler",
+        response_model=DiagnosticReponse,
+        dependencies=[Depends(verifier_cle_api)],
+    )
+    def reformuler_diagnostic_conversation(
+        conversation_id: str, requete: ReformulerDiagnosticRequete
+    ) -> DiagnosticReponse:
+        if magasin.obtenir(conversation_id) is None:
+            raise HTTPException(
+                status_code=404, detail="Conversation introuvable"
             )
 
+        resultat = reformuler_diagnostic.executer(
+            conversation_id, requete.texte_brut
+        )
+        return _diagnostic_reponse(conversation_id, resultat)
+
+    return app
+
+
+def _diagnostic_reponse(
+    conversation_id: str, resultat: ResultatDiagnostic
+) -> DiagnosticReponse:
+    """Meme mise en forme pour les deux routes qui retournent un
+    `ResultatDiagnostic` ("obtenir diagnostic" et sa reformulation)."""
+    if resultat.diagnostic is None:
         return DiagnosticReponse(
             conversation_id=conversation_id,
-            format_respecte=True,
-            niveau=resultat.diagnostic.niveau,
-            categorie=resultat.diagnostic.categorie,
-            ressources_estimees=resultat.diagnostic.ressources_estimees,
-            raisonnement=resultat.diagnostic.raisonnement,
+            format_respecte=False,
             texte_brut=resultat.texte_brut,
         )
 
-    return app
+    return DiagnosticReponse(
+        conversation_id=conversation_id,
+        format_respecte=True,
+        niveau=resultat.diagnostic.niveau,
+        categorie=resultat.diagnostic.categorie,
+        ressources_estimees=resultat.diagnostic.ressources_estimees,
+        raisonnement=resultat.diagnostic.raisonnement,
+        texte_brut=resultat.texte_brut,
+    )

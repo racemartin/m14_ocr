@@ -49,3 +49,16 @@ def obtenir_diagnostic(client: httpx.Client, conversation_id: str) -> dict:
     reponse = client.post(f"/conversations/{conversation_id}/diagnostic")
     reponse.raise_for_status()
     return reponse.json()
+
+
+def reformuler_diagnostic_json(
+    client: httpx.Client, conversation_id: str, texte_brut: str
+) -> dict:
+    """Deuxieme tentative, a la demande (bouton dedie), de convertir un
+    diagnostic mal forme en JSON structure. Pas de garantie de succes."""
+    reponse = client.post(
+        f"/conversations/{conversation_id}/diagnostic/reformuler",
+        json={"texte_brut": texte_brut},
+    )
+    reponse.raise_for_status()
+    return reponse.json()
