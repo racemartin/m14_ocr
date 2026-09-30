@@ -1,0 +1,29 @@
+@startuml mesurer_latence_statistique
+!include ../../_common/estilo.iuml
+
+title Mesure statistique de la latence (p50/p95), fonctionnalité prévue, non implémentée
+
+participant "Infirmier" as INF
+participant "API FastAPI" as API
+participant "MoteurInference" as MOT
+participant "JournalAudit" as JA
+
+INF -> API : message
+API -> MOT : generer()
+MOT --> API : ReponseModele(latence_ms=5200)
+API -> JA : consigner(metadonnees={latence_ms: 5200})
+
+INF -> API : message
+API -> MOT : generer()
+MOT --> API : ReponseModele(latence_ms=18300)
+API -> JA : consigner(metadonnees={latence_ms: 18300})
+
+...
+
+note over JA
+  p50/p95 calcules hors ligne sur
+  l'ensemble des latence_ms deja
+  loggees, par type de GPU alloue
+end note
+
+@enduml
