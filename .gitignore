@@ -48,3 +48,12 @@ docs/03_etape2_sft/SFT, LoRA et DPO pour CHSA Triage.pdf
 
 # Exports PDF locaux des documents Markdown (generes a la lecture, pas versionnes)
 *.md.pdf
+
+# Inference locale llama.cpp (test CPU gratuit, cf. README §4.7) : modele
+# GGUF, binaire precompile telecharge, poids locaux telecharges pour
+# inspection/conversion (outputs/sft-lora-local, outputs/dpo-lora-local, ...)
+*.gguf
+llama-b*/
+llama-b*.tar.gz
+outputs/
+qwen3-1.7b-base-local/

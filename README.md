@@ -65,6 +65,7 @@ Version détaillée (scripts/adaptateurs/dépôts HF réels, DPO marqué concept
   - [4.4 CI/CD](#44-cicd)
   - [4.5 Healthcheck vLLM et frontend Streamlit de test](#45-healthcheck-vllm-et-frontend-streamlit-de-test)
   - [4.6 Guide rapide de déploiement](#46-guide-rapide-de-deploiement)
+  - [4.7 Test local gratuit avec le checkpoint DPO (CPU, sans GPU)](#47-test-local-gratuit-avec-le-checkpoint-dpo)
 - [Dépannage](#depannage)
 
 <table id="démarrage-rapide" style="width:100%;"><tr><td style="background-color:#c9f1edff;">
@@ -509,6 +510,34 @@ LoRA publiés durablement sur `mombasstic/chsa-triage-sft-lora`. La courbe
 de perte train/validation de ce run a été reconstruite a posteriori depuis
 le log brut du job (backend de suivi mal configuré à l'origine, corrigé
 depuis) et republiée sur le dépôt de métriques.
+
+Un second run est prévu, uniquement pour capturer en direct la courbe
+d'apprentissage complète (train/validation) via `backend: hf_dataset`
+(le bug de suivi ci-dessus est corrigé depuis), sans toucher au
+checkpoint officiel référencé par `recipes/dpo_qwen3_lora.yaml`
+(`checkpoint_politique_depart: mombasstic/chsa-triage-sft-lora`) : poids
+et métriques publiés sur des dépôts dédiés distincts
+(`mombasstic/chsa-triage-sft-lora-v2` /
+`mombasstic/chsa-triage-sft-metrics-v2`), jamais évalués ni utilisés
+pour poursuivre le DPO. Sans seed fixée dans la recette, ce second run
+n'est pas garanti bit-identique au premier (même jeu de données, mêmes
+hyperparamètres) ; il sert à illustrer la dynamique d'entraînement, pas
+à remplacer le F1 déjà validé du premier run.
+
+```bash
+hf jobs uv run \
+    --flavor l4x1 \
+    --timeout 6h \
+    --with "chsa-triage[remote] @ git+https://github.com/racemartin/m14_ocr.git@main" \
+    --secrets HF_TOKEN \
+    -v hf://datasets/mombasstic/chsa-triage-sft-train-data:/mnt/train-data \
+    https://raw.githubusercontent.com/racemartin/m14_ocr/main/training/E2_04_sft_train.py \
+    --recette recipes/sft_qwen3_lora.yaml \
+    --dataset /mnt/train-data/dataset_pivot_anonymise.jsonl \
+    --suivi-hf-repo mombasstic/chsa-triage-sft-metrics-v2 \
+    --checkpoint-hf-repo mombasstic/chsa-triage-sft-lora-v2 \
+    --assistant-only-loss false
+```
 
 Pour récupérer ces poids en local (inspection directe, hors des
 commandes d'évaluation/entraînement DPO qui les chargent déjà à la
@@ -1277,7 +1306,6 @@ hf upload mombasstic/chsa-triage-api monitoring monitoring --repo-type space
 ```bash
 hf upload mombasstic/chsa-triage-api deploy/space_gpu_api_vllm/README_space.md README.md --repo-type space
 ```
-
 Chaque commande `hf upload` ci-dessus crée son propre commit, et **chaque
 commit déclenche automatiquement une reconstruction** (doc officielle
 HF : "Each time a new commit is pushed, the Space will automatically
@@ -1337,9 +1365,101 @@ uv run streamlit run interfaces/web/app_test_inference.py
 **13. Mettre le Space en pause une fois les tests terminés** (le Space
 GPU coûte à l'heure tant qu'il tourne, cf. §4.5 -- le temps en pause
 n'est jamais facturé)
+
 ```bash
+# Place le Space e, pause
 hf spaces pause mombasstic/chsa-triage-api
+
+# Sort le Space de sa pause
+hf spaces restart mombasstic/chsa-triage-api
+
+# Bloque l'exécution jusqu'à ce qu'il soit réellement opérationnel.
+hf spaces wait mombasstic/chsa-triage-api
 ```
+
+<table id="47-test-local-gratuit-avec-le-checkpoint-dpo" style="width:100%;"><tr><td style="background-color:#f5b0e0;">
+<h2 style="border-bottom:none; margin:0;">4.7 Test local gratuit avec le checkpoint DPO (CPU, sans GPU)</h2>
+</td></tr></table>
+
+Depuis zéro, pour tester l'API + le frontend Streamlit (y compris le
+bouton "Réessayer en JSON structuré" de §4.2) contre le **vrai
+checkpoint DPO réel**, sans aucun coût GPU : `llama-server` sert le
+modèle de base GGUF avec l'adaptateur LoRA chargé à part (`--lora`,
+jamais fusionné), exactement le même principe que `VllmEndpointInferenceAdapter`
+en production. Plus lent qu'un vrai GPU, mais gratuit.
+
+**1. Récupérer le modèle de base quantifié** (`mradermacher/Qwen3-1.7B-Base-GGUF`,
+~1,1 Go, quantification publique existante, aucune conversion nécessaire)
+```bash
+uv run hf download mradermacher/Qwen3-1.7B-Base-GGUF Qwen3-1.7B-Base.Q4_K_M.gguf --local-dir .
+```
+
+**2. Récupérer le binaire `llama-server`** (release précompilée CPU-only,
+build `b10985` de `ggml-org/llama.cpp` — cette machine n'a pas `cmake`
+pour compiler depuis les sources)
+```bash
+curl -L -o llama-b10985.tar.gz \
+  https://github.com/ggml-org/llama.cpp/releases/download/b10985/llama-b10985-bin-ubuntu-x64.tar.gz
+mkdir -p llama-b10985
+tar -xzf llama-b10985.tar.gz -C llama-b10985 --strip-components=1
+rm llama-b10985.tar.gz  # archive redondante une fois extraite
+```
+
+Tout ce que ces étapes téléchargent (`*.gguf`, `llama-b*/`, `outputs/`)
+est déjà couvert par `.gitignore` : rien de tout ça n'atterrit jamais
+sur Git.
+
+**3. Récupérer l'adaptateur DPO réel** (format PEFT HuggingFace, pas encore GGUF)
+```bash
+hf download mombasstic/chsa-triage-dpo-lora --local-dir outputs/dpo-lora-local
+```
+
+**4. Convertir l'adaptateur en GGUF** (script officiel `convert_lora_to_gguf.py`
+du dépôt `llama.cpp` — script Python pur, ne nécessite pas de compiler
+le binaire). `--base` attend un **dossier local**, pas un identifiant de
+dépôt HF : il faut d'abord télécharger le modèle de base (~3,4 Go, bf16)
+```bash
+hf download Qwen/Qwen3-1.7B-Base --local-dir qwen3-1.7b-base-local
+```
+```bash
+git clone --depth 1 https://github.com/ggml-org/llama.cpp.git /tmp/llama.cpp-scripts
+uv run --with gguf --with safetensors python3 /tmp/llama.cpp-scripts/convert_lora_to_gguf.py \
+    --base qwen3-1.7b-base-local \
+    --outfile chsa-triage-dpo-lora.gguf \
+    outputs/dpo-lora-local
+```
+
+**5. Démarrer `llama-server` avec le modèle de base ET le LoRA**
+```bash
+LD_LIBRARY_PATH=./llama-b10985 ./llama-b10985/llama-server \
+    -m Qwen3-1.7B-Base.Q4_K_M.gguf --lora chsa-triage-dpo-lora.gguf \
+    --port 8080 -c 1024 -t 2 --no-webui --host 0.0.0.0 --parallel 1
+```
+
+**6. Démarrer l'API en mode `local`** (terminal séparé)
+```bash
+uv sync --extra local --extra dev --extra api --extra web
+export CHSA_CLE_API_DEMO=change-moi
+export CHSA_MOTEUR_INFERENCE=local
+uv run uvicorn interfaces.api.main:app --port 7860
+```
+
+**7. Démarrer le frontend Streamlit** (troisième terminal)
+```bash
+export CHSA_API_URL_BASE=http://127.0.0.1:7860
+export CHSA_API_CLE=change-moi
+uv run streamlit run interfaces/web/app_test_inference.py
+```
+
+**8. Dialoguer, demander le diagnostic, et si le format JSON n'est pas
+respecté, cliquer sur "Réessayer en JSON structuré (pour le SIH)"**
+pour tester le second appel de reformulation (§4.2,
+`E4_02_uc_reformuler_diagnostic_json.py`).
+
+Une fois `uv sync` fait une fois avec les quatre extras ensemble
+(étape 6), les lancements suivants (`uv run uvicorn`/`uv run streamlit`)
+ne redemandent aucun extra et ne touchent plus l'environnement déjà
+installé.
 
 <table id="depannage" style="width:100%;"><tr><td style="background-color:#d9d9d9;">
 <h1 style="border-bottom:none; margin:0;">Dépannage</h1>
