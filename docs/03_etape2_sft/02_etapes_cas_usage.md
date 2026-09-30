@@ -93,8 +93,9 @@ Port (`domain/ports/formateur_conversation.py`, écrit) :
 ```python
 @dataclass(frozen=True, slots=True)
 class ExempleFormate:
-    identifiant : str    # repris de ExemplePivot.identifiant, jamais régénéré
-    texte        : str    # rendu ChatML complet (system+user+assistant)
+    identifiant: str  # repris de ExemplePivot.identifiant, jamais régénéré
+    texte: str  # rendu ChatML complet (system+user+assistant)
+
 
 class FormateurConversation(Protocol):
     def formater(self, exemple: ExemplePivot) -> ExempleFormate:
@@ -183,23 +184,25 @@ Port (`domain/ports/entraineur_supervise.py`, écrit) :
 ```python
 @dataclass(frozen=True, slots=True)
 class MetriquesEntrainement:
-    etape             : int
-    perte_train        : float
-    perte_validation    : float | None
-    norme_gradient       : float
+    etape: int
+    perte_train: float
+    perte_validation: float | None
+    norme_gradient: float
+
 
 @dataclass(frozen=True, slots=True)
 class ResultatEntrainementSFT:
-    chemin_checkpoint : str
-    courbe_metriques   : tuple[MetriquesEntrainement, ...]
+    chemin_checkpoint: str
+    courbe_metriques: tuple[MetriquesEntrainement, ...]
+
 
 class EntraineurSupervise(Protocol):
     def entrainer(
         self,
-        dataset_train      : Iterable[ExempleFormate],
-        dataset_validation  : Iterable[ExempleFormate],
-        config_lora          : ConfigurationLora,
-        hyperparametres       : HyperparametresEntrainement,
+        dataset_train: Iterable[ExempleFormate],
+        dataset_validation: Iterable[ExempleFormate],
+        config_lora: ConfigurationLora,
+        hyperparametres: HyperparametresEntrainement,
     ) -> ResultatEntrainementSFT: ...
 ```
 
@@ -224,10 +227,12 @@ supplémentaire) et retourne un verdict :
 
 ```python
 class VerdictConvergence(str, Enum):
-    SAINE               = "saine"
-    SURAPPRENTISSAGE      = "surapprentissage"   # perte train baisse, perte val remonte
-    SOUS_APPRENTISSAGE     = "sous_apprentissage"  # les deux stagnent
-    INSTABLE                = "instable"            # norme de gradient diverge/NaN
+    SAINE = "saine"
+    SURAPPRENTISSAGE = (
+        "surapprentissage"  # perte train baisse, perte val remonte
+    )
+    SOUS_APPRENTISSAGE = "sous_apprentissage"  # les deux stagnent
+    INSTABLE = "instable"  # norme de gradient diverge/NaN
 ```
 
 Ce module ne dépend d'aucun port, exactement comme
@@ -325,14 +330,14 @@ Domaine (`domain/model/checkpoint_entraine.py`, écrit) :
 ```python
 @dataclass(frozen=True, slots=True)
 class CheckpointEntraine:
-    identifiant           : str    # ex. hash(recette + horodatage)
-    chemin                  : str
-    modele_base              : str
-    configuration_lora        : ConfigurationLora
-    hyperparametres            : HyperparametresEntrainement
-    metriques_finales           : MetriquesEntrainement
-    verdict_convergence          : VerdictConvergence
-    horodatage                    : str
+    identifiant: str  # ex. hash(recette + horodatage)
+    chemin: str
+    modele_base: str
+    configuration_lora: ConfigurationLora
+    hyperparametres: HyperparametresEntrainement
+    metriques_finales: MetriquesEntrainement
+    verdict_convergence: VerdictConvergence
+    horodatage: str
 ```
 
 Sérialisé en JSONL (même mécanisme que

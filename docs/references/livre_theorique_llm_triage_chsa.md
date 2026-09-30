@@ -199,22 +199,24 @@ détectés et archivés (jamais perdus) dans
 ```python
 from dataclasses import dataclass
 
+
 @dataclass(frozen=True)
 class Message:
-    role: str       # "system" | "user" | "assistant"
+    role: str  # "system" | "user" | "assistant"
     contenu: str
+
 
 @dataclass(frozen=True)
 class ExemplePivot:
-    identifiant: str                       # sha256(espace_noms:cle_naturelle)
-    source: str                            # "MediQAl" | "FrenchMedMCQA" | ...
-    type_exemple: str                      # "sft" | "dpo"
-    langue: str                            # "fr" | "en"
+    identifiant: str  # sha256(espace_noms:cle_naturelle)
+    source: str  # "MediQAl" | "FrenchMedMCQA" | ...
+    type_exemple: str  # "sft" | "dpo"
+    langue: str  # "fr" | "en"
     prompt: tuple[Message, ...] = ()
-    completion: tuple[Message, ...] = ()   # renseigné pour un exemple SFT
-    chosen: tuple[Message, ...] = ()       # renseigné pour un exemple DPO
+    completion: tuple[Message, ...] = ()  # renseigné pour un exemple SFT
+    chosen: tuple[Message, ...] = ()  # renseigné pour un exemple DPO
     rejected: tuple[Message, ...] = ()
-    split: str | None = None               # "train" | "val" | "test"
+    split: str | None = None  # "train" | "val" | "test"
 ```
 
 **Anonymisation Presidio (appel réel, simplifié).** Le pipeline traite
@@ -238,7 +240,9 @@ resultats = analyzer.analyze(text=texte, language="fr")  # ou "en"
 sortie = anonymizer.anonymize(
     text=texte,
     analyzer_results=resultats,
-    operators={"DEFAULT": OperatorConfig("replace", {"new_value": "<INFO_MASQUEE>"})},
+    operators={
+        "DEFAULT": OperatorConfig("replace", {"new_value": "<INFO_MASQUEE>"})
+    },
 )
 ```
 
@@ -294,6 +298,7 @@ dépendance à un schéma de sortie supposé sont utilisées :
 
 ```python
 from collections import Counter
+
 
 def score_f1_tokens(genere: str, reference: str) -> float:
     tokens_generes = normaliser_texte(genere).split()
@@ -577,7 +582,9 @@ modele = AutoModelForCausalLM.from_pretrained(
 tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen3-1.7B-Base")
 
 lora_config = LoraConfig(
-    r=16, lora_alpha=32, lora_dropout=0.05,
+    r=16,
+    lora_alpha=32,
+    lora_dropout=0.05,
     target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
     task_type=TaskType.CAUSAL_LM,
 )
@@ -588,12 +595,13 @@ sft_config = SFTConfig(
     per_device_train_batch_size=4,
     packing=True,
     loss_type="nll",
-    assistant_only_loss=False,   # cf. §5.5 : limite réelle rencontrée
+    assistant_only_loss=False,  # cf. §5.5 : limite réelle rencontrée
     eval_strategy="epoch",
 )
 trainer = SFTTrainer(
-    model=modele, args=sft_config,
-    train_dataset=dataset_train,       # colonne "text" = ChatML pré-rendu
+    model=modele,
+    args=sft_config,
+    train_dataset=dataset_train,  # colonne "text" = ChatML pré-rendu
     eval_dataset=dataset_validation,
     processing_class=tokenizer,
     peft_config=lora_config,
@@ -757,16 +765,16 @@ from trl import DPOConfig, DPOTrainer
 
 dpo_config = DPOConfig(
     output_dir="run-dpo",
-    beta=0.1,                         # poids de la régularisation KL implicite
-    learning_rate=5e-6,               # ordre de grandeur usuel, nettement < SFT
+    beta=0.1,  # poids de la régularisation KL implicite
+    learning_rate=5e-6,  # ordre de grandeur usuel, nettement < SFT
 )
 trainer = DPOTrainer(
-    model=modele_post_sft,            # initialisé depuis le checkpoint LoRA du chapitre 5
-    ref_model=None,                   # None : trl dérive π_ref du même modèle avant entraînement
+    model=modele_post_sft,  # initialisé depuis le checkpoint LoRA du chapitre 5
+    ref_model=None,  # None : trl dérive π_ref du même modèle avant entraînement
     args=dpo_config,
-    train_dataset=dataset_dpo,        # colonnes "prompt" / "chosen" / "rejected"
+    train_dataset=dataset_dpo,  # colonnes "prompt" / "chosen" / "rejected"
     processing_class=tokenizer,
-    peft_config=lora_config,          # même schéma QLoRA que le SFT, cf. §5.4
+    peft_config=lora_config,  # même schéma QLoRA que le SFT, cf. §5.4
 )
 trainer.train()
 ```
