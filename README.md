@@ -67,6 +67,7 @@ Version détaillée (scripts/adaptateurs/dépôts HF réels, DPO marqué concept
   - [4.6 Guide rapide de déploiement](#46-guide-rapide-de-deploiement)
   - [4.7 Test local gratuit avec le checkpoint DPO (CPU, sans GPU)](#47-test-local-gratuit-avec-le-checkpoint-dpo)
   - [4.8 Comparaison de précision hors-ligne (CPU, transformers+peft)](#48-comparaison-de-precision-hors-ligne-cpu-transformerspeft)
+  - [4.9 Scénarios de test cliniques](#49-scenarios-de-test-cliniques)
 - [Dépannage](#depannage)
 
 <table id="démarrage-rapide" style="width:100%;"><tr><td style="background-color:#c9f1edff;">
@@ -1524,6 +1525,82 @@ réservés à l'extra `remote`). Non exécuté end-to-end dans cette tâche
 (téléchargerait plusieurs Go de poids modèle) : câblage et tests
 unitaires vérifiés réellement (`tests/infrastructure/test_transformers_lora_cpu_inference_adapter.py`),
 chargement réel jamais exercé ici.
+
+<table id="49-scenarios-de-test-cliniques" style="width:100%;"><tr><td style="background-color:#f5b0e0;">
+<h2 style="border-bottom:none; margin:0;">4.9 Scénarios de test cliniques</h2>
+</td></tr></table>
+
+Trois scénarios réels, chacun avec trois tours d'entretien puis une demande
+de diagnostic, pour comparer manuellement le comportement entre les modes
+(§4.6, §4.7, §4.8) sur les mêmes entrées. Réutilisent `$CHSA_BASE`/`$CHSA_CLE`
+déjà exportés selon le mode testé (§4.6 étape 10, §4.7 étape 7, §4.8) : chaque
+bloc ouvre sa propre conversation, pour ne jamais mélanger les scénarios.
+
+**Scénario 1, urgent (ESI 2 probable)**
+```bash
+CONVERSATION_ID=$(curl -sS -X POST "$CHSA_BASE/conversations" \
+  -H "X-API-Key: $CHSA_CLE" | python3 -c "import sys,json; print(json.load(sys.stdin)['conversation_id'])")
+echo "conversation_id=$CONVERSATION_ID"
+
+curl -sS -X POST "$CHSA_BASE/conversations/$CONVERSATION_ID/messages" \
+  -H "X-API-Key: $CHSA_CLE" -H "Content-Type: application/json" \
+  -d '{"message": "Patient de 62 ans, douleur thoracique oppressante depuis 30 minutes, irradiant vers le bras gauche."}'
+
+curl -sS -X POST "$CHSA_BASE/conversations/$CONVERSATION_ID/messages" \
+  -H "X-API-Key: $CHSA_CLE" -H "Content-Type: application/json" \
+  -d '{"message": "Oui, antecedent d'"'"'infarctus il y a 3 ans. Sueurs et essoufflement egalement."}'
+
+curl -sS -X POST "$CHSA_BASE/conversations/$CONVERSATION_ID/messages" \
+  -H "X-API-Key: $CHSA_CLE" -H "Content-Type: application/json" \
+  -d '{"message": "Douleur evaluee a 8 sur 10, tension arterielle 145/95, frequence cardiaque 110."}'
+
+curl -sS -X POST "$CHSA_BASE/conversations/$CONVERSATION_ID/diagnostic" \
+  -H "X-API-Key: $CHSA_CLE"
+```
+
+**Scénario 2, modéré (ESI 3-4 probable)**
+```bash
+CONVERSATION_ID=$(curl -sS -X POST "$CHSA_BASE/conversations" \
+  -H "X-API-Key: $CHSA_CLE" | python3 -c "import sys,json; print(json.load(sys.stdin)['conversation_id'])")
+echo "conversation_id=$CONVERSATION_ID"
+
+curl -sS -X POST "$CHSA_BASE/conversations/$CONVERSATION_ID/messages" \
+  -H "X-API-Key: $CHSA_CLE" -H "Content-Type: application/json" \
+  -d '{"message": "Femme de 34 ans, fievre a 38,5C depuis hier soir, toux seche et fatigue."}'
+
+curl -sS -X POST "$CHSA_BASE/conversations/$CONVERSATION_ID/messages" \
+  -H "X-API-Key: $CHSA_CLE" -H "Content-Type: application/json" \
+  -d '{"message": "Pas de difficulte respiratoire, pas de douleur thoracique. Prend du paracetamol depuis ce matin, peu d'"'"'effet."}'
+
+curl -sS -X POST "$CHSA_BASE/conversations/$CONVERSATION_ID/messages" \
+  -H "X-API-Key: $CHSA_CLE" -H "Content-Type: application/json" \
+  -d '{"message": "Aucun antecedent particulier, pas d'"'"'allergie connue."}'
+
+curl -sS -X POST "$CHSA_BASE/conversations/$CONVERSATION_ID/diagnostic" \
+  -H "X-API-Key: $CHSA_CLE"
+```
+
+**Scénario 3, léger (ESI 5 probable)**
+```bash
+CONVERSATION_ID=$(curl -sS -X POST "$CHSA_BASE/conversations" \
+  -H "X-API-Key: $CHSA_CLE" | python3 -c "import sys,json; print(json.load(sys.stdin)['conversation_id'])")
+echo "conversation_id=$CONVERSATION_ID"
+
+curl -sS -X POST "$CHSA_BASE/conversations/$CONVERSATION_ID/messages" \
+  -H "X-API-Key: $CHSA_CLE" -H "Content-Type: application/json" \
+  -d '{"message": "Patient de 28 ans, entorse a la cheville droite apres une chute en courant ce matin."}'
+
+curl -sS -X POST "$CHSA_BASE/conversations/$CONVERSATION_ID/messages" \
+  -H "X-API-Key: $CHSA_CLE" -H "Content-Type: application/json" \
+  -d '{"message": "Douleur moderee a la marche, pas de deformation visible, leger gonflement."}'
+
+curl -sS -X POST "$CHSA_BASE/conversations/$CONVERSATION_ID/messages" \
+  -H "X-API-Key: $CHSA_CLE" -H "Content-Type: application/json" \
+  -d '{"message": "Aucun antecedent medical, derniere prise en charge medicale il y a plus d'"'"'un an."}'
+
+curl -sS -X POST "$CHSA_BASE/conversations/$CONVERSATION_ID/diagnostic" \
+  -H "X-API-Key: $CHSA_CLE"
+```
 
 <table id="depannage" style="width:100%;"><tr><td style="background-color:#d9d9d9;">
 <h1 style="border-bottom:none; margin:0;">Dépannage</h1>
