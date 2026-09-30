@@ -66,6 +66,7 @@ Version détaillée (scripts/adaptateurs/dépôts HF réels, DPO marqué concept
   - [4.5 Healthcheck vLLM et frontend Streamlit de test](#45-healthcheck-vllm-et-frontend-streamlit-de-test)
   - [4.6 Guide rapide de déploiement](#46-guide-rapide-de-deploiement)
   - [4.7 Test local gratuit avec le checkpoint DPO (CPU, sans GPU)](#47-test-local-gratuit-avec-le-checkpoint-dpo)
+  - [4.8 Comparaison de précision hors-ligne (CPU, transformers+peft)](#48-comparaison-de-precision-hors-ligne-cpu-transformerspeft)
 - [Dépannage](#depannage)
 
 <table id="démarrage-rapide" style="width:100%;"><tr><td style="background-color:#c9f1edff;">
@@ -1460,6 +1461,69 @@ Une fois `uv sync` fait une fois avec les quatre extras ensemble
 (étape 6), les lancements suivants (`uv run uvicorn`/`uv run streamlit`)
 ne redemandent aucun extra et ne touchent plus l'environnement déjà
 installé.
+
+<table id="48-comparaison-de-precision-hors-ligne-cpu-transformerspeft" style="width:100%;"><tr><td style="background-color:#f5b0e0;">
+<h2 style="border-bottom:none; margin:0;">4.8 Comparaison de précision hors-ligne (CPU, transformers+peft)</h2>
+</td></tr></table>
+
+**Ceci est un outil de comparaison de précision, pas une troisième
+option de service.** Il ne fait pas partie du choix `local`/`distant`
+présenté en §4.2 : il existe uniquement pour comparer, à l'œil, une
+réponse en pleine précision (bf16, ou float32 en repli, cf.
+`TransformersLoraCpuInferenceAdapter`) à la réponse déjà obtenue via le
+chemin CPU quantifié (llama.cpp/GGUF Q4_K_M, `CHSA_MOTEUR_INFERENCE=local`,
+cf. §4.2) sur la même entrée, pour voir si la quantification change le
+comportement du modèle. Jamais branché dans le frontend Streamlit de
+test (§4.5) : ne pas l'utiliser pour du chat en direct, c'est
+délibérément lent (CPU, pleine précision, aucune optimisation).
+
+Contrairement au chemin `local` existant, **aucun serveur séparé à
+lancer** (pas de `llama-server`, pas de conversion GGUF) : le modèle de
+base + l'adaptateur LoRA se chargent directement en processus dans
+l'API elle-même.
+
+```bash
+uv sync --extra local --extra api
+export CHSA_CLE_API_DEMO="change-moi"
+export CHSA_MOTEUR_INFERENCE=comparaison_precision_cpu
+# Optionnel, defauts deja alignes sur CHSA_VERSION_MODELE :
+# export CHSA_MODELE_BASE_COMPARAISON_CPU="Qwen/Qwen3-1.7B-Base"
+# export CHSA_DEPOT_LORA_COMPARAISON_CPU="mombasstic/chsa-triage-dpo-lora"
+uv run uvicorn interfaces.api.main:app --port 8000
+```
+
+Puis, dans un autre terminal, exactement le même flux conversation
+→ message → diagnostic déjà documenté pour les deux autres modes
+(§4.6 étape 10), pointé sur cette instance locale : lancer §4.8 une
+fois avec la même entrée que la §4.7 en mode `local` (GGUF Q4_K_M) et
+comparer les deux réponses obtenues.
+
+```bash
+export CHSA_CLE="change-moi"
+export CHSA_BASE="http://127.0.0.1:8000"
+
+# 1. Démarrer une conversation
+CONVERSATION_ID=$(curl -sS -X POST "$CHSA_BASE/conversations" \
+  -H "X-API-Key: $CHSA_CLE" | python3 -c "import sys,json; print(json.load(sys.stdin)['conversation_id'])")
+echo "conversation_id=$CONVERSATION_ID"
+
+# 2. Envoyer un message (répéter pour poursuivre l'entretien)
+curl -sS -X POST "$CHSA_BASE/conversations/$CONVERSATION_ID/messages" \
+  -H "X-API-Key: $CHSA_CLE" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Patient de 45 ans, douleur thoracique depuis 2 heures."}'
+
+# 3. Demander le diagnostic (niveau ESI, catégorie, ressources, raisonnement)
+curl -sS -X POST "$CHSA_BASE/conversations/$CONVERSATION_ID/diagnostic" \
+  -H "X-API-Key: $CHSA_CLE"
+```
+
+`peft` est désormais dans l'extra `local` (pur Python, aucun paquet GPU
+supplémentaire : `vllm`/`bitsandbytes`/`unsloth`/`liger-kernel` restent
+réservés à l'extra `remote`). Non exécuté end-to-end dans cette tâche
+(téléchargerait plusieurs Go de poids modèle) : câblage et tests
+unitaires vérifiés réellement (`tests/infrastructure/test_transformers_lora_cpu_inference_adapter.py`),
+chargement réel jamais exercé ici.
 
 <table id="depannage" style="width:100%;"><tr><td style="background-color:#d9d9d9;">
 <h1 style="border-bottom:none; margin:0;">Dépannage</h1>

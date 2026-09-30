@@ -7,17 +7,31 @@ testable sans ces variables.
 Variables d'environnement :
 - `CHSA_CLE_API_DEMO` (obligatoire) : cle attendue en en-tete
   `X-API-Key` par les clients de cette API.
-- `CHSA_MOTEUR_INFERENCE` = `distant` (defaut, vLLM, cible mission) ou
+- `CHSA_MOTEUR_INFERENCE` = `distant` (defaut, vLLM, cible mission),
   `local` (llama.cpp, dev sans GPU ; meme adaptateur/patron que
-  `interfaces/cli/E1_06_00_evaluer_baseline.py`).
+  `interfaces/cli/E1_06_00_evaluer_baseline.py`) ou
+  `comparaison_precision_cpu` (`TransformersLoraCpuInferenceAdapter`,
+  transformers+peft en pleine precision sur CPU, AUCUN serveur separe
+  a lancer). Ce troisieme mode n'est PAS une option de service au meme
+  titre que les deux autres : c'est un OUTIL DE COMPARAISON HORS LIGNE
+  (voir README, section "Comparaison de precision hors-ligne"), utilise
+  pour verifier si la quantification GGUF Q4_K_M du mode `local` change
+  le comportement du modele par rapport a la pleine precision ; ne
+  jamais le brancher dans le frontend Streamlit de test.
 - `CHSA_URL_MOTEUR_INFERENCE` : URL du serveur d'inference (defaut
   `http://127.0.0.1:8000` en mode `distant`, `http://127.0.0.1:8080`
-  en mode `local`).
+  en mode `local` ; sans effet en mode `comparaison_precision_cpu`,
+  qui ne parle a aucun serveur).
 - `CHSA_CLE_API_VLLM` (optionnelle, mode `distant`) : transmise en
   `Authorization: Bearer ...` au serveur vLLM (`vllm serve --api-key`).
 - `CHSA_NOM_MODELE_VLLM` (mode `distant`, defaut `dpo`) : nom donne a
   l'adaptateur LoRA via `--lora-modules` (decision Etape 4 : LoRA
   JAMAIS fusionne avec la base, cf. AGENTS.md/roadmap).
+- `CHSA_MODELE_BASE_COMPARAISON_CPU` (mode `comparaison_precision_cpu`,
+  defaut `Qwen/Qwen3-1.7B-Base`) : modele de base charge en memoire.
+- `CHSA_DEPOT_LORA_COMPARAISON_CPU` (mode `comparaison_precision_cpu`,
+  defaut `mombasstic/chsa-triage-dpo-lora`, meme defaut que
+  `CHSA_VERSION_MODELE`) : depot HF des poids LoRA charges par-dessus.
 - `CHSA_VERSION_MODELE` (defaut `mombasstic/chsa-triage-dpo-lora`) :
   consignee telle quelle au journal d'audit (F6), texte libre.
 - `CHSA_CHEMIN_JOURNAL_AUDIT` (defaut `data/processed/journal_audit.jsonl`,
@@ -50,6 +64,9 @@ from chsa_triage.infrastructure.adapters.jsonl_journal_audit import (
 from chsa_triage.infrastructure.adapters.llamacpp_inference_adapter import (
     LlamaCppInferenceAdapter,
 )
+from chsa_triage.infrastructure.adapters.transformers_lora_cpu_inference_adapter import (
+    TransformersLoraCpuInferenceAdapter,
+)
 from chsa_triage.infrastructure.adapters.vllm_endpoint_inference_adapter import (
     VllmEndpointInferenceAdapter,
 )
@@ -61,6 +78,8 @@ CHEMIN_JOURNAL_AUDIT_PAR_DEFAUT = "data/processed/journal_audit.jsonl"
 REPERTOIRE_JOURNAL_AUDIT_HF_LOCAL_PAR_DEFAUT = (
     "data/processed/suivi_hf_dataset_audit"
 )
+MODELE_BASE_COMPARAISON_CPU_PAR_DEFAUT = "Qwen/Qwen3-1.7B-Base"
+DEPOT_LORA_COMPARAISON_CPU_PAR_DEFAUT = "mombasstic/chsa-triage-dpo-lora"
 
 
 def _construire_moteur_inference() -> MoteurInference:
@@ -80,8 +99,20 @@ def _construire_moteur_inference() -> MoteurInference:
             url_endpoint=url, cle_api=cle_api_vllm, nom_modele=nom_modele
         )
 
+    if mode == "comparaison_precision_cpu":
+        modele_base = os.environ.get(
+            "CHSA_MODELE_BASE_COMPARAISON_CPU", MODELE_BASE_COMPARAISON_CPU_PAR_DEFAUT
+        )
+        depot_lora = os.environ.get(
+            "CHSA_DEPOT_LORA_COMPARAISON_CPU", DEPOT_LORA_COMPARAISON_CPU_PAR_DEFAUT
+        )
+        return TransformersLoraCpuInferenceAdapter(
+            depot_lora=depot_lora, nom_modele_base=modele_base
+        )
+
     raise ValueError(
-        f"CHSA_MOTEUR_INFERENCE invalide : {mode!r} (attendu 'local' ou 'distant')"
+        f"CHSA_MOTEUR_INFERENCE invalide : {mode!r} "
+        "(attendu 'local', 'distant' ou 'comparaison_precision_cpu')"
     )
 
 
