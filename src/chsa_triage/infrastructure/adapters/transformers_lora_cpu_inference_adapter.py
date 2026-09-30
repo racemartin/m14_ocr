@@ -73,8 +73,27 @@ class TransformersLoraCpuInferenceAdapter:
             from peft import PeftModel
             from transformers import AutoModelForCausalLM, AutoTokenizer
 
+            # `print(..., flush=True)`, pas `logging` : ce module n'a aucune
+            # configuration de logging existante dans ce projet, et l'etape
+            # bloquante (telechargement + chargement, plusieurs minutes en
+            # pleine precision CPU) doit rester visible immediatement dans le
+            # terminal qui execute `uvicorn`, sans dependre d'un handler
+            # configure par ailleurs.
+            debut_chargement = time.perf_counter()
+            print(
+                f"[comparaison_precision_cpu] chargement du tokenizer "
+                f"({self.nom_modele_base})...",
+                flush=True,
+            )
             self._tokenizer = AutoTokenizer.from_pretrained(
                 self.nom_modele_base, trust_remote_code=True
+            )
+
+            print(
+                f"[comparaison_precision_cpu] telechargement/chargement du "
+                f"modele de base ({self.nom_modele_base}, bf16 essaye "
+                f"d'abord)...",
+                flush=True,
             )
             # bf16 essaye en premier (coherent avec le libelle du diagramme de
             # deploiement, "bf16, transformers", et comparable a l'adaptateur
@@ -96,14 +115,35 @@ class TransformersLoraCpuInferenceAdapter:
                     device_map="cpu",
                     trust_remote_code=True,
                 )
+                dtype_utilise = "bf16"
             except (RuntimeError, TypeError):
+                print(
+                    "[comparaison_precision_cpu] bf16 indisponible sur ce "
+                    "CPU, repli sur float32...",
+                    flush=True,
+                )
                 modele_base = AutoModelForCausalLM.from_pretrained(
                     self.nom_modele_base,
                     torch_dtype=torch.float32,
                     device_map="cpu",
                     trust_remote_code=True,
                 )
+                dtype_utilise = "float32"
+
+            print(
+                f"[comparaison_precision_cpu] modele de base charge "
+                f"({dtype_utilise}), chargement de l'adaptateur LoRA "
+                f"({self.depot_lora})...",
+                flush=True,
+            )
             self._modele = PeftModel.from_pretrained(modele_base, self.depot_lora)
+
+            duree_chargement_s = time.perf_counter() - debut_chargement
+            print(
+                f"[comparaison_precision_cpu] pret en "
+                f"{duree_chargement_s:.1f}s (dtype={dtype_utilise}).",
+                flush=True,
+            )
         return self._modele, self._tokenizer
 
     def generer(self, messages: list[dict], parametres: dict | None = None) -> ReponseModele:
@@ -136,12 +176,22 @@ class TransformersLoraCpuInferenceAdapter:
 
         kwargs_generation = _parametres_generation_transformers(parametres)
 
+        print(
+            f"[comparaison_precision_cpu] generation en cours "
+            f"({nombre_tokens_entree} tokens d'entree)...",
+            flush=True,
+        )
         debut = time.perf_counter()
         sortie = modele.generate(**entrees, **kwargs_generation)
         latence_ms = (time.perf_counter() - debut) * 1000
 
         tokens_generes = list(sortie[0])[nombre_tokens_entree:]
         texte_genere = tokenizer.decode(tokens_generes, skip_special_tokens=True)
+        print(
+            f"[comparaison_precision_cpu] generation terminee en "
+            f"{latence_ms / 1000:.1f}s ({len(tokens_generes)} tokens generes).",
+            flush=True,
+        )
 
         return ReponseModele(
             texte=texte_genere,
