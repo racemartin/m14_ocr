@@ -1561,6 +1561,48 @@ bloc ouvre sa propre conversation, pour ne jamais mélanger les scénarios.
   - Douleur modérée à la marche, pas de déformation visible, léger gonflement.
   - Aucun antécédent médical, dernière prise en charge médicale il y a plus d'un an.
 
+**Activer l'un des 3 environnements avant de tester un scénario** (un seul à la fois) :
+
+* **Mode 1, GPU distant (Space HF, §4.6)**
+  ```bash
+  hf spaces restart mombasstic/chsa-triage-api
+  hf spaces wait mombasstic/chsa-triage-api
+
+  export CHSA_CLE="<clé réelle du Space>"
+  export CHSA_BASE="https://mombasstic-chsa-triage-api.hf.space"
+  ```
+  Penser à repasser le Space en pause après usage : `hf spaces pause mombasstic/chsa-triage-api`.
+
+* **Mode 2, CPU gratuit quantifié (llama.cpp, §4.7)**
+  ```bash
+  # Terminal A : serveur du modèle
+  LD_LIBRARY_PATH=./llama-b10985 ./llama-b10985/llama-server \
+      -m Qwen3-1.7B-Base.Q4_K_M.gguf --lora chsa-triage-dpo-lora.gguf \
+      --port 8080 -c 1024 -t 2 --no-webui --host 0.0.0.0 --parallel 1
+
+  # Terminal B : API
+  export CHSA_CLE_API_DEMO=change-moi
+  export CHSA_MOTEUR_INFERENCE=local
+  uv run uvicorn interfaces.api.main:app --port 7860
+
+  # Terminal C : variables pour les scénarios ci-dessous
+  export CHSA_CLE="change-moi"
+  export CHSA_BASE="http://127.0.0.1:7860"
+  ```
+
+* **Mode 3, CPU gratuit pleine précision (outil de comparaison, §4.8)**
+  ```bash
+  # Terminal A : API (charge le modèle en processus, aucun serveur séparé)
+  export CHSA_CLE_API_DEMO=change-moi
+  export CHSA_MOTEUR_INFERENCE=comparaison_precision_cpu
+  uv run uvicorn interfaces.api.main:app --port 8000
+
+  # Terminal B : variables pour les scénarios ci-dessous
+  export CHSA_CLE="change-moi"
+  export CHSA_BASE="http://127.0.0.1:8000"
+  ```
+  Très lent (un seul échange peut prendre plus d'une heure) : jamais pour du chat en direct.
+
 **Scénario 1, urgent (ESI 2 probable)**
 ```bash
 CONVERSATION_ID=$(curl -sS -X POST "$CHSA_BASE/conversations" \
