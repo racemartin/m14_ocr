@@ -1,0 +1,1663 @@
+<p align="center">
+  <img src="docs/images/hospital-logo-design-vector-medical-cross/v987-18a.png" alt="CHSA" width="120">
+
+  # CHSA Triage : Agent IA de Triage Médical (POC)
+
+
+[![Python](https://img.shields.io/badge/Python-3.12-blue)](https://www.python.org)
+[![uv](https://img.shields.io/badge/uv-package%20manager-DE5FE9)](https://docs.astral.sh/uv/)
+[![Transformers](https://img.shields.io/badge/🤗%20Transformers-Qwen3--1.7B-FFD21E)](https://huggingface.co/docs/transformers)
+[![TRL](https://img.shields.io/badge/TRL-SFT%20%2B%20DPO-FF6F00)](https://huggingface.co/docs/trl)
+[![PEFT](https://img.shields.io/badge/PEFT-LoRA-8A2BE2)](https://huggingface.co/docs/peft)
+[![vLLM](https://img.shields.io/badge/vLLM-inference-00B2A9)](https://docs.vllm.ai)
+[![Presidio](https://img.shields.io/badge/Presidio-RGPD%20anonymisation-4B8BBE)](https://github.com/microsoft/presidio)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688)](https://fastapi.tiangolo.com)
+[![Streamlit](https://img.shields.io/badge/Streamlit-UI-FF4B4B)](https://streamlit.io)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED)](https://www.docker.com)
+[![HF Hub](https://img.shields.io/badge/🤗%20HF%20Hub-checkpoints-FFD21E)](https://huggingface.co)
+
+ </p>
+
+
+
+<table id="introduction" style="width:100%;"><tr><td style="background-color:#c9f1edff;">
+<h1 style="border-bottom:none; margin:0;">Introduction</h1>
+</td></tr></table>
+
+POC d'agent IA de triage médical pour le Centre Hospitalier Saint-Aurélien,
+développé sous architecture hexagonale. Ce document est une version
+**condensée** : chaque section suit le patron intro -> commande(s) réelle(s)
+-> résultat obtenu, sans le détail d'implémentation.
+
+**Documents complémentaires :**
+- [PDF Support de présentation (M14)](docs/M14_Support_de_presentation_V3.pdf)
+- [PDF Rapport technique MC4](docs/M14_Rapport_technique_CHSA_Triage_V3.pdf)
+
+Vue d'ensemble en un coup d'œil (entrée/sortie de chaque étape) :
+[`docs/diagrams/00_vue_ensemble/vision_generale_etapes.png`](docs/diagrams/00_vue_ensemble/vision_generale_etapes.png).
+Version détaillée (scripts/adaptateurs/dépôts HF réels, DPO marqué conceptuel) :
+[`docs/diagrams/00_vue_ensemble/vision_generale_etapes_v3_detaille.png`](docs/diagrams/00_vue_ensemble/vision_generale_etapes_v3_detaille.png).
+
+
+<table id="table-des-matières" style="width:100%;"><tr><td style="background-color:#c9f1edff;">
+<h1 style="border-bottom:none; margin:0;">Table des matières</h1>
+</td></tr></table>
+
+- [Démarrage rapide](#démarrage-rapide)
+- [Tableau récapitulatif des scripts](#tableau-récapitulatif-des-scripts)
+- [1. Préparation de données](#1-préparation-de-données)
+  - [1.1 Télécharger Corpus](#11-télécharger-corpus)
+  - [1.2 Profiler Corpus](#12-profiler-corpus)
+  - [1.3 Dataset Pivot](#13-dataset-pivot)
+  - [1.4 Anonymisation](#14-anonymisation)
+  - [1.5 Découpage en Splits](#15-découpage-en-splits)
+- [2. SFT + LoRA](#2-sft--lora)
+  - [2.1 Architecture](#21-architecture)
+  - [2.2 Baseline Evaluation](#22-baseline-evaluation)
+  - [2.3 SFT Train](#23-sft-train)
+  - [2.4 SFT-LoRA Train](#24-sft-lora-train)
+  - [2.5 Evaluation Post-SFT](#25-evaluation-post-sft)
+  - [2.6 Suivi d'entraînement](#26-suivi-entrainement)
+- [3. DPO](#3-dpo)
+  - [3.1 Architecture & vérification](#31-architecture)
+  - [3.2 Entraînement DPO](#32-entrainement-dpo)
+  - [3.3 Évaluation post-DPO](#33-evaluation-post-dpo)
+- [4. Déploiement](#4-deploiement)
+  - [4.1 Adaptateur vLLM](#41-adaptateur-vllm)
+  - [4.2 API FastAPI](#42-api-fastapi)
+  - [4.3 Conteneurisation Docker](#43-conteneurisation-docker)
+  - [4.4 CI/CD](#44-cicd)
+  - [4.5 Healthcheck vLLM et frontend Streamlit de test](#45-healthcheck-vllm-et-frontend-streamlit-de-test)
+  - [4.6 Guide rapide de déploiement](#46-guide-rapide-de-deploiement)
+  - [4.7 Test local gratuit avec le checkpoint DPO (CPU, sans GPU)](#47-test-local-gratuit-avec-le-checkpoint-dpo)
+  - [4.8 Comparaison de précision hors-ligne (CPU, transformers+peft)](#48-comparaison-de-precision-hors-ligne-cpu-transformerspeft)
+  - [4.9 Scénarios de test cliniques](#49-scenarios-de-test-cliniques)
+- [Dépannage](#depannage)
+
+<table id="démarrage-rapide" style="width:100%;"><tr><td style="background-color:#c9f1edff;">
+<h1 style="border-bottom:none; margin:0;">Démarrage rapide</h1>
+</td></tr></table>
+
+**Installation** (Environnement A, local, WSL2, sans GPU — avant l'Étape 1) :
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv sync --extra local --extra dev
+uv run python -m spacy download fr_core_news_md
+uv run python -m spacy download en_core_web_sm
+```
+
+`torch` se résout automatiquement en version CPU légère pour cet extra
+(`tool.uv.sources` dans `pyproject.toml`, cf. section Dépannage) — pas
+de commande séparée nécessaire.
+
+**Configurer Hugging Face** (obligatoire avant `check_env_remote_hf.py`
+ci-dessous, et avant toute Étape 2-4 qui pousse ou télécharge sur le
+Hub) :
+
+```bash
+uv tool install huggingface_hub[cli]
+hf auth login
+# Colle un token avec le role "write" (push dataset/modele, lancer des Jobs)
+```
+
+Détail complet (compte payant, HF Jobs, Spaces Dev Mode SSH/VSCode,
+discipline de facturation) :
+[`docs/01_environnement/00_guide_installation_environnement.md`](docs/01_environnement/00_guide_installation_environnement.md).
+
+**Vérification de l'environnement**, à relancer avant de démarrer
+chaque étape correspondante :
+
+```bash
+uv run python scripts/check_env_local.py
+```
+
+```bash
+uv run python scripts/check_env_gpu.py
+```
+
+```bash
+uv run python scripts/check_env_remote_hf.py
+```
+
+`check_env_local.py` vérifie l'environnement local (Environnement A,
+sans GPU, avant l'étape 1) ; `check_env_gpu.py` vérifie l'environnement
+GPU (Environnement B, avant un run `SFTTrainer` coûteux, chat template,
+tokens ChatML, chargement 4-bit) ; `check_env_remote_hf.py` vérifie
+l'accès Hugging Face (Jobs + Spaces) avant tout lancement distant.
+
+**Tests**
+
+```bash
+uv run pytest tests/ -q
+```
+
+<table id="tableau-récapitulatif-des-scripts" style="width:100%;"><tr><td style="background-color:#c9f1edff;">
+<h1 style="border-bottom:none; margin:0;">Tableau récapitulatif des scripts</h1>
+</td></tr></table>
+
+Vue d'ensemble de tous les scripts exécutables du dépôt, classés par étape.
+
+
+<table id="etape-1-preparation-des-donnees" style="width:100%; margin-left: 2cm;"><tr><td style="background-color:#b0f58c;">
+<h3 style="border-bottom:none; margin:0;">Étape 1 — Préparation des données</h3>
+
+
+| Script | Rôle |
+|---|---|
+| `interfaces/cli/E1_01_telecharger_corpus.py` | Télécharge un corpus brut depuis Hugging Face Hub et l'exporte en JSONL local (`data/raw/`). |
+| `interfaces/cli/E1_02_profiler_corpus.py` | Génère un rapport de profilage ydata-profiling pour un corpus téléchargé. |
+| `interfaces/cli/E1_03_00_construire_dataset_pivot.py` | Fusionne les corpus sources en un dataset pivot unique, dédupliqué par identifiant déterministe. |
+| `interfaces/cli/E1_04_00_anonymiser_dataset.py` | Anonymise (Presidio/spaCy) le dataset pivot par vagues incrémentales, en écrivant dans un fichier séparé du pivot original. |
+| `scripts/anonymiser_par_lots.sh` | Rappelle `E1_04_00_anonymiser_dataset.py` en boucle par vagues successives jusqu'à couverture complète du pivot. |
+| `interfaces/cli/E1_04_02_controler_qualite_anonymisation.py` | Compare le pivot original et le fichier anonymisé sur un échantillon stratifié pour détecter de la PII résiduelle. |
+| `interfaces/cli/E1_04_01_reviser_pii_residuelle.py` | Révision humaine persistée des candidats PII résiduelle et export de la liste d'exclusion pour la publication. |
+| `interfaces/cli/E1_05_00_decouper_splits.py` | Répartit (stratifié train/val/test) les exemples du pivot anonymisé, de façon cumulative/incrémentale d'une exécution à l'autre. |
+| `interfaces/cli/E1_05_01_verifier_repartition_splits.py` | Affiche la répartition des splits déjà assignés, par strate (type_exemple, source). |
+| `interfaces/cli/E1_05_02_extraire_sous_ensemble_sft.py` / `E1_05_03_extraire_sous_ensemble_dpo.py` | Extraient les sous-ensembles SFT/DPO publiables (échantillons filtrés, hors périmètre de ce document condensé). |
+
+</td>
+
+</tr>
+</table>
+<table id="etape-1bis-baseline-zero-shot" style="width:100%; margin-left: 2cm;"><tr><td style="background-color:#d4f5b0;">
+<h3 style="border-bottom:none; margin:0;">Étape 1bis — Baseline zero-shot</h3>
+
+
+| Script | Rôle |
+|---|---|
+| `interfaces/cli/E1_06_00_evaluer_baseline.py` | Évalue la baseline zero-shot en local (CPU), via un `llama-server` sur un GGUF quantifié Q4_K_M. |
+| `interfaces/cli/E1_06_01_evaluer_baseline_gpu.py` | Même évaluation baseline zero-shot mais en pleine précision (bf16, transformers) sur un job HF Jobs GPU. |
+
+</td></tr></table>
+
+<table id="etape-2-sft-lora" style="width:100%; margin-left: 2cm;"><tr><td style="background-color:#a6e3ff;">
+<h3 style="border-bottom:none; margin:0;">Étape 2 — SFT + LoRA</h3>
+
+
+| Script | Rôle |
+|---|---|
+| `interfaces/cli/E2_00_formater_dataset_chatml.py` | Point d'entrée autonome pour le rendu ChatML d'un split (mode didactique inclus). |
+| `training/E2_04_sft_train.py` | Point d'entrée d'entraînement SFT-LoRA réel, exécuté via HF Jobs (GPU requis). |
+| `interfaces/cli/E2_05_evaluer_post_sft.py` | Évaluation post-SFT : mêmes métriques/mêmes exemples que les baselines, mais via le modèle base+LoRA réellement entraîné. |
+| `monitoring/app_suivi_entrainement.py`, `monitoring/importer_mlflow_local.py`, `monitoring/reconstruire_courbe_sft_depuis_log.py` | Suivi en direct (Streamlit/HF Space) et historisation locale (MLflow) de la courbe d'entraînement. |
+| `monitoring/generer_presentation_etape2.py` | Régénère la présentation PowerPoint de synthèse à partir des chiffres mesurés (baselines, entraînement, évaluation post-SFT). |
+
+</td></tr></table>
+
+<table id="etape-3-dpo" style="width:100%; margin-left: 2cm;"><tr><td style="background-color:#f5cf47;">
+<h3 style="border-bottom:none; margin:0;">Étape 3 — DPO</h3>
+
+
+| Script | Rôle |
+|---|---|
+| `training/E3_03_dpo_train.py` | Point d'entrée d'entraînement DPO réel (continue le checkpoint SFT-LoRA), exécuté via HF Jobs (GPU requis) ; jamais lancé sur GPU à ce jour. |
+| `interfaces/cli/E3_04_evaluer_post_dpo.py` | Évaluation post-DPO : mêmes métriques/même sous-ensemble que les baselines et le post-SFT, mais via le modèle base+LoRA DPO. |
+
+</td></tr></table>
+
+<table id="etape-4-deploiement" style="width:100%; margin-left: 2cm;"><tr><td style="background-color:#f5b0e0;">
+<h3 style="border-bottom:none; margin:0;">Étape 4 — Déploiement</h3>
+
+
+| Script | Rôle |
+|---|---|
+| `interfaces/api/main.py` | Point d'entrée ASGI de l'API FastAPI de démonstration (`uvicorn interfaces.api.main:app`). |
+| `Dockerfile` | Conteneurise l'API FastAPI seule (pas vLLM, cf. §4.2). |
+| `.github/workflows/ci.yml` | Pipeline CI : suite de tests (sans GPU/vLLM réel) + vérification du build Docker, sur push/PR vers `main`. |
+| `interfaces/web/app_test_inference.py` | Frontend Streamlit de test de l'entretien clinique, exécuté en local par l'opérateur (cf. §4.5). |
+| `deploy/space_gpu_api_vllm/` | Config Docker/GPU combinant API+vLLM pour le Space HF (cf. §4.5). |
+| `monitoring/generer_presentation_soutenance.py` | Régénère le support PowerPoint de soutenance (`docs/00_cadrage/05_presentation_soutenance.pptx`), toutes étapes (données, SFT, DPO, déploiement), à partir des chiffres déjà mesurés et documentés dans ce README. |
+
+</td></tr></table>
+
+<table id="infrastructure" style="width:100%;  margin-left: 2cm;"><tr><td style="background-color:#d9d9d9;">
+<h3 style="border-bottom:none; margin:0;">Infrastructure</h3>
+
+
+| Script | Rôle |
+|---|---|
+| `scripts/check_env_local.py`, `scripts/check_env_gpu.py`, `scripts/check_env_remote_hf.py` | Vérifient que l'environnement (local, GPU, HF) est prêt avant chaque étape. |
+
+</td></tr></table>
+
+Détail de chaque commande dans les sections ci-dessous.
+
+
+
+<table id="1-préparation-de-données" style="width:100%;"><tr><td style="background-color:#b0f58c;">
+<h1 style="border-bottom:none; margin:0;">1. Préparation de données</h1>
+</td></tr></table>
+
+Les 6 fichiers sources sont fusionnés dans un dataset pivot unique, puis
+anonymisés, contrôlés et répartis en splits train/val/test. Prérequis
+d'installation (`uv sync`, modèles spaCy) : voir
+`docs/01_environnement/00_guide_installation_environnement.md`.
+
+<table id="11-télécharger-corpus" style="width:100%;"><tr><td style="background-color:#b0f58c;">
+<h2 style="border-bottom:none; margin:0;">1.1 Télécharger Corpus</h2>
+</td></tr></table>
+
+Télécharge chacun des 6 corpus sources depuis Hugging Face Hub et les
+exporte en JSONL local (`data/raw/`).
+
+```bash
+uv run python interfaces/cli/E1_01_telecharger_corpus.py --identifiant-hub ANR-MALADES/MediQAl --configuration oeq --split test --sortie data/raw/mediqal_oeq.jsonl
+uv run python interfaces/cli/E1_01_telecharger_corpus.py --identifiant-hub ANR-MALADES/MediQAl --configuration mcqu --sortie data/raw/mediqal_mcqu.jsonl
+uv run python interfaces/cli/E1_01_telecharger_corpus.py --identifiant-hub ANR-MALADES/MediQAl --configuration mcqm --sortie data/raw/mediqal_mcqm.jsonl
+
+uv run python interfaces/cli/E1_01_telecharger_corpus.py --identifiant-hub nthngdy/frenchmedmcqa      --sortie data/raw/frenchmedmcqa.jsonl
+uv run python interfaces/cli/E1_01_telecharger_corpus.py --identifiant-hub keivalya/MedQuad-MedicalQnADataset  --sortie data/raw/medquad.jsonl
+uv run python interfaces/cli/E1_01_telecharger_corpus.py --identifiant-hub TsinghuaC3I/UltraMedical-Preference --sortie data/raw/ultramedical_preference.jsonl
+```
+
+Les 6 fichiers sources sont récupérés dans `data/raw/`, prêts pour le
+profilage puis la fusion en dataset pivot.
+
+<table id="12-profiler-corpus" style="width:100%;"><tr><td style="background-color:#b0f58c;">
+<h2 style="border-bottom:none; margin:0;">1.2 Profiler Corpus</h2>
+</td></tr></table>
+
+Génère un rapport ydata-profiling par corpus téléchargé, pour explorer sa
+structure et sa qualité avant de le fusionner dans le pivot.
+
+```bash
+uv run python interfaces/cli/E1_02_profiler_corpus.py --source data/raw/mediqal_oeq.jsonl   --nom MediQAl-oeq
+uv run python interfaces/cli/E1_02_profiler_corpus.py --source data/raw/mediqal_mcqu.jsonl  --nom MediQAl-mcqu
+uv run python interfaces/cli/E1_02_profiler_corpus.py --source data/raw/mediqal_mcqm.jsonl  --nom MediQAl-mcqm
+
+uv run python interfaces/cli/E1_02_profiler_corpus.py --source data/raw/frenchmedmcqa.jsonl           --nom FrenchMedMCQA
+uv run python interfaces/cli/E1_02_profiler_corpus.py --source data/raw/medquad.jsonl                 --nom MedQuAD
+uv run python interfaces/cli/E1_02_profiler_corpus.py --source data/raw/ultramedical_preference.jsonl --nom UltraMedicalPreference
+```
+
+Un rapport HTML par corpus a été généré, utilisé pour décider du mapping
+de chaque source vers le schéma pivot (§1.3).
+
+<table id="13-dataset-pivot" style="width:100%;"><tr><td style="background-color:#b0f58c;">
+<h2 style="border-bottom:none; margin:0;">1.3 Dataset Pivot</h2>
+</td></tr></table>
+
+Fusionne les 6 corpus dans un dataset pivot unique, dédupliqué par un
+identifiant déterministe (hash d'une clé naturelle propre à chaque source).
+
+```bash
+uv run python interfaces/cli/E1_03_00_construire_dataset_pivot.py --source data/raw/mediqal_oeq.jsonl --corpus mediqal_oeq --sortie data/processed/dataset_pivot.jsonl
+uv run python interfaces/cli/E1_03_00_construire_dataset_pivot.py --source data/raw/mediqal_mcqu.jsonl --corpus mediqal_mcqu --sortie data/processed/dataset_pivot.jsonl
+uv run python interfaces/cli/E1_03_00_construire_dataset_pivot.py --source data/raw/mediqal_mcqm.jsonl --corpus mediqal_mcqm --sortie data/processed/dataset_pivot.jsonl
+uv run python interfaces/cli/E1_03_00_construire_dataset_pivot.py --source data/raw/frenchmedmcqa.jsonl --corpus frenchmedmcqa --sortie data/processed/dataset_pivot.jsonl
+uv run python interfaces/cli/E1_03_00_construire_dataset_pivot.py --source data/raw/medquad.jsonl --corpus medquad --sortie data/processed/dataset_pivot.jsonl
+uv run python interfaces/cli/E1_03_00_construire_dataset_pivot.py --source data/raw/ultramedical_preference.jsonl --corpus ultramedical_preference --sortie data/processed/dataset_pivot.jsonl --taille-bloc 5000
+```
+
+Résultat réel : 147 204 enregistrements bruts fusionnés en **134 883
+exemples pivot**, 12 321 doublons exacts détectés et écartés (archivés,
+jamais perdus, dans `data/processed/doublons_supprimes.jsonl`). Cet
+identifiant déterministe a mis au jour de vrais doublons entre sources qui
+étaient invisibles avec des identifiants aléatoires. Détail par source :
+`docs/02_etape1_donnees/00_couverture_exigences_officielles.md`.
+
+<table id="14-anonymisation" style="width:100%;"><tr><td style="background-color:#b0f58c;">
+<h2 style="border-bottom:none; margin:0;">1.4 Anonymisation</h2>
+</td></tr></table>
+
+Anonymise le pivot (Presidio + spaCy) par vagues incrémentales, en écrivant
+dans un fichier **séparé** : le pivot original n'est jamais modifié.
+
+```bash
+uv run python interfaces/cli/E1_04_00_anonymiser_dataset.py --dataset data/processed/dataset_pivot.jsonl --sortie data/processed/dataset_pivot_anonymise.jsonl --strategie replace --limite 5000
+
+# Pour enchaîner les vagues jusqu'à couverture complète du pivot :
+scripts/anonymiser_par_lots.sh data/processed/dataset_pivot.jsonl data/processed/dataset_pivot_anonymise.jsonl replace 5000
+```
+
+Compare ensuite le pivot original et le fichier anonymisé sur un
+échantillon stratifié pour détecter de la PII résiduelle :
+
+```bash
+uv run python interfaces/cli/E1_04_02_controler_qualite_anonymisation.py \
+--dataset data/processed/dataset_pivot.jsonl \
+--anonymise data/processed/dataset_pivot_anonymise.jsonl \
+--taille-echantillon 200
+```
+
+Les candidats laissés en attente par ce contrôle passent par une
+révision humaine persistée (une décision par candidat, jamais reperdue
+d'une exécution à l'autre) :
+
+```bash
+uv run python interfaces/cli/E1_04_01_reviser_pii_residuelle.py verify \
+--dataset data/processed/dataset_pivot.jsonl \
+--anonymise data/processed/dataset_pivot_anonymise.jsonl
+```
+
+L'anonymisation complète des 134 883 exemples a été menée à son terme par
+vagues successives. Chaque exécution génère/fusionne un rapport RGPD cumulé
+(entités détectées par type et par source), et un contrôle qualité par
+comparaison de fichiers (`E1_04_02_controler_qualite_anonymisation.py`)
+plus une révision humaine persistée des cas ambigus
+(`E1_04_01_reviser_pii_residuelle.py`) ferment la boucle de validation
+manuelle exigée par le cahier des charges. Détail complet (recognizer NIR,
+normalisation des âges, méthodologie de révision) :
+`docs/02_etape1_donnees/01_rapport_rgpd.md`.
+
+<table id="15-découpage-en-splits" style="width:100%;"><tr><td style="background-color:#b0f58c;">
+<h2 style="border-bottom:none; margin:0;">1.5 Découpage en Splits</h2>
+</td></tr></table>
+
+Répartit les exemples anonymisés en train/val/test, stratifié par
+(type_exemple, source), de façon cumulative : un exemple déjà réparti n'est
+jamais réassigné à une exécution ultérieure (aucune fuite train/test).
+
+```bash
+uv run python interfaces/cli/E1_05_00_decouper_splits.py --dataset data/processed/dataset_pivot_anonymise.jsonl
+
+# Vérifier la répartition obtenue, par strate :
+uv run python interfaces/cli/E1_05_01_verifier_repartition_splits.py --dataset data/processed/dataset_pivot_anonymise.jsonl
+```
+
+Sur le pivot intégralement anonymisé, les 134 883 exemples ont été répartis
+en splits (37 802 exemples SFT / 97 081 exemples DPO), vérifiés
+représentatifs par strate. Les exemples portant un candidat de PII
+résiduelle non résolu restent volontairement exclus du découpage tant
+qu'aucune décision humaine n'est persistée (§1.4).
+
+Pour publier un sous-ensemble filtré (échantillon stratifié), exporter
+d'abord les identifiants à exclure puis extraire, ici pour le
+sous-ensemble SFT :
+
+```bash
+uv run python interfaces/cli/E1_04_01_reviser_pii_residuelle.py exporter \
+--dataset data/processed/dataset_pivot.jsonl \
+--anonymise data/processed/dataset_pivot_anonymise.jsonl
+
+uv run python interfaces/cli/E1_05_02_extraire_sous_ensemble_sft.py \
+--dataset data/processed/dataset_pivot_anonymise.jsonl \
+--exclusions data/processed/identifiants_a_exclure_publication.jsonl \
+--taille 5000
+```
+
+`E1_05_03_extraire_sous_ensemble_dpo.py` suit exactement le même
+patron (mêmes `--dataset`/`--exclusions`/`--taille`) pour le
+sous-ensemble DPO, en filtrant `type_exemple == DPO` au lieu de SFT.
+
+<table id="2-sft--lora" style="width:100%;"><tr><td style="background-color:#a6e3ff;">
+<h1 style="border-bottom:none; margin:0;">2. SFT + LoRA</h1>
+</td></tr></table>
+
+Architecture hexagonale, deux baselines zero-shot mesurées avant tout
+entraînement, l'entraînement SFT-LoRA réel, et son évaluation.
+
+<table id="21-architecture" style="width:100%;"><tr><td style="background-color:#a6e3ff;">
+<h2 style="border-bottom:none; margin:0;">2.1 Architecture</h2>
+</td></tr></table>
+
+Domaine/ports/adaptateurs : `MoteurInference` (3 adaptateurs réels,
+`LlamaCppInferenceAdapter`/`TransformersInferenceAdapter`/
+`TransformersLoraInferenceAdapter`), `EntraineurSupervise`
+(`TrlSftEntraineurAdapter`), `FormateurConversation`
+(`ChatMLFormateurAdapter`), `SuiviExperimentation` (MLflow/TensorBoard/HF
+dataset). Le CLI didactique ci-dessous exerce le formateur ChatML réel sur
+un split, sans logique de rendu réimplémentée.
+
+```bash
+uv run python interfaces/cli/E2_00_formater_dataset_chatml.py \
+    --dataset data/processed/dataset_pivot_anonymise.jsonl \
+    --split train \
+    --exemples 2
+```
+
+Affiche, pour 2 exemples réels, le tour prompt/completion brut puis le
+texte ChatML final tel que produit par le tokenizer `Qwen/Qwen3-1.7B-Base`,
+confirmant que le rendu utilisé à l'entraînement (§2.3) est bien celui-ci.
+Schéma complet des classes/paquets/déploiement : `docs/diagrams/`.
+
+<table id="22-baseline-evaluation" style="width:100%;"><tr><td style="background-color:#a6e3ff;">
+<h2 style="border-bottom:none; margin:0;">2.2 Baseline Evaluation</h2>
+</td></tr></table>
+
+Deux mesures indépendantes de `Qwen/Qwen3-1.7B-Base` **sans entraînement**,
+sur le même sous-ensemble de 278 exemples `split=test` : CPU quantifié
+Q4_K_M (llama.cpp) et GPU pleine précision bf16 (transformers, HF Jobs),
+pour ne jamais mélanger l'effet de la quantification avec l'effet réel de
+l'entraînement.
+
+```bash
+# CPU (llama.cpp), après avoir démarré un llama-server local :
+LD_LIBRARY_PATH=./llama-b10985 ./llama-b10985/llama-server \
+    -m Qwen3-1.7B-Base.Q4_K_M.gguf --port 8080 -c 1024 -t 2 --no-webui --host 0.0.0.0 --parallel 1
+
+uv run python interfaces/cli/E1_06_00_evaluer_baseline.py \
+    --dataset data/processed/dataset_pivot_anonymise.jsonl \
+    --url-serveur http://127.0.0.1:8080
+
+# GPU (transformers, bf16, HF Jobs) : le job distant lit le sous-ensemble de
+# 278 exemples depuis un dépôt dataset HF dédié, à créer et publier une
+# seule fois au préalable :
+hf repo create mombasstic/chsa-triage-baseline-test --repo-type dataset --private
+hf upload mombasstic/chsa-triage-baseline-test data/splits/dataset_pivot_test_sft.jsonl dataset_pivot_test_sft.jsonl --repo-type dataset
+
+hf jobs uv run \
+    --flavor l4x1 \
+    --with "chsa-triage[remote] @ git+https://github.com/racemartin/m14_ocr.git@main" \
+    --secrets HF_TOKEN \
+    https://raw.githubusercontent.com/racemartin/m14_ocr/main/interfaces/cli/E1_06_01_evaluer_baseline_gpu.py \
+    --dataset-hf-repo mombasstic/chsa-triage-baseline-test \
+    --suivi-hf-repo mombasstic/chsa-triage-baseline-metrics
+```
+
+Résultats réels, mêmes 278 exemples pour les deux runs :
+
+| | Exact match | F1 moyen (token) | Latence moyenne | Échecs d'inférence |
+|---|---|---|---|---|
+| CPU (Q4_K_M) | 0,000 | 0,037 | ~21,6 s | 36/278 |
+| GPU (bf16) | 0,000 | 0,043 | ~7,3 s | 0/278 |
+
+La baseline GPU est plus rapide, plus fiable (zéro échec) et légèrement
+meilleure en F1. Ces deux points zéro servent de référence mesurable pour
+juger l'effet du SFT (§2.5).
+
+Le run GPU (`hf jobs uv run`) journalise sur le dépôt HF
+`mombasstic/chsa-triage-baseline-metrics` (aussi utilisé par
+l'évaluation post-SFT, §2.5) ; pour le parcourir dans un MLflow local
+(voir §2.6) :
+
+```bash
+uv run python monitoring/importer_mlflow_local.py \
+    --repo-id mombasstic/chsa-triage-baseline-metrics \
+    --base-sqlite data/processed/mlflow.db
+```
+
+<table id="23-sft-train" style="width:100%;"><tr><td style="background-color:#a6e3ff;">
+<h2 style="border-bottom:none; margin:0;">2.3 SFT Train</h2>
+</td></tr></table>
+
+Entraînement SFT-LoRA réel (QLoRA 4-bit, rang 16) sur `Qwen/Qwen3-1.7B-Base`,
+lancé sur HF Jobs (GPU L4) via `training/E2_04_sft_train.py`, seul script
+d'entraînement du projet.
+
+Le pivot anonymisé complet est trop volumineux pour être retéléversé à
+chaque lancement : il est monté depuis un dépôt dataset HF dédié, à
+créer et publier une seule fois au préalable :
+
+```bash
+hf repo create mombasstic/chsa-triage-sft-train-data --repo-type dataset --private
+hf upload mombasstic/chsa-triage-sft-train-data data/processed/dataset_pivot_anonymise.jsonl --repo-type dataset
+```
+
+Le dépôt modèle qui recevra les poids LoRA du meilleur essai
+(`--checkpoint-hf-repo` ci-dessous) est optionnel à créer à l'avance :
+le code le crée lui-même (`exist_ok=True`) au premier téléversement s'il
+n'existe pas déjà. Commande manuelle équivalente, pour le créer soi-même
+au préalable (par exemple pour en fixer la visibilité avant tout run) :
+
+```bash
+hf repo create mombasstic/chsa-triage-sft-lora --repo-type model --private
+```
+
+```bash
+hf jobs uv run \
+    --flavor l4x1 \
+    --timeout 6h \
+    --with "chsa-triage[remote] @ git+https://github.com/racemartin/m14_ocr.git@main" \
+    --secrets HF_TOKEN \
+    -v hf://datasets/mombasstic/chsa-triage-sft-train-data:/mnt/train-data \
+    https://raw.githubusercontent.com/racemartin/m14_ocr/main/training/E2_04_sft_train.py \
+    --recette recipes/sft_qwen3_lora.yaml \
+    --dataset /mnt/train-data/dataset_pivot_anonymise.jsonl \
+    --suivi-hf-repo mombasstic/chsa-triage-sft-metrics \
+    --checkpoint-hf-repo mombasstic/chsa-triage-sft-lora \
+    --assistant-only-loss false
+```
+
+Le premier entraînement réel a été mené à son terme avec succès sur GPU L4
+(~20 min, 342 pas, 3 époques) : verdict de convergence **SAINE**, poids
+LoRA publiés durablement sur `mombasstic/chsa-triage-sft-lora`. La courbe
+de perte train/validation de ce run a été reconstruite a posteriori depuis
+le log brut du job (backend de suivi mal configuré à l'origine, corrigé
+depuis) et republiée sur le dépôt de métriques.
+
+Un second run est prévu, uniquement pour capturer en direct la courbe
+d'apprentissage complète (train/validation) via `backend: hf_dataset`
+(le bug de suivi ci-dessus est corrigé depuis), sans toucher au
+checkpoint officiel référencé par `recipes/dpo_qwen3_lora.yaml`
+(`checkpoint_politique_depart: mombasstic/chsa-triage-sft-lora`) : poids
+et métriques publiés sur des dépôts dédiés distincts
+(`mombasstic/chsa-triage-sft-lora-v2` /
+`mombasstic/chsa-triage-sft-metrics-v2`), jamais évalués ni utilisés
+pour poursuivre le DPO. Sans seed fixée dans la recette, ce second run
+n'est pas garanti bit-identique au premier (même jeu de données, mêmes
+hyperparamètres) ; il sert à illustrer la dynamique d'entraînement, pas
+à remplacer le F1 déjà validé du premier run.
+
+```bash
+hf jobs uv run \
+    --flavor l4x1 \
+    --timeout 6h \
+    --with "chsa-triage[remote] @ git+https://github.com/racemartin/m14_ocr.git@main" \
+    --secrets HF_TOKEN \
+    -v hf://datasets/mombasstic/chsa-triage-sft-train-data:/mnt/train-data \
+    https://raw.githubusercontent.com/racemartin/m14_ocr/main/training/E2_04_sft_train.py \
+    --recette recipes/sft_qwen3_lora.yaml \
+    --dataset /mnt/train-data/dataset_pivot_anonymise.jsonl \
+    --suivi-hf-repo mombasstic/chsa-triage-sft-metrics-v2 \
+    --checkpoint-hf-repo mombasstic/chsa-triage-sft-lora-v2 \
+    --assistant-only-loss false
+```
+
+Pour récupérer ces poids en local (inspection directe, hors des
+commandes d'évaluation/entraînement DPO qui les chargent déjà à la
+volée par leur nom de dépôt) :
+
+```bash
+hf download mombasstic/chsa-triage-sft-lora --local-dir outputs/sft-lora-local
+```
+
+**Explication du contenu de la rectte:**
+<div style="margin-left: 2cm;">
+
+---
+
+## 1. Quantification — `BitsAndBytesConfig`
+
+*Intervient au chargement du modèle base.*
+
+| Paramètre | Valeur | À quoi ça sert / ce que ça implique | Autres options |
+|---|---|---|---|
+| `bits` | `4` | Niveau de quantification des poids gelés → divise par 4 la VRAM du modèle base. | 8/16-bit : + précis, + VRAM (**non viable sur GPU commercial**) |
+| `type_quantification` | `nf4` | Type 4-bit optimal pour des poids à distribution ~gaussienne. | `fp4` : moins adapté à cette distribution |
+| `double_quantification` | `true` | Quantifie aussi les constantes d'échelle → économie VRAM supplémentaire. | `false` : pas ce gain (négligeable en vitesse) |
+| `dtype_calcul` | `bfloat16` | Précision de calcul forward/backward, bon range dynamique (GPU Ampere+). | `float16` : risque d'overflow / `float32` : + VRAM |
+
+---
+
+## 2. Adaptateur LoRA — `LoraConfig`
+
+*Intervient à l'injection sur le modèle déjà quantifié.*
+
+| Paramètre | Valeur | À quoi ça sert / ce que ça implique | Autres options |
+|---|---|---|---|
+| `rang (r)` | `16` | Capacité de l'adaptateur ; équilibre VRAM ↔ expressivité. | `r=8` : + léger / `r=32-64` : + capacité, risque de surapprentissage |
+| `alpha` | `32` (2r) | Échelle de ΔW ; règle standard α=2r, stabilise le LR si r change. | `α=r` : échelle plus conservatrice |
+| `dropout` | `0.05` | Régularisation sur l'entrée de la matrice A ; anti-surapprentissage (2246 exemples train). | `0.0` : aucune régularisation / `0.1+` : régularisation renforcée |
+| `modules_cibles` | `q,k,v,o_proj` | Attention seulement → adaptateur léger. | `"all-linear"` (+MLP) : + expressif, + VRAM/paramètres |
+
+---
+
+## 3. Entraînement — `SFTConfig` / `SFTTrainer`
+
+*Intervient à chaque pas d'optimisation.*
+
+| Paramètre | Valeur | À quoi ça sert / ce que ça implique | Autres options |
+|---|---|---|---|
+| `taux_apprentissage` | `2e-4` | Valeur typique pour LoRA — a convergé « saine » dès le 1er essai. | `1e-4` : + prudent / `5e-4` : + rapide, risque d'instabilité |
+| `nombre_epoques` | `3` | Passes complètes sur le dataset ; compromis apprentissage/mémorisation. | `1` : sous-apprentissage probable / `5+` : risque de surapprentissage |
+| `taille_lot` | `4` | Exemples par pas et par GPU, limité par la VRAM disponible. | Valeur + haute si VRAM dispo : + stable, + lent par pas |
+| `type_perte` | `nll` | Cross-entropy standard — imposée par une contrainte de dépendance. | `chunked_nll` : réduit le pic VRAM sur `lm_head` — écarté (trl figé en 0.24.0, sans support) |
+| `assistant_only_loss` | `false` | Perte calculée sur toute la séquence (prompt + réponse), limitation technique connue (cf. `AGENTS.md`), pas un choix délibéré. | `true` (souhaité à terme) : masquerait (`-100`) les tokens system/user, mais **crash garanti** aujourd'hui, car `ExempleFormate` porte du ChatML déjà rendu en texte, pas des messages structurés par tour, seule forme acceptée par `trl.data_utils.is_conversational` |
+| `packing` | `true` | Concatène les exemples courts → GPU utilisé à ~100%. | `false` : padding classique, jusqu'à 40-60% de FLOPs gaspillés |
+
+### ↳ `packing=true` pilote en réalité 3 réglages de `SFTConfig`
+
+> ⚠️ Absents du fichier YAML — tournent actuellement en valeur par défaut de `trl`.
+
+| Paramètre (implicite) | Valeur actuelle | À quoi ça sert / ce que ça implique |
+|---|---|---|
+| `max_seq_length` | défaut trl | Longueur max par bloc empaqueté. Conditionne directement la VRAM (attention O(N²) ou FlashAttention-2 selon N). |
+| `dataset_text_field` | auto (ChatML) | Colonne texte à empaqueter, ignorée car un formatting_func/chat template gère déjà le rendu (notre cas). |
+| `dataset_kwargs` | défaut trl | Ex. `append_concat_token` (ajoute l'EOS entre exemples empaquetés) — **à vérifier explicitement** : un défaut erroné ici = risque de contamination inter-exemples. |
+
+### ↳ `--attn-implementation`/`--liger-kernel` : flags CLI, absents du YAML
+
+> ⚠️ Jamais mesurés empiriquement sur un GPU réel (aucun GPU disponible au moment de l'écriture).
+
+| Paramètre | Valeur par défaut | À quoi ça sert / ce que ça implique |
+|---|---|---|
+| `attn_implementation` | `sdpa` | Intégré à PyTorch, aucune installation/compilation CUDA à part → le moins de risque d'échec sur un environnement cloud pas encore vérifié. Autres optimisations envisagées pour l'entraînement, jamais mesurées faute de GPU : <ul><li><code>sdpa</code> (par défaut, retenu ici)</li><li><code>flash_attention_2</code> : probablement plus rapide, mais nécessite le paquet <code>flash-attn</code> (compilation longue, échoue souvent sans le bon toolchain CUDA)</li><li><code>utiliser_liger_kernel=true</code> : champ réel de <code>trl.SFTConfig</code>, flag indépendant (pas une valeur de <code>attn_implementation</code>)</li><li><code>Unsloth</code> : non branché du tout dans le code, remplacerait tout le chemin de chargement du modèle, décision d'architecture plutôt qu'un simple flag</li></ul> |
+
+---
+
+## 4-5. Grille de secours & Suivi
+
+*4 : si non-convergence · 5 : tout au long du run.*
+
+| Paramètre | Valeur | À quoi ça sert / ce que ça implique | Autres options |
+|---|---|---|---|
+| `grille` (4) | 3×3 | LR `[1e-4, 2e-4, 5e-4]` × rang `[8, 16, 32]` — Optuna écarté pour ce POC. | Non utilisée : convergence « saine » dès le 1er essai |
+| `suivi.backend` (5) | `hf_dataset` | Persiste hors du conteneur HF Jobs (disque non persistant). | `mlflow` : valide en local seulement — a fait perdre une courbe complète |
+| `suivi.nom_experience` | `chsa-triage-sft` | Identifiant regroupant les runs dans le dataset de suivi. | — |
+
+</div>
+
+
+
+<table id="24-sft-lora-train" style="width:100%;"><tr><td style="background-color:#a6e3ff;">
+<h2 style="border-bottom:none; margin:0;">2.4 SFT-LoRA Train</h2>
+</td></tr></table>
+
+Dans ce projet, SFT et LoRA ne sont pas deux étapes distinctes : le seul
+script d'entraînement (`training/E2_04_sft_train.py`, §2.3) applique déjà
+LoRA nativement (QLoRA 4-bit) à chaque run. Il n'existe pas de variante
+« SFT plein » séparée à documenter ici ; la commande et les résultats réels
+sont ceux de la §2.3 ci-dessus.
+
+
+<table id="25-evaluation-post-sft" style="width:100%;"><tr><td style="background-color:#a6e3ff;">
+<h2 style="border-bottom:none; margin:0;">2.5 Evaluation Post-SFT</h2>
+</td></tr></table>
+
+Évalue le modèle réellement entraîné (base + poids LoRA) sur le même
+sous-ensemble de 278 exemples et les mêmes métriques que les baselines
+(§2.2), pour une comparaison directe.
+
+```bash
+hf jobs uv run \
+    --flavor l4x1 \
+    --with "chsa-triage[remote] @ git+https://github.com/racemartin/m14_ocr.git@main" \
+    --secrets HF_TOKEN \
+    https://raw.githubusercontent.com/racemartin/m14_ocr/main/interfaces/cli/E2_05_evaluer_post_sft.py \
+    --dataset-hf-repo mombasstic/chsa-triage-baseline-test \
+    --depot-lora mombasstic/chsa-triage-sft-lora \
+    --suivi-hf-repo mombasstic/chsa-triage-baseline-metrics
+
+# Visualize
+watch -n 5 hf jobs list
+watch -n 5 hf jobs stats   6aaa59765527934177ee9636
+           hf jobs inspect 6aaab9a95527934177eeaac8 --format json | python3 -m json.tool
+           hf jobs logs -f 6aaa59765527934177ee9636
+
+```
+
+**Résultat le plus important du projet à ce jour :**
+
+| | Exact match | F1 moyen (token) | Latence moyenne |
+|---|---|---|---|
+| Baseline CPU (Q4_K_M) | 0,000 | 0,037 | ~21,6 s |
+| Baseline GPU (bf16) | 0,000 | 0,043 | ~7,3 s |
+| **Post-SFT (bf16+LoRA)** | 0,000 | **0,112** | ~11,6 s |
+
+Le F1 token **quasi triple** par rapport à la meilleure baseline (0,043 ->
+0,112), première preuve chiffrée que le SFT a un effet mesurable,
+cohérente avec le verdict de convergence SAINE (§2.3). L'exact match reste
+à 0,000 sur les trois runs : attendu, la métrique exige une correspondance
+caractère-à-caractère avec des réponses de référence en langage libre.
+
+Une fois ces résultats obtenus, régénérer la présentation PowerPoint de
+synthèse (baselines, entraînement, évaluation post-SFT) à partir des
+mêmes chiffres :
+
+```bash
+uv run --with python-pptx python monitoring/generer_presentation_etape2.py
+```
+
+<table id="26-suivi-entrainement" style="width:100%;"><tr><td style="background-color:#a6e3ff;">
+<h2 style="border-bottom:none; margin:0;">2.6 Suivi d'entraînement</h2>
+</td></tr></table>
+
+Pendant un run réel, `training/E2_04_sft_train.py --suivi-hf-repo <repo>`
+publie la courbe de perte en direct sur un dataset HF Hub, lue par un
+dashboard Streamlit déployé sur HF Space :
+
+```bash
+uv run streamlit run monitoring/app_suivi_entrainement.py
+```
+
+Pour parcourir l'historique complet de tous les runs dans l'interface
+MLflow habituelle, sans monter de serveur MLflow distant, importer
+localement les runs du même dépôt HF (idempotent, `--forcer` pour
+réimporter ; même fichier SQLite que l'import de §2.2 pour tout
+retrouver au même endroit) :
+
+```bash
+uv run python monitoring/importer_mlflow_local.py \
+    --repo-id mombasstic/chsa-triage-sft-metrics \
+    --base-sqlite data/processed/mlflow.db
+```
+
+Puis ouvrir l'interface MLflow sur ce même fichier (baseline et SFT
+confondus) :
+
+```bash
+uv run mlflow ui --backend-store-uri sqlite:///data/processed/mlflow.db --host 0.0.0.0 --port 5000
+```
+
+Si la courbe d'un run déjà terminé n'a jamais atteint de backend
+durable (cf. §2.3), elle peut être reconstruite a posteriori depuis le
+log brut du job :
+
+```bash
+uv run python monitoring/reconstruire_courbe_sft_depuis_log.py \
+--log /chemin/vers/le/log.log \
+--nom-run sft-lora-16092026-reconstruit \
+--publier
+```
+
+C'est exactement ce qui a permis de récupérer la courbe du premier run
+réel (job `6aaab9a95527934177eeaac8`, §2.3), republiée avec succès dans
+le même dépôt de métriques.
+
+<table id="3-dpo" style="width:100%;"><tr><td style="background-color:#f5cf47;">
+<h1 style="border-bottom:none; margin:0;">3. DPO</h1>
+</td></tr></table>
+
+<table id="31-architecture" style="width:100%;"><tr><td style="background-color:#f5cf47;">
+<h2 style="border-bottom:none; margin:0;">3.1 Architecture &amp; vérification</h2>
+</td></tr></table>
+
+Code complet implémenté et testé : les 13 étapes du guide
+(`docs/04_etape3_dpo/03_guide_implementation_pas_a_pas.md`), du domaine
+(port `EntraineurPreference`, cas d'usage `ReformulerPreferenceDpoUseCase`
+/ `FormaterDatasetChatMLPreferenceUseCase` / `EntrainerDpoUseCase`)
+jusqu'à l'adaptateur `TrlDpoEntraineurAdapter` et au point d'entrée
+`training/E3_03_dpo_train.py` (recette `recipes/dpo_qwen3_lora.yaml`),
+qui continue le checkpoint SFT-LoRA déjà entraîné
+(`mombasstic/chsa-triage-sft-lora`, §2.3). Suite complète : 428 tests
+passent, 4 ignorés (GPU absent).
+
+<table id="31-sous-ensemble-reduit" style="width:100%;"><tr><td style="background-color:#f5cf47;">
+<h2 style="border-bottom:none; margin:0;">3.1 Sous-ensemble réduit pour un prmier DPO Train</h2>
+</td></tr></table>
+
+Sous-ensemble réduit pour une vérification de lancement (même patron
+que l'extraction SFT, §1.5) :
+
+```bash
+uv run python interfaces/cli/E1_05_03_extraire_sous_ensemble_dpo.py \
+    --dataset data/processed/dataset_pivot_anonymise.jsonl \
+    --exclusions data/processed/identifiants_a_exclure_publication.jsonl \
+    --taille 100
+```
+
+Publié sur un dépôt dataset HF dédié (même patron que §2.3) :
+
+```bash
+hf repo create mombasstic/chsa-triage-dpo-train-data --repo-type dataset --private
+hf upload mombasstic/chsa-triage-dpo-train-data data/processed/dataset_chsa_triage_dpo_anonymise_100.jsonl --repo-type dataset
+```
+
+Commande de lancement réelle (vérification sur le sous-ensemble de
+100), déjà exécutée à plusieurs reprises sur GPU réel — voir les
+résultats réels ci-dessous :
+
+```bash
+# Si on considere: 
+# -v hf://datasets/mombasstic/chsa-triage-dpo-train-data:/mnt/train-data
+#                 └────────── origen ──────────┘         └─ destino ─┘
+
+hf jobs uv run \
+    --flavor l4x1 \
+    --timeout 2h \
+    --with "chsa-triage[remote] @ git+https://github.com/racemartin/m14_ocr.git@main" \
+    --secrets HF_TOKEN \
+    -v hf://datasets/mombasstic/chsa-triage-dpo-train-data:/mnt/train-data \
+    https://raw.githubusercontent.com/racemartin/m14_ocr/main/training/E3_03_dpo_train.py \
+    --recette recipes/dpo_qwen3_lora.yaml \
+    --dataset /mnt/train-data/dataset_chsa_triage_dpo_anonymise_100.jsonl \
+    --suivi-hf-repo mombasstic/chsa-triage-dpo-metrics \
+    --checkpoint-hf-repo mombasstic/chsa-triage-dpo-lora \
+    --skip-reformulation
+```
+
+Tout a été vérifié sans GPU (même méthode que pour le SFT avant son
+premier run réel : installation temporaire de `trl`/`peft` pour
+confirmer les signatures) ; deux bugs réels trouvés et corrigés au
+passage : le chat template natif de Qwen3 retirait le bloc `<think>`
+d'un `chosen` reformulé, et la désérialisation d'un checkpoint DPO
+levait une `TypeError`. Schéma conceptuel de la double fonction d'une
+seule passe DPO (préférence clinique + format de sortie JSON
+contractuel) :
+[`docs/diagrams/04_etape3_dpo/activite/dpo_double_fonction_entrainement.png`](docs/diagrams/04_etape3_dpo/activite/dpo_double_fonction_entrainement.png).
+
+<table id="32-entrainement-dpo" style="width:100%;"><tr><td style="background-color:#f5cf47;">
+<h2 style="border-bottom:none; margin:0;">3.2 Entraînement DPO</h2>
+</td></tr></table>
+
+**Runs réels sur le sous-ensemble de 100 (2026-09-22)** — trois
+lancements réels, chacun diagnostiqué à partir de preuves réelles avant
+le suivant :
+
+1. `6ab2c3e552d0dbd7f1d7fcd1` (`taux_apprentissage=5e-6`,
+   `taille_lot=4`) : boucle d'entraînement complète avec succès (premier
+   run DPO réel du projet à y parvenir), mais l'évaluation post-époque
+   plante en `CUDA OutOfMemoryError`
+   (`DPOTrainer.evaluation_loop → concatenated_forward`). Cause racine
+   vérifiée (pas une hypothèse) : `per_device_eval_batch_size` n'était
+   jamais fixé, défaut réel `transformers.TrainingArguments` = 8, le
+   double du lot d'entraînement. Corrigé (commit `250ce41`) en fixant
+   `per_device_eval_batch_size=taille_lot` dans `TrlDpoEntraineurAdapter`.
+2. `6ab2d7ee51992417dfcd40cd` (`taux_apprentissage=5e-6`,
+   `taille_lot=1`) : premier run complet bout-en-bout (entraînement +
+   évaluation). Verdict `sous_apprentissage` ; `rewards/accuracies=0.30`
+   (pire que le hasard), `rewards/margins` négatif. `taille_lot` avait
+   été temporairement abaissé à 1 avant que la vraie cause de l'OOM
+   ci-dessus soit identifiée — un lot de 1 donne un gradient très
+   bruité, ce qui a probablement aggravé le sous-apprentissage.
+3. Run suivant (`taux_apprentissage=5e-5`, `taille_lot=4`, recette
+   corrigée d'après le point 2) : net progrès réel —
+   `rewards/accuracies` passe de 0.30 à 0.625 (train) / 0.75 (éval),
+   `rewards/margins` redevient positif (0.72 train / 0.60 éval),
+   `rewards/chosen` > `rewards/rejected` comme attendu. Verdict encore
+   `sous_apprentissage`, mais ce verdict (`application/verdict_convergence.py`)
+   ne regarde QUE la baisse relative de la perte d'entraînement brute
+   (seuil `SEUIL_BAISSE_TRAIN_RELATIVE_MINIMALE=0.05`, hérité tel quel
+   du SFT, cf. commentaire de `E3_02_uc_entrainer_dpo.py`) — il ignore
+   `rewards/accuracies`/`rewards/margins`, les métriques réellement
+   pertinentes pour juger un DPO. Probable faux négatif de ce verdict
+   sur DPO plutôt qu'un vrai échec d'apprentissage ; à recalibrer
+   spécifiquement pour DPO si ce signal se confirme sur un run plus
+   grand.
+
+<table id="31-5000-exemples" style="width:100%;"><tr><td style="background-color:#f5cf47;">
+<h2 style="border-bottom:none; margin:0;">3.2 Évaluation DPO avec 5000 exemples</h2>
+</td></tr></table>
+
+**Run complet, 5000 exemples (cahier des charges §7, Livrable 1)** —
+même patron exact, extraction locale puis publication et lancement :
+
+```bash
+uv run python interfaces/cli/E1_05_03_extraire_sous_ensemble_dpo.py \
+    --dataset data/processed/dataset_pivot_anonymise.jsonl \
+    --exclusions data/processed/identifiants_a_exclure_publication.jsonl \
+    --taille 5000
+```
+
+```bash
+hf upload mombasstic/chsa-triage-dpo-train-data data/processed/dataset_chsa_triage_dpo_anonymise_5000.jsonl --repo-type dataset
+```
+
+```bash
+hf jobs uv run \
+    --flavor l4x1 \
+    --timeout 2h \
+    --with "chsa-triage[remote] @ git+https://github.com/racemartin/m14_ocr.git@main" \
+    --secrets HF_TOKEN \
+    -v hf://datasets/mombasstic/chsa-triage-dpo-train-data:/mnt/train-data \
+    https://raw.githubusercontent.com/racemartin/m14_ocr/main/training/E3_03_dpo_train.py \
+    --recette recipes/dpo_qwen3_lora.yaml \
+    --dataset /mnt/train-data/dataset_chsa_triage_dpo_anonymise_5000.jsonl \
+    --suivi-hf-repo mombasstic/chsa-triage-dpo-metrics \
+    --checkpoint-hf-repo mombasstic/chsa-triage-dpo-lora \
+    --skip-reformulation
+```
+
+**Résultat réel (2026-09-22→23)** : job `6ab2ff0c52d0dbd7f1d80b0b`,
+checkpoint `165d4040855abb6a` (`outputs/dpo-lora/run-20260922T222105Z`),
+durée réelle **1h44** (nettement au-dessus de l'estimation ~30-60 min
+faite avant lancement — sous-estimée, cause probable :
+`precompute_ref_log_probs: false` combiné à un split de validation 6x
+plus grand que la vérification à 100). Verdict de convergence
+**`saine`** — premier verdict sain de tout le projet en DPO. Métriques
+de récompense : `rewards/chosen=-1,72`, `rewards/rejected=-4,72`,
+`rewards/accuracies=0,725` (72,5 %), `rewards/margins=+3,00`. Confirme
+la lecture faite après le run à 100 exemples (point 3 ci-dessus) : le
+verdict `sous_apprentissage` était bien un faux négatif dû au trop peu
+de pas réels, pas un échec d'apprentissage — avec assez de données
+(3992 exemples train réels, ~998 pas), la perte d'entraînement bouge
+assez pour que le même seuil hérité du SFT reconnaisse la convergence.
+Poids publiés sur `mombasstic/chsa-triage-dpo-lora`.
+
+Pour parcourir la courbe d'entraînement DPO dans l'interface MLflow
+locale habituelle (même fichier SQLite que les imports précédents,
+§2.2/§2.6, tout regroupé au même endroit) :
+
+```bash
+uv run python monitoring/importer_mlflow_local.py \
+    --repo-id mombasstic/chsa-triage-dpo-metrics \
+    --base-sqlite data/processed/mlflow.db
+```
+
+Pour récupérer les poids LoRA en local (inspection directe, hors des
+commandes d'évaluation/`vllm serve` qui les chargent déjà à la volée
+par leur nom de dépôt, §3.3/§4.1) :
+
+```bash
+hf download mombasstic/chsa-triage-dpo-lora --local-dir outputs/dpo-lora-local
+```
+
+<table id="33-evaluation-post-dpo" style="width:100%;"><tr><td style="background-color:#f5cf47;">
+<h2 style="border-bottom:none; margin:0;">3.3 Évaluation post-DPO</h2>
+</td></tr></table>
+
+Évaluation post-DPO (mêmes métriques/même sous-ensemble que les
+baselines et le post-SFT, §2.2/§2.5, quatrième réemploi sans
+modification d'`EvaluerBaselineZeroShotUseCase`, même patron exact que
+le post-SFT), réellement exécutée sur le checkpoint sain ci-dessus :
+
+```bash
+hf jobs uv run \
+    --flavor l4x1 \
+    --with "chsa-triage[remote] @ git+https://github.com/racemartin/m14_ocr.git@main" \
+    --secrets HF_TOKEN \
+    https://raw.githubusercontent.com/racemartin/m14_ocr/main/interfaces/cli/E3_04_evaluer_post_dpo.py \
+    --dataset-hf-repo mombasstic/chsa-triage-baseline-test \
+    --depot-lora mombasstic/chsa-triage-dpo-lora \
+    --suivi-hf-repo mombasstic/chsa-triage-baseline-metrics
+```
+
+**Résultat réel, comparaison directe des quatre runs (mêmes 278
+exemples) :**
+
+| | Exact match | F1 moyen (token) | Latence moyenne |
+|---|---|---|---|
+| Baseline CPU (Q4_K_M) | 0,000 | 0,037 | ~21,6 s |
+| Baseline GPU (bf16) | 0,000 | 0,043 | ~7,3 s |
+| Post-SFT (bf16+LoRA) | 0,000 | **0,112** | ~11,6 s |
+| Post-DPO (bf16+LoRA) | 0,000 | 0,049 | ~12,0 s |
+
+Résultat inattendu et net : le F1 **régresse** après DPO (0,112 ->
+0,049), retombant quasiment au niveau de la baseline GPU seule (0,043).
+Exactitude classification niveau ESI non calculable (0/278 sorties au
+format JSON `{niveau, categorie, ressources_estimees}` attendu).
+
+**Cause réelle confirmée (23/09/2026), par inspection directe des
+sorties générées** (`echantillon_generations`, cf.
+`EvaluerBaselineZeroShotUseCase`) : ce n'est pas qu'une perte du format
+JSON. Le modèle post-DPO **dégénère** sur une partie réelle des
+exemples — changements de langue aléatoires (questions EN/FR
+répondues en japonais/chinois/arabe) et effondrements en répétitions
+(un paragraphe recopié tel quel, ou des dizaines de "-" à la suite).
+`--repetition-penalty 1.2` à l'évaluation atténue partiellement
+(F1 0,049 -> 0,063) mais ne résout ni les changements de langue ni
+tous les effondrements : signe cohérent d'un ancrage trop faible au
+modèle de référence pendant le DPO (`rewards/margins=+3,00` est très
+élevé pour `beta=0,1`), pas seulement d'un paramètre de décodage à
+l'évaluation. `beta` relevé à `0,3` dans la recette pour tester cette
+hypothèse (à valider sur le run pas cher à 100 avant de rengager un
+run à 5000).
+
+Le découplage reformulation/DPO (chosen non reformulé,
+`--skip-reformulation`) reste une cause probable et distincte de la
+perte spécifique du format JSON (0/278 sorties valides) : la mission
+réelle ne demande que l'alignement SFT+DPO sur les paires de
+préférence, le format JSON est un ajout du cahier des charges local
+(F3/F4) désormais visé au moment de l'inférence (Étape 4). Mais la
+dégénérescence de fluidité/langue ci-dessus est un problème distinct,
+à résoudre côté entraînement (beta) avant de considérer le compromis
+format acceptable tel quel.
+
+**Journal des runs DPO (paramètres d'entrée -> métriques de sortie),
+pour comparaison directe :**
+
+| Run (job / eval) | Date | taux_apprentissage | taille_lot | beta | Taille dataset | Verdict | rewards/accuracies | rewards/margins |
+|---|---|---|---|---|---|---|---|---|
+| `6ab2c3e552d0dbd7f1d7fcd1` | 22/09 | 5e-6 | 4 | 0,1 | 100 | (OOM éval, corrigé depuis) | — | — |
+| `6ab2d7ee51992417dfcd40cd` | 22/09 | 5e-6 | 1 | 0,1 | 100 | sous_apprentissage | 0,30 | -1,25 |
+| (100, taux relevé) | 22/09 | 5e-5 | 4 | 0,1 | 100 | sous_apprentissage | 0,625 / 0,75 (éval) | +0,72 / +0,60 (éval) |
+| `6ab2ff0c52d0dbd7f1d80b0b` | 22-23/09 | 5e-5 | 4 | 0,1 | 5000 | **saine** | 0,725 | **+3,00** |
+| `6ab3c06852d0dbd7f1d84adc` | 23/09 | 5e-5 | 4 | **0,3** | 100 | sous_apprentissage (attendu à cette taille, cf. note ci-dessus) | 0,60 | 1,93 (marge non comparable entre beta differents, cf. definition beta×log-ratio) |
+| `6ab3f52a51992417dfcd7fe5` | 23/09 | 5e-5 | 4 | **0,3** | 5000 | **saine** | **0,75** | 4,84 (marge non comparable entre beta differents) |
+
+| Évaluation post-DPO (checkpoint `mombasstic/chsa-triage-dpo-lora`) | Date | beta du checkpoint | repetition_penalty | Exact match | F1 (token) | Latence moy. |
+|---|---|---|---|---|---|---|
+| `6ab3933152d0dbd7f1d83a16` | 23/09 | 0,1 | — | 0,000 | 0,049 | ~12,0 s |
+| `6ab3adaa52d0dbd7f1d8445b` | 23/09 | 0,1 | 1,2 | 0,000 | 0,063 | ~11,9 s |
+| `6ab3c38a52d0dbd7f1d84c5c` | 23/09 | **0,3** | 1,2 | 0,000 | **0,112** | ~10,7 s |
+| `6ab40ee752d0dbd7f1d86485` | 23/09 | **0,3** (5000) | 1,2 | 0,000 | **0,110** | ~11,2 s |
+
+**`beta=0,3` + `repetition_penalty=1,2` ramène le F1 au niveau du
+post-SFT, ET ce gain TIENT à l'échelle réelle** : 0,112 sur le
+checkpoint pas cher à 100 exemples, 0,110 sur le run complet à 5000
+(job `6ab3f52a51992417dfcd7fe5`, verdict `saine`, `rewards/accuracies=0,75`)
+— essentiellement le même niveau, aucune régression en passant à
+l'échelle. Confirme que la dégénérescence venait bien d'un ancrage
+trop faible à `pi_ref`, pas d'un problème de décodage seul ou du
+découplage reformulation. `beta=0,3` est désormais l'hyperparamètre
+retenu pour ce projet.
+
+
+<table id="4-deploiement" style="width:100%;"><tr><td style="background-color:#f5b0e0;">
+<h1 style="border-bottom:none; margin:0;">4. Déploiement</h1>
+</td></tr></table>
+
+Code écrit et testé (`uv run pytest tests/ -q`, 433 passed / 5 skipped
+au moment de l'écriture), jamais déployé réellement (aucun Space HF ni
+job GPU lancés dans cette tâche, cf. décision de conception ci-dessous).
+Décisions de conception actées (roadmap
+[`docs/diagrams/00_vue_ensemble/activite/roadmap_activite.png`](docs/diagrams/00_vue_ensemble/activite/roadmap_activite.png)) :
+le LoRA DPO n'est jamais fusionné avec la base (vLLM le sert nativement,
+`--enable-lora`) ; F1 (entretien adaptatif) et F3/F4 (JSON strict +
+`<think>`) sont traités au niveau du prompting à l'inférence, jamais
+ré-appris pendant l'entraînement (cf. §3 ci-dessus) ; le garde-fou de
+sécurité clinique NF4 (juge LLM, `safety < 4/7`) reste un point
+d'extension documenté (TODO explicite dans
+`E4_01_uc_obtenir_diagnostic.py`), décision produit encore ouverte.
+
+<table id="41-adaptateur-vllm" style="width:100%;"><tr><td style="background-color:#f5b0e0;">
+<h2 style="border-bottom:none; margin:0;">4.1 Adaptateur vLLM</h2>
+</td></tr></table>
+
+`VllmEndpointInferenceAdapter`
+(`src/chsa_triage/infrastructure/adapters/vllm_endpoint_inference_adapter.py`)
+implémente le port `MoteurInference` existant (même port que
+`LlamaCppInferenceAdapter`/`TransformersLoraInferenceAdapter`, aucun
+nouveau port) via une requête HTTP `POST /v1/chat/completions` vers un
+serveur vLLM (API compatible OpenAI). Testé avec un faux client HTTP en
+mémoire (`tests/infrastructure/test_vllm_endpoint_inference_adapter.py`),
+aucun serveur vLLM/GPU réel n'étant provisionné dans cet environnement.
+
+**Commande réelle, exécutée avec succès (23/09/2026)** : LoRA DPO servi
+nativement, sans fusion préalable avec la base. `hf jobs run` (PAS
+`hf jobs uv run`, qui attend un script Python) avec l'image officielle
+`vllm/vllm-openai:latest` ; le nom du binaire (`vllm serve ...`) doit
+être passé explicitement en premier (l'entrypoint de l'image ne
+préfixe pas automatiquement les arguments sur `hf jobs run`, contrairement
+à `docker run` standard) :
+
+```bash
+hf jobs run \
+    --flavor l4x1 \
+    --timeout 30m \
+    --secrets HF_TOKEN \
+    --expose 8000 \
+    vllm/vllm-openai:latest \
+    vllm serve Qwen/Qwen3-1.7B-Base \
+    --enable-lora \
+    --lora-modules dpo=mombasstic/chsa-triage-dpo-lora \
+    --max-lora-rank 16
+```
+
+`--max-lora-rank 16` fixé explicitement (rang réel du LoRA, cf. recette
+DPO) plutôt que de compter sur le défaut vLLM. `--expose 8000` rend le
+port joignable via le proxy public des Jobs (avec un token HF ayant
+accès en lecture au namespace du job), sans passer par `hf jobs ssh`.
+
+Récupérer l'URL réelle exposée et vérifier que le serveur répond :
+
+```bash
+hf jobs inspect <job_id>   # champ endpoint.expose_urls, ex. https://<job_id>--8000.hf.jobs
+
+curl -H "Authorization: Bearer $(cat ~/.cache/huggingface/token)" \
+    https://<job_id>--8000.hf.jobs/health
+
+curl -H "Authorization: Bearer $(cat ~/.cache/huggingface/token)" \
+    https://<job_id>--8000.hf.jobs/v1/models
+```
+
+`/v1/models` doit lister `Qwen/Qwen3-1.7B-Base` ET `dpo` (`root:
+mombasstic/chsa-triage-dpo-lora`). Confirmé réel : les deux apparaissent
+bien après le démarrage complet du serveur (`Application startup
+complete` dans les logs du job).
+
+**Important** : contrairement aux jobs d'entraînement/évaluation
+(`hf jobs uv run`), `vllm serve` est un serveur qui NE S'ARRÊTE JAMAIS
+tout seul — il continue à facturer du GPU tant qu'il tourne, même sans
+requête. Toujours passer `--timeout` comme filet de sécurité, et
+annuler manuellement dès la fin des tests plutôt que d'attendre le
+timeout :
+
+```bash
+hf jobs cancel <job_id>
+```
+
+<table id="42-api-fastapi" style="width:100%;"><tr><td style="background-color:#f5b0e0;">
+<h2 style="border-bottom:none; margin:0;">4.2 API FastAPI</h2>
+</td></tr></table>
+
+`interfaces/api/` (F1/F2/F3/F4/F6/F7) : entretien clinique multi-tours
+(`POST /conversations`, `POST /conversations/{id}/messages`) et bouton
+explicite "obtenir le diagnostic" (`POST /conversations/{id}/diagnostic`,
+jamais déclenché automatiquement par le modèle), tous protégés par une
+clé API (en-tête `X-API-Key`) sauf `GET /sante`. Chaque tour et chaque
+appel diagnostic sont consignés dans un journal d'audit append-only
+(F6 : horodatage, entrée, sortie, version du modèle), via l'un de deux
+adaptateurs sélectionnables par variable d'environnement (`CHSA_JOURNAL_AUDIT`,
+même patron que `CHSA_MOTEUR_INFERENCE`) : `JsonlJournalAudit` (défaut,
+fichier local, **perdu à chaque redémarrage du Space Docker/GPU**,
+filesystem éphémère, aucun stockage persistant HF payant activé) ou
+`HfDatasetJournalAudit` (`CHSA_JOURNAL_AUDIT=hf_dataset`, persistance
+gratuite via un dataset HF Hub et un `huggingface_hub.CommitScheduler`,
+même mécanisme déjà réel/testé pour le suivi d'expérimentation,
+cf. `HfDatasetSuiviExperimentation`/AGENTS.md). Testé de bout en bout via
+`fastapi.testclient.TestClient` avec un faux `MoteurInference`/`JournalAudit`
+en mémoire (`tests/interfaces/test_app_api.py`), et lancé réellement en
+local le temps de cette tâche (`uvicorn`, mode `local`/llama.cpp) pour
+confirmer que le serveur démarre et répond.
+
+```bash
+uv sync --extra api --extra local
+```
+
+```bash
+export CHSA_CLE_API_DEMO="change-moi"
+export CHSA_MOTEUR_INFERENCE=distant          # ou "local" (llama.cpp, dev sans GPU)
+export CHSA_URL_MOTEUR_INFERENCE="http://127.0.0.1:8000"
+export CHSA_NOM_MODELE_VLLM=dpo
+
+# Journal d'audit F6 : "jsonl" (défaut, fichier local, perdu au redémarrage
+# du Space) ou "hf_dataset" (persistance gratuite via un dataset HF Hub) :
+export CHSA_JOURNAL_AUDIT=hf_dataset
+export CHSA_JOURNAL_AUDIT_REPO="mombasstic/chsa-triage-audit-journal"
+
+uv run uvicorn interfaces.api.main:app --host 0.0.0.0 --port 7860
+```
+
+Dépôt dataset HF à créer une seule fois au préalable (mode `hf_dataset`
+seulement ; `HF_TOKEN`, déjà nécessaire ailleurs dans ce projet pour ce
+même mécanisme, cf. §2.6, doit être défini) :
+
+```bash
+hf repo create mombasstic/chsa-triage-audit-journal --repo-type dataset --private
+```
+
+```bash
+curl -s -X POST http://127.0.0.1:7860/conversations -H "X-API-Key: change-moi"
+curl -s -X POST http://127.0.0.1:7860/conversations/<id>/messages \
+    -H "X-API-Key: change-moi" -H "Content-Type: application/json" \
+    -d '{"message": "Douleur thoracique depuis ce matin."}'
+curl -s -X POST http://127.0.0.1:7860/conversations/<id>/diagnostic -H "X-API-Key: change-moi"
+```
+
+<table id="43-conteneurisation-docker" style="width:100%;"><tr><td style="background-color:#f5b0e0;">
+<h2 style="border-bottom:none; margin:0;">4.3 Conteneurisation Docker</h2>
+</td></tr></table>
+
+`Dockerfile` conteneurise l'API FastAPI **seule** (pas vLLM dans la même
+image) : vLLM tourne comme un service séparé, appelé en HTTP par
+`VllmEndpointInferenceAdapter` (`CHSA_URL_MOTEUR_INFERENCE`) exactement
+comme en local. Choix documenté dans le `Dockerfile` lui-même : vLLM
+demande un pilote GPU/CUDA dans le conteneur hôte, hors de portée d'une
+image API générique visant HF Spaces (Docker SDK) ; c'est le choix le
+plus simple à faire fonctionner et à reconstruire rapidement pour un POC.
+
+```bash
+docker build -t chsa-triage-api .
+docker run --rm -p 7860:7860 \
+    -e CHSA_CLE_API_DEMO="change-moi" \
+    -e CHSA_MOTEUR_INFERENCE=distant \
+    -e CHSA_URL_MOTEUR_INFERENCE="http://host.docker.internal:8000" \
+    chsa-triage-api
+```
+
+**Non vérifié dans cette tâche** : `docker` n'est pas utilisable depuis
+ce bac à sable (WSL2 sans intégration Docker Desktop) ; le build/run
+ci-dessus n'a donc pas pu être exécuté réellement ici. Les flags `uv
+sync`/`--frozen` utilisés dans le `Dockerfile` ont été vérifiés
+séparément (le `uv.lock` du dépôt résout déjà l'extra `api`).
+
+<table id="44-cicd" style="width:100%;"><tr><td style="background-color:#f5b0e0;">
+<h2 style="border-bottom:none; margin:0;">4.4 CI/CD</h2>
+</td></tr></table>
+
+`.github/workflows/ci.yml` : sur push/PR vers `main`, deux jobs
+séquentiels, aucun déploiement réel. `tests` installe `dev`+`local`+`api`
+(mêmes extras que ceux réellement utilisés dans cette tâche pour faire
+passer la suite complète sans GPU) plus `pyyaml` séparément (nécessaire
+à `training/E2_04_sft_train.py`/`E3_03_dpo_train.py`, autrement
+réservé à l'extra `remote`, cf. AGENTS.md), puis lance
+`uv run pytest tests/ -q`. `docker-build` (après `tests`) reconstruit
+l'image de l'API pour vérifier que le `Dockerfile` build, sans jamais
+la publier ni la déployer. Secrets (`HF_TOKEN` ou autre) : via GitHub
+Actions Secrets si un futur job en a besoin, jamais en dur dans le
+workflow.
+
+
+<table id="45-healthcheck-vllm-et-frontend-streamlit-de-test" style="width:100%;"><tr><td style="background-color:#f5b0e0;">
+<h2 style="border-bottom:none; margin:0;">4.5 Healthcheck vLLM et frontend Streamlit de test</h2>
+</td></tr></table>
+
+Architecture de déploiement retenue (décision produit du 24/09/2026,
+**à 2 pièces**) :
+
+- Un unique Space HF **Docker/GPU** (coûteux, à n'allumer que pendant
+  les tests) : API FastAPI + serveur vLLM, préparé dans
+  [`deploy/space_gpu_api_vllm/`](deploy/space_gpu_api_vllm/)
+  (`Dockerfile`, `demarrer.sh`, `README_space.md`), séparé du
+  `Dockerfile` racine (qui reste l'image API **seule**, cf. §4.3).
+- Le frontend Streamlit de test de l'entretien clinique
+  ([`interfaces/web/`](interfaces/web/), `app_test_inference.py`,
+  `logica_test_inference.py`, `requirements.txt`) : exécuté **en
+  local** par l'opérateur humain, jamais publié comme Space HF séparé.
+  Un Space Docker rien que pour Streamlit exigerait soit un abonnement
+  HF PRO (sur le hardware gratuit `cpu-basic`), soit du hardware
+  payant, alors que ce frontend ne fait qu'appeler l'API en HTTP, sans
+  aucun calcul GPU : le faire tourner en local marche exactement aussi
+  bien pour ce POC, sans les complications de facturation d'un Space
+  dédié (l'ancienne cible à 3 pièces, `interfaces/web/README_space.md`,
+  est abandonnée).
+
+Ce frontend local ne sait jamais à l'avance si le Space GPU est
+allumé : il sonde `GET /sante` en boucle et affiche un état d'attente
+clair tant que le modèle n'est pas prêt, sans synchronisation manuelle
+des deux démarrages. `/sante`
+(`interfaces/api/app.py`) interroge à son tour le `/health` natif de
+`vllm serve` et retourne toujours HTTP 200 (jamais une erreur de
+connexion brute), avec un corps structuré `{"disponible": ...,
+"detail": ...}` : un Docker HEALTHCHECK qui redémarrerait le conteneur
+API parce que vLLM met du temps à charger le modèle n'aiderait en rien.
+Testé avec un double en mémoire du serveur vLLM
+(`tests/interfaces/test_app_api.py`,
+`tests/infrastructure/test_vllm_endpoint_inference_adapter.py`), aucun
+GPU/vLLM réel requis.
+
+**Publier/mettre à jour le code sur le Space GPU réel** (chaque
+commande cible exactement le chemin attendu par le `COPY` du
+`Dockerfile` de ce dossier — un chemin aplati au lieu du chemin imbriqué
+attendu casse silencieusement le build, cf. section Dépannage) :
+
+```bash
+hf upload mombasstic/chsa-triage-api deploy/space_gpu_api_vllm/Dockerfile Dockerfile --repo-type space
+hf upload mombasstic/chsa-triage-api deploy/space_gpu_api_vllm/demarrer.sh deploy/space_gpu_api_vllm/demarrer.sh --repo-type space
+hf upload mombasstic/chsa-triage-api src src --repo-type space
+hf upload mombasstic/chsa-triage-api interfaces interfaces --repo-type space
+hf upload mombasstic/chsa-triage-api training training --repo-type space
+hf upload mombasstic/chsa-triage-api monitoring monitoring --repo-type space
+hf upload mombasstic/chsa-triage-api deploy/space_gpu_api_vllm/README_space.md README.md --repo-type space
+```
+
+`pyproject.toml`/`uv.lock` ne sont **plus** nécessaires depuis le
+passage à l'image officielle `vllm/vllm-openai` (plus de `uv sync`
+dans ce `Dockerfile`, cf. section Dépannage) — ne pas les publier ici
+sans mettre le `Dockerfile` à jour en conséquence.
+
+Redémarrer pour appliquer les changements, puis vérifier :
+
+```bash
+hf spaces restart mombasstic/chsa-triage-api
+curl https://mombasstic-chsa-triage-api.hf.space/sante
+```
+
+```bash
+uv sync --extra web
+# Exemple illustratif : remplacer par l'URL réelle du Space Docker/GPU
+# une fois publié (cf. bullet ci-dessus), ou par http://127.0.0.1:7860
+# pour tester contre une API lancée en local (§4.2/§4.3).
+export CHSA_API_URL_BASE="https://mombasstic-chsa-triage-api.hf.space"
+export CHSA_API_CLE="change-moi"
+uv run streamlit run interfaces/web/app_test_inference.py
+```
+
+<table id="46-guide-rapide-de-deploiement" style="width:100%;"><tr><td style="background-color:#f5b0e0;">
+<h2 style="border-bottom:none; margin:0;">4.6 Guide rapide de déploiement</h2>
+</td></tr></table>
+
+Séquence complète, dans l'ordre idéal (chemin heureux, sans les
+détours de mise au point réels documentés en section Dépannage), du
+Space vide jusqu'à l'interface de dialogue.
+
+**1. Créer le Space Docker/GPU** (une seule fois)
+```bash
+hf repo create mombasstic/chsa-triage-api --repo-type space --space-sdk docker
+hf spaces settings mombasstic/chsa-triage-api --hardware l4x1
+```
+
+**2. Configurer le secret `HF_TOKEN`** (nécessaire pour le LoRA privé et le journal d'audit sur dataset HF)
+```bash
+python3 -c "from huggingface_hub import HfApi; HfApi().add_space_secret('mombasstic/chsa-triage-api', 'HF_TOKEN', '<votre-token>')"
+```
+
+**3. Configurer le secret `CHSA_CLE_API_DEMO`** (clé d'accès à l'API elle-même)
+```bash
+python3 -c "from huggingface_hub import HfApi; HfApi().add_space_secret('mombasstic/chsa-triage-api', 'CHSA_CLE_API_DEMO', '<votre-cle>')"
+```
+
+**4. Publier le `Dockerfile`**
+```bash
+hf upload mombasstic/chsa-triage-api deploy/space_gpu_api_vllm/Dockerfile Dockerfile --repo-type space
+```
+
+**5. Publier `demarrer.sh`** (même chemin imbriqué que celui attendu par le `COPY` du Dockerfile — jamais aplati)
+```bash
+hf upload mombasstic/chsa-triage-api deploy/space_gpu_api_vllm/demarrer.sh deploy/space_gpu_api_vllm/demarrer.sh --repo-type space
+```
+
+**6. Publier le code source**
+```bash
+hf upload mombasstic/chsa-triage-api src src --repo-type space
+hf upload mombasstic/chsa-triage-api interfaces interfaces --repo-type space
+hf upload mombasstic/chsa-triage-api training training --repo-type space
+hf upload mombasstic/chsa-triage-api monitoring monitoring --repo-type space
+```
+
+**7. Publier le README public du Space**
+```bash
+hf upload mombasstic/chsa-triage-api deploy/space_gpu_api_vllm/README_space.md README.md --repo-type space
+```
+Chaque commande `hf upload` ci-dessus crée son propre commit, et **chaque
+commit déclenche automatiquement une reconstruction** (doc officielle
+HF : "Each time a new commit is pushed, the Space will automatically
+rebuild and restart"). Les étapes 4 à 7 provoquent donc plusieurs
+reconstructions intermédiaires, forcément en échec tant que tous les
+fichiers ne sont pas encore présents (`COPY` du `Dockerfile` introuvable)
+-- sans gravité ni coût (la facturation ne démarre qu'au lancement du
+conteneur, jamais pendant le build). Seul le `hf spaces restart`
+explicite de l'étape 8, une fois tous les fichiers publiés, est celui
+qui compte réellement.
+
+**8. Reconstruire et démarrer**
+```bash
+hf spaces restart mombasstic/chsa-triage-api
+hf spaces wait mombasstic/chsa-triage-api
+```
+
+**9. Vérifier que l'API répond** (toujours 200, même si vLLM charge encore)
+```bash
+curl https://mombasstic-chsa-triage-api.hf.space/sante
+# attendu : {"disponible":true,"detail":"serveur vLLM disponible"}
+```
+
+**10. Tester une conversation réelle bout-en-bout via l'API** (créer,
+envoyer un message, puis demander le diagnostic -- l'équivalent en
+ligne de commande du bouton "obtenir les conclusions" du frontend)
+```bash
+export CHSA_CLE="<votre-cle>"
+export CHSA_BASE="https://mombasstic-chsa-triage-api.hf.space"
+
+# 1. Démarrer une conversation
+CONVERSATION_ID=$(curl -sS -X POST "$CHSA_BASE/conversations" \
+  -H "X-API-Key: $CHSA_CLE" | python3 -c "import sys,json; print(json.load(sys.stdin)['conversation_id'])")
+echo "conversation_id=$CONVERSATION_ID"
+
+# 2. Envoyer un message (répéter pour poursuivre l'entretien)
+curl -sS -X POST "$CHSA_BASE/conversations/$CONVERSATION_ID/messages" \
+  -H "X-API-Key: $CHSA_CLE" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Patient de 45 ans, douleur thoracique depuis 2 heures."}'
+
+# 3. Demander le diagnostic (niveau ESI, catégorie, ressources, raisonnement)
+curl -sS -X POST "$CHSA_BASE/conversations/$CONVERSATION_ID/diagnostic" \
+  -H "X-API-Key: $CHSA_CLE"
+```
+
+**11. Lancer le frontend Streamlit en local, pointé vers le Space réel**
+```bash
+uv sync --extra web
+export CHSA_API_URL_BASE="https://mombasstic-chsa-triage-api.hf.space"
+export CHSA_API_CLE="<votre-cle>"
+uv run streamlit run interfaces/web/app_test_inference.py
+```
+
+**12. Ouvrir le navigateur** (Streamlit s'ouvre seul sur `localhost:8501`) et dialoguer avec l'agent.
+
+**13. Mettre le Space en pause une fois les tests terminés** (le Space
+GPU coûte à l'heure tant qu'il tourne, cf. §4.5 -- le temps en pause
+n'est jamais facturé)
+
+```bash
+# Place le Space e, pause
+hf spaces pause mombasstic/chsa-triage-api
+
+# Sort le Space de sa pause
+hf spaces restart mombasstic/chsa-triage-api
+
+# Bloque l'exécution jusqu'à ce qu'il soit réellement opérationnel.
+hf spaces wait mombasstic/chsa-triage-api
+```
+
+<table id="47-test-local-gratuit-avec-le-checkpoint-dpo" style="width:100%;"><tr><td style="background-color:#f5b0e0;">
+<h2 style="border-bottom:none; margin:0;">4.7 Test local gratuit avec le checkpoint DPO (CPU, sans GPU)</h2>
+</td></tr></table>
+
+Depuis zéro, pour tester l'API + le frontend Streamlit (y compris le
+bouton "Réessayer en JSON structuré" de §4.2) contre le **vrai
+checkpoint DPO réel**, sans aucun coût GPU : `llama-server` sert le
+modèle de base GGUF avec l'adaptateur LoRA chargé à part (`--lora`,
+jamais fusionné), exactement le même principe que `VllmEndpointInferenceAdapter`
+en production. Plus lent qu'un vrai GPU, mais gratuit.
+
+**1. Récupérer le modèle de base quantifié** (`mradermacher/Qwen3-1.7B-Base-GGUF`,
+~1,1 Go, quantification publique existante, aucune conversion nécessaire)
+```bash
+uv run hf download mradermacher/Qwen3-1.7B-Base-GGUF Qwen3-1.7B-Base.Q4_K_M.gguf --local-dir .
+```
+
+**2. Récupérer le binaire `llama-server`** (release précompilée CPU-only,
+build `b10985` de `ggml-org/llama.cpp` — cette machine n'a pas `cmake`
+pour compiler depuis les sources)
+```bash
+curl -L -o llama-b10985.tar.gz \
+  https://github.com/ggml-org/llama.cpp/releases/download/b10985/llama-b10985-bin-ubuntu-x64.tar.gz
+mkdir -p llama-b10985
+tar -xzf llama-b10985.tar.gz -C llama-b10985 --strip-components=1
+rm llama-b10985.tar.gz  # archive redondante une fois extraite
+```
+
+Tout ce que ces étapes téléchargent (`*.gguf`, `llama-b*/`, `outputs/`)
+est déjà couvert par `.gitignore` : rien de tout ça n'atterrit jamais
+sur Git.
+
+**3. Récupérer l'adaptateur DPO réel** (format PEFT HuggingFace, pas encore GGUF)
+```bash
+hf download mombasstic/chsa-triage-dpo-lora --local-dir outputs/dpo-lora-local
+```
+
+**4. Convertir l'adaptateur en GGUF** (script officiel `convert_lora_to_gguf.py`
+du dépôt `llama.cpp` — script Python pur, ne nécessite pas de compiler
+le binaire). `--base` attend un **dossier local**, pas un identifiant de
+dépôt HF : il faut d'abord télécharger le modèle de base (~3,4 Go, bf16)
+```bash
+hf download Qwen/Qwen3-1.7B-Base --local-dir qwen3-1.7b-base-local
+```
+```bash
+git clone --depth 1 https://github.com/ggml-org/llama.cpp.git /tmp/llama.cpp-scripts
+uv run --with gguf --with safetensors python3 /tmp/llama.cpp-scripts/convert_lora_to_gguf.py \
+    --base qwen3-1.7b-base-local \
+    --outfile chsa-triage-dpo-lora.gguf \
+    outputs/dpo-lora-local
+```
+
+**5. Démarrer `llama-server` avec le modèle de base ET le LoRA**
+```bash
+LD_LIBRARY_PATH=./llama-b10985 ./llama-b10985/llama-server \
+    -m Qwen3-1.7B-Base.Q4_K_M.gguf --lora chsa-triage-dpo-lora.gguf \
+    --port 8080 -c 1024 -t 2 --no-webui --host 0.0.0.0 --parallel 1
+```
+
+**6. Démarrer l'API en mode `local`** (terminal séparé)
+```bash
+uv sync --extra local --extra dev --extra api --extra web
+export CHSA_CLE_API_DEMO=change-moi
+export CHSA_MOTEUR_INFERENCE=local
+uv run uvicorn interfaces.api.main:app --port 7860
+```
+
+**7. Démarrer le frontend Streamlit** (troisième terminal)
+```bash
+export CHSA_API_URL_BASE=http://127.0.0.1:7860
+export CHSA_API_CLE=change-moi
+uv run streamlit run interfaces/web/app_test_inference.py
+```
+
+**8. Dialoguer, demander le diagnostic, et si le format JSON n'est pas
+respecté, cliquer sur "Réessayer en JSON structuré (pour le SIH)"**
+pour tester le second appel de reformulation (§4.2,
+`E4_02_uc_reformuler_diagnostic_json.py`).
+
+Une fois `uv sync` fait une fois avec les quatre extras ensemble
+(étape 6), les lancements suivants (`uv run uvicorn`/`uv run streamlit`)
+ne redemandent aucun extra et ne touchent plus l'environnement déjà
+installé.
+
+<table id="48-comparaison-de-precision-hors-ligne-cpu-transformerspeft" style="width:100%;"><tr><td style="background-color:#f5b0e0;">
+<h2 style="border-bottom:none; margin:0;">4.8 Comparaison de précision hors-ligne (CPU, transformers+peft)</h2>
+</td></tr></table>
+
+**Ceci est un outil de comparaison de précision, pas une troisième
+option de service.** Il ne fait pas partie du choix `local`/`distant`
+présenté en §4.2 : il existe uniquement pour comparer, à l'œil, une
+réponse en pleine précision (float32, cf.
+`TransformersLoraCpuInferenceAdapter` : bf16 chargeait sans erreur mais
+générait ~145s/token sur ce CPU, mesuré réellement le 01/10/2026, d'où
+float32 directement plutôt qu'un essai bf16 préalable) à la réponse déjà
+obtenue via le
+chemin CPU quantifié (llama.cpp/GGUF Q4_K_M, `CHSA_MOTEUR_INFERENCE=local`,
+cf. §4.2) sur la même entrée, pour voir si la quantification change le
+comportement du modèle. Jamais branché dans le frontend Streamlit de
+test (§4.5) : ne pas l'utiliser pour du chat en direct, c'est
+délibérément lent (CPU, pleine précision, aucune optimisation).
+
+Contrairement au chemin `local` existant, **aucun serveur séparé à
+lancer** (pas de `llama-server`, pas de conversion GGUF) : le modèle de
+base + l'adaptateur LoRA se chargent directement en processus dans
+l'API elle-même.
+
+```bash
+uv sync --extra local --extra api
+export CHSA_CLE_API_DEMO="change-moi"
+export CHSA_MOTEUR_INFERENCE=comparaison_precision_cpu
+# Optionnel, defauts deja alignes sur CHSA_VERSION_MODELE :
+# export CHSA_MODELE_BASE_COMPARAISON_CPU="Qwen/Qwen3-1.7B-Base"
+# export CHSA_DEPOT_LORA_COMPARAISON_CPU="mombasstic/chsa-triage-dpo-lora"
+uv run uvicorn interfaces.api.main:app --port 8000
+```
+
+Puis, dans un autre terminal, exactement le même flux conversation
+→ message → diagnostic déjà documenté pour les deux autres modes
+(§4.6 étape 10), pointé sur cette instance locale : lancer §4.8 une
+fois avec la même entrée que la §4.7 en mode `local` (GGUF Q4_K_M) et
+comparer les deux réponses obtenues.
+
+```bash
+export CHSA_CLE="change-moi"
+export CHSA_BASE="http://127.0.0.1:8000"
+
+# 1. Démarrer une conversation
+CONVERSATION_ID=$(curl -sS -X POST "$CHSA_BASE/conversations" \
+  -H "X-API-Key: $CHSA_CLE" | python3 -c "import sys,json; print(json.load(sys.stdin)['conversation_id'])")
+echo "conversation_id=$CONVERSATION_ID"
+
+# 2. Envoyer un message (répéter pour poursuivre l'entretien)
+curl -sS -X POST "$CHSA_BASE/conversations/$CONVERSATION_ID/messages" \
+  -H "X-API-Key: $CHSA_CLE" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Patient de 45 ans, douleur thoracique depuis 2 heures."}'
+
+# 3. Demander le diagnostic (niveau ESI, catégorie, ressources, raisonnement)
+curl -sS -X POST "$CHSA_BASE/conversations/$CONVERSATION_ID/diagnostic" \
+  -H "X-API-Key: $CHSA_CLE"
+```
+
+`peft` est désormais dans l'extra `local` (pur Python, aucun paquet GPU
+supplémentaire : `vllm`/`bitsandbytes`/`unsloth`/`liger-kernel` restent
+réservés à l'extra `remote`). Non exécuté end-to-end dans cette tâche
+(téléchargerait plusieurs Go de poids modèle) : câblage et tests
+unitaires vérifiés réellement (`tests/infrastructure/test_transformers_lora_cpu_inference_adapter.py`),
+chargement réel jamais exercé ici.
+
+<table id="49-scenarios-de-test-cliniques" style="width:100%;"><tr><td style="background-color:#f5b0e0;">
+<h2 style="border-bottom:none; margin:0;">4.9 Scénarios de test cliniques</h2>
+</td></tr></table>
+
+Trois scénarios réels, chacun avec trois tours d'entretien puis une demande
+de diagnostic, pour comparer manuellement le comportement entre les modes
+(§4.6, §4.7, §4.8) sur les mêmes entrées. Réutilisent `$CHSA_BASE`/`$CHSA_CLE`
+déjà exportés selon le mode testé (§4.6 étape 10, §4.7 étape 7, §4.8) : chaque
+bloc ouvre sa propre conversation, pour ne jamais mélanger les scénarios.
+
+* **Scénario 1 — urgent (probable ESI 2)**
+
+  - Patient de 62 ans, douleur thoracique oppressante depuis 30 minutes, irradiant vers le bras gauche.
+  - Oui, antécédent d'infarctus il y a 3 ans. Sueurs et essoufflement également.
+  - Douleur évaluée à 8 sur 10, tension artérielle 145/95, fréquence cardiaque 110.
+
+* **Scénario 2 — modéré (probable ESI 3-4)**
+
+  - Femme de 34 ans, fièvre à 38,5°C depuis hier soir, toux sèche et fatigue.
+  - Pas de difficulté respiratoire, pas de douleur thoracique. Prend du paracétamol depuis ce matin, peu d'effet.
+  - Aucun antécédent particulier, pas d'allergie connue.
+
+* **Scénario 3 — léger (probable ESI 5)**
+
+  - Patient de 28 ans, entorse à la cheville droite après une chute en courant ce matin.
+  - Douleur modérée à la marche, pas de déformation visible, léger gonflement.
+  - Aucun antécédent médical, dernière prise en charge médicale il y a plus d'un an.
+
+**Scénario 1, urgent (ESI 2 probable)**
+```bash
+CONVERSATION_ID=$(curl -sS -X POST "$CHSA_BASE/conversations" \
+  -H "X-API-Key: $CHSA_CLE" | python3 -c "import sys,json; print(json.load(sys.stdin)['conversation_id'])")
+echo "conversation_id=$CONVERSATION_ID"
+
+curl -sS -X POST "$CHSA_BASE/conversations/$CONVERSATION_ID/messages" \
+  -H "X-API-Key: $CHSA_CLE" -H "Content-Type: application/json" \
+  -d '{"message": "Patient de 62 ans, douleur thoracique oppressante depuis 30 minutes, irradiant vers le bras gauche."}'
+
+curl -sS -X POST "$CHSA_BASE/conversations/$CONVERSATION_ID/messages" \
+  -H "X-API-Key: $CHSA_CLE" -H "Content-Type: application/json" \
+  -d '{"message": "Oui, antecedent d'"'"'infarctus il y a 3 ans. Sueurs et essoufflement egalement."}'
+
+curl -sS -X POST "$CHSA_BASE/conversations/$CONVERSATION_ID/messages" \
+  -H "X-API-Key: $CHSA_CLE" -H "Content-Type: application/json" \
+  -d '{"message": "Douleur evaluee a 8 sur 10, tension arterielle 145/95, frequence cardiaque 110."}'
+
+curl -sS -X POST "$CHSA_BASE/conversations/$CONVERSATION_ID/diagnostic" \
+  -H "X-API-Key: $CHSA_CLE"
+```
+
+**Scénario 2, modéré (ESI 3-4 probable)**
+```bash
+CONVERSATION_ID=$(curl -sS -X POST "$CHSA_BASE/conversations" \
+  -H "X-API-Key: $CHSA_CLE" | python3 -c "import sys,json; print(json.load(sys.stdin)['conversation_id'])")
+echo "conversation_id=$CONVERSATION_ID"
+
+curl -sS -X POST "$CHSA_BASE/conversations/$CONVERSATION_ID/messages" \
+  -H "X-API-Key: $CHSA_CLE" -H "Content-Type: application/json" \
+  -d '{"message": "Femme de 34 ans, fievre a 38,5C depuis hier soir, toux seche et fatigue."}'
+
+curl -sS -X POST "$CHSA_BASE/conversations/$CONVERSATION_ID/messages" \
+  -H "X-API-Key: $CHSA_CLE" -H "Content-Type: application/json" \
+  -d '{"message": "Pas de difficulte respiratoire, pas de douleur thoracique. Prend du paracetamol depuis ce matin, peu d'"'"'effet."}'
+
+curl -sS -X POST "$CHSA_BASE/conversations/$CONVERSATION_ID/messages" \
+  -H "X-API-Key: $CHSA_CLE" -H "Content-Type: application/json" \
+  -d '{"message": "Aucun antecedent particulier, pas d'"'"'allergie connue."}'
+
+curl -sS -X POST "$CHSA_BASE/conversations/$CONVERSATION_ID/diagnostic" \
+  -H "X-API-Key: $CHSA_CLE"
+```
+
+**Scénario 3, léger (ESI 5 probable)**
+```bash
+CONVERSATION_ID=$(curl -sS -X POST "$CHSA_BASE/conversations" \
+  -H "X-API-Key: $CHSA_CLE" | python3 -c "import sys,json; print(json.load(sys.stdin)['conversation_id'])")
+echo "conversation_id=$CONVERSATION_ID"
+
+curl -sS -X POST "$CHSA_BASE/conversations/$CONVERSATION_ID/messages" \
+  -H "X-API-Key: $CHSA_CLE" -H "Content-Type: application/json" \
+  -d '{"message": "Patient de 28 ans, entorse a la cheville droite apres une chute en courant ce matin."}'
+
+curl -sS -X POST "$CHSA_BASE/conversations/$CONVERSATION_ID/messages" \
+  -H "X-API-Key: $CHSA_CLE" -H "Content-Type: application/json" \
+  -d '{"message": "Douleur moderee a la marche, pas de deformation visible, leger gonflement."}'
+
+curl -sS -X POST "$CHSA_BASE/conversations/$CONVERSATION_ID/messages" \
+  -H "X-API-Key: $CHSA_CLE" -H "Content-Type: application/json" \
+  -d '{"message": "Aucun antecedent medical, derniere prise en charge medicale il y a plus d'"'"'un an."}'
+
+curl -sS -X POST "$CHSA_BASE/conversations/$CONVERSATION_ID/diagnostic" \
+  -H "X-API-Key: $CHSA_CLE"
+```
+
+<table id="depannage" style="width:100%;"><tr><td style="background-color:#d9d9d9;">
+<h1 style="border-bottom:none; margin:0;">Dépannage</h1>
+</td></tr></table>
+
+Problèmes réels ayant coûté le plus de temps sur ce projet, résumés
+pour ne pas les redécouvrir. Détail complet dans l'historique git des
+fichiers concernés (`deploy/space_gpu_api_vllm/`, §3 pour le DPO).
+
+| Problème | Cause réelle | Statut |
+|---|---|---|
+| Segfault vLLM au démarrage (Space GPU) | Crash natif juste après le chargement des poids, pendant le profiling interne de vLLM. Huit pistes ciblées exclues par tests réels (multiprocessing, permissions, LoRA, backend d'attention, async scheduling, délai de démarrage, version de vLLM, désaccord driver/CUDA) — signature d'une condition de course dépendante du temps réel d'exécution, jamais isolée à une seule cause. Signalé en amont : [vllm-project/vllm#58616](https://github.com/vllm-project/vllm/issues/58616). | **Résolu** — construire l'image `deploy/space_gpu_api_vllm/Dockerfile` à partir de l'image officielle `vllm/vllm-openai` (au lieu d'une installation manuelle dans une image CUDA générique) fait disparaître le crash. |
+| Chemins de destination `hf upload` | Le 3ᵉ argument est le chemin **dans le dépôt HF**, pas le nom du fichier local. Un chemin aplati au lieu du chemin imbriqué attendu par le `COPY` du `Dockerfile` a fait retester silencieusement d'anciennes versions à plusieurs reprises. | Résolu — toujours faire correspondre exactement le chemin de destination au chemin source du `COPY`. |
+| Compilateur C absent de `nvidia/cuda:...-runtime` | vLLM/Triton compilent des noyaux CUDA au démarrage, même sous `--enforce-eager`. L'image "runtime" (vs "devel") n'a pas de compilateur par défaut. | Résolu — `build-essential` + `python3.11-dev` ajoutés au `Dockerfile`. |
+| Secret `HF_TOKEN` corrompu | Le formulaire web du Space rejetait le `_` dans la valeur du secret ; retirer le préfixe littéral `hf_` a produit un token invalide. | Résolu — `HfApi().add_space_secret()` en direct, en contournant le formulaire web. |
+| Réponses interminables de `VllmEndpointInferenceAdapter` | `n_predict` (vocabulaire domaine, déjà traduit côté `TransformersInferenceAdapter`) n'était jamais traduit vers `max_tokens`, le nom réel attendu par l'API compatible OpenAI de vLLM — champ inconnu ignoré silencieusement, génération jusqu'au défaut du modèle (2048 tokens). | Résolu — traduction `n_predict` -> `max_tokens` ajoutée dans `VllmEndpointInferenceAdapter.generer()`. |
+| Dégénérescence (mélange de langues) en déploiement réel | `PoursuivreEntretienUseCase`/`ObtenirDiagnosticUseCase` n'envoyaient aucune `temperature` explicite ; vLLM retombait sur son propre défaut d'échantillonnage. L'évaluation post-DPO qui avait validé `repetition_penalty=1.2` utilisait `--temperature 0.0`, jamais testée sans ce réglage. Confirmé indépendant du matériel (même symptôme sur L4 bf16 et T4 fp16). | Résolu — `TEMPERATURE_DEFAUT = 0.0` fixé explicitement dans les deux cas d'usage. |
+| Instabilité DPO (OOM éval / sous-apprentissage / dégénérescence) | `per_device_eval_batch_size` jamais fixé (défaut TRL = 8, double du lot d'entraînement) -> OOM. Puis `beta=0,1` trop faible -> ancrage insuffisant à `pi_ref`, dégénérescence (changements de langue, répétitions). | Résolu — `per_device_eval_batch_size=taille_lot` fixé ; `beta=0,3` validé à 100 puis 5000 exemples (§3.2). |
+
+
+<table id="introduction" style="width:100%;"><tr><td style="background-color:#c9f1edff;">
+<h1 style="border-bottom:none; margin:0;">Auteur</h1>
+</td></tr></table>
+
+**Rafael Cerezo Martín**
+
+- Email : [rafael.cerezo.martin@icloud.com](mailto:rafael.cerezo.martin@icloud.com)
+- GitHub : [@racemartin](https://github.com/racemartin)
+
+
+<table id="introduction" style="width:100%;"><tr><td style="background-color:#c9f1edff;">
+<h1 style="border-bottom:none; margin:0;">Licence</h1>
+</td></tr></table>
+
+MIT License, voir [LICENSE](LICENSE) pour les détails.
