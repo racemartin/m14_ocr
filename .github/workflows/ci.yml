@@ -1,10 +1,10 @@
 name: CI
 
-# Pipeline minimal (Etape 4, cahier des charges §"CI/CD imposé : GitHub
-# Actions") : suite de tests SANS GPU/vLLM reel + verification que
-# l'image Docker de l'API construit. Aucun deploiement reel ici
-# (decision Etape 4 : HF Spaces reste une action a autoriser
-# explicitement plus tard, cf. AGENTS.md/roadmap).
+# Pipeline (Etape 4, cahier des charges §"CI/CD imposé : GitHub Actions") :
+# suite de tests SANS GPU/vLLM reel + verification que l'image Docker de
+# l'API construit. La publication reelle sur le Space HF vit dans
+# deploy.yml (declenche par workflow_run quand ce workflow reussit sur
+# main), autorisee explicitement (01/10/2026, cf. AGENTS.md/roadmap).
 on:
   push:
     branches: [main]

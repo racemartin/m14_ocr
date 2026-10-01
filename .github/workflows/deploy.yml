@@ -1,0 +1,42 @@
+name: Deploy to HF Space
+
+# Publie le code reel sur le Space GPU (mombasstic/chsa-triage-api), via
+# les memes commandes hf upload que le deploiement manuel documente
+# (README_AVEC_DETAILS.md §4.5). Se declenche uniquement quand le
+# workflow "CI" (ci.yml) vient de reussir sur main, jamais sur une pull
+# request et jamais si les tests/le build Docker ont echoue. Autorise
+# explicitement par le capitaine (01/10/2026, cf. AGENTS.md/roadmap).
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  deploy-to-hf:
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Installer huggingface_hub[cli]
+        run: pip install "huggingface_hub[cli]"
+
+      - name: Publier le code sur le Space GPU reel (memes chemins que le deploiement manuel documente)
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          hf upload mombasstic/chsa-triage-api deploy/space_gpu_api_vllm/Dockerfile Dockerfile --repo-type space
+          hf upload mombasstic/chsa-triage-api deploy/space_gpu_api_vllm/demarrer.sh deploy/space_gpu_api_vllm/demarrer.sh --repo-type space
+          hf upload mombasstic/chsa-triage-api src src --repo-type space
+          hf upload mombasstic/chsa-triage-api interfaces interfaces --repo-type space
+          hf upload mombasstic/chsa-triage-api training training --repo-type space
+          hf upload mombasstic/chsa-triage-api monitoring monitoring --repo-type space
+          hf upload mombasstic/chsa-triage-api deploy/space_gpu_api_vllm/README_space.md README.md --repo-type space
+
+      - name: Redemarrer le Space pour appliquer les changements
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: hf spaces restart mombasstic/chsa-triage-api
