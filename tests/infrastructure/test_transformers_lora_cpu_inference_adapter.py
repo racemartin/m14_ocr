@@ -19,6 +19,9 @@ cf. AGENTS.md).
 
 from __future__ import annotations
 
+import threading
+import time
+
 import pytest
 
 from chsa_triage.infrastructure.adapters.transformers_lora_cpu_inference_adapter import (
@@ -134,3 +137,50 @@ def test_generer_utilise_le_modele_et_tokenizer_injectes_sans_charger_de_vrais()
 
     assert adaptateur._modele is modele
     assert adaptateur._tokenizer is tokenizer
+
+
+class FauxModeleLent(FauxModele):
+    """Comme FauxModele, mais `generate()` dort et compte les appels
+    simultanes : prouve que `_verrou` serialise bien `generer()` (bug
+    reel du 30/09/2026 - deux requetes concurrentes chargeaient/
+    generaient en double sur la meme instance)."""
+
+    def __init__(self, tokens_generes: list[int]) -> None:
+        super().__init__(tokens_generes)
+        self.appels_simultanes = 0
+        self.max_appels_simultanes = 0
+        self._verrou_compteur = threading.Lock()
+
+    def generate(self, **kwargs):
+        with self._verrou_compteur:
+            self.appels_simultanes += 1
+            self.max_appels_simultanes = max(
+                self.max_appels_simultanes, self.appels_simultanes
+            )
+        time.sleep(0.05)
+        resultat = super().generate(**kwargs)
+        with self._verrou_compteur:
+            self.appels_simultanes -= 1
+        return resultat
+
+
+def test_generer_serialise_deux_appels_concurrents():
+    modele = FauxModeleLent([4, 5])
+    tokenizer = FauxTokenizer([1, 2, 3])
+    adaptateur = TransformersLoraCpuInferenceAdapter(
+        depot_lora=DEPOT_LORA_TEST, _modele=modele, _tokenizer=tokenizer
+    )
+
+    fils = [
+        threading.Thread(
+            target=adaptateur.generer,
+            args=([{"role": "user", "content": "x"}], {"invite_deja_rendue": True}),
+        )
+        for _ in range(3)
+    ]
+    for fil in fils:
+        fil.start()
+    for fil in fils:
+        fil.join()
+
+    assert modele.max_appels_simultanes == 1

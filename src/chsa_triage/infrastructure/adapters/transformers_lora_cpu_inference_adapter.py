@@ -33,6 +33,7 @@ plutot que d'affaiblir la garde GPU de l'autre adaptateur.
 
 from __future__ import annotations
 
+import threading
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -64,12 +65,31 @@ class TransformersLoraCpuInferenceAdapter:
     `TransformersLoraInferenceAdapter`. Laisses a `None` en usage
     normal, le vrai modele de base + adaptateur LoRA est charge
     paresseusement (une seule fois) au premier `generer()`.
+
+    Bug reel observe en usage (30/09/2026) : `generer()` n'etait pas
+    serialise, et deux requetes arrivees proches l'une de l'autre (ex.
+    une requete dont la connexion client avait ete perdue, mais dont le
+    traitement serveur continuait, suivie d'une relance manuelle)
+    entraient TOUTES LES DEUX dans le chargement paresseux avant que la
+    premiere ait fini d'assigner `self._modele` - chargement du modele
+    en double (explique la memoire proche de 100% et le swap observes),
+    et generation concurrente sur la meme instance de modele (jamais
+    garantie thread-safe par `transformers`), signature coherente avec
+    la sortie degeneree observee (boucle du meme caractere). Corrige en
+    serialisant tout `generer()` (pas seulement le chargement paresseux)
+    derriere `_verrou` : cet adaptateur est un outil de comparaison
+    ponctuelle, jamais pense pour plusieurs requetes concurrentes, donc
+    mettre la seconde requete en attente de la premiere est le
+    comportement correct, pas une limitation a lever plus tard.
     """
 
     depot_lora      : str
     nom_modele_base : str = MODELE_BASE_DEFAUT
     _modele         : Any = field(default=None, repr=False)
     _tokenizer      : Any = field(default=None, repr=False)
+    _verrou         : threading.Lock = field(
+        default_factory=threading.Lock, init=False, repr=False
+    )
 
     def _obtenir_modele_et_tokenizer(self) -> tuple[Any, Any]:
         if self._modele is None or self._tokenizer is None:
@@ -150,49 +170,56 @@ class TransformersLoraCpuInferenceAdapter:
         attendue nettement plus elevee que le chemin GPU, sans gravite
         ici puisque cet adaptateur n'est jamais utilise pour du chat en
         direct.
+
+        Serialise via `_verrou` (toute la methode, pas seulement le
+        chargement paresseux) : deux requetes concurrentes partageant
+        la meme instance de modele ont deja produit, en usage reel, un
+        double chargement et une sortie degeneree (cf. docstring de
+        classe). La seconde requete attend simplement la premiere.
         """
-        parametres = dict(parametres or {})
-        invite_deja_rendue = parametres.pop("invite_deja_rendue", False)
-        modele, tokenizer = self._obtenir_modele_et_tokenizer()
+        with self._verrou:
+            parametres = dict(parametres or {})
+            invite_deja_rendue = parametres.pop("invite_deja_rendue", False)
+            modele, tokenizer = self._obtenir_modele_et_tokenizer()
 
-        if invite_deja_rendue:
-            if not messages:
-                raise ValueError(
-                    "invite_deja_rendue=True necessite au moins un message (l'invite deja rendue)"
-                )
-            texte = messages[-1]["content"]
-        else:
-            texte = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+            if invite_deja_rendue:
+                if not messages:
+                    raise ValueError(
+                        "invite_deja_rendue=True necessite au moins un message (l'invite deja rendue)"
+                    )
+                texte = messages[-1]["content"]
+            else:
+                texte = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
 
-        entrees = tokenizer(texte, return_tensors="pt").to(modele.device)
-        ids_entree = list(entrees["input_ids"][0])
-        nombre_tokens_entree = len(ids_entree)
+            entrees = tokenizer(texte, return_tensors="pt").to(modele.device)
+            ids_entree = list(entrees["input_ids"][0])
+            nombre_tokens_entree = len(ids_entree)
 
-        kwargs_generation = _parametres_generation_transformers(parametres)
+            kwargs_generation = _parametres_generation_transformers(parametres)
 
-        log.START_ACTION(
-            "TransformersLoraCpuInferenceAdapter",
-            "generer",
-            "generation (CPU, pleine precision, aucune optimisation)",
-        )
-        log.PARAMETER_VALUE("tokens d'entree", nombre_tokens_entree)
-        debut = time.perf_counter()
-        sortie = modele.generate(**entrees, **kwargs_generation)
-        latence_ms = (time.perf_counter() - debut) * 1000
+            log.START_ACTION(
+                "TransformersLoraCpuInferenceAdapter",
+                "generer",
+                "generation (CPU, pleine precision, aucune optimisation)",
+            )
+            log.PARAMETER_VALUE("tokens d'entree", nombre_tokens_entree)
+            debut = time.perf_counter()
+            sortie = modele.generate(**entrees, **kwargs_generation)
+            latence_ms = (time.perf_counter() - debut) * 1000
 
-        tokens_generes = list(sortie[0])[nombre_tokens_entree:]
-        texte_genere = tokenizer.decode(tokens_generes, skip_special_tokens=True)
-        log.PARAMETER_VALUE("tokens generes", len(tokens_generes))
-        log.FINISH_ACTION(
-            "TransformersLoraCpuInferenceAdapter",
-            "generer",
-            f"{len(tokens_generes)} tokens en {latence_ms / 1000:.1f}s",
-        )
+            tokens_generes = list(sortie[0])[nombre_tokens_entree:]
+            texte_genere = tokenizer.decode(tokens_generes, skip_special_tokens=True)
+            log.PARAMETER_VALUE("tokens generes", len(tokens_generes))
+            log.FINISH_ACTION(
+                "TransformersLoraCpuInferenceAdapter",
+                "generer",
+                f"{len(tokens_generes)} tokens en {latence_ms / 1000:.1f}s",
+            )
 
-        return ReponseModele(
-            texte=texte_genere,
-            nombre_tokens_entree=nombre_tokens_entree,
-            nombre_tokens_sortie=len(tokens_generes),
-            latence_ms=latence_ms,
-            metadonnees={"modele_base": self.nom_modele_base, "depot_lora": self.depot_lora},
-        )
+            return ReponseModele(
+                texte=texte_genere,
+                nombre_tokens_entree=nombre_tokens_entree,
+                nombre_tokens_sortie=len(tokens_generes),
+                latence_ms=latence_ms,
+                metadonnees={"modele_base": self.nom_modele_base, "depot_lora": self.depot_lora},
+            )
