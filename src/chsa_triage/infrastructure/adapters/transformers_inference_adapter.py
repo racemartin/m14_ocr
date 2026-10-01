@@ -38,11 +38,11 @@ def _parametres_generation_transformers(parametres: dict) -> dict:
     deterministe (`do_sample=False`), meme convention que le CLI local
     (`--temperature 0.0` par defaut). Toute autre cle (deja au
     vocabulaire transformers, ex. `top_p`) est transmise telle quelle,
-    SAUF `stop`/`guided_regex` : hints de decodage contraint propres au
-    serveur vLLM (cf. E4_00/E4_01_uc_*.py), sans equivalent natif dans
-    `GenerationMixin.generate` -- jamais testes contre un `generate()`
-    reel, donc explicitement ecartes ici plutot que transmis en
-    aveugle.
+    SAUF `stop`/`structured_outputs` : hints de decodage contraint
+    propres au serveur vLLM (cf. E4_00/E4_01_uc_*.py), sans equivalent
+    natif dans `GenerationMixin.generate` -- jamais testes contre un
+    `generate()` reel, donc explicitement ecartes ici plutot que
+    transmis en aveugle.
     """
     parametres = dict(parametres)
     resultat: dict[str, Any] = {
@@ -58,7 +58,7 @@ def _parametres_generation_transformers(parametres: dict) -> dict:
             resultat["do_sample"] = True
             resultat["temperature"] = temperature
     parametres.pop("stop", None)
-    parametres.pop("guided_regex", None)
+    parametres.pop("structured_outputs", None)
     resultat.update(parametres)
     return resultat
 

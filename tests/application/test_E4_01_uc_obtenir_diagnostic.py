@@ -156,11 +156,13 @@ def test_repetition_penalty_est_toujours_transmise_au_moteur():
     )
 
 
-def test_guided_regex_est_toujours_transmise_au_moteur():
+def test_structured_outputs_regex_est_toujours_transmise_au_moteur():
     """Incident reel (01/10/2026) : sans contrainte de decodage, le
     modele peut deriver vers une structure inventee au lieu du JSON
-    strict demande. `guided_regex` force vLLM a respecter EXACTEMENT
-    la forme attendue par `parser_diagnostic_strict`."""
+    strict demande. `structured_outputs.regex` force vLLM a respecter
+    EXACTEMENT la forme attendue par `parser_diagnostic_strict` (PAS
+    `guided_regex`, champ historique silencieusement ignore depuis
+    vLLM 0.12, cf. commentaire au-dessus de `PATRON_DIAGNOSTIC_REGEX`)."""
     moteur = FauxMoteurInference()
     cas_usage = ObtenirDiagnosticUseCase(
         moteur=moteur, journal=FauxJournalAudit()
@@ -168,6 +170,8 @@ def test_guided_regex_est_toujours_transmise_au_moteur():
 
     cas_usage.executer("conv-1", HISTORIQUE_EXEMPLE)
 
-    assert moteur.parametres_appels[0]["guided_regex"] == PATRON_DIAGNOSTIC_REGEX
+    assert moteur.parametres_appels[0]["structured_outputs"] == {
+        "regex": PATRON_DIAGNOSTIC_REGEX
+    }
     # Le patron doit matcher exactement une sortie bien formee reelle.
     assert re.fullmatch(PATRON_DIAGNOSTIC_REGEX, TEXTE_DIAGNOSTIC_VALIDE)

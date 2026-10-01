@@ -11,6 +11,15 @@ diagnostic" (`parser_diagnostic_strict`) : aucune nouvelle logique de
 format. Ce prompt n'a jamais ete confirme fiable sur un run GPU reel
 (cf. docstring de E3_00) : un second echec est attendu et gere, pas
 une garantie de succes.
+
+Bug reel trouve en deploiement (01/10/2026, meme incident que
+E4_01_uc_obtenir_diagnostic.py) : sans `repetition_penalty` ni
+contrainte de format, un essai reel a produit une longue digression
+hors sujet (plusieurs paragraphes sur la fievre chez l'enfant, tronques
+en fin de budget de tokens) au lieu d'une reformulation JSON. Reutilise
+telles quelles `REPETITION_PENALTY_DEFAUT` et `PATRON_DIAGNOSTIC_REGEX`
+de E4_01 (garde-fou NF4 + decodage contraint vLLM, meme forme cible,
+meme parseur) plutot que de dupliquer ces constantes.
 """
 
 from __future__ import annotations
@@ -26,6 +35,8 @@ from chsa_triage.application.use_cases.E3_00_uc_reformuler_preference_dpo import
     TEMPERATURE_REFORMULATION,
 )
 from chsa_triage.application.use_cases.E4_01_uc_obtenir_diagnostic import (
+    PATRON_DIAGNOSTIC_REGEX,
+    REPETITION_PENALTY_DEFAUT,
     ResultatDiagnostic,
 )
 from chsa_triage.application.validation_diagnostic import (
@@ -65,6 +76,8 @@ class ReformulerDiagnosticJsonUseCase:
             "n_predict": NOMBRE_TOKENS_GENERES_REFORMULATION,
             "temperature": TEMPERATURE_REFORMULATION,
             "min_new_tokens": MIN_TOKENS_GENERES_REFORMULATION,
+            "repetition_penalty": REPETITION_PENALTY_DEFAUT,
+            "structured_outputs": {"regex": PATRON_DIAGNOSTIC_REGEX},
         }
         reponse = self.moteur.generer(messages, parametres_generation)
 

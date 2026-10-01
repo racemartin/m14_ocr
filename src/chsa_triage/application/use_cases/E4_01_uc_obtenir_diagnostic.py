@@ -51,14 +51,25 @@ NOMBRE_TOKENS_GENERES_DIAGNOSTIC = 512
 
 # Bug reel trouve en deploiement (01/10/2026) : sans contrainte de
 # format, le modele peut deriver vers sa propre structure inventee
-# (ex. pseudo-balises `<CATEGORY_CLINIQUE_COURTE>`) au lieu du JSON
-# strict demande par PROMPT_DIAGNOSTIC, rejete par
-# `parser_diagnostic_strict` (`format_respecte=False`). `guided_regex`
-# force le serveur vLLM (decodage contraint natif, cf. doc vLLM
-# "Structured Outputs") a produire EXACTEMENT cette forme, token par
-# token : impossible de deriver vers une autre structure. Les memes 3
-# cles, dans le meme ordre, que `PROMPT_DIAGNOSTIC` et
+# (ex. pseudo-balises `<CATEGORY_CLINIQUE_COURTE>`, ou meme une
+# digression totalement hors sujet) au lieu du JSON strict demande par
+# PROMPT_DIAGNOSTIC, rejete par `parser_diagnostic_strict`
+# (`format_respecte=False`). `structured_outputs.regex` force le
+# serveur vLLM (decodage contraint natif, cf. doc vLLM "Structured
+# Outputs") a produire EXACTEMENT cette forme, token par token :
+# impossible de deriver vers une autre structure. Les memes 3 cles,
+# dans le meme ordre, que `PROMPT_DIAGNOSTIC` et
 # `CLES_REFORMULATION_ATTENDUES` ci-dessous.
+#
+# PAS `guided_regex` (champ historique, SILENCIEUSEMENT ignore depuis
+# vLLM 0.12 -- `structured_outputs` est son remplacant direct) : un
+# premier essai avec `guided_regex` a reellement echoue en production
+# (aucune erreur, juste un avertissement cote serveur, cf. log reel
+# "Request contains the removed guided-decoding field(s)
+# ['guided_regex'], which are ignored" -- vllm/entrypoints/openai/
+# protocol.py). Verifie ensuite contre le code source reel de
+# `StructuredOutputsParams` (vllm/sampling_params.py) : `regex` est
+# bien le nom de champ attendu dans `structured_outputs`.
 PATRON_DIAGNOSTIC_REGEX = (
     r"<think>[^<]{10,500}</think>"
     r'\{"niveau": [1-5], "categorie": "[^"]{1,120}", '
@@ -114,7 +125,7 @@ class ObtenirDiagnosticUseCase:
                 "n_predict": NOMBRE_TOKENS_GENERES_DIAGNOSTIC,
                 "repetition_penalty": REPETITION_PENALTY_DEFAUT,
                 "temperature": TEMPERATURE_DEFAUT,
-                "guided_regex": PATRON_DIAGNOSTIC_REGEX,
+                "structured_outputs": {"regex": PATRON_DIAGNOSTIC_REGEX},
             },
         )
 

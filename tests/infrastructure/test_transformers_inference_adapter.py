@@ -160,16 +160,20 @@ def test_parametres_generation_transformers_passe_les_cles_inconnues_telles_quel
     assert resultat["top_p"] == 0.9
 
 
-def test_parametres_generation_transformers_ecarte_stop_et_guided_regex():
-    """`stop`/`guided_regex` (E4_00/E4_01_uc_*.py) sont des hints de
-    decodage contraint propres au serveur vLLM, sans equivalent dans
+def test_parametres_generation_transformers_ecarte_stop_et_structured_outputs():
+    """`stop`/`structured_outputs` (E4_00/E4_01_uc_*.py) sont des hints
+    de decodage contraint propres au serveur vLLM, sans equivalent dans
     `GenerationMixin.generate` : jamais transmis en aveugle."""
     resultat = _parametres_generation_transformers(
-        {"n_predict": 5, "stop": ["\n\n"], "guided_regex": r".*"}
+        {
+            "n_predict": 5,
+            "stop": ["\n\n"],
+            "structured_outputs": {"regex": r".*"},
+        }
     )
 
     assert "stop" not in resultat
-    assert "guided_regex" not in resultat
+    assert "structured_outputs" not in resultat
 
 
 def test_generer_utilise_le_modele_et_tokenizer_injectes_sans_charger_de_vrais():

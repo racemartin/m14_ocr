@@ -12,6 +12,10 @@ import json
 from chsa_triage.application.use_cases.E3_00_uc_reformuler_preference_dpo import (
     PROMPT_REFORMULATION_CHOSEN,
 )
+from chsa_triage.application.use_cases.E4_01_uc_obtenir_diagnostic import (
+    PATRON_DIAGNOSTIC_REGEX,
+    REPETITION_PENALTY_DEFAUT,
+)
 from chsa_triage.application.use_cases.E4_02_uc_reformuler_diagnostic_json import (
     ReformulerDiagnosticJsonUseCase,
 )
@@ -36,11 +40,13 @@ class FauxMoteurInference:
     def __init__(self, texte_reponse: str = TEXTE_DIAGNOSTIC_VALIDE) -> None:
         self.texte_reponse = texte_reponse
         self.appels: list[list[dict]] = []
+        self.parametres_appels: list[dict] = []
 
     def generer(
         self, messages: list[dict], parametres: dict | None = None
     ) -> ReponseModele:
         self.appels.append(messages)
+        self.parametres_appels.append(dict(parametres or {}))
         return ReponseModele(
             texte=self.texte_reponse,
             nombre_tokens_entree=30,
@@ -120,3 +126,25 @@ def test_consigne_une_entree_d_audit_distincte_meme_si_le_format_est_invalide():
     assert entree.sortie == "pas de format"
     assert entree.version_modele == "mombasstic/chsa-triage-dpo-lora"
     assert entree.metadonnees == {"format_respecte": False}
+
+
+def test_repetition_penalty_et_structured_outputs_sont_transmis_au_moteur():
+    """Incident reel (01/10/2026) : sans ces deux garde-fous, un essai
+    reel a produit une longue digression hors sujet au lieu d'une
+    reformulation JSON (meme classe de bug que E4_01, memes
+    constantes reutilisees)."""
+    moteur = FauxMoteurInference()
+    cas_usage = ReformulerDiagnosticJsonUseCase(
+        moteur=moteur, journal=FauxJournalAudit()
+    )
+
+    cas_usage.executer("conv-1", TEXTE_BRUT_MAL_FORME)
+
+    assert (
+        moteur.parametres_appels[0]["repetition_penalty"]
+        == REPETITION_PENALTY_DEFAUT
+        == 1.2
+    )
+    assert moteur.parametres_appels[0]["structured_outputs"] == {
+        "regex": PATRON_DIAGNOSTIC_REGEX
+    }
