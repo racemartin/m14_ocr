@@ -113,41 +113,25 @@ class TransformersLoraCpuInferenceAdapter:
             log.STEP(
                 1,
                 "STEP 2 Modele de base",
-                "bf16 essaye d'abord",
+                "float32",
             )
-            # bf16 essaye en premier (coherent avec le libelle du diagramme de
-            # deploiement, "bf16, transformers", et comparable a l'adaptateur
-            # GPU jumeau) ; en pratique, les CPU x86 courants n'ont pas
-            # d'acceleration materielle bf16 pour les operations de
-            # `torch.nn.functional.linear` utilisees par `generate()`, ce qui
-            # les fait tomber sur une emulation logicielle lente. Faute d'un
-            # signal fiable et portable pour detecter cette situation a
-            # l'avance (`torch.cpu.is_bf16_supported()` n'existe pas dans les
-            # versions de torch utilisees par ce projet, seulement cote CUDA/
-            # XPU), le choix retenu est simple et deterministe : tenter bf16,
-            # et si le chargement echoue (ex. `RuntimeError`/`TypeError`
-            # selon la version de torch/transformers), se rabattre sur
-            # float32, seul type garanti pleinement supporte sur tout CPU.
-            try:
-                modele_base = AutoModelForCausalLM.from_pretrained(
-                    self.nom_modele_base,
-                    torch_dtype=torch.bfloat16,
-                    device_map="cpu",
-                    trust_remote_code=True,
-                )
-                dtype_utilise = "bf16"
-            except (RuntimeError, TypeError):
-                log.LEVEL_6_NOTICE(
-                    "TransformersLoraCpuInferenceAdapter",
-                    "bf16 indisponible sur ce CPU, repli sur float32",
-                )
-                modele_base = AutoModelForCausalLM.from_pretrained(
-                    self.nom_modele_base,
-                    torch_dtype=torch.float32,
-                    device_map="cpu",
-                    trust_remote_code=True,
-                )
-                dtype_utilise = "float32"
+            # float32 directement, PLUS de tentative bf16 (changement du
+            # 01/10/2026, mesure reelle a l'appui) : bf16 chargeait sans
+            # erreur sur ce CPU (donc le repli try/except ci-dessous
+            # n'etait jamais declenche), mais la generation elle-meme etait
+            # catastrophiquement lente - un run reel a mesure ~145s/token
+            # (28 tokens en 4079s), coherent avec une emulation logicielle
+            # de bf16 sur un CPU x86 sans acceleration materielle dediee.
+            # float32 est nativement supporte par tout CPU (aucune
+            # emulation), donc attendu nettement plus rapide malgre le
+            # double de memoire occupee par les poids.
+            modele_base = AutoModelForCausalLM.from_pretrained(
+                self.nom_modele_base,
+                torch_dtype=torch.float32,
+                device_map="cpu",
+                trust_remote_code=True,
+            )
+            dtype_utilise = "float32"
             log.PARAMETER_VALUE("dtype retenu", dtype_utilise)
 
             log.STEP(1, "STEP 3 Adaptateur LoRA", self.depot_lora)

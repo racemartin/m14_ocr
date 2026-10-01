@@ -29,6 +29,10 @@ développé sous architecture hexagonale. Ce document est une version
 **condensée** : chaque section suit le patron intro -> commande(s) réelle(s)
 -> résultat obtenu, sans le détail d'implémentation.
 
+**Documents complémentaires :**
+- [PDF Support de présentation (M14)](docs/M14_Support_de_presentation_V3.pdf)
+- [PDF Rapport technique MC4](docs/M14_Rapport_technique_CHSA_Triage_V3.pdf)
+
 Vue d'ensemble en un coup d'œil (entrée/sortie de chaque étape) :
 [`docs/diagrams/00_vue_ensemble/vision_generale_etapes.png`](docs/diagrams/00_vue_ensemble/vision_generale_etapes.png).
 Version détaillée (scripts/adaptateurs/dépôts HF réels, DPO marqué conceptuel) :
@@ -1470,8 +1474,11 @@ installé.
 **Ceci est un outil de comparaison de précision, pas une troisième
 option de service.** Il ne fait pas partie du choix `local`/`distant`
 présenté en §4.2 : il existe uniquement pour comparer, à l'œil, une
-réponse en pleine précision (bf16, ou float32 en repli, cf.
-`TransformersLoraCpuInferenceAdapter`) à la réponse déjà obtenue via le
+réponse en pleine précision (float32, cf.
+`TransformersLoraCpuInferenceAdapter` : bf16 chargeait sans erreur mais
+générait ~145s/token sur ce CPU, mesuré réellement le 01/10/2026, d'où
+float32 directement plutôt qu'un essai bf16 préalable) à la réponse déjà
+obtenue via le
 chemin CPU quantifié (llama.cpp/GGUF Q4_K_M, `CHSA_MOTEUR_INFERENCE=local`,
 cf. §4.2) sur la même entrée, pour voir si la quantification change le
 comportement du modèle. Jamais branché dans le frontend Streamlit de
