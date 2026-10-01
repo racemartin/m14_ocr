@@ -28,7 +28,7 @@ from chsa_triage.domain.model.enums import (
     TypeExemple,
     TypeSplit,
 )
-from chsa_triage.domain.model.exemple_formate import ExempleFormate
+from chsa_triage.domain.model.exemple_formate import ExempleFormate, LimiteTour
 from chsa_triage.domain.model.exemple_formate_preference import (
     ExempleFormatePreference,
 )
@@ -61,6 +61,7 @@ __all__ = [
     "HyperparametresEntrainement",
     "HyperparametresEntrainementDpo",
     "Langue",
+    "LimiteTour",
     "Message",
     "NiveauConfiance",
     "TypeExemple",

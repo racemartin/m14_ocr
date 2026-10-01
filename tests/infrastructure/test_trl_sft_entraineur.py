@@ -18,12 +18,13 @@ exemples), suffisant pour confirmer (a) qu'aucune erreur CUDA ne
 survient et (b) que la perte d'entrainement baisse reellement, sans
 consommer un run complet facture.
 
-`assistant_only_loss=False` est utilise explicitement ici (pas le
-defaut de la recette, qui vaut `true`) : la forme actuelle
-d'`ExempleFormate` (texte ChatML deja rendu) est verifiee INCOMPATIBLE
-avec `assistant_only_loss=True` (cf. le meme avertissement), ce test
-verifie donc le chemin qui peut reellement fonctionner aujourd'hui,
-pas celui qui echoue par construction.
+Deux scenarios : `assistant_only_loss=False` (perte pleine sequence,
+chemin historique, colonne `"text"`) et `assistant_only_loss=True`
+(perte masquee aux tours assistant via `ExempleFormate.tours`, chemin
+resolu par `m14-ocr-assistant-only-loss-estructurado`, colonnes
+`input_ids`/`attention_mask`/`labels` pre-tokenisees). Les deux
+utilisent des `ExempleFormate` avec `tours` renseignes, comme le
+produit reellement `ChatMLFormateurAdapter.formater`.
 """
 
 from __future__ import annotations
@@ -46,7 +47,7 @@ from chsa_triage.domain.model.configuration_entrainement import (
     ConfigurationQuantification,
     HyperparametresEntrainement,
 )
-from chsa_triage.domain.model.exemple_formate import ExempleFormate
+from chsa_triage.domain.model.exemple_formate import ExempleFormate, LimiteTour
 from chsa_triage.infrastructure.adapters.trl_sft_entraineur import (
     TrlSftEntraineurAdapter,
 )
@@ -56,22 +57,42 @@ NOM_MODELE = "Qwen/Qwen3-1.7B-Base"
 
 def _petit_dataset(nombre: int) -> list[ExempleFormate]:
     """
-    Genere `nombre` ExempleFormate synthetiques au format ChatML brut
-    (memes marqueurs que ce que produit reellement ChatMLFormateurAdapter),
-    varies pour ne pas etre tous identiques.
+    Genere `nombre` ExempleFormate synthetiques au format ChatML brut,
+    `tours` inclus (memes marqueurs/bornes que ce que produit reellement
+    `ChatMLFormateurAdapter.formater`), varies pour ne pas etre tous
+    identiques.
     """
     exemples = []
     for i in range(nombre):
-        texte = (
-            f"<|im_start|>system\nTu es un assistant medical.<|im_end|>\n"
+        tour_system = "<|im_start|>system\nTu es un assistant medical.<|im_end|>\n"
+        tour_user = (
             f"<|im_start|>user\nSymptome numero {i} : douleur thoracique legere.<|im_end|>\n"
+        )
+        tour_assistant = (
             f"<|im_start|>assistant\nRecommandation {i} : consultation sous 48h.<|im_end|>\n"
         )
-        exemples.append(ExempleFormate(identifiant=f"exemple-{i}", texte=texte))
+        texte = tour_system + tour_user + tour_assistant
+        tours = (
+            LimiteTour(role="system", debut=0, fin=len(tour_system)),
+            LimiteTour(
+                role="user",
+                debut=len(tour_system),
+                fin=len(tour_system) + len(tour_user),
+            ),
+            LimiteTour(
+                role="assistant",
+                debut=len(tour_system) + len(tour_user),
+                fin=len(texte),
+            ),
+        )
+        exemples.append(
+            ExempleFormate(identifiant=f"exemple-{i}", texte=texte, tours=tours)
+        )
     return exemples
 
 
-def test_entrainement_reel_quelques_pas_perte_baisse(tmp_path):
+@pytest.mark.parametrize("assistant_only_loss", [False, True])
+def test_entrainement_reel_quelques_pas_perte_baisse(tmp_path, assistant_only_loss):
     dataset_train = _petit_dataset(80)
     dataset_validation = _petit_dataset(20)
 
@@ -84,6 +105,7 @@ def test_entrainement_reel_quelques_pas_perte_baisse(tmp_path):
         taille_lot=2,
         packing=False,
         type_perte="nll",
+        assistant_only_loss=assistant_only_loss,
     )
     configuration_quantification = ConfigurationQuantification(
         bits=4,
@@ -96,7 +118,6 @@ def test_entrainement_reel_quelques_pas_perte_baisse(tmp_path):
         identifiant_modele_base=NOM_MODELE,
         configuration_quantification=configuration_quantification,
         repertoire_sortie=str(tmp_path / "outputs"),
-        assistant_only_loss=False,
     )
 
     resultat = adaptateur.entrainer(

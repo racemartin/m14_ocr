@@ -4,8 +4,12 @@ Configuration d'un run d'entrainement SFT-LoRA, deserialisee depuis
 `transformers` restent dans les adaptateurs) ; champs verifies contre
 les signatures reelles de `peft.LoraConfig`/`transformers.BitsAndBytesConfig`.
 
-TODO connu : `assistant_only_loss` (present dans le YAML) n'est pas
-encore un champ ici, cf. backlog `m14-ocr-assistant-only-loss-estructurado`.
+`assistant_only_loss` (present dans le YAML, section `entrainement:`)
+est un champ de `HyperparametresEntrainement` au meme titre que
+`type_perte`/`packing` : pilote a la fois `ExempleFormate.tours`
+(cf. `ChatMLFormateurAdapter.formater`) et la construction des
+`labels` masques dans `TrlSftEntraineurAdapter.entrainer` (cf.
+backlog resolu `m14-ocr-assistant-only-loss-estructurado`).
 """
 
 from __future__ import annotations
@@ -51,6 +55,7 @@ class HyperparametresEntrainement:
     taille_lot: int
     packing: bool
     type_perte: str
+    assistant_only_loss: bool = False
 
 
 @dataclass(frozen=True, slots=True)

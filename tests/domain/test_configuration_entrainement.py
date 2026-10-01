@@ -55,13 +55,9 @@ def test_lora_se_deserialise_depuis_la_recette():
 
 
 def test_hyperparametres_se_deserialisent_depuis_la_recette():
-    """
-    `entrainement:` contient aussi `assistant_only_loss`, hors du champ
-    de HyperparametresEntrainement (pilote trl.SFTConfig, pas cette
-    dataclass, cf. docstring de configuration_entrainement.py) : on
-    selectionne explicitement les cles couvertes plutot qu'un
-    depaquetage direct du dictionnaire.
-    """
+    """`entrainement:` se deserialise integralement, `assistant_only_loss`
+    inclus (champ de `HyperparametresEntrainement` depuis la resolution
+    du backlog `m14-ocr-assistant-only-loss-estructurado`)."""
     recette = _charger_recette()
     section = recette["entrainement"]
     hyperparametres = HyperparametresEntrainement(
@@ -70,6 +66,7 @@ def test_hyperparametres_se_deserialisent_depuis_la_recette():
         taille_lot=section["taille_lot"],
         packing=section["packing"],
         type_perte=section["type_perte"],
+        assistant_only_loss=section["assistant_only_loss"],
     )
 
     assert hyperparametres.taux_apprentissage == pytest.approx(2.0e-4)
@@ -77,6 +74,7 @@ def test_hyperparametres_se_deserialisent_depuis_la_recette():
     assert hyperparametres.taille_lot == 4
     assert hyperparametres.packing is True
     assert hyperparametres.type_perte == "nll"
+    assert hyperparametres.assistant_only_loss is True
 
 
 def test_suivi_backend_vaut_hf_dataset_par_defaut_dans_la_recette():

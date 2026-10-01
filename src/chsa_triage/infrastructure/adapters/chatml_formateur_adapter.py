@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from chsa_triage.domain.model.exemple_formate import ExempleFormate
+from chsa_triage.domain.model.exemple_formate import ExempleFormate, LimiteTour
 from chsa_triage.domain.model.exemple_formate_preference import (
     ExempleFormatePreference,
 )
@@ -40,17 +40,53 @@ class ChatMLFormateurAdapter:
         Concatene prompt + completion (dans cet ordre : un exemple
         d'entrainement complet, pas une invite a generer) et rend le
         tout via le chat template natif du tokenizer,
-        `add_generation_prompt=False`.
+        `add_generation_prompt=False`. Calcule aussi `tours` (bornes
+        caracteres par tour, cf. `LimiteTour`) pour que
+        `assistant_only_loss` puisse masquer la perte aux tours
+        assistant uniquement.
+
+        Les bornes des tours `prompt` sont obtenues par prefixes
+        successifs de `apply_chat_template(messages_prompt[:i], ...)` :
+        sur, car aucun de ces prefixes ne contient de tour assistant
+        (le bug de stripping `<think>` de Qwen3 ne cible QUE les tours
+        assistant non-finaux, cf. `LimiteTour`). La borne du tour
+        `completion` n'a besoin d'aucun appel supplementaire : c'est le
+        tour final du rendu complet par construction, donc jamais
+        strippe, et elle couvre tout le reste de `texte` apres les
+        tours prompt.
         """
         tokenizer = self._obtenir_tokenizer()
-        messages = [
+        messages_prompt = [
             {"role": message.role, "content": message.contenu}
-            for message in (*exemple.prompt, *exemple.completion)
+            for message in exemple.prompt
+        ]
+        messages_completion = [
+            {"role": message.role, "content": message.contenu}
+            for message in exemple.completion
         ]
         texte = tokenizer.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=False
+            messages_prompt + messages_completion,
+            tokenize=False,
+            add_generation_prompt=False,
         )
-        return ExempleFormate(identifiant=exemple.identifiant, texte=texte)
+
+        tours: list[LimiteTour] = []
+        debut = 0
+        for i in range(1, len(messages_prompt) + 1):
+            rendu_prefixe = tokenizer.apply_chat_template(
+                messages_prompt[:i], tokenize=False, add_generation_prompt=False
+            )
+            fin = len(rendu_prefixe)
+            tours.append(
+                LimiteTour(role=messages_prompt[i - 1]["role"], debut=debut, fin=fin)
+            )
+            debut = fin
+        if messages_completion:
+            tours.append(LimiteTour(role="assistant", debut=debut, fin=len(texte)))
+
+        return ExempleFormate(
+            identifiant=exemple.identifiant, texte=texte, tours=tuple(tours)
+        )
 
     def formater_invite_zero_shot(self, exemple: ExemplePivot) -> str:
         """

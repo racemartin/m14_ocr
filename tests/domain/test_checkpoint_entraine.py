@@ -96,6 +96,7 @@ def test_serialisation_json_produit_le_schema_attendu():
         "taille_lot": 4,
         "packing": True,
         "type_perte": "chunked_nll",
+        "assistant_only_loss": False,
     }
     assert donnees["metriques_finales"] == {
         "etape": 1200,

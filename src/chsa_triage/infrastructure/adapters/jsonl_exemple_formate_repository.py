@@ -14,7 +14,7 @@ import json
 from collections.abc import Iterable, Iterator
 from pathlib import Path
 
-from chsa_triage.domain.model.exemple_formate import ExempleFormate
+from chsa_triage.domain.model.exemple_formate import ExempleFormate, LimiteTour
 
 
 class JsonlExempleFormateRepository:
@@ -72,9 +72,19 @@ class JsonlExempleFormateRepository:
                 ligne = ligne.strip()
                 if ligne:
                     d = json.loads(ligne)
+                    tours = tuple(
+                        LimiteTour(
+                            role=tour["role"],
+                            debut=tour["debut"],
+                            fin=tour["fin"],
+                        )
+                        for tour in d.get("tours", ())
+                    )
                     exemples.append(
                         ExempleFormate(
-                            identifiant=d["identifiant"], texte=d["texte"]
+                            identifiant=d["identifiant"],
+                            texte=d["texte"],
+                            tours=tours,
                         )
                     )
         return exemples
@@ -85,5 +95,9 @@ class JsonlExempleFormateRepository:
                 ligne = {
                     "identifiant": exemple.identifiant,
                     "texte": exemple.texte,
+                    "tours": [
+                        {"role": tour.role, "debut": tour.debut, "fin": tour.fin}
+                        for tour in exemple.tours
+                    ],
                 }
                 f.write(json.dumps(ligne, ensure_ascii=False) + "\n")

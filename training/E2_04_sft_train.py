@@ -21,24 +21,18 @@ Usage (Environnement B avec GPU) :
         --dataset-formate data/processed/dataset_formate.jsonl \
         --checkpoints data/processed/checkpoints_sft.jsonl \
         --suivi-hf-repo mombasstic/chsa-triage-sft-metrics \
-        --checkpoint-hf-repo mombasstic/chsa-triage-sft-lora \
-        --assistant-only-loss false
+        --checkpoint-hf-repo mombasstic/chsa-triage-sft-lora
 
 Porte d'entree recommandee avant de lancer ce script pour de vrai :
     uv run python scripts/check_env_gpu.py --model Qwen/Qwen3-1.7B-Base
 
-Trois garde-fous, tous verifies AVANT de charger le modele (evite de
+Deux garde-fous, tous verifies AVANT de charger le modele (evite de
 facturer un GPU pour decouvrir le probleme trop tard) :
-1. `assistant_only_loss=true` (valeur du YAML) est incompatible avec
-   la forme actuelle d'`ExempleFormate` (texte deja rendu, pas
-   conversationnel) et fait echouer `trl.SFTTrainer` — refuse de
-   demarrer sauf `--assistant-only-loss false` explicite (perte pleine
-   sequence).
-2. `type_perte=chunked_nll` (valeur du YAML) n'est pas supporte par la
+1. `type_perte=chunked_nll` (valeur du YAML) n'est pas supporte par la
    version de `trl` que resout HF Jobs (l'extra `remote` liste
    `unsloth` sans borne, ce qui plafonne `trl` a une version pre-1.0) —
    la recette est corrigee a `nll`, verifie avant chargement.
-3. Sans `--checkpoint-hf-repo`, les poids restent uniquement dans
+2. Sans `--checkpoint-hf-repo`, les poids restent uniquement dans
    `--repertoire-sortie-checkpoints` local, perdus sur un job distant
    (disque ephemere). Bug reel deja rencontre sur ce point precis :
    `--suivi-hf-repo` etait passe en ligne de commande mais la recette
@@ -121,6 +115,7 @@ def _construire_grille(
             taille_lot=hyperparametres_initiaux.taille_lot,
             packing=hyperparametres_initiaux.packing,
             type_perte=hyperparametres_initiaux.type_perte,
+            assistant_only_loss=hyperparametres_initiaux.assistant_only_loss,
         )
         for taux in recette_grille.get("taux_apprentissage", [])
     )
@@ -259,7 +254,8 @@ def main() -> None:
         type=_parser_bool,
         default=None,
         help="Surcharge entrainement.assistant_only_loss de la recette (true/false). "
-        "Par defaut : la valeur de la recette, cf. AVERTISSEMENT dans ce module.",
+        "Par defaut : la valeur de la recette. Masque la perte aux tours assistant "
+        "uniquement (via ExempleFormate.tours), cf. TrlSftEntraineurAdapter.",
     )
     parser.add_argument(
         "--attn-implementation",
@@ -297,18 +293,6 @@ def main() -> None:
     if assistant_only_loss is None:
         assistant_only_loss = recette["entrainement"].get(
             "assistant_only_loss", False
-        )
-
-    if assistant_only_loss:
-        log.LEVEL_4_ERROR(
-            "E2_04_sft_train",
-            "assistant_only_loss=true est garanti d'echouer avec la forme actuelle "
-            "d'ExempleFormate (texte ChatML deja rendu, pas conversationnel). "
-            "Relancez avec --assistant-only-loss false pour un run reel (perte pleine sequence).",
-        )
-        raise SystemExit(
-            "assistant_only_loss=true : incompatibilite connue, abandon avant de charger le "
-            "modele (pas de cout GPU inutile)."
         )
 
     _verifier_type_perte_valide(recette["entrainement"]["type_perte"])
@@ -378,6 +362,7 @@ def main() -> None:
         taille_lot=recette["entrainement"]["taille_lot"],
         packing=recette["entrainement"]["packing"],
         type_perte=recette["entrainement"]["type_perte"],
+        assistant_only_loss=assistant_only_loss,
     )
     grille = _construire_grille(
         recette.get("grille_hyperparametres", {}), hyperparametres_initiaux
@@ -397,7 +382,6 @@ def main() -> None:
             **recette["quantification"]
         ),
         repertoire_sortie=arguments.repertoire_sortie_checkpoints,
-        assistant_only_loss=assistant_only_loss,
         attn_implementation=arguments.attn_implementation,
         utiliser_liger_kernel=arguments.liger_kernel,
     )
