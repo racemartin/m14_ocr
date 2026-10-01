@@ -594,7 +594,7 @@ hf download mombasstic/chsa-triage-sft-lora --local-dir outputs/sft-lora-local
 | `nombre_epoques` | `3` | Passes complètes sur le dataset ; compromis apprentissage/mémorisation. | `1` : sous-apprentissage probable / `5+` : risque de surapprentissage |
 | `taille_lot` | `4` | Exemples par pas et par GPU, limité par la VRAM disponible. | Valeur + haute si VRAM dispo : + stable, + lent par pas |
 | `type_perte` | `nll` | Cross-entropy standard — imposée par une contrainte de dépendance. | `chunked_nll` : réduit le pic VRAM sur `lm_head` — écarté (trl figé en 0.24.0, sans support) |
-| `assistant_only_loss` | `false` | Perte calculée sur toute la séquence (prompt + réponse), limitation technique connue (cf. `AGENTS.md`), pas un choix délibéré. | `true` (souhaité à terme) : masquerait (`-100`) les tokens system/user, mais **crash garanti** aujourd'hui, car `ExempleFormate` porte du ChatML déjà rendu en texte, pas des messages structurés par tour, seule forme acceptée par `trl.data_utils.is_conversational` |
+| `assistant_only_loss` | `false` | Perte calculée sur toute la séquence (prompt + réponse) — configuration de référence mesurée : F1 post-SFT 0.112. | `true` : implémenté (masquage `-100` par tour), mais un run GPU réel payant l'a mesuré en régression (F1 0.039, sous le baseline zero-shot 0.043) ; à ne pas réactiver sans nouvelle investigation (cf. `AGENTS.md`) |
 | `packing` | `true` | Concatène les exemples courts → GPU utilisé à ~100%. | `false` : padding classique, jusqu'à 40-60% de FLOPs gaspillés |
 
 ### ↳ `packing=true` pilote en réalité 3 réglages de `SFTConfig`
@@ -652,7 +652,7 @@ sous-ensemble de 278 exemples et les mêmes métriques que les baselines
 
 ```bash
 hf jobs uv run \
-    --flavor l4x1 \
+    --flavor l4x1 --timeout 2h \
     --with "chsa-triage[remote] @ git+https://github.com/racemartin/m14_ocr.git@main" \
     --secrets HF_TOKEN \
     https://raw.githubusercontent.com/racemartin/m14_ocr/main/interfaces/cli/E2_05_evaluer_post_sft.py \

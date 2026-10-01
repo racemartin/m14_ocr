@@ -24,7 +24,10 @@ entrainement:
   # n'utilise pas uv.lock) et 0.24.0 ne connait pas encore chunked_nll,
   # cf. infrastructure/adapters/trl_sft_entraineur.py et AGENTS.md.
   type_perte: nll
-  assistant_only_loss: true
+  # false : un run GPU reel payant (01/10/2026) a mesure assistant_only_loss=true
+  # en regression (F1 0.039, sous le baseline zero-shot 0.043, loin du 0.112
+  # obtenu avec false) -- voir le commit qui annule ceci pour le detail complet.
+  assistant_only_loss: false
 
 grille_hyperparametres:
   # Grid restreint (Optuna explicitement ecarte pour ce POC, cf.
