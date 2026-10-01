@@ -6,11 +6,13 @@ contre l'API FastAPI REELLE (`interfaces/api/`, `POST /conversations`,
 Distinct de `monitoring/app_suivi_entrainement.py` (courbes
 d'apprentissage SFT/DPO, aucun chat, but different).
 
-Architecture a 2 pieces (decision produit du 24/09/2026, cf. AGENTS.md) :
-un unique Space HF Docker/GPU (API+vLLM, cf. `interfaces/api/` +
+Un unique Space HF Docker/GPU (API+vLLM, cf. `interfaces/api/` +
 `deploy/space_gpu_api_vllm/`), coute et allume seulement pendant les
-tests, et CE fichier, execute EN LOCAL sur la machine de l'operateur
-humain (jamais deploye comme Space separe : cf.
+tests. Depuis le 01/10/2026, ce Space sert directement CE fichier
+(seul process branche sur son unique port public, cf.
+`deploy/space_gpu_api_vllm/demarrer.sh`) -- avant cette date, il
+fallait le lancer EN LOCAL sur la machine de l'operateur humain ; cela
+reste possible, pointe vers l'API du Space (cf.
 `interfaces/web/README_space.md`).
 
 Ce frontend ne sait JAMAIS a l'avance si le Space GPU est allume : il

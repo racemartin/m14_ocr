@@ -1179,51 +1179,76 @@ séparément (le `uv.lock` du dépôt résout déjà l'extra `api`).
 </td></tr></table>
 
 `.github/workflows/ci.yml` : sur push/PR vers `main`, deux jobs
-séquentiels, aucun déploiement réel. `tests` installe `dev`+`local`+`api`
+séquentiels. `tests` installe `dev`+`local`+`api`
 (mêmes extras que ceux réellement utilisés dans cette tâche pour faire
 passer la suite complète sans GPU) plus `pyyaml` séparément (nécessaire
 à `training/E2_04_sft_train.py`/`E3_03_dpo_train.py`, autrement
 réservé à l'extra `remote`, cf. AGENTS.md), puis lance
 `uv run pytest tests/ -q`. `docker-build` (après `tests`) reconstruit
-l'image de l'API pour vérifier que le `Dockerfile` build, sans jamais
-la publier ni la déployer. Secrets (`HF_TOKEN` ou autre) : via GitHub
-Actions Secrets si un futur job en a besoin, jamais en dur dans le
-workflow.
+l'image de l'API pour vérifier que le `Dockerfile` build (jamais
+réutilisée ensuite : HF Spaces reconstruit sa propre image à partir du
+`Dockerfile` uploadé).
+
+`.github/workflows/deploy.yml` : se déclenche automatiquement (via
+`workflow_run`) quand `CI` vient de réussir sur `main`, jamais sur une
+pull request. Publie le code réel sur le Space GPU avec les mêmes
+commandes `hf upload` que le déploiement manuel ci-dessous (§4.6), puis
+`hf spaces restart`. Secret `HF_TOKEN` (celui du compte, rôle "write")
+fourni via GitHub Actions Secrets, jamais en dur dans le workflow.
+Autorisé explicitement par le capitaine (01/10/2026) : chaque merge sur
+`main` qui passe CI republie et redémarre le Space GPU payant.
 
 
 <table id="45-healthcheck-vllm-et-frontend-streamlit-de-test" style="width:100%;"><tr><td style="background-color:#f5b0e0;">
 <h2 style="border-bottom:none; margin:0;">4.5 Healthcheck vLLM et frontend Streamlit de test</h2>
 </td></tr></table>
 
-Architecture de déploiement retenue (décision produit du 24/09/2026,
-**à 2 pièces**) :
+Architecture de déploiement retenue (décision produit du 01/10/2026,
+**une seule pièce**, remplace l'ancienne architecture à 2 pièces du
+24/09/2026) :
 
-- Un unique Space HF **Docker/GPU** (coûteux, à n'allumer que pendant
-  les tests) : API FastAPI + serveur vLLM, préparé dans
-  [`deploy/space_gpu_api_vllm/`](deploy/space_gpu_api_vllm/)
-  (`Dockerfile`, `demarrer.sh`, `README_space.md`), séparé du
-  `Dockerfile` racine (qui reste l'image API **seule**, cf. §4.3).
-- Le frontend Streamlit de test de l'entretien clinique
-  ([`interfaces/web/`](interfaces/web/), `app_test_inference.py`,
-  `logica_test_inference.py`, `requirements.txt`) : exécuté **en
-  local** par l'opérateur humain, jamais publié comme Space HF séparé.
-  Un Space Docker rien que pour Streamlit exigerait soit un abonnement
-  HF PRO (sur le hardware gratuit `cpu-basic`), soit du hardware
-  payant, alors que ce frontend ne fait qu'appeler l'API en HTTP, sans
-  aucun calcul GPU : le faire tourner en local marche exactement aussi
-  bien pour ce POC, sans les complications de facturation d'un Space
-  dédié (l'ancienne cible à 3 pièces, `interfaces/web/README_space.md`,
-  est abandonnée).
+Un unique Space HF **Docker/GPU** (coûteux, à n'allumer que pendant les
+tests), préparé dans
+[`deploy/space_gpu_api_vllm/`](deploy/space_gpu_api_vllm/)
+(`Dockerfile`, `demarrer.sh`, `README_space.md`), qui fait tourner
+**trois process dans le même conteneur** : vLLM (port interne 8000),
+l'API FastAPI (port interne 8001), et le frontend Streamlit de
+l'entretien clinique ([`interfaces/web/`](interfaces/web/),
+`app_test_inference.py`, `logica_test_inference.py`). Un Space Docker
+n'expose qu'**un seul port public** (`app_port`, ici 7860) : c'est
+Streamlit qui y est branché (seul process atteignable depuis
+l'extérieur), vLLM et l'API restant internes au conteneur : Streamlit
+est le seul client de l'API, exactement comme l'API est le seul client
+de vLLM. Séparé du `Dockerfile` racine (qui reste l'image API
+**seule**, cf. §4.3).
 
-Ce frontend local ne sait jamais à l'avance si le Space GPU est
-allumé : il sonde `GET /sante` en boucle et affiche un état d'attente
+**URL d'accès réelle, une fois le Space démarré** :
+`https://mombasstic-chsa-triage-api.hf.space` (ou la page
+[huggingface.co/spaces/mombasstic/chsa-triage-api](https://huggingface.co/spaces/mombasstic/chsa-triage-api),
+qui affiche la même interface Streamlit dans un cadre HF). Plus besoin
+de lancer quoi que ce soit en local pour tester : ouvrir cette URL dans
+un navigateur suffit, une fois le Space sorti de pause (§4.1, §4.6).
+
+Avant le 01/10/2026, Streamlit tournait uniquement **en local** sur la
+machine de l'opérateur humain (jamais publié comme Space HF séparé ;
+l'ancienne cible à 3 pièces, `interfaces/web/README_space.md`, était
+déjà abandonnée pour cette même raison de coût : un Space Docker rien
+que pour Streamlit exigerait soit un abonnement HF PRO, soit du
+hardware payant). Lancer le frontend en local contre l'API distante
+reste possible et utile (comparer deux configurations côte à côte,
+par exemple), cf. l'étape 11 du guide rapide ci-dessous (§4.6).
+
+Streamlit ne sait jamais à l'avance si vLLM a fini de charger le
+modèle : il sonde `GET /sante` en boucle et affiche un état d'attente
 clair tant que le modèle n'est pas prêt, sans synchronisation manuelle
-des deux démarrages. `/sante`
+des démarrages. `/sante`
 (`interfaces/api/app.py`) interroge à son tour le `/health` natif de
 `vllm serve` et retourne toujours HTTP 200 (jamais une erreur de
 connexion brute), avec un corps structuré `{"disponible": ...,
 "detail": ...}` : un Docker HEALTHCHECK qui redémarrerait le conteneur
-API parce que vLLM met du temps à charger le modèle n'aiderait en rien.
+parce que vLLM met du temps à charger le modèle n'aiderait en rien
+(le HEALTHCHECK réel du Space sonde `/_stcore/health`, l'endpoint natif
+de Streamlit, sur le port public).
 Testé avec un double en mémoire du serveur vLLM
 (`tests/interfaces/test_app_api.py`,
 `tests/infrastructure/test_vllm_endpoint_inference_adapter.py`), aucun
@@ -1255,6 +1280,14 @@ Redémarrer pour appliquer les changements, puis vérifier :
 hf spaces restart mombasstic/chsa-triage-api
 curl https://mombasstic-chsa-triage-api.hf.space/sante
 ```
+
+Depuis le 01/10/2026, Streamlit est servi directement par le Space
+(seul process branché sur son unique port public, cf. §4.5) : ouvrir
+`https://mombasstic-chsa-triage-api.hf.space` dans un navigateur
+suffit, rien à lancer en local.
+
+Alternative (frontend lancé en local contre l'API distante, utile par
+exemple pour comparer deux configurations côte à côte) :
 
 ```bash
 uv sync --extra web
@@ -1358,7 +1391,14 @@ curl -sS -X POST "$CHSA_BASE/conversations/$CONVERSATION_ID/diagnostic" \
   -H "X-API-Key: $CHSA_CLE"
 ```
 
-**11. Lancer le frontend Streamlit en local, pointé vers le Space réel**
+**11. Ouvrir directement l'interface servie par le Space** (depuis le
+01/10/2026, Streamlit est le process branché sur l'unique port public
+du Space, rien à lancer en local) :
+`https://mombasstic-chsa-triage-api.hf.space`
+
+**11bis. Alternative : lancer le frontend Streamlit en local, pointé
+vers l'API du Space réel** (utile par exemple pour comparer deux
+configurations côte à côte) :
 ```bash
 uv sync --extra web
 export CHSA_API_URL_BASE="https://mombasstic-chsa-triage-api.hf.space"
@@ -1366,7 +1406,9 @@ export CHSA_API_CLE="<votre-cle>"
 uv run streamlit run interfaces/web/app_test_inference.py
 ```
 
-**12. Ouvrir le navigateur** (Streamlit s'ouvre seul sur `localhost:8501`) et dialoguer avec l'agent.
+**12. Ouvrir le navigateur** (sur l'URL du Space à l'étape 11, ou sur
+`localhost:8501` si l'étape 11bis a été utilisée à la place) et
+dialoguer avec l'agent.
 
 **13. Mettre le Space en pause une fois les tests terminés** (le Space
 GPU coûte à l'heure tant qu'il tourne, cf. §4.5 -- le temps en pause
@@ -1571,7 +1613,13 @@ bloc ouvre sa propre conversation, pour ne jamais mélanger les scénarios.
   export CHSA_CLE="<clé réelle du Space>"
   export CHSA_BASE="https://mombasstic-chsa-triage-api.hf.space"
   ```
-  Frontend Streamlit (optionnel, terminal séparé, même clé que ci-dessus) :
+  Interface Streamlit : déjà servie directement par le Space (depuis le
+  01/10/2026, seul process branché sur son unique port public), à
+  l'URL `https://mombasstic-chsa-triage-api.hf.space`, rien à lancer
+  en local.
+
+  Alternative, frontend lancé en local contre l'API distante (optionnel,
+  terminal séparé, même clé que ci-dessus) :
   ```bash
   export CHSA_API_URL_BASE="https://mombasstic-chsa-triage-api.hf.space"
   export CHSA_API_CLE="<clé réelle du Space>"

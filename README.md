@@ -215,21 +215,29 @@ non implémenté.
 <h2 style="border-bottom:none; margin:0;">4.1 Configuration GPU (vLLM, Space HF)</h2>
 </td></tr></table>
 
+Depuis le 01/10/2026, le Space sert directement l'interface Streamlit
+de test (plus besoin de la lancer en local) :
+
 ```bash
 # Sortir le Space de pause (facture à la minute pendant qu'il tourne)
 hf spaces restart mombasstic/chsa-triage-api
 hf spaces wait mombasstic/chsa-triage-api
-
-export CHSA_API_URL_BASE="https://mombasstic-chsa-triage-api.hf.space"
-export CHSA_API_CLE="<clé réelle du Space>"
-uv run streamlit run interfaces/web/app_test_inference.py
 ```
+
+Puis ouvrir dans un navigateur : **https://mombasstic-chsa-triage-api.hf.space**
+(l'URL affichée par `hf spaces restart`, ou la page du Space
+[huggingface.co/spaces/mombasstic/chsa-triage-api](https://huggingface.co/spaces/mombasstic/chsa-triage-api)
+qui affiche la même interface dans un cadre HF).
 
 **Repasser le Space en pause après usage** (sinon la facturation continue) :
 
 ```bash
 hf spaces pause mombasstic/chsa-triage-api
 ```
+
+Alternative (frontend lancé en local contre l'API distante, utile par
+exemple pour comparer deux configurations côte à côte) :
+[`README_AVEC_DETAILS.md`](README_AVEC_DETAILS.md#41-configuration-gpu-vllm-space-hf).
 
 <table id="42-configuration-cpu-gratuite-llamacpp" style="width:100%;"><tr><td style="background-color:#f5b0e0;">
 <h2 style="border-bottom:none; margin:0;">4.2 Configuration CPU gratuite (llama.cpp)</h2>

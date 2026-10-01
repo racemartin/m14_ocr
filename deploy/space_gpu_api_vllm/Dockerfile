@@ -1,18 +1,24 @@
-# Image du Space HF Docker/GPU "API FastAPI + vLLM".
+# Image du Space HF Docker/GPU "API FastAPI + vLLM + Streamlit".
 #
 # DIFFERENT du `Dockerfile` a la racine du depot (celui-ci reste
 # l'image API SEULE, decouplee de vLLM, cf. sa propre note de
 # conception : vLLM comme service HTTP externe). Ce fichier-ci sert le
 # DEUXIEME deploiement, decision produit actee : un unique Space
 # Docker/GPU (couteux, allume seulement pendant les tests), qui fait
-# tourner l'API ET vLLM dans le MEME conteneur (un seul cout GPU, un
-# seul on/off) ; le second Space, Streamlit/CPU, leger et toujours
-# allume, est prepare separement dans `interfaces/web/README_space.md`.
+# tourner vLLM, l'API ET l'interface Streamlit de test dans le MEME
+# conteneur (un seul cout GPU, un seul on/off). Decision produit du
+# 01/10/2026 : Streamlit est servi directement par ce Space (seul
+# process branche sur l'unique port public, cf. `demarrer.sh`) plutot
+# qu'execute en local par l'operateur -- voir l'historique git de
+# `interfaces/web/README_space.md` pour l'ancienne architecture a 2
+# pieces.
 #
-# `demarrer.sh` (ce dossier) lance vLLM en arriere-plan puis l'API
-# FastAPI au premier plan ; `GET /sante` (interfaces/api/app.py) sonde
-# `vLLM /health` en interne et reste toujours HTTP 200, meme si vLLM
-# met plusieurs minutes a charger le modele.
+# `demarrer.sh` (ce dossier) lance vLLM puis l'API FastAPI en
+# arriere-plan (tous deux internes au conteneur, jamais exposes), puis
+# Streamlit au premier plan sur le port public. `GET /sante`
+# (interfaces/api/app.py) sonde `vLLM /health` en interne et reste
+# toujours HTTP 200, meme si vLLM met plusieurs minutes a charger le
+# modele ; c'est ce que Streamlit sonde en boucle.
 #
 # Deploiement reel du 24/09/2026 (mombasstic/chsa-triage-api). Historique
 # complet dans le git log de ce fichier et de `demarrer.sh` -- resume :
@@ -42,7 +48,7 @@ FROM vllm/vllm-openai:latest
 # (utilisateur par defaut de cette image officielle) -- AVANT de
 # creer/basculer vers l'utilisateur UID 1000 ci-dessous, qui n'aurait
 # pas les droits d'ecriture sur l'environnement Python deja en place.
-RUN pip install --no-cache-dir fastapi "uvicorn[standard]" httpx pydantic
+RUN pip install --no-cache-dir fastapi "uvicorn[standard]" httpx pydantic streamlit
 
 # UID 1000 requis par tout Space Docker HF au runtime, quel que soit
 # l'utilisateur du build (root par defaut sur cette image officielle)
@@ -78,8 +84,11 @@ ENV PYTHONUNBUFFERED=1
 
 EXPOSE 7860
 
+# 7860 sert desormais Streamlit (seul process sur le port public, cf.
+# demarrer.sh) : /_stcore/health est son endpoint de sante natif,
+# present depuis Streamlit 1.11 (dependance >=1.37, cf. pyproject.toml).
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
-    CMD python3 -c "import httpx; httpx.get('http://127.0.0.1:7860/sante').raise_for_status()" || exit 1
+    CMD python3 -c "import httpx; httpx.get('http://127.0.0.1:7860/_stcore/health').raise_for_status()" || exit 1
 
 # L'image officielle definit ENTRYPOINT ["vllm", "serve"] -- sans
 # le vider ici, notre CMD serait ajoute comme ARGUMENT de cet

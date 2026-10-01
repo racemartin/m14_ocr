@@ -9,18 +9,25 @@ pinned: false
 ---
 
 Space Docker/GPU, couteux, a n'allumer que pendant les tests. Seule
-piece deployee sur HF Spaces (architecture a 2 pieces, decision
-produit du 24/09/2026, cf. `interfaces/web/README_space.md` pour le
-frontend Streamlit compagnon, execute en LOCAL par l'operateur humain,
-jamais comme Space separe). Sert l'API FastAPI (`interfaces/api/`) ET
-le serveur vLLM (LoRA DPO, jamais fusionne avec la base) dans le MEME
-conteneur, via `Dockerfile` + `demarrer.sh` de ce dossier.
+piece deployee sur HF Spaces. Sert, dans le MEME conteneur, le serveur
+vLLM (LoRA DPO, jamais fusionne avec la base), l'API FastAPI
+(`interfaces/api/`) ET l'interface Streamlit de test
+(`interfaces/web/`), via `Dockerfile` + `demarrer.sh` de ce dossier.
+
+Decision produit du 01/10/2026 : un Space Docker n'expose qu'un seul
+port public (`app_port` ci-dessous) -- vLLM et l'API restent internes
+au conteneur, et c'est Streamlit qui est branche sur ce port public,
+donc visible directement a l'URL du Space, sans rien a lancer en local
+(avant cette date, Streamlit tournait uniquement EN LOCAL sur la
+machine de l'operateur humain ; cf. historique git de
+`interfaces/web/README_space.md` pour cette ancienne architecture a 2
+pieces).
 
 `GET /sante` (`interfaces/api/app.py`) reste HTTP 200 des que uvicorn
 demarre, meme si vLLM met plusieurs minutes a charger le modele : c'est
-ce que le frontend Streamlit local sonde en boucle pour detecter
-automatiquement la disponibilite reelle du modele, sans synchronisation
-manuelle des deux demarrages.
+ce que Streamlit sonde en boucle pour detecter automatiquement la
+disponibilite reelle du modele, sans synchronisation manuelle des
+demarrages.
 
 Secrets du Space a definir avant publication :
 - `CHSA_CLE_API_DEMO` : cle attendue en en-tete `X-API-Key`.
@@ -44,11 +51,11 @@ Depot dataset a creer une seule fois au prealable (necessite `HF_TOKEN`) :
 hf repo create mombasstic/chsa-triage-audit-journal --repo-type dataset --private
 ```
 
-Publication (jamais realisee dans cette tache, effet externe reel,
-GPU payant, a autoriser explicitement, action reservee a l'operateur
-humain) : uploader
+Publication : automatique via `.github/workflows/deploy.yml` des que
+`CI` reussit sur `main` (effet externe reel, GPU payant, autorise
+explicitement par le capitaine le 01/10/2026). Uploade
 `deploy/space_gpu_api_vllm/Dockerfile` (renomme `Dockerfile` a la
 racine du Space), `deploy/space_gpu_api_vllm/demarrer.sh`, ce fichier
 (renomme `README.md` a la racine du Space), ainsi que `src/`,
-`interfaces/`, `pyproject.toml`, `uv.lock` (memes chemins que le
-`Dockerfile` racine du depot, cf. sa propre note de conception).
+`interfaces/` (donc `interfaces/web/` desormais aussi), `training/`,
+`monitoring/`.
