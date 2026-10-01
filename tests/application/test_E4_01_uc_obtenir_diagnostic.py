@@ -9,7 +9,10 @@ from __future__ import annotations
 
 import json
 
+import re
+
 from chsa_triage.application.use_cases.E4_01_uc_obtenir_diagnostic import (
+    PATRON_DIAGNOSTIC_REGEX,
     PROMPT_DIAGNOSTIC,
     REPETITION_PENALTY_DEFAUT,
     ObtenirDiagnosticUseCase,
@@ -151,3 +154,20 @@ def test_repetition_penalty_est_toujours_transmise_au_moteur():
         == REPETITION_PENALTY_DEFAUT
         == 1.2
     )
+
+
+def test_guided_regex_est_toujours_transmise_au_moteur():
+    """Incident reel (01/10/2026) : sans contrainte de decodage, le
+    modele peut deriver vers une structure inventee au lieu du JSON
+    strict demande. `guided_regex` force vLLM a respecter EXACTEMENT
+    la forme attendue par `parser_diagnostic_strict`."""
+    moteur = FauxMoteurInference()
+    cas_usage = ObtenirDiagnosticUseCase(
+        moteur=moteur, journal=FauxJournalAudit()
+    )
+
+    cas_usage.executer("conv-1", HISTORIQUE_EXEMPLE)
+
+    assert moteur.parametres_appels[0]["guided_regex"] == PATRON_DIAGNOSTIC_REGEX
+    # Le patron doit matcher exactement une sortie bien formee reelle.
+    assert re.fullmatch(PATRON_DIAGNOSTIC_REGEX, TEXTE_DIAGNOSTIC_VALIDE)

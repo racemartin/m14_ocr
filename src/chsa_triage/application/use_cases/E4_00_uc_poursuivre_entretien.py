@@ -54,7 +54,17 @@ REPETITION_PENALTY_DEFAUT = 1.2
 # la degenerescence (constate en conditions reelles, L4 et T4).
 TEMPERATURE_DEFAUT = 0.0
 
-NOMBRE_TOKENS_GENERES_ENTRETIEN = 128
+# Bug reel trouve en deploiement (01/10/2026) : avec 128 tokens de budget
+# et aucun `stop`, une seule question courte (~15-20 tokens) laissait
+# le reste du budget libre, et le modele le remplissait de digressions
+# hors sujet (specialites inventees, hors-sujet administratif) malgre
+# la consigne explicite de PROMPT_ENTRETIEN. Le modele separe
+# systematiquement sa digression de la question par une ligne vide :
+# `stop=["\n\n"]` coupe la generation des la fin de la question, et le
+# budget est reduit en consequence (une question courte n'a jamais
+# besoin de 128 tokens).
+NOMBRE_TOKENS_GENERES_ENTRETIEN = 48
+SEQUENCES_ARRET_ENTRETIEN = ["\n\n"]
 
 
 def _horodatage_utc_iso() -> str:
@@ -106,6 +116,7 @@ class PoursuivreEntretienUseCase:
                 "n_predict": NOMBRE_TOKENS_GENERES_ENTRETIEN,
                 "repetition_penalty": REPETITION_PENALTY_DEFAUT,
                 "temperature": TEMPERATURE_DEFAUT,
+                "stop": SEQUENCES_ARRET_ENTRETIEN,
             },
         )
         message_assistant = Message(role="assistant", contenu=reponse.texte)

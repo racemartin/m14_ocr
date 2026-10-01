@@ -49,6 +49,22 @@ TEMPERATURE_DEFAUT = 0.0
 
 NOMBRE_TOKENS_GENERES_DIAGNOSTIC = 512
 
+# Bug reel trouve en deploiement (01/10/2026) : sans contrainte de
+# format, le modele peut deriver vers sa propre structure inventee
+# (ex. pseudo-balises `<CATEGORY_CLINIQUE_COURTE>`) au lieu du JSON
+# strict demande par PROMPT_DIAGNOSTIC, rejete par
+# `parser_diagnostic_strict` (`format_respecte=False`). `guided_regex`
+# force le serveur vLLM (decodage contraint natif, cf. doc vLLM
+# "Structured Outputs") a produire EXACTEMENT cette forme, token par
+# token : impossible de deriver vers une autre structure. Les memes 3
+# cles, dans le meme ordre, que `PROMPT_DIAGNOSTIC` et
+# `CLES_REFORMULATION_ATTENDUES` ci-dessous.
+PATRON_DIAGNOSTIC_REGEX = (
+    r"<think>[^<]{10,500}</think>"
+    r'\{"niveau": [1-5], "categorie": "[^"]{1,120}", '
+    r'"ressources_estimees": "[^"]{1,300}"\}'
+)
+
 
 def _horodatage_utc_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -98,6 +114,7 @@ class ObtenirDiagnosticUseCase:
                 "n_predict": NOMBRE_TOKENS_GENERES_DIAGNOSTIC,
                 "repetition_penalty": REPETITION_PENALTY_DEFAUT,
                 "temperature": TEMPERATURE_DEFAUT,
+                "guided_regex": PATRON_DIAGNOSTIC_REGEX,
             },
         )
 

@@ -10,6 +10,7 @@ from __future__ import annotations
 from chsa_triage.application.use_cases.E4_00_uc_poursuivre_entretien import (
     PROMPT_ENTRETIEN,
     REPETITION_PENALTY_DEFAUT,
+    SEQUENCES_ARRET_ENTRETIEN,
     PoursuivreEntretienUseCase,
 )
 from chsa_triage.domain.model.entree_audit import EntreeAudit
@@ -152,3 +153,21 @@ def test_repetition_penalty_est_toujours_transmise_au_moteur():
         == REPETITION_PENALTY_DEFAUT
         == 1.2
     )
+
+
+def test_sequence_arret_est_toujours_transmise_au_moteur():
+    """Incident reel (01/10/2026) : sans `stop`, le modele continuait
+    apres la question par une digression hors sujet. `stop=["\\n\\n"]`
+    coupe la generation a la premiere ligne vide."""
+    moteur = FauxMoteurInference()
+    cas_usage = PoursuivreEntretienUseCase(
+        moteur=moteur, journal=FauxJournalAudit()
+    )
+
+    cas_usage.executer(
+        "conv-1", historique=(), message_infirmier="Douleur au ventre."
+    )
+
+    assert moteur.parametres_appels[0]["stop"] == SEQUENCES_ARRET_ENTRETIEN == [
+        "\n\n"
+    ]
