@@ -50,6 +50,7 @@ from monitoring.logica_suivi_entrainement import (
 
 NOM_FICHIER_COURBE_PERTES = "courbe_pertes.png"
 NOM_FICHIER_COURBE_RECOMPENSES_DPO = "courbe_recompenses_dpo.png"
+NOM_FICHIER_METRIQUES_EVALUATION = "metriques_evaluation.png"
 
 _LIBELLE_PAR_COLONNE_PERTE = {
     "perte_train": "Perte train",
@@ -58,6 +59,18 @@ _LIBELLE_PAR_COLONNE_PERTE = {
 _LIBELLE_PAR_COLONNE_RECOMPENSE = {
     "rewards/chosen": "Recompense chosen",
     "rewards/rejected": "Recompense rejected",
+}
+
+# Metriques scalaires d'un run d'evaluation batch (EvaluerBaselineZeroShotUseCase,
+# un seul point a etape 0, jamais une courbe par etape), distinctes des
+# metriques d'entrainement ci-dessus : jamais presentes sur un run
+# SFT/DPO, jamais absentes d'un run d'evaluation reel.
+COLONNES_EVALUATION_QUALITE = ("exact_match", "f1_moyen")
+COLONNES_EVALUATION_LATENCE = ("latence_ms_moyenne",)
+_LIBELLE_PAR_COLONNE_EVALUATION = {
+    "exact_match": "Exact match",
+    "f1_moyen": "F1 moyen",
+    "latence_ms_moyenne": "Latence moyenne (ms)",
 }
 
 
@@ -161,6 +174,57 @@ def exporter_cartes_recompenses_dpo_png(
     return True
 
 
+def exporter_metriques_evaluation_png(
+    tableau_large: list[dict], chemin_sortie: Path, titre: str
+) -> bool:
+    """
+    Ecrit un PNG a deux volets (qualite 0-1 a gauche, latence en ms a
+    droite) depuis les metriques scalaires d'un run d'evaluation batch
+    (`exact_match`/`f1_moyen`/`latence_ms_moyenne`, un seul point a
+    etape 0, jamais une courbe par etape contrairement aux deux
+    fonctions ci-dessus). Retourne `False` sans rien ecrire si aucune
+    des 3 colonnes n'est presente (ex. un run d'entrainement SFT/DPO).
+    """
+    colonnes_qualite = filtrer_colonnes_presentes(
+        tableau_large, COLONNES_EVALUATION_QUALITE
+    )
+    colonnes_latence = filtrer_colonnes_presentes(
+        tableau_large, COLONNES_EVALUATION_LATENCE
+    )
+    if not colonnes_qualite and not colonnes_latence:
+        return False
+
+    derniere_ligne = tableau_large[-1]
+    figure, (axe_qualite, axe_latence) = plt.subplots(1, 2, figsize=(10, 5))
+
+    if colonnes_qualite:
+        valeurs = [derniere_ligne.get(c, 0.0) for c in colonnes_qualite]
+        axe_qualite.bar(
+            [_LIBELLE_PAR_COLONNE_EVALUATION[c] for c in colonnes_qualite], valeurs
+        )
+        axe_qualite.set_ylim(0, 1)
+        axe_qualite.set_ylabel("Score")
+    else:
+        axe_qualite.axis("off")
+
+    if colonnes_latence:
+        valeurs = [derniere_ligne.get(c, 0.0) for c in colonnes_latence]
+        axe_latence.bar(
+            [_LIBELLE_PAR_COLONNE_EVALUATION[c] for c in colonnes_latence],
+            valeurs,
+            color="orange",
+        )
+        axe_latence.set_ylabel("ms")
+    else:
+        axe_latence.axis("off")
+
+    figure.suptitle(titre)
+    chemin_sortie.parent.mkdir(parents=True, exist_ok=True)
+    figure.savefig(chemin_sortie, dpi=150, bbox_inches="tight")
+    plt.close(figure)
+    return True
+
+
 def exporter_toutes_les_courbes(
     tableau_large: list[dict], repertoire_sortie: Path, nom_run: str
 ) -> list[Path]:
@@ -195,6 +259,14 @@ def exporter_toutes_les_courbes(
         titre=f"Recompenses DPO (derniere etape) - {nom_run}",
     ):
         chemins_ecrits.append(chemin_cartes)
+
+    chemin_evaluation = repertoire_run / NOM_FICHIER_METRIQUES_EVALUATION
+    if exporter_metriques_evaluation_png(
+        tableau_large,
+        chemin_evaluation,
+        titre=f"Metriques d'evaluation - {nom_run}",
+    ):
+        chemins_ecrits.append(chemin_evaluation)
 
     return chemins_ecrits
 

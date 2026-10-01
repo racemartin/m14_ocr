@@ -43,6 +43,16 @@ Deux bugs reels trouves et corriges avant/pendant ce run :
    `type_perte` a `nll` (supporte par toutes les versions observees) ;
    `unsloth` reste dans l'extra sans etre cable au code, a trancher
    plus tard si le pic memoire l'exige.
+3. `_courbe_depuis_log_history` perdait silencieusement les 3 mesures
+   `eval_loss` d'un run reel (`sft-lora-essai-1`, job
+   `6abec439404719ba3761a42c`, confirme via `hf jobs logs`) : indexait
+   les pertes de validation par leur `step` exact, or `eval_strategy=
+   "epoch"` les declenche aux bornes d'epoque (113/226/339 sur ce run,
+   339 pas sur 3 epoques), jamais un multiple de `logging_steps=10`
+   (meme phenomene deja documente sur le tout premier run SFT, cf. le
+   fichier `AGENTS.md` du projet, bornes 114/228/342). RESOLU : associe
+   chaque `eval_loss` au pas d'entrainement le PLUS PROCHE plutot
+   qu'exiger une egalite exacte.
 
 Note sur le bug Qwen3 `<think>` (point 2bis) : `apply_chat_template()`
 strippe silencieusement les blocs `<think>` d'un tour assistant
@@ -93,13 +103,37 @@ def _courbe_depuis_log_history(
     """Reconstruit la courbe de metriques depuis
     `transformers.Trainer.state.log_history` : les entrees
     d'entrainement portent "loss"/"grad_norm"/"step", les entrees
-    d'evaluation "eval_loss"/"step". Confirme sur le run SFT reel (cf.
-    docstring du module)."""
-    pertes_validation_par_etape: dict[int, float] = {
+    d'evaluation "eval_loss"/"step".
+
+    `eval_strategy="epoch"` declenche une evaluation au pas global ou
+    l'epoque se termine, pas necessairement un multiple de
+    `logging_steps` (confirme reel, pas hypothetique : job
+    `6abec439404719ba3761a42c`, 339 pas sur 3 epoques -> bornes
+    113/226/339, aucune multiple de `logging_steps=10`). Associer
+    chaque `eval_loss` au pas d'ENTRAINEMENT le plus proche (au lieu
+    d'exiger une egalite exacte de `step`) evite de perdre
+    silencieusement les 3 mesures de validation reellement calculees
+    par ce job mais jusqu'ici jetees avant d'atteindre le journal
+    (aucun pas d'entrainement ne partageait exactement 113/226/339)."""
+    pertes_validation_par_etape_eval: dict[int, float] = {
         int(entree["step"]): entree["eval_loss"]
         for entree in log_history
         if "eval_loss" in entree and "step" in entree
     }
+    etapes_entrainement = sorted(
+        {
+            int(entree["step"])
+            for entree in log_history
+            if "loss" in entree and "step" in entree
+        }
+    )
+
+    pertes_validation_par_etape: dict[int, float] = {}
+    for etape_eval, valeur in pertes_validation_par_etape_eval.items():
+        if not etapes_entrainement:
+            break
+        etape_proche = min(etapes_entrainement, key=lambda e: abs(e - etape_eval))
+        pertes_validation_par_etape[etape_proche] = valeur
 
     points: list[MetriquesEntrainement] = []
     for entree in log_history:

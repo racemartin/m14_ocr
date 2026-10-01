@@ -16,6 +16,7 @@ from monitoring.exporter_courbes_png import (
     exporter_cartes_recompenses_dpo_png,
     exporter_courbe_pertes_png,
     exporter_courbe_recompenses_dpo_png,
+    exporter_metriques_evaluation_png,
     exporter_toutes_les_courbes,
 )
 from monitoring.logica_suivi_entrainement import (
@@ -100,6 +101,44 @@ def test_exporter_courbe_recompenses_dpo_png_present_sur_une_fixture_dpo(tmp_pat
     assert chemin_courbe.exists()
     assert ecrit_cartes is True
     assert chemin_cartes.exists()
+
+
+def test_exporter_metriques_evaluation_png_absent_sur_un_run_sft(tmp_path):
+    """Un run SFT reel n'a jamais exact_match/f1_moyen/latence_ms_moyenne :
+    rien ne doit etre ecrit."""
+    tableau_large = _tableau_depuis_fixture(CHEMIN_FIXTURE_RUN_SFT_REEL)
+    chemin_sortie = tmp_path / "metriques_evaluation.png"
+
+    ecrit = exporter_metriques_evaluation_png(
+        tableau_large, chemin_sortie, titre="Test SFT reel"
+    )
+
+    assert ecrit is False
+    assert not chemin_sortie.exists()
+
+
+def test_exporter_metriques_evaluation_png_present_sur_une_fixture_evaluation(tmp_path):
+    """Forme reelle d'un run EvaluerBaselineZeroShotUseCase (evaluation-post-sft/
+    -post-dpo) : un seul point a etape 0, exact_match/f1_moyen/latence_ms_moyenne/
+    nombre_echecs_inference."""
+    texte_evaluation = "\n".join(
+        [
+            _ligne_jsonl(0, "exact_match", 0.0),
+            _ligne_jsonl(0, "f1_moyen", 0.1117),
+            _ligne_jsonl(0, "latence_ms_moyenne", 11553.37),
+            _ligne_jsonl(0, "nombre_echecs_inference", 0),
+        ]
+    )
+    tableau_large = pivoter_par_etape(analyser_jsonl_metriques(texte_evaluation))
+    chemin_sortie = tmp_path / "metriques_evaluation.png"
+
+    ecrit = exporter_metriques_evaluation_png(
+        tableau_large, chemin_sortie, titre="Test evaluation-post-sft"
+    )
+
+    assert ecrit is True
+    assert chemin_sortie.exists()
+    assert chemin_sortie.stat().st_size > 0
 
 
 def test_exporter_toutes_les_courbes_sur_un_run_sft_reel_n_ecrit_que_la_courbe_de_pertes(
