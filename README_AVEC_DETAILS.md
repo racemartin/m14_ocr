@@ -1577,6 +1577,11 @@ bloc ouvre sa propre conversation, pour ne jamais mélanger les scénarios.
   export CHSA_API_CLE="<clé réelle du Space>"
   uv run streamlit run interfaces/web/app_test_inference.py
   ```
+  Avec la sortie aussi dans un fichier (pour la suivre depuis un autre
+  terminal avec `tail -f`, `*.log` est déjà dans `.gitignore`) :
+  ```bash
+  uv run streamlit run interfaces/web/app_test_inference.py 2>&1 | tee streamlit_distant.log
+  ```
   Penser à repasser le Space en pause après usage : `hf spaces pause mombasstic/chsa-triage-api`.
 
 * **Mode 2, CPU gratuit quantifié (llama.cpp, §4.7)**
@@ -1600,6 +1605,10 @@ bloc ouvre sa propre conversation, pour ne jamais mélanger les scénarios.
   export CHSA_API_URL_BASE=http://127.0.0.1:7860
   export CHSA_API_CLE=change-moi
   uv run streamlit run interfaces/web/app_test_inference.py
+  ```
+  Avec la sortie aussi dans un fichier (`*.log` est déjà dans `.gitignore`) :
+  ```bash
+  uv run streamlit run interfaces/web/app_test_inference.py 2>&1 | tee streamlit_local.log
   ```
 
 * **Mode 3, CPU gratuit pleine précision (outil de comparaison, §4.8)**
