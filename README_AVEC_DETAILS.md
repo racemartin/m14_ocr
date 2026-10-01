@@ -1571,6 +1571,12 @@ bloc ouvre sa propre conversation, pour ne jamais mélanger les scénarios.
   export CHSA_CLE="<clé réelle du Space>"
   export CHSA_BASE="https://mombasstic-chsa-triage-api.hf.space"
   ```
+  Frontend Streamlit (optionnel, terminal séparé, même clé que ci-dessus) :
+  ```bash
+  export CHSA_API_URL_BASE="https://mombasstic-chsa-triage-api.hf.space"
+  export CHSA_API_CLE="<clé réelle du Space>"
+  uv run streamlit run interfaces/web/app_test_inference.py
+  ```
   Penser à repasser le Space en pause après usage : `hf spaces pause mombasstic/chsa-triage-api`.
 
 * **Mode 2, CPU gratuit quantifié (llama.cpp, §4.7)**
@@ -1588,6 +1594,12 @@ bloc ouvre sa propre conversation, pour ne jamais mélanger les scénarios.
   # Terminal C : variables pour les scénarios ci-dessous
   export CHSA_CLE="change-moi"
   export CHSA_BASE="http://127.0.0.1:7860"
+  ```
+  Frontend Streamlit (optionnel, terminal D) :
+  ```bash
+  export CHSA_API_URL_BASE=http://127.0.0.1:7860
+  export CHSA_API_CLE=change-moi
+  uv run streamlit run interfaces/web/app_test_inference.py
   ```
 
 * **Mode 3, CPU gratuit pleine précision (outil de comparaison, §4.8)**
