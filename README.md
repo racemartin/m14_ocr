@@ -39,6 +39,7 @@ commandes, tableaux de résultats run par run, hyperparamètres, dépannage
 **Documents de référence :**
 - [PDF Support de présentation (M14)](docs/M14_Support_de_presentation_V3.pdf)
 - [PDF Rapport technique MC4](docs/M14_Rapport_technique_CHSA_Triage_V3.pdf)
+- [README_AVEC_DETAILS.md](README_AVEC_DETAILS.md) : toutes les commandes, tableaux de résultats et hyperparamètres
 - Vue d'ensemble visuelle : [`docs/diagrams/00_vue_ensemble/vision_generale_etapes.png`](docs/diagrams/00_vue_ensemble/vision_generale_etapes.png)
 - Version détaillée du schéma (scripts/adaptateurs/dépôts HF réels) : [`docs/diagrams/00_vue_ensemble/vision_generale_etapes_v3_detaille.png`](docs/diagrams/00_vue_ensemble/vision_generale_etapes_v3_detaille.png)
 
