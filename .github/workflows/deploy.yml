@@ -21,8 +21,13 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
-      - name: Installer huggingface_hub[cli]
-        run: pip install "huggingface_hub[cli]"
+      - name: Installer uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Installer huggingface_hub[cli] (outil isole, meme commande que README "Demarrage rapide")
+        run: |
+          uv tool install "huggingface_hub[cli]"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Publier le code sur le Space GPU reel (memes chemins que le deploiement manuel documente)
         env:
