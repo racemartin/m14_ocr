@@ -20,6 +20,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+from chsa_triage.domain.model.echec_inference import EchecInferenceError
 from chsa_triage.domain.model.entree_audit import EntreeAudit
 from chsa_triage.domain.model.exemple_pivot import Message
 from chsa_triage.domain.ports.journal_audit import JournalAudit
@@ -96,9 +97,11 @@ class PoursuivreEntretienUseCase:
     ) -> ResultatTourEntretien:
         """Construit le message utilisateur (prefixe de `PROMPT_ENTRETIEN`
         si `historique` est vide), l'ajoute a l'historique et appelle le
-        moteur. Une erreur d'inference se propage plutot que d'etre
-        avalee (contrairement aux cas d'usage par lot : ici une seule
-        requete pour un seul utilisateur, pas de lot a proteger)."""
+        moteur. Une erreur d'inference est consignee au journal d'audit
+        (`type_evenement="echec_inference"`, F6) puis relancee sous
+        forme d'`EchecInferenceError` (contrairement aux cas d'usage par
+        lot : ici une seule requete pour un seul utilisateur, pas de lot
+        a proteger, mais l'echec ne doit jamais disparaitre sans trace)."""
         if not historique:
             contenu_utilisateur = f"{PROMPT_ENTRETIEN}\n\n{message_infirmier}"
         else:
@@ -110,16 +113,43 @@ class PoursuivreEntretienUseCase:
             for m in (*historique, message_utilisateur)
         ]
 
-        reponse = self.moteur.generer(
-            messages_pour_modele,
-            {
-                "n_predict": NOMBRE_TOKENS_GENERES_ENTRETIEN,
-                "repetition_penalty": REPETITION_PENALTY_DEFAUT,
-                "temperature": TEMPERATURE_DEFAUT,
-                "stop": SEQUENCES_ARRET_ENTRETIEN,
-            },
-        )
-        message_assistant = Message(role="assistant", contenu=reponse.texte)
+        try:
+            reponse = self.moteur.generer(
+                messages_pour_modele,
+                {
+                    "n_predict": NOMBRE_TOKENS_GENERES_ENTRETIEN,
+                    "repetition_penalty": REPETITION_PENALTY_DEFAUT,
+                    "temperature": TEMPERATURE_DEFAUT,
+                    "stop": SEQUENCES_ARRET_ENTRETIEN,
+                },
+            )
+            # Acces aux champs de `reponse` a l'interieur du meme bloc :
+            # un adaptateur fautif qui retourne un objet malforme (ex.
+            # sans `.texte`) doit etre traite comme un echec d'inference,
+            # pas remonter en AttributeError non consignee.
+            message_assistant = Message(role="assistant", contenu=reponse.texte)
+            latence_ms = reponse.latence_ms
+            nombre_tokens_sortie = reponse.nombre_tokens_sortie
+        except Exception as erreur:
+            self.journal.consigner(
+                EntreeAudit(
+                    horodatage=self.horloge(),
+                    type_evenement="echec_inference",
+                    conversation_id=conversation_id,
+                    entree=message_infirmier,
+                    sortie="",
+                    version_modele=self.version_modele,
+                    metadonnees={
+                        "type_evenement_origine": "tour_entretien",
+                        "type_erreur": type(erreur).__name__,
+                        "erreur": str(erreur),
+                    },
+                )
+            )
+            raise EchecInferenceError(
+                f"echec d'inference lors d'un tour d'entretien "
+                f"(conversation_id={conversation_id}) : {erreur}"
+            ) from erreur
 
         self.journal.consigner(
             EntreeAudit(
@@ -127,8 +157,12 @@ class PoursuivreEntretienUseCase:
                 type_evenement="tour_entretien",
                 conversation_id=conversation_id,
                 entree=message_infirmier,
-                sortie=reponse.texte,
+                sortie=message_assistant.contenu,
                 version_modele=self.version_modele,
+                metadonnees={
+                    "latence_ms": latence_ms,
+                    "nombre_tokens_sortie": nombre_tokens_sortie,
+                },
             )
         )
 

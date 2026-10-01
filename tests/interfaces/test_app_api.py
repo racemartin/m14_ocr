@@ -51,6 +51,31 @@ class FauxMoteurInference:
         )
 
 
+class FauxMoteurInferenceEnErreur:
+    """Simule une panne reelle du moteur d'inference (ex. 500 vLLM)."""
+
+    def __init__(self, exception: Exception) -> None:
+        self._exception = exception
+
+    def generer(
+        self, messages: list[dict], parametres: dict | None = None
+    ) -> ReponseModele:
+        raise self._exception
+
+
+class ReponseModeleMalformee:
+    """Simule un adaptateur fautif qui ne respecte pas le contrat
+    `ReponseModele` (ex. bug de serialisation cote serveur distant) :
+    pas de `.texte`, l'acces leve `AttributeError`."""
+
+
+class FauxMoteurInferenceReponseMalformee:
+    def generer(
+        self, messages: list[dict], parametres: dict | None = None
+    ) -> ReponseModele:
+        return ReponseModeleMalformee()  # type: ignore[return-value]
+
+
 class FauxJournalAudit:
     def __init__(self) -> None:
         self.entrees: list[EntreeAudit] = []
@@ -69,6 +94,16 @@ def _client(
         journal_audit=journal,
         cle_api=CLE_API_TEST,
         verificateur_sante_moteur=verificateur_sante_moteur,
+    )
+    return TestClient(app), journal
+
+
+def _client_avec_moteur(moteur_inference) -> tuple[TestClient, FauxJournalAudit]:
+    journal = FauxJournalAudit()
+    app = creer_application(
+        moteur_inference=moteur_inference,
+        journal_audit=journal,
+        cle_api=CLE_API_TEST,
     )
     return TestClient(app), journal
 
@@ -358,3 +393,134 @@ def test_reformuler_diagnostic_sans_cle_api_est_rejete():
     )
 
     assert reponse.status_code == 401
+
+
+# -----------------------------------------------------------------------
+# G3 (partie dev, gratuite) : robustesse de l'API face a une panne du
+# moteur d'inference (exception, timeout) ou a une reponse malformee,
+# jamais exercee avant (cf. rapport d'audit §2.2). Chaque cas verifie
+# (1) que l'API ne laisse jamais fuiter un 500 FastAPI generique mais
+# repond par une erreur structuree (502, detail explicite) et (2) que
+# G4 a bien consigne l'echec au journal d'audit (`echec_inference`)
+# avant de relancer.
+# -----------------------------------------------------------------------
+
+
+def test_poursuivre_conversation_panne_moteur_retourne_erreur_structuree():
+    client, journal = _client_avec_moteur(
+        FauxMoteurInferenceEnErreur(RuntimeError("500 Internal Server Error"))
+    )
+    entetes = {"X-API-Key": CLE_API_TEST}
+    conversation_id = client.post("/conversations", headers=entetes).json()[
+        "conversation_id"
+    ]
+
+    reponse = client.post(
+        f"/conversations/{conversation_id}/messages",
+        headers=entetes,
+        json={"message": "Douleur au ventre."},
+    )
+
+    assert reponse.status_code == 502
+    assert "detail" in reponse.json()
+    assert len(journal.entrees) == 1
+    assert journal.entrees[0].type_evenement == "echec_inference"
+    assert journal.entrees[0].conversation_id == conversation_id
+    assert journal.entrees[0].metadonnees["type_erreur"] == "RuntimeError"
+
+
+def test_poursuivre_conversation_timeout_moteur_retourne_erreur_structuree():
+    """Un timeout reel (`TimeoutError`, levee par un client HTTP type
+    `httpx` sur depassement de delai) doit etre traite exactement comme
+    toute autre panne d'inference, pas un cas particulier non catche."""
+    client, journal = _client_avec_moteur(
+        FauxMoteurInferenceEnErreur(TimeoutError("delai depasse (120s)"))
+    )
+    entetes = {"X-API-Key": CLE_API_TEST}
+    conversation_id = client.post("/conversations", headers=entetes).json()[
+        "conversation_id"
+    ]
+
+    reponse = client.post(
+        f"/conversations/{conversation_id}/messages",
+        headers=entetes,
+        json={"message": "Douleur au ventre."},
+    )
+
+    assert reponse.status_code == 502
+    assert len(journal.entrees) == 1
+    assert journal.entrees[0].type_evenement == "echec_inference"
+    assert journal.entrees[0].metadonnees["type_erreur"] == "TimeoutError"
+
+
+def test_poursuivre_conversation_reponse_malformee_retourne_erreur_structuree():
+    """Un adaptateur fautif qui retourne un objet sans `.texte` (viole le
+    contrat `ReponseModele`) ne doit jamais remonter en 500 FastAPI nu."""
+    client, journal = _client_avec_moteur(FauxMoteurInferenceReponseMalformee())
+    entetes = {"X-API-Key": CLE_API_TEST}
+    conversation_id = client.post("/conversations", headers=entetes).json()[
+        "conversation_id"
+    ]
+
+    reponse = client.post(
+        f"/conversations/{conversation_id}/messages",
+        headers=entetes,
+        json={"message": "Douleur au ventre."},
+    )
+
+    assert reponse.status_code == 502
+    assert len(journal.entrees) == 1
+    assert journal.entrees[0].type_evenement == "echec_inference"
+
+
+def test_obtenir_diagnostic_panne_moteur_retourne_erreur_structuree():
+    """Le moteur reussit le tour d'entretien (pour construire un
+    historique non vide, requis par la route diagnostic) puis echoue
+    uniquement lors de l'appel diagnostic lui-meme."""
+
+    class MoteurEchoueSeulementSurDiagnostic:
+        def __init__(self) -> None:
+            self.nombre_appels = 0
+
+        def generer(self, messages: list[dict], parametres: dict | None = None):
+            self.nombre_appels += 1
+            if self.nombre_appels == 1:
+                return ReponseModele(texte="Depuis quand ?")
+            raise RuntimeError("500 Internal Server Error (diagnostic)")
+
+    client, journal = _client_avec_moteur(MoteurEchoueSeulementSurDiagnostic())
+    entetes = {"X-API-Key": CLE_API_TEST}
+    conversation_id = client.post("/conversations", headers=entetes).json()[
+        "conversation_id"
+    ]
+    client.post(
+        f"/conversations/{conversation_id}/messages",
+        headers=entetes,
+        json={"message": "Douleur thoracique."},
+    )
+
+    reponse = client.post(
+        f"/conversations/{conversation_id}/diagnostic", headers=entetes
+    )
+
+    assert reponse.status_code == 502
+    assert any(e.type_evenement == "echec_inference" for e in journal.entrees)
+
+
+def test_reformuler_diagnostic_panne_moteur_retourne_erreur_structuree():
+    client, journal = _client_avec_moteur(
+        FauxMoteurInferenceEnErreur(RuntimeError("500 Internal Server Error"))
+    )
+    entetes = {"X-API-Key": CLE_API_TEST}
+    conversation_id = client.post("/conversations", headers=entetes).json()[
+        "conversation_id"
+    ]
+
+    reponse = client.post(
+        f"/conversations/{conversation_id}/diagnostic/reformuler",
+        headers=entetes,
+        json={"texte_brut": "texte libre"},
+    )
+
+    assert reponse.status_code == 502
+    assert any(e.type_evenement == "echec_inference" for e in journal.entrees)

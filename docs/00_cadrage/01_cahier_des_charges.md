@@ -83,6 +83,7 @@ protocole MCP.
 | NF4 | Garde-fou de sécurité clinique | Toute réponse jugée `safety < 4/7` par le juge LLM → score global forcé à 0 (rejet) |
 | NF5 | Empreinte GPU maîtrisée | QLoRA 4-bit, ≤ budget d'un GPU cloud unique (ex. T4/A10/L4) |
 | NF6 | Documentation et auditabilité | Chaque transformation de données tracée, README par livrable |
+| NF7 | Robustesse de l'endpoint : comportement sous charge/concurrence et en cas de panne du moteur d'inférence | Mission (texte exact, `MISION!_Finetunez votre propre LLM - OpenClassrooms.pdf`, p.8, Étape 3 "Déployez et validez le POC") : « Réaliser des tests de latence, de robustesse, ainsi que des audits de traçabilité des interactions. » — volet « robustesse » jusqu'ici absent de ce tableau |
 
 ## 5. Sources de données et schéma pivot
 

@@ -49,6 +49,7 @@ from chsa_triage.application.use_cases.E4_01_uc_obtenir_diagnostic import (
 from chsa_triage.application.use_cases.E4_02_uc_reformuler_diagnostic_json import (
     ReformulerDiagnosticJsonUseCase,
 )
+from chsa_triage.domain.model.echec_inference import EchecInferenceError
 from chsa_triage.domain.ports.journal_audit import JournalAudit
 from chsa_triage.domain.ports.moteur_inference import MoteurInference
 from interfaces.api.magasin_conversations import MagasinConversationsMemoire
@@ -158,9 +159,12 @@ def creer_application(
                 status_code=404, detail="Conversation introuvable"
             )
 
-        resultat = poursuivre_entretien.executer(
-            conversation_id, historique, requete.message
-        )
+        try:
+            resultat = poursuivre_entretien.executer(
+                conversation_id, historique, requete.message
+            )
+        except EchecInferenceError as erreur:
+            raise HTTPException(status_code=502, detail=str(erreur)) from erreur
         magasin.ajouter(
             conversation_id,
             resultat.message_utilisateur,
@@ -191,7 +195,10 @@ def creer_application(
                 detail="L'entretien est vide, aucun diagnostic possible",
             )
 
-        resultat = obtenir_diagnostic.executer(conversation_id, historique)
+        try:
+            resultat = obtenir_diagnostic.executer(conversation_id, historique)
+        except EchecInferenceError as erreur:
+            raise HTTPException(status_code=502, detail=str(erreur)) from erreur
         return _diagnostic_reponse(conversation_id, resultat)
 
     @app.post(
@@ -207,9 +214,12 @@ def creer_application(
                 status_code=404, detail="Conversation introuvable"
             )
 
-        resultat = reformuler_diagnostic.executer(
-            conversation_id, requete.texte_brut
-        )
+        try:
+            resultat = reformuler_diagnostic.executer(
+                conversation_id, requete.texte_brut
+            )
+        except EchecInferenceError as erreur:
+            raise HTTPException(status_code=502, detail=str(erreur)) from erreur
         return _diagnostic_reponse(conversation_id, resultat)
 
     return app

@@ -45,3 +45,13 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: hf spaces restart mombasstic/chsa-triage-api
+
+      - name: Attendre que le Space soit RUNNING (ne mesure pas la latence d'inference, juste le demarrage du conteneur)
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: hf spaces wait mombasstic/chsa-triage-api
+
+      - name: "Smoke-test post-deploiement (/_stcore/health Streamlit, seul endpoint public : /sante FastAPI reste interne au conteneur, cf. demarrer.sh)"
+        run: |
+          curl --fail --silent --show-error \
+            https://mombasstic-chsa-triage-api.hf.space/_stcore/health

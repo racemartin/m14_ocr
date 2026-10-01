@@ -23,6 +23,7 @@ from chsa_triage.application.validation_diagnostic import (
     parser_diagnostic_strict,
 )
 from chsa_triage.domain.model.diagnostic_clinique import DiagnosticClinique
+from chsa_triage.domain.model.echec_inference import EchecInferenceError
 from chsa_triage.domain.model.entree_audit import EntreeAudit
 from chsa_triage.domain.model.exemple_pivot import Message
 from chsa_triage.domain.ports.journal_audit import JournalAudit
@@ -119,38 +120,68 @@ class ObtenirDiagnosticUseCase:
             {"role": m.role, "content": m.contenu} for m in historique
         ] + [{"role": "user", "content": PROMPT_DIAGNOSTIC}]
 
-        reponse = self.moteur.generer(
-            messages_pour_modele,
-            {
-                "n_predict": NOMBRE_TOKENS_GENERES_DIAGNOSTIC,
-                "repetition_penalty": REPETITION_PENALTY_DEFAUT,
-                "temperature": TEMPERATURE_DEFAUT,
-                "structured_outputs": {"regex": PATRON_DIAGNOSTIC_REGEX},
-            },
+        entree_audit = json.dumps(
+            [{"role": m.role, "contenu": m.contenu} for m in historique],
+            ensure_ascii=False,
         )
 
-        diagnostic = parser_diagnostic_strict(reponse.texte)
+        try:
+            reponse = self.moteur.generer(
+                messages_pour_modele,
+                {
+                    "n_predict": NOMBRE_TOKENS_GENERES_DIAGNOSTIC,
+                    "repetition_penalty": REPETITION_PENALTY_DEFAUT,
+                    "temperature": TEMPERATURE_DEFAUT,
+                    "structured_outputs": {"regex": PATRON_DIAGNOSTIC_REGEX},
+                },
+            )
+            # Acces aux champs de `reponse` a l'interieur du meme bloc :
+            # un adaptateur fautif qui retourne un objet malforme doit
+            # etre traite comme un echec d'inference, pas remonter en
+            # exception non consignee.
+            texte_sortie = reponse.texte
+            diagnostic = parser_diagnostic_strict(texte_sortie)
+            latence_ms = reponse.latence_ms
+            nombre_tokens_sortie = reponse.nombre_tokens_sortie
+        except Exception as erreur:
+            self.journal.consigner(
+                EntreeAudit(
+                    horodatage=self.horloge(),
+                    type_evenement="echec_inference",
+                    conversation_id=conversation_id,
+                    entree=entree_audit,
+                    sortie="",
+                    version_modele=self.version_modele,
+                    metadonnees={
+                        "type_evenement_origine": "diagnostic",
+                        "type_erreur": type(erreur).__name__,
+                        "erreur": str(erreur),
+                    },
+                )
+            )
+            raise EchecInferenceError(
+                f"echec d'inference lors de l'appel diagnostic "
+                f"(conversation_id={conversation_id}) : {erreur}"
+            ) from erreur
 
         self.journal.consigner(
             EntreeAudit(
                 horodatage=self.horloge(),
                 type_evenement="diagnostic",
                 conversation_id=conversation_id,
-                entree=json.dumps(
-                    [
-                        {"role": m.role, "contenu": m.contenu}
-                        for m in historique
-                    ],
-                    ensure_ascii=False,
-                ),
-                sortie=reponse.texte,
+                entree=entree_audit,
+                sortie=texte_sortie,
                 version_modele=self.version_modele,
-                metadonnees={"format_respecte": diagnostic is not None},
+                metadonnees={
+                    "format_respecte": diagnostic is not None,
+                    "latence_ms": latence_ms,
+                    "nombre_tokens_sortie": nombre_tokens_sortie,
+                },
             )
         )
 
         return ResultatDiagnostic(
             diagnostic=diagnostic,
-            texte_brut=reponse.texte,
+            texte_brut=texte_sortie,
             format_respecte=diagnostic is not None,
         )

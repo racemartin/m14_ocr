@@ -42,6 +42,7 @@ from chsa_triage.application.use_cases.E4_01_uc_obtenir_diagnostic import (
 from chsa_triage.application.validation_diagnostic import (
     parser_diagnostic_strict,
 )
+from chsa_triage.domain.model.echec_inference import EchecInferenceError
 from chsa_triage.domain.model.entree_audit import EntreeAudit
 from chsa_triage.domain.ports.journal_audit import JournalAudit
 from chsa_triage.domain.ports.moteur_inference import MoteurInference
@@ -79,9 +80,36 @@ class ReformulerDiagnosticJsonUseCase:
             "repetition_penalty": REPETITION_PENALTY_DEFAUT,
             "structured_outputs": {"regex": PATRON_DIAGNOSTIC_REGEX},
         }
-        reponse = self.moteur.generer(messages, parametres_generation)
-
-        diagnostic = parser_diagnostic_strict(reponse.texte)
+        try:
+            reponse = self.moteur.generer(messages, parametres_generation)
+            # Acces aux champs de `reponse` a l'interieur du meme bloc :
+            # un adaptateur fautif qui retourne un objet malforme doit
+            # etre traite comme un echec d'inference, pas remonter en
+            # exception non consignee.
+            texte_sortie = reponse.texte
+            diagnostic = parser_diagnostic_strict(texte_sortie)
+            latence_ms = reponse.latence_ms
+            nombre_tokens_sortie = reponse.nombre_tokens_sortie
+        except Exception as erreur:
+            self.journal.consigner(
+                EntreeAudit(
+                    horodatage=self.horloge(),
+                    type_evenement="echec_inference",
+                    conversation_id=conversation_id,
+                    entree=texte_brut,
+                    sortie="",
+                    version_modele=self.version_modele,
+                    metadonnees={
+                        "type_evenement_origine": "diagnostic_reformule",
+                        "type_erreur": type(erreur).__name__,
+                        "erreur": str(erreur),
+                    },
+                )
+            )
+            raise EchecInferenceError(
+                f"echec d'inference lors de la reformulation du diagnostic "
+                f"(conversation_id={conversation_id}) : {erreur}"
+            ) from erreur
 
         self.journal.consigner(
             EntreeAudit(
@@ -89,14 +117,18 @@ class ReformulerDiagnosticJsonUseCase:
                 type_evenement="diagnostic_reformule",
                 conversation_id=conversation_id,
                 entree=texte_brut,
-                sortie=reponse.texte,
+                sortie=texte_sortie,
                 version_modele=self.version_modele,
-                metadonnees={"format_respecte": diagnostic is not None},
+                metadonnees={
+                    "format_respecte": diagnostic is not None,
+                    "latence_ms": latence_ms,
+                    "nombre_tokens_sortie": nombre_tokens_sortie,
+                },
             )
         )
 
         return ResultatDiagnostic(
             diagnostic=diagnostic,
-            texte_brut=reponse.texte,
+            texte_brut=texte_sortie,
             format_respecte=diagnostic is not None,
         )

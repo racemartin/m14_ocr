@@ -125,7 +125,9 @@ def test_consigne_une_entree_d_audit_distincte_meme_si_le_format_est_invalide():
     assert entree.entree == TEXTE_BRUT_MAL_FORME
     assert entree.sortie == "pas de format"
     assert entree.version_modele == "mombasstic/chsa-triage-dpo-lora"
-    assert entree.metadonnees == {"format_respecte": False}
+    assert entree.metadonnees["format_respecte"] is False
+    assert entree.metadonnees["latence_ms"] == 0.0
+    assert entree.metadonnees["nombre_tokens_sortie"] == 40
 
 
 def test_repetition_penalty_et_structured_outputs_sont_transmis_au_moteur():
