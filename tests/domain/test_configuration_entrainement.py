@@ -57,7 +57,10 @@ def test_lora_se_deserialise_depuis_la_recette():
 def test_hyperparametres_se_deserialisent_depuis_la_recette():
     """`entrainement:` se deserialise integralement, `assistant_only_loss`
     inclus (champ de `HyperparametresEntrainement` depuis la resolution
-    du backlog `m14-ocr-assistant-only-loss-estructurado`)."""
+    du backlog `m14-ocr-assistant-only-loss-estructurado`). Valeur
+    attendue `False` : un run GPU reel (01-02/10/2026) a mesure
+    `assistant_only_loss=True` en regression (F1 0.039 contre 0.112),
+    la recette a ete repassee a `False`, cf. le commit qui l'a fait."""
     recette = _charger_recette()
     section = recette["entrainement"]
     hyperparametres = HyperparametresEntrainement(
@@ -74,7 +77,7 @@ def test_hyperparametres_se_deserialisent_depuis_la_recette():
     assert hyperparametres.taille_lot == 4
     assert hyperparametres.packing is True
     assert hyperparametres.type_perte == "nll"
-    assert hyperparametres.assistant_only_loss is True
+    assert hyperparametres.assistant_only_loss is False
 
 
 def test_suivi_backend_vaut_hf_dataset_par_defaut_dans_la_recette():
