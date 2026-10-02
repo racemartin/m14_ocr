@@ -55,3 +55,8 @@ jobs:
         run: |
           curl --fail --silent --show-error \
             https://mombasstic-chsa-triage-api.hf.space/_stcore/health
+
+      - name: Mettre le Space en pause
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: hf spaces pause mombasstic/chsa-triage-api
